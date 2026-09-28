@@ -14,7 +14,7 @@ use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListSorting;
 use crate::model::localized_text::LocalizedText;
-use crate::model::relation::{AsyncModelLoader, AsyncVecLoader};
+use crate::model::relation::{AsyncModelLoader, AsyncModelsLoader, AsyncVecLoader};
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
@@ -39,6 +39,19 @@ pub trait IdentifierRepository: Send + Sync {
         &self,
         query_params: IdentifierListQuery,
     ) -> Result<GetIdentifierList, DataLayerError>;
+
+    /// The identifiers of `ids`, deleted ones included.
+    async fn get_identifiers_by_ids(
+        &self,
+        ids: Vec<IdentifierId>,
+    ) -> Result<Vec<Identifier>, DataLayerError>;
+}
+
+#[async_trait]
+impl AsyncModelsLoader<Identifier> for Arc<dyn IdentifierRepository> {
+    async fn load(&self, ids: &[IdentifierId]) -> Result<Vec<Identifier>, DataLayerError> {
+        self.get_identifiers_by_ids(ids.to_vec()).await
+    }
 }
 
 #[async_trait]

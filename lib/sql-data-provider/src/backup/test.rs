@@ -24,7 +24,7 @@ use super::BackupProvider;
 use crate::db_conn;
 use crate::entity::certificate::{self, CertificateState};
 use crate::entity::credential::{self, CredentialRole, CredentialState, CredentialType};
-use crate::entity::credential_schema::KeyStorageSecurity;
+use crate::entity::credential_schema::{self, KeyStorageSecurity};
 use crate::entity::did::{self, DidType};
 use crate::entity::identifier::{self, IdentifierState, IdentifierType};
 use crate::entity::key_did::KeyRole;
@@ -72,11 +72,19 @@ async fn insert_credential_to_database(
     key_id: KeyId,
     deleted: bool,
 ) -> CredentialId {
+    let organisation_id = credential_schema::Entity::find_by_id(schema_id)
+        .one(database)
+        .await
+        .unwrap()
+        .unwrap()
+        .organisation_id;
+
     let credential_id = credential::ActiveModel {
         expires_at: Set(None),
         ecosystem: Set(None),
         id: Set(Uuid::new_v4().into()),
         credential_schema_id: Set(schema_id),
+        organisation_id: Set(organisation_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(None),

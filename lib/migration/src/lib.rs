@@ -337,6 +337,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260923_120000_backfill_credential_formats::Migration),
             Box::new(migrations::m20260924_120000_credential_claim::Migration),
             Box::new(migrations::m20260924_130000_deduplicate_holder_claims::Migration),
+            Box::new(migrations::m20260926_120000_credential_organisation_id::Migration),
         ]
     }
 }

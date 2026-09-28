@@ -1,8 +1,7 @@
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::relation::RelatedVec;
 
 use crate::entity::claim_schema;
-use crate::localized_text::LocalizedTextLoader;
+use crate::localized_text::localized_texts;
 use crate::transaction_context::TransactionManagerImpl;
 
 pub(crate) fn claim_schema_from_model(
@@ -18,9 +17,6 @@ pub(crate) fn claim_schema_from_model(
         array: value.array,
         metadata: value.metadata,
         required: value.required,
-        translations: RelatedVec::new(LocalizedTextLoader {
-            id: value.id.into(),
-            db,
-        }),
+        translations: localized_texts(value.id.into(), db),
     }
 }

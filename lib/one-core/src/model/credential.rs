@@ -126,7 +126,7 @@ impl CredentialStateEnum {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SortableCredentialColumn {
     CreatedDate,
     SchemaName,

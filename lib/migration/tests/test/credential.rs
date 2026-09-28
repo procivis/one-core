@@ -15,6 +15,7 @@ async fn test_db_schema_credential() {
             "consumed_at",
             "protocol",
             "credential_schema_id",
+            "organisation_id",
             "interaction_id",
             "key_id",
             "role",
@@ -38,9 +39,19 @@ async fn test_db_schema_credential() {
             "format",
         ])
         .index("index-Credential-CreatedDate", false, &["created_date"])
-        .index("index-Credential-Role", false, &["role"])
         .index("index-Credential-Type", false, &["type"])
-        .index("index-Credential-DeletedAt", false, &["deleted_at"])
+        .index(
+            "index-Credential-OrganisationId-DeletedAt-Role-CreatedDate",
+            false,
+            &[
+                "organisation_id",
+                "deleted_at",
+                "role",
+                "created_date",
+                "id",
+                "type",
+            ],
+        )
         .index(
             "index-Credential-EarliestExpiringBatchItem",
             false,
@@ -105,6 +116,12 @@ async fn test_db_schema_credential() {
             "credential_schema",
             "id",
         );
+    credential
+        .column("organisation_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-Credential-OrganisationId", "organisation", "id");
     credential
         .column("interaction_id")
         .r#type(ColumnType::Uuid)

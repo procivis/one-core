@@ -166,6 +166,20 @@ impl IdentifierRepository for IdentifierProvider {
         })
         .await
     }
+
+    async fn get_identifiers_by_ids(
+        &self,
+        ids: Vec<IdentifierId>,
+    ) -> Result<Vec<Identifier>, DataLayerError> {
+        identifier::Entity::find()
+            .filter(identifier::Column::Id.is_in(ids))
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?
+            .into_iter()
+            .map(|model| self.identifier_from_model(model))
+            .collect()
+    }
 }
 
 fn get_identifier_list_query(

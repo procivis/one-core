@@ -4,7 +4,7 @@ use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::Credential;
 use one_core::model::credential_schema::{CredentialSchema, TransactionCode, WalletAttestation};
-use one_core::model::relation::{Related, RelatedVec};
+use one_core::model::relation::{BatchModelLoader, Related};
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -15,8 +15,8 @@ use super::models::{ClaimWithSchema, UnexportableCredentialModel};
 use crate::claim::mapper::claim_from_model;
 use crate::claim_schema::mapper::claim_schema_from_model;
 use crate::credential::mapper::CredentialSchemaFormatLoader;
-use crate::credential_schema::mapper::CredentialSchemaFormatsLoader;
-use crate::localized_text::LocalizedTextLoader;
+use crate::credential_schema::mapper::credential_schema_formats;
+use crate::localized_text::localized_texts;
 use crate::transaction_context::TransactionManagerImpl;
 
 fn claim_with_schema_to_claim(value: ClaimWithSchema, db: TransactionManagerImpl) -> Claim {
@@ -55,10 +55,7 @@ pub(super) fn credential_from_unexportable_model(
         _ => return Err(DataLayerError::MappingError),
     };
 
-    let formats = RelatedVec::new(CredentialSchemaFormatsLoader {
-        id: value.credential_schema_id,
-        db: db.clone(),
-    });
+    let formats = credential_schema_formats(value.credential_schema_id, db.clone());
 
     Ok(Credential {
         ecosystem: None,
@@ -109,10 +106,7 @@ pub(super) fn credential_from_unexportable_model(
             transaction_code,
             batch_size: value.credential_schema_batch_size,
             allow_revocation: value.credential_schema_allow_revocation,
-            translations: RelatedVec::new(LocalizedTextLoader {
-                id: value.credential_schema_id.into(),
-                db: db.to_owned(),
-            }),
+            translations: localized_texts(value.credential_schema_id.into(), db.to_owned()),
             embedded_disclosure_policy: value.credential_schema_embedded_disclosure_policy,
             expiration: value
                 .credential_schema_expiration
@@ -130,8 +124,9 @@ pub(super) fn credential_from_unexportable_model(
         parent: value
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),
-        format: value
-            .format
-            .map(|id| Related::new(id, CredentialSchemaFormatLoader { db: db.clone() })),
+        format: value.format.map(|id| {
+            let loader = CredentialSchemaFormatLoader { db: db.clone() };
+            Related::new(id, BatchModelLoader::new([id], loader))
+        }),
     })
 }

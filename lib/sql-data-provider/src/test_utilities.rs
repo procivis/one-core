@@ -56,7 +56,7 @@ pub fn track_count_queries(db: &mut DatabaseConnection) -> Arc<std::sync::atomic
     let counts = Arc::new(AtomicUsize::new(0));
     let callback_counts = counts.clone();
     db.set_metric_callback(move |info| {
-        if info.statement.sql.contains("COUNT(*) AS num_items") {
+        if info.statement.sql.contains("num_items") {
             callback_counts.fetch_add(1, Ordering::Relaxed);
         }
     });
@@ -104,11 +104,18 @@ pub async fn insert_credential(
     .insert(db)
     .await?;
 
+    let organisation_id = credential_schema::Entity::find_by_id(*credential_schema_id)
+        .one(db)
+        .await?
+        .ok_or(DbErr::RecordNotFound(credential_schema_id.to_string()))?
+        .organisation_id;
+
     let credential = credential::ActiveModel {
         expires_at: Set(None),
         ecosystem: Set(None),
         id: Set(Uuid::new_v4().into()),
         credential_schema_id: Set(*credential_schema_id),
+        organisation_id: Set(organisation_id),
         created_date: Set(now),
         last_modified: Set(now),
         issuance_date: Set(None),

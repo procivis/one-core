@@ -10,12 +10,12 @@ use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
     QuerySelect, Set, TryIntoModel,
 };
-use shared_types::{ClaimId, CredentialId};
+use shared_types::{ClaimId, CredentialId, CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
 use super::claim_deduplication::{ClaimContents, reuse_batch_claims};
 use super::mapper::request_to_active_model;
-use crate::entity::{claim, credential, credential_claim};
+use crate::entity::{claim, credential, credential_claim, credential_schema};
 use crate::mapper::to_data_layer_error;
 
 pub(super) struct CredentialToCreate {
@@ -145,14 +145,26 @@ async fn insert_credential_rows(
     connection: &impl ConnectionTrait,
     credentials: &[CredentialToCreate],
 ) -> Result<(), DataLayerError> {
+    let organisations = organisation_ids(connection, credentials).await?;
     let (parents, items): (Vec<_>, Vec<_>) = credentials
         .iter()
         .map(|item| &item.credential)
         .partition(|credential| credential.parent.is_none());
     for group in [parents, items] {
-        // 29 columns per credential: 25 rows use at most 725 binds.
+        // 30 columns per credential: 25 rows use at most 750 binds.
         for chunk in group.chunks(25) {
-            let models = chunk.iter().copied().map(request_to_active_model);
+            let models = chunk
+                .iter()
+                .map(|credential| {
+                    let organisation_id = organisations.get(&credential.schema.id()).ok_or(
+                        DataLayerError::MissingRequiredRelation {
+                            relation: "credential_schema",
+                            id: credential.schema.id().to_string(),
+                        },
+                    )?;
+                    Ok(request_to_active_model(credential, *organisation_id))
+                })
+                .collect::<Result<Vec<_>, DataLayerError>>()?;
             credential::Entity::insert_many(models)
                 .exec_without_returning(connection)
                 .await
@@ -160,6 +172,28 @@ async fn insert_credential_rows(
         }
     }
     Ok(())
+}
+
+/// A credential belongs to the organisation of its schema. A credential read from the repository
+/// holds the schema as a lazy relation, so read the organisation from the table, once per batch.
+async fn organisation_ids(
+    connection: &impl ConnectionTrait,
+    credentials: &[CredentialToCreate],
+) -> Result<HashMap<CredentialSchemaId, OrganisationId>, DataLayerError> {
+    let schema_ids: HashSet<CredentialSchemaId> = credentials
+        .iter()
+        .map(|item| item.credential.schema.id())
+        .collect();
+    let rows: Vec<(CredentialSchemaId, OrganisationId)> = credential_schema::Entity::find()
+        .select_only()
+        .column(credential_schema::Column::Id)
+        .column(credential_schema::Column::OrganisationId)
+        .filter(credential_schema::Column::Id.is_in(schema_ids))
+        .into_tuple()
+        .all(connection)
+        .await
+        .map_err(to_data_layer_error)?;
+    Ok(rows.into_iter().collect())
 }
 
 /// Insert the new claim rows returned by reuse. Unexpected ID conflicts fail the transaction.

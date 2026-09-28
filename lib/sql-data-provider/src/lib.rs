@@ -260,12 +260,10 @@ impl DataLayer {
             credential_schema_repository: credential_schema_repository.clone(),
             claim_repository: claim_repository.clone(),
             identifier_repository: identifier_repository.clone(),
-            did_repository: did_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             certificate_repository: certificate_repository.clone(),
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
-            trust_information_repository: identifier_trust_information_repository.clone(),
         });
 
         let proof_repository = Arc::new(ProofProvider {

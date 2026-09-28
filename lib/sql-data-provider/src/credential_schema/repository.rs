@@ -17,12 +17,15 @@ use shared_types::CredentialSchemaId;
 
 use crate::common::list_query_with_custom_model;
 use crate::credential_schema::CredentialSchemaProvider;
-use crate::credential_schema::mapper::{claim_schemas_to_model_vec, credential_schema_from_models};
+use crate::credential_schema::mapper::{
+    claim_schemas_to_model_vec, credential_schema_formats, credential_schema_from_models,
+};
 use crate::entity::{
     claim_schema, credential_schema, credential_schema_format,
     credential_schema_format_claim_schema,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
+use crate::localized_text::localized_texts;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
@@ -126,11 +129,15 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 id: (*id).into(),
             })?;
 
+        let formats = credential_schema_formats(credential_schema.id, self.db.to_owned());
+        let translations = localized_texts(credential_schema.id.into(), self.db.to_owned());
         credential_schema_from_models(
             credential_schema,
             false,
             self.db.to_owned(),
             &self.organisation_repository,
+            formats,
+            translations,
         )
     }
 
@@ -150,11 +157,15 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         });
 
         list_query_with_custom_model(query, query_params, &self.db, |model| {
+            let formats = credential_schema_formats(model.id, self.db.to_owned());
+            let translations = localized_texts(model.id.into(), self.db.to_owned());
             credential_schema_from_models(
                 model,
                 skip_layout_properties,
                 self.db.to_owned(),
                 &self.organisation_repository,
+                formats,
+                translations,
             )
         })
         .await

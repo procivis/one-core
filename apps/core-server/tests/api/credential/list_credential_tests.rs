@@ -647,6 +647,85 @@ async fn test_get_list_credential_filter_by_claim_name() {
 }
 
 #[tokio::test]
+async fn test_get_list_credential_search_claim_name_sorted_by_schema_name_paginated() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let mut credentials = vec![];
+    for schema_name in ["schema-b", "schema-a", "schema-c"] {
+        let claim = Uuid::new_v4();
+        let credential_schema = context
+            .db
+            .credential_schemas
+            .create_with_claims(
+                &Uuid::new_v4(),
+                schema_name,
+                &organisation,
+                &[(claim, "matching-claim", false, "STRING", false)],
+                "JWT",
+                &format!("schema-id-{schema_name}"),
+            )
+            .await;
+
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Offered,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    claims_data: Some(vec![ClaimData {
+                        schema_id: claim.into(),
+                        path: "matching-claim".to_string(),
+                        value: Some("value".to_string()),
+                        selectively_disclosable: false,
+                    }]),
+                    ..Default::default()
+                },
+            )
+            .await;
+        credentials.push((schema_name, credential.id));
+    }
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(
+            1,
+            1,
+            &organisation.id,
+            Filters {
+                search_text: Some("matching"),
+                search_type: Some(&[CLAIM_NAME]),
+                sort: Some("schema.name"),
+                sort_direction: Some("DESC"),
+                ..Default::default()
+            },
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+
+    assert_eq!(body["totalItems"], 3);
+    assert_eq!(body["totalPages"], 3);
+    let values = body["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+    // descending order is schema-c, schema-b, schema-a
+    let (_, expected) = credentials
+        .iter()
+        .find(|(name, _)| *name == "schema-b")
+        .unwrap();
+    values[0]["id"].assert_eq(expected);
+    assert_eq!(values[0]["schema"]["name"], "schema-b");
+}
+
+#[tokio::test]
 async fn test_get_list_credential_filter_by_claim_value() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
@@ -1476,6 +1555,77 @@ async fn test_get_list_credential_filter_by_schema_ids() {
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
     credentials["values"][0]["id"].assert_eq(&credential.id);
+}
+
+#[tokio::test]
+async fn test_get_list_credential_sorted_by_issuer_paginated() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+
+    let mut credentials = vec![];
+    for issuer_name in ["issuer-b", "issuer-a"] {
+        let identifier = context
+            .db
+            .identifiers
+            .create(
+                &organisation,
+                TestingIdentifierParams {
+                    did: Some(did.clone()),
+                    r#type: Some(IdentifierType::Did),
+                    name: Some(issuer_name.to_string()),
+                    ..Default::default()
+                },
+            )
+            .await;
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Created,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                Default::default(),
+            )
+            .await;
+        credentials.push((issuer_name, credential.id));
+    }
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            1,
+            &organisation.id,
+            Filters {
+                sort: Some("issuer"),
+                sort_direction: Some("ASC"),
+                ..Default::default()
+            },
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+
+    assert_eq!(body["totalItems"], 2);
+    assert_eq!(body["totalPages"], 2);
+    let values = body["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+    let (_, expected) = credentials
+        .iter()
+        .find(|(name, _)| *name == "issuer-a")
+        .unwrap();
+    values[0]["id"].assert_eq(expected);
 }
 
 #[tokio::test]

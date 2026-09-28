@@ -1,195 +1,239 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::credential::{
     Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
-    GetCredentialList, UpdateCredentialRequest,
+    GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
 };
+use one_core::model::credential_schema::CredentialSchema;
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::identifier::Identifier;
+use one_core::model::relation::{AsyncModelLoader, BatchModelLoader, Related};
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::sea_query::{Expr, IntoCondition};
+use sea_orm::sea_query::{Alias, Expr, Func, IntoCondition, SimpleExpr};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, JoinType, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, RelationTrait, Select, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, FromQueryResult, JoinType, QueryFilter,
+    QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select, Set, Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
 
 use super::CredentialProvider;
 use super::creation::{insert_credentials_with_claims, prepare_credentials};
-use super::entity_model::CredentialListEntityModel;
-use super::mapper::{credentials_to_repository, from_clearable, model_to_credential};
-use crate::common::{calculate_pages_count, count_if_requested};
-use crate::entity::{
-    claim, claim_schema, credential, credential_claim, credential_schema, identifier,
-};
-use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
+use super::mapper::{CredentialSchemaFormatLoader, credential_claims, from_clearable};
+use crate::common::calculate_pages_count;
+use crate::credential_schema::mapper::CredentialSchemasLoader;
+use crate::entity::{claim, claim_schema, credential, credential_claim};
+use crate::list_query_generic::{IntoSortingColumn, SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
+use crate::transaction_context::TransactionManagerImpl;
 
 impl CredentialProvider {
+    fn credential_from_model(
+        &self,
+        credential: credential::Model,
+        schema: impl AsyncModelLoader<CredentialSchema> + 'static,
+        issuer: impl AsyncModelLoader<Identifier> + 'static,
+        format: impl AsyncModelLoader<CredentialSchemaFormat> + 'static,
+    ) -> Credential {
+        Credential {
+            claims: credential_claims(credential.id, &self.claim_repository),
+            id: credential.id,
+            created_date: credential.created_date,
+            issuance_date: credential.issuance_date,
+            expires_at: credential.expires_at,
+            last_modified: credential.last_modified,
+            deleted_at: credential.deleted_at,
+            consumed_at: credential.consumed_at,
+            protocol: credential.protocol,
+            redirect_uri: credential.redirect_uri,
+            role: credential.role.into(),
+            r#type: credential.r#type.into(),
+            state: credential.state.into(),
+            suspend_end_date: credential.suspend_end_date,
+            profile: credential.profile,
+            issuer_identifier: credential
+                .issuer_identifier_id
+                .map(|id| Related::new(id, issuer)),
+            issuer_certificate: credential
+                .issuer_certificate_id
+                .map(|id| Related::new(id, self.certificate_repository.clone())),
+            holder_identifier: credential
+                .holder_identifier_id
+                .map(|id| Related::new(id, self.identifier_repository.clone())),
+            schema: Related::new(credential.credential_schema_id, schema),
+            interaction: credential
+                .interaction_id
+                .map(|id| Related::new(id, self.interaction_repository.clone())),
+            key: credential
+                .key_id
+                .map(|id| Related::new(id, self.key_repository.clone())),
+            credential_blob_id: credential.credential_blob_id,
+            wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
+            wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+            webhook_url: credential.webhook_url,
+            embedded_disclosure_policy: credential.embedded_disclosure_policy,
+            subscriber_information: credential.subscriber_information,
+            ecosystem: credential.ecosystem,
+            parent: credential
+                .parent_id
+                .map(|id| Related::new(id, self.cloned())),
+            format: credential.format.map(|id| Related::new(id, format)),
+        }
+    }
+
     fn credential_model_to_repository_model(&self, credential: credential::Model) -> Credential {
-        model_to_credential(
+        let format = BatchModelLoader::new(
+            credential.format,
+            CredentialSchemaFormatLoader {
+                db: self.db.clone(),
+            },
+        );
+        self.credential_from_model(
             credential,
-            &self.cloned(),
-            &self.claim_repository,
-            &self.credential_schema_repository,
-            &self.key_repository,
-            &self.identifier_repository,
-            &self.certificate_repository,
-            &self.interaction_repository,
-            &self.db,
+            self.credential_schema_repository.clone(),
+            self.identifier_repository.clone(),
+            format,
         )
     }
 
-    fn credentials_to_repository(&self, credentials: Vec<credential::Model>) -> Vec<Credential> {
+    /// We batch the requests, 3 queries fetch all schemas, issuers and formats
+    fn credentials_to_repository(
+        &self,
+        credentials: Vec<credential::Model>,
+        skip_layout_properties: bool,
+    ) -> Vec<Credential> {
+        let schemas = BatchModelLoader::new(
+            credentials
+                .iter()
+                .map(|credential| credential.credential_schema_id),
+            CredentialSchemasLoader {
+                db: self.db.clone(),
+                organisation_repository: self.organisation_repository.clone(),
+                skip_layout_properties,
+            },
+        );
+        let issuers = BatchModelLoader::new(
+            credentials
+                .iter()
+                .filter_map(|credential| credential.issuer_identifier_id),
+            self.identifier_repository.clone(),
+        );
+        let formats = BatchModelLoader::new(
+            credentials
+                .iter()
+                .filter_map(|credential| credential.format),
+            CredentialSchemaFormatLoader {
+                db: self.db.clone(),
+            },
+        );
         credentials
             .into_iter()
-            .map(|model| self.credential_model_to_repository_model(model))
+            .map(|credential| {
+                self.credential_from_model(
+                    credential,
+                    schemas.clone(),
+                    issuers.clone(),
+                    formats.clone(),
+                )
+            })
             .collect()
+    }
+
+    /// Rows in the order of `ids`
+    async fn get_credentials_in_order(
+        &self,
+        ids: &[CredentialId],
+    ) -> Result<Vec<credential::Model>, DataLayerError> {
+        if ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let rows = credential::Entity::find()
+            .filter(credential::Column::Id.is_in(ids))
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        let mut by_id: HashMap<CredentialId, credential::Model> =
+            rows.into_iter().map(|row| (row.id, row)).collect();
+        Ok(ids.iter().filter_map(|id| by_id.remove(id)).collect())
     }
 }
 
-fn get_credential_list_query(
-    query_params: CredentialListQuery,
-    db_backend: SupportedDbType,
+/// `COUNT` over the rows of `page_query`. Not `count_if_requested`: it wraps the query as a
+/// subquery, and MariaDB then scans the whole table instead of using the index
+async fn count_credentials(
+    include_count: bool,
+    mut page_query: Select<credential::Entity>,
+    db: &TransactionManagerImpl,
+) -> Result<Option<u64>, DataLayerError> {
+    if !include_count {
+        return Ok(None);
+    }
+    QueryTrait::query(&mut page_query)
+        .clear_selects()
+        .clear_order_by()
+        .reset_limit()
+        .reset_offset()
+        .expr_as(
+            Func::count_distinct(Expr::col((credential::Entity, credential::Column::Id))),
+            Alias::new("num_items"),
+        );
+    let count: Option<i64> = page_query
+        .into_tuple()
+        .one(db)
+        .await
+        .map_err(to_data_layer_error)?;
+    Ok(Some(count.unwrap_or_default() as u64))
+}
+
+#[derive(FromQueryResult)]
+struct CredentialIdModel {
+    id: CredentialId,
+}
+
+/// Joins for the sort column. `credential_schema` is joined here and not by the schema name filter
+/// in `IntoJoinRelations` since it's needed for the sort and a table can be joined only once.
+fn with_list_joins(
+    mut query: Select<credential::Entity>,
+    query_params: &CredentialListQuery,
 ) -> Select<credential::Entity> {
-    let mut query = credential::Entity::find()
-        .select_only()
-        .columns([
-            credential::Column::Id,
-            credential::Column::CreatedDate,
-            credential::Column::LastModified,
-            credential::Column::IssuanceDate,
-            credential::Column::ExpiresAt,
-            credential::Column::DeletedAt,
-            credential::Column::ConsumedAt,
-            credential::Column::RedirectUri,
-            credential::Column::Role,
-            credential::Column::State,
-            credential::Column::Type,
-            credential::Column::SuspendEndDate,
-            credential::Column::Protocol,
-            credential::Column::Profile,
-            credential::Column::ParentId,
-            credential::Column::KeyId,
-            credential::Column::InteractionId,
-            credential::Column::HolderIdentifierId,
-            credential::Column::IssuerCertificateId,
-            credential::Column::CredentialBlobId,
-            credential::Column::WalletKeyAttestationBlobId,
-            credential::Column::WalletInstanceAttestationBlobId,
-            credential::Column::WebhookUrl,
-            credential::Column::EmbeddedDisclosurePolicy,
-            credential::Column::Ecosystem,
-            credential::Column::Format,
-        ])
-        .join(
-            sea_orm::JoinType::InnerJoin,
+    let sorted_by = |column| {
+        query_params
+            .sorting
+            .as_ref()
+            .is_some_and(|sorting| sorting.column == column)
+    };
+    let filtered_by_schema_name = query_params.filtering.as_ref().is_some_and(|filter| {
+        filter.contains(&|value| matches!(value, CredentialFilterValue::CredentialSchemaName(_)))
+    });
+    if sorted_by(SortableCredentialColumn::SchemaName) || filtered_by_schema_name {
+        query = query.join(
+            JoinType::InnerJoin,
             credential::Relation::CredentialSchema.def(),
-        )
-        .column_as(
-            credential_schema::Column::CreatedDate,
-            "credential_schema_created_date",
-        )
-        .column_as(
-            credential_schema::Column::DeletedAt,
-            "credential_schema_deleted_at",
-        )
-        .column_as(credential_schema::Column::Id, "credential_schema_id")
-        .column_as(
-            credential_schema::Column::LastModified,
-            "credential_schema_last_modified",
-        )
-        .column_as(credential_schema::Column::Name, "credential_schema_name")
-        .column_as(
-            credential_schema::Column::KeyStorageSecurity,
-            "credential_schema_key_storage_security",
-        )
-        .column_as(
-            credential_schema::Column::OrganisationId,
-            "credential_schema_organisation_id",
-        )
-        .column_as(
-            credential_schema::Column::ImportedSourceUrl,
-            "credential_schema_imported_source_url",
-        )
-        .column_as(
-            credential_schema::Column::AllowSuspension,
-            "credential_schema_allow_suspension",
-        )
-        .column_as(
-            credential_schema::Column::RequiresWalletInstanceAttestation,
-            "credential_schema_requires_wallet_instance_attestation",
-        )
-        .column_as(
-            credential_schema::Column::PreferredKeyStorageAttestationLifetime,
-            "credential_schema_preferred_key_storage_attestation_lifetime",
-        )
-        .column_as(
-            credential_schema::Column::PreferredInstanceAttestationLifetime,
-            "credential_schema_preferred_instance_attestation_lifetime",
-        )
-        .column_as(
-            credential_schema::Column::TransactionCodeType,
-            "credential_schema_transaction_code_type",
-        )
-        .column_as(
-            credential_schema::Column::TransactionCodeLength,
-            "credential_schema_transaction_code_length",
-        )
-        .column_as(
-            credential_schema::Column::TransactionCodeDescription,
-            "credential_schema_transaction_code_description",
-        )
-        .column_as(
-            credential_schema::Column::BatchSize,
-            "credential_schema_batch_size",
-        )
-        .column_as(
-            credential_schema::Column::AllowRevocation,
-            "credential_schema_allow_revocation",
-        )
-        .column_as(
-            credential_schema::Column::EmbeddedDisclosurePolicy,
-            "credential_schema_embedded_disclosure_policy",
-        )
-        .column_as(
-            credential_schema::Column::Expiration,
-            "credential_schema_expiration",
-        )
-        .column_as(
-            credential_schema::Column::Ecosystem,
-            "credential_schema_ecosystem",
-        )
-        .join(
+        );
+    }
+    if sorted_by(SortableCredentialColumn::Issuer) {
+        query = query.join(
             JoinType::LeftJoin,
             credential::Relation::IssuerIdentifier.def(),
-        )
-        .column_as(identifier::Column::Id, "issuer_identifier_id")
-        .column_as(
-            identifier::Column::CreatedDate,
-            "issuer_identifier_created_date",
-        )
-        .column_as(
-            identifier::Column::LastModified,
-            "issuer_identifier_last_modified",
-        )
-        .column_as(identifier::Column::Name, "issuer_identifier_name")
-        .column_as(identifier::Column::Type, "issuer_identifier_type")
-        .column_as(identifier::Column::IsRemote, "issuer_identifier_is_remote")
-        .column_as(identifier::Column::State, "issuer_identifier_state")
-        .column_as(
-            identifier::Column::OrganisationId,
-            "issuer_identifier_organisation_id",
-        )
-        .column_as(identifier::Column::DidId, "issuer_identifier_did_id")
-        .column_as(identifier::Column::KeyId, "issuer_identifier_key_id")
-        // list query
-        .with_filter_join(&query_params)
-        .with_list_query(&query_params, db_backend);
+        );
+    }
+    query
+}
+
+fn with_credential_list_query(
+    query: Select<credential::Entity>,
+    query_params: &CredentialListQuery,
+    db_backend: SupportedDbType,
+) -> Select<credential::Entity> {
+    let mut query = with_list_joins(query, query_params)
+        .with_filter_join(query_params)
+        .with_list_query(query_params, db_backend);
 
     if query_params.filtering.as_ref().is_some_and(|filter| {
         filter.contains(&|value| {
@@ -225,13 +269,10 @@ fn get_credential_list_query(
             .order_by_desc(credential::Column::Id);
     }
 
-    if let Some(include) = query_params.include
-        && include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties)
-    {
-        query = query.column_as(
-            credential_schema::Column::LayoutProperties,
-            "credential_schema_schema_layout_properties",
-        );
+    // With DISTINCT (claim filters), Postgres and MySQL reject an ORDER BY column unless selected
+    if let Some(sorting) = &query_params.sorting {
+        let (column, _) = sorting.column.get_column();
+        query = query.column_as(SimpleExpr::Column(column), "sort_key");
     }
 
     query
@@ -303,47 +344,70 @@ impl CredentialRepository for CredentialProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        Ok(self.credentials_to_repository(credentials))
+        Ok(self.credentials_to_repository(credentials, false))
     }
 
     async fn get_credential_list(
         &self,
         query_params: CredentialListQuery,
     ) -> Result<GetCredentialList, DataLayerError> {
-        let include_count = query_params.include_count;
-        let limit = query_params
-            .pagination
-            .as_ref()
-            .map(|pagination| pagination.page_size as _);
+        let db_backend = self.db.supported_db_type();
+        let skip_layout_properties = !query_params.include.as_ref().is_some_and(|include| {
+            include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties)
+        });
 
-        let query = get_credential_list_query(query_params, self.db.supported_db_type());
-
-        let (items_count, credentials) = tokio::join!(
-            count_if_requested(include_count, query.to_owned(), &self.db),
-            query
-                .into_model::<CredentialListEntityModel>()
+        let (total_items, total_pages, credentials) = match &query_params.pagination {
+            Some(pagination) => {
+                // page of ids first, then the rows by id
+                let page_query = with_credential_list_query(
+                    credential::Entity::find()
+                        .select_only()
+                        .column(credential::Column::Id)
+                        .column(credential::Column::CreatedDate),
+                    &query_params,
+                    db_backend,
+                );
+                let (items_count, page) = tokio::join!(
+                    count_credentials(query_params.include_count, page_query.clone(), &self.db),
+                    page_query.into_model::<CredentialIdModel>().all(&self.db)
+                );
+                let items_count = items_count?;
+                let ids: Vec<CredentialId> = page
+                    .map_err(to_data_layer_error)?
+                    .into_iter()
+                    .map(|row| row.id)
+                    .collect();
+                (
+                    items_count,
+                    items_count
+                        .map(|count| calculate_pages_count(count, pagination.page_size as _)),
+                    self.get_credentials_in_order(&ids).await?,
+                )
+            }
+            None => {
+                // no pagination: all rows, no pages
+                let credentials = with_credential_list_query(
+                    credential::Entity::find(),
+                    &query_params,
+                    db_backend,
+                )
                 .all(&self.db)
-        );
-
-        let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
-        let credentials = credentials.map_err(|e| DataLayerError::Db(e.into()))?;
+                .await
+                .map_err(to_data_layer_error)?;
+                (
+                    query_params
+                        .include_count
+                        .then_some(credentials.len() as u64),
+                    query_params.include_count.then_some(0),
+                    credentials,
+                )
+            }
+        };
 
         Ok(GetCredentialList {
-            values: credentials_to_repository(
-                credentials,
-                &self.cloned(),
-                &self.claim_repository,
-                &self.organisation_repository,
-                &self.did_repository,
-                &self.key_repository,
-                &self.certificate_repository,
-                &self.identifier_repository,
-                &self.interaction_repository,
-                &self.trust_information_repository,
-                &self.db,
-            )?,
-            total_pages: items_count.map(|count| calculate_pages_count(count, limit.unwrap_or(0))),
-            total_items: items_count,
+            values: self.credentials_to_repository(credentials, skip_layout_properties),
+            total_pages,
+            total_items,
         })
     }
 
@@ -475,7 +539,7 @@ impl CredentialRepository for CredentialProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        Ok(self.credentials_to_repository(credentials))
+        Ok(self.credentials_to_repository(credentials, false))
     }
 
     async fn delete_credential_blobs(

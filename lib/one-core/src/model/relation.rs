@@ -186,6 +186,28 @@ pub trait AsyncVecLoader<T>: Send + Sync {
 }
 
 #[async_trait::async_trait]
+pub trait AsyncBatchLoader<K, V>: Send + Sync {
+    /// Loads map of relations
+    async fn load(&self, ids: &[K]) -> Result<HashMap<K, V>, DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl<M, L> AsyncBatchLoader<M::Id, M> for L
+where
+    M: Model + Send + Sync,
+    M::Id: Eq + Hash + Send + Sync,
+    L: AsyncModelsLoader<M>,
+{
+    async fn load(&self, ids: &[M::Id]) -> Result<HashMap<M::Id, M>, DataLayerError> {
+        let models = AsyncModelsLoader::load(self, ids).await?;
+        Ok(models
+            .into_iter()
+            .map(|model| (model.id().to_owned(), model))
+            .collect())
+    }
+}
+
+#[async_trait::async_trait]
 pub trait OptionalRelatedExt<M: Model> {
     /// access id on the optional relation
     fn id_opt(&self) -> Option<M::Id>;
@@ -438,22 +460,19 @@ impl<T: Debug> Debug for AsyncVecStore<T> {
     }
 }
 
-/// Loader shared by a batch of [`Related`] instances: the first `load` resolves every id of the
-/// batch with a single call to the underlying [`AsyncModelsLoader`], all further loads (of any
-/// member of the batch) are served from the cached result.
-pub struct BatchModelLoader<M: Model> {
-    ids: Vec<M::Id>,
-    loader: Box<dyn AsyncModelsLoader<M>>,
-    cache: OnceCell<HashMap<M::Id, M>>,
+/// Loader shared by a batch of [`Related`] and [`RelatedVec`] instances: the first `load`
+/// resolves every id of the batch with a single call to the underlying [`AsyncBatchLoader`], all
+/// further loads (of any member of the batch) are served from the cached result.
+pub struct BatchModelLoader<K, V> {
+    ids: Vec<K>,
+    loader: Box<dyn AsyncBatchLoader<K, V>>,
+    cache: OnceCell<HashMap<K, V>>,
 }
 
-impl<M: Model> BatchModelLoader<M>
-where
-    M::Id: Eq + Hash,
-{
+impl<K: Eq + Hash, V> BatchModelLoader<K, V> {
     pub fn new(
-        ids: impl IntoIterator<Item = M::Id>,
-        loader: impl AsyncModelsLoader<M> + 'static,
+        ids: impl IntoIterator<Item = K>,
+        loader: impl AsyncBatchLoader<K, V> + 'static,
     ) -> Arc<Self> {
         let deduplicated: HashSet<_> = HashSet::from_iter(ids);
         Arc::new(Self {
@@ -462,34 +481,59 @@ where
             cache: OnceCell::new(),
         })
     }
+
+    async fn get(&self, id: &K) -> Result<Option<&V>, DataLayerError> {
+        let by_id = self
+            .cache
+            .get_or_try_init(|| self.loader.load(&self.ids))
+            .await?;
+        Ok(by_id.get(id))
+    }
 }
 
 #[async_trait::async_trait]
-impl<M: Model + Clone + Send + Sync> AsyncModelLoader<M> for Arc<BatchModelLoader<M>>
+impl<M: Model + Clone + Send + Sync> AsyncModelLoader<M> for Arc<BatchModelLoader<M::Id, M>>
 where
     M::Id: Eq + Hash + Send + Sync,
 {
     async fn load(&self, id: &M::Id) -> Result<M, DataLayerError> {
-        let by_id = self
-            .cache
-            .get_or_try_init(|| async {
-                let models = self.loader.load(&self.ids).await?;
-                Ok::<_, DataLayerError>(
-                    models
-                        .into_iter()
-                        .map(|model| (model.id().to_owned(), model))
-                        .collect(),
-                )
-            })
-            .await?;
-
-        by_id
-            .get(id)
+        self.get(id)
+            .await?
             .cloned()
             .ok_or_else(|| DataLayerError::MissingRequiredRelation {
                 relation: std::any::type_name::<M>(),
                 id: id.to_string(),
             })
+    }
+}
+
+impl<K, T> BatchModelLoader<K, Vec<T>> {
+    pub fn list(self: &Arc<Self>, key: K) -> BatchList<K, T> {
+        BatchList {
+            key,
+            batch: self.clone(),
+        }
+    }
+}
+
+pub struct BatchList<K, T> {
+    key: K,
+    batch: Arc<BatchModelLoader<K, Vec<T>>>,
+}
+
+#[async_trait::async_trait]
+impl<K, T> AsyncVecLoader<T> for BatchList<K, T>
+where
+    K: Eq + Hash + Send + Sync,
+    T: Clone + Send + Sync,
+{
+    async fn load(&self) -> Result<Vec<T>, DataLayerError> {
+        Ok(self
+            .batch
+            .get(&self.key)
+            .await?
+            .cloned()
+            .unwrap_or_default())
     }
 }
 
@@ -585,6 +629,44 @@ mod tests {
             // `once()` on the mock asserts that all three resolve from a single batched call
             assert_eq!(related.as_ref().await.unwrap().id, *id);
         }
+    }
+
+    struct ClaimSchemasByKey {
+        calls: std::sync::atomic::AtomicUsize,
+        by_key: HashMap<u8, Vec<ClaimSchema>>,
+    }
+
+    #[async_trait::async_trait]
+    impl AsyncBatchLoader<u8, Vec<ClaimSchema>> for Arc<ClaimSchemasByKey> {
+        async fn load(&self, keys: &[u8]) -> Result<HashMap<u8, Vec<ClaimSchema>>, DataLayerError> {
+            self.calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let mut keys = keys.to_vec();
+            keys.sort();
+            assert_eq!(keys, [1, 2]);
+            Ok(self.by_key.clone())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_batch_model_loader_of_lists_loads_whole_batch_once() {
+        let claim_schema = dummy_claim_schema();
+        let loader = Arc::new(ClaimSchemasByKey {
+            calls: Default::default(),
+            by_key: HashMap::from([(1, vec![claim_schema.clone()])]),
+        });
+
+        // the same key twice, to verify deduplication
+        let batch = BatchModelLoader::new([1, 2, 1], loader.clone());
+        let with_schemas = RelatedVec::new(batch.list(1));
+        let without_schemas = RelatedVec::new(batch.list(2));
+
+        assert_eq!(
+            with_schemas.as_ref().await.unwrap().as_ref(),
+            std::slice::from_ref(&claim_schema)
+        );
+        assert!(without_schemas.as_ref().await.unwrap().is_empty());
+        assert_eq!(loader.calls.load(std::sync::atomic::Ordering::Relaxed), 1);
     }
 
     #[tokio::test]

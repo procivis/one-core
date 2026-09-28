@@ -65,6 +65,13 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
         self.inner.get_identifier_list(query_params).await
     }
 
+    async fn get_identifiers_by_ids(
+        &self,
+        ids: Vec<IdentifierId>,
+    ) -> Result<Vec<Identifier>, DataLayerError> {
+        self.inner.get_identifiers_by_ids(ids).await
+    }
+
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError> {
         let name = request.name.clone();
         let organisation_id = request.organisation.id();

@@ -576,6 +576,7 @@ async fn test_get_proof_with_relations() {
     credential::ActiveModel {
         id: Set(credential_id),
         credential_schema_id: Set(credential_schema_id),
+        organisation_id: Set(organisation_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(Some(get_dummy_date())),

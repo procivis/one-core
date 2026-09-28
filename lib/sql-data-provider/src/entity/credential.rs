@@ -7,7 +7,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DidId,
-    EcosystemId, IdentifierId, InteractionId, KeyId,
+    EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId,
 };
 use time::OffsetDateTime;
 
@@ -18,6 +18,8 @@ pub struct Model {
     pub id: CredentialId,
 
     pub credential_schema_id: CredentialSchemaId,
+    /// Copy of `credential_schema.organisation_id`, indexed for the list queries (ONE-11287).
+    pub organisation_id: OrganisationId,
     pub format: Option<CredentialSchemaFormatId>,
 
     pub created_date: OffsetDateTime,
@@ -83,6 +85,14 @@ pub enum Relation {
     )]
     CredentialSchemaFormat,
     #[sea_orm(
+        belongs_to = "super::organisation::Entity",
+        from = "Column::OrganisationId",
+        to = "super::organisation::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Organisation,
+    #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::IssuerIdentifierId",
         to = "super::identifier::Column::Id",
@@ -130,6 +140,12 @@ impl Related<super::claim::Entity> for Entity {
     }
     fn via() -> Option<RelationDef> {
         Some(super::credential_claim::Relation::Credential.def().rev())
+    }
+}
+
+impl Related<super::organisation::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Organisation.def()
     }
 }
 

@@ -647,7 +647,9 @@ pub(super) fn count_ops_query(
         );
     }
     if let Some(organisation_id) = organisation_id {
-        query.and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id));
+        query.and_where(
+            Expr::col((history::Entity, history::Column::OrganisationId)).eq(organisation_id),
+        );
     }
     CountOperationsQuery(query)
 }
@@ -694,7 +696,9 @@ pub(super) fn org_timelines_query(
         .and_where(
             Expr::col((history::Entity, history::Column::CreatedDate)).lt(ceil(to, resolution)?),
         )
-        .and_where(Expr::col(history::Column::OrganisationId).eq(organisation_id))
+        .and_where(
+            Expr::col((history::Entity, history::Column::OrganisationId)).eq(organisation_id),
+        )
         .and_where(
             Expr::col(history::Column::EntityType)
                 .eq(history::HistoryEntityType::Credential)
@@ -743,7 +747,7 @@ pub(super) fn top_orgs_query(
     let count = Alias::new("count");
     let mut query = Query::select()
         .expr_as(Func::count(ColumnRef::Asterisk(None)), count.clone())
-        .columns([history::Column::OrganisationId])
+        .columns([(history::Entity, history::Column::OrganisationId)])
         .from(history::Entity)
         .and_where(Expr::col(history::Column::EntityType).eq(entity_type))
         .and_where(Expr::col(history::Column::Action).eq(action))
@@ -754,7 +758,7 @@ pub(super) fn top_orgs_query(
     }
     query
         .and_where(Expr::col((history::Entity, history::Column::CreatedDate)).lt(to))
-        .group_by_col(history::Column::OrganisationId)
+        .group_by_col((history::Entity, history::Column::OrganisationId))
         .order_by(count, Order::Desc)
         .limit(num_orgs as u64);
     query
@@ -1019,8 +1023,8 @@ pub(super) fn system_interaction_stats_query(
         .with_list_query(query, db_backend)
         .into_query();
     stmt.clear_selects()
-        .column(history::Column::OrganisationId)
-        .group_by_col(history::Column::OrganisationId)
+        .column((history::Entity, history::Column::OrganisationId))
+        .group_by_col((history::Entity, history::Column::OrganisationId))
         .left_join(
             credential::Entity,
             Expr::col(history::Column::EntityId)

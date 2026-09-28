@@ -24,12 +24,8 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::{
     CredentialSchemaRepository, MockCredentialSchemaRepository,
 };
-use one_core::repository::did_repository::{DidRepository, MockDidRepository};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::{IdentifierRepository, MockIdentifierRepository};
-use one_core::repository::identifier_trust_information_repository::{
-    IdentifierTrustInformationRepository, MockIdentifierTrustInformationRepository,
-};
 use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
 };
@@ -255,11 +251,9 @@ struct Repositories {
     pub claim_repository: Arc<dyn ClaimRepository>,
     pub identifier_repository: Arc<dyn IdentifierRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
-    pub did_repository: Arc<dyn DidRepository>,
     pub certificate_repository: Arc<dyn CertificateRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
     pub organisation_repository: Arc<dyn OrganisationRepository>,
-    pub trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
 }
 
 impl Default for Repositories {
@@ -269,13 +263,9 @@ impl Default for Repositories {
             claim_repository: Arc::from(MockClaimRepository::default()),
             identifier_repository: Arc::from(MockIdentifierRepository::default()),
             interaction_repository: Arc::from(MockInteractionRepository::default()),
-            did_repository: Arc::new(MockDidRepository::default()),
             certificate_repository: Arc::new(MockCertificateRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),
             organisation_repository: Arc::new(MockOrganisationRepository::default()),
-            trust_information_repository: Arc::new(
-                MockIdentifierTrustInformationRepository::default(),
-            ),
         }
     }
 }
@@ -291,11 +281,9 @@ fn credential_repository(
         claim_repository: repositories.claim_repository,
         identifier_repository: repositories.identifier_repository,
         interaction_repository: repositories.interaction_repository,
-        did_repository: repositories.did_repository,
         certificate_repository: repositories.certificate_repository,
         key_repository: repositories.key_repository,
         organisation_repository: repositories.organisation_repository,
-        trust_information_repository: repositories.trust_information_repository,
     }
 }
 
@@ -781,6 +769,47 @@ async fn test_get_credential_list_success_filter_state() {
     let credentials = credentials.unwrap();
     assert_eq!(2, credentials.total_items.unwrap());
     assert_eq!(2, credentials.values.len());
+}
+
+#[tokio::test]
+async fn test_get_credential_list_filter_schema_name_without_pagination() {
+    let TestSetup {
+        credential_schema,
+        db,
+        identifier,
+        ..
+    } = setup_empty().await;
+
+    insert_credential(
+        &db,
+        &credential_schema.id,
+        CredentialStateEnum::Created,
+        "OPENID4VCI_DRAFT13",
+        identifier.id,
+        None,
+        None,
+        Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
+    )
+    .await
+    .unwrap();
+
+    let provider = credential_repository(db, None);
+
+    // the schema name filter and the sort both read the schema, the query joins it once
+    let credentials = provider
+        .get_credential_list(CredentialListQuery {
+            filtering: Some(
+                CredentialFilterValue::CredentialSchemaName(StringMatch::starts_with(
+                    credential_schema.name.clone(),
+                ))
+                .condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(1, credentials.values.len());
 }
 
 #[tokio::test]
