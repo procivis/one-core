@@ -62,3 +62,4 @@ pub mod m20260923_120000_normalize_holder_claims;
 pub mod m20260924_120000_credential_claim;
 pub mod m20260924_130000_deduplicate_holder_claims;
 pub mod m20260926_120000_credential_organisation_id;
+pub mod m20260928_120000_drop_holder_claim_deduplication_progress;
