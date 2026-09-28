@@ -113,9 +113,8 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .await
             .error_while("subscribing Identify topic")?;
 
-        // ONE-8380: always send non-enveloped messages from holder side
         identify_topic
-            .send(identity_request.encode(), false)
+            .send(identity_request.encode())
             .await
             .error_while("sending Identify request")?;
 
@@ -142,7 +141,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         &self,
         context: &mut Self::Context,
     ) -> Result<String, VerificationProtocolError> {
-        let (presentation_request_bytes, enveloped) = context
+        let presentation_request_bytes = context
             .presentation_definition_topic
             .recv()
             .await
@@ -151,7 +150,6 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .encryption
             .decrypt(&presentation_request_bytes)
             .map_err(VerificationProtocolError::Other)?;
-        tracing::debug!("Received enveloped={enveloped} MQTT message");
         Ok(token)
     }
 
@@ -224,7 +222,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .error_while("subscribing Accept topic")?;
 
         Ok(presentation_submission_topic
-            .send(encrypted, false)
+            .send(encrypted)
             .await
             .error_while("sending submission")?)
     }
@@ -260,7 +258,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .error_while("subscribing Reject topic")?;
 
         reject_topic
-            .send(encrypted, false)
+            .send(encrypted)
             .await
             .error_while("sending rejection")?;
 

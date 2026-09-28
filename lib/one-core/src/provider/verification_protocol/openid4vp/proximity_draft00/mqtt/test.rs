@@ -263,8 +263,8 @@ async fn test_handle_invitation_success() {
     let mut identify_topic = MockMqttTopic::default();
     identify_topic
         .expect_send()
-        .with(always(), eq(false))
-        .return_once(move |identity_request, _| {
+        .with(always())
+        .return_once(move |identity_request| {
             let request = IdentityRequest::parse(identity_request).unwrap();
 
             let mut lock = handle.lock().unwrap();
@@ -284,7 +284,7 @@ async fn test_handle_invitation_success() {
 
             let encryption = generate_verifier_encryption(verifier_key, holder_identity_request);
 
-            Ok((encryption.encrypt(&signed).unwrap(), true))
+            Ok(encryption.encrypt(&signed).unwrap())
         });
 
     let mut mqtt_client = MockMqttClient::default();
@@ -348,8 +348,8 @@ async fn test_presentation_reject_success() {
     let mut reject_topic = MockMqttTopic::default();
     reject_topic
         .expect_send()
-        .with(always(), eq(false))
-        .return_once(move |data, _| {
+        .with(always())
+        .return_once(move |data| {
             let verifier_encryption = generate_verifier_encryption(
                 verifier_key,
                 IdentityRequest {
@@ -413,7 +413,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         .returning(move |_, _, _| {
             // this is called in a spawned task so we don't care whether it fails for this test
             let mut topic = MockMqttTopic::default();
-            topic.expect_recv().returning(|| Ok((vec![], true)));
+            topic.expect_recv().returning(|| Ok(vec![]));
 
             Ok(Box::new(topic))
         });
