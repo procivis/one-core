@@ -315,8 +315,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key: None,
-        presentation_definition: None,
-        dcql_query: Some(dcql_query),
+        dcql_query,
         client_id: "client_id".to_string(),
         client_id_scheme: None,
         response_uri: None,
@@ -413,7 +412,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
             .into(),
         ),
         interaction: Some(interaction.into()),
-        ..dummy_proof_with_protocol("OPENID4VP_DRAFT20")
+        ..dummy_proof_with_protocol("OPENID4VP_FINAL1")
     };
 
     let extracted_credential = DetailCredential {
@@ -837,7 +836,7 @@ async fn multiformat_test_data(transaction_data: bool) -> TestData {
     let required_claim = input.claim_schemas.as_ref().await.unwrap()[0].schema.id;
     proof_schema.input_schemas = vec![input].into();
     data.proof.schema = Some(proof_schema.into());
-    let query = data.interaction_data.dcql_query.as_mut().unwrap();
+    let query = &mut data.interaction_data.dcql_query;
     let mut template = query.credentials[0].clone();
     template.claim_sets = Some(vec![vec![required_claim.to_string().into()]]);
     query.credentials = [&first, &second]
@@ -930,7 +929,7 @@ fn multiformat_mocks(data: &TestData, expected_formats: Vec<&'static str>) -> Mo
 }
 
 fn multiformat_submission(data: &TestData, selections: &[usize]) -> SubmissionRequestData {
-    let query = data.interaction_data.dcql_query.as_ref().unwrap();
+    let query = &data.interaction_data.dcql_query;
     SubmissionRequestData {
         submission_data: VpSubmissionData::Dcql(VpTokenResponse {
             vp_token: selections
@@ -1034,12 +1033,7 @@ async fn claim_sets_accept_any_satisfied_combination_of_claim_query_ids(
     if required_only_allowed {
         sets.push(vec![required.into()]);
     }
-    data.interaction_data
-        .dcql_query
-        .as_mut()
-        .unwrap()
-        .credentials[1]
-        .claim_sets = Some(sets);
+    data.interaction_data.dcql_query.credentials[1].claim_sets = Some(sets);
     if disclose_optional {
         data.mock_data
             .credential_extraction
@@ -1078,12 +1072,7 @@ async fn claim_sets_accept_any_satisfied_combination_of_claim_query_ids(
 #[tokio::test]
 async fn every_submitted_presentation_is_validated(#[case] holder_binding: bool) {
     let mut data = multiformat_test_data(false).await;
-    let query = &mut data
-        .interaction_data
-        .dcql_query
-        .as_mut()
-        .unwrap()
-        .credentials[1];
+    let query = &mut data.interaction_data.dcql_query.credentials[1];
     query.multiple = true;
     query.require_cryptographic_holder_binding = holder_binding;
     let mut submission = multiformat_submission(&data, &[1]);

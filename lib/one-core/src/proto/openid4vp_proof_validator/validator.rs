@@ -42,12 +42,10 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transaction_data::TransactionDataAuthorization;
 use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp::mapper::{
-    extract_presentation_ctx_from_interaction_content, vec_last_position_from_token_path,
-};
+use crate::provider::verification_protocol::openid4vp::mapper::extract_presentation_ctx_from_interaction_content;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPVerifierInteractionContent, PexSubmission, SubmissionRequestData,
-    TransactionDataRequest, VpSubmissionData,
+    OpenID4VPVerifierInteractionContent, SubmissionRequestData, TransactionDataRequest,
+    VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_expiration_time, validate_issuance_time,
@@ -80,36 +78,10 @@ impl OpenId4VpProofValidator for OpenId4VpProofValidatorProto {
         )
         .map_err(|e| OpenID4VCError::InvalidProofState(e.to_string()))?;
 
-        let proved_claims = match (
-            &interaction_data.dcql_query,
-            &interaction_data.presentation_definition,
-        ) {
-            (Some(_), Some(_)) => Err(OpenID4VCError::ValidationError(
-                "DCQL query and presentation submission are not allowed at the same time"
-                    .to_string(),
-            )),
-            (Some(_), None) => {
-                self.process_proof_submission_dcql_query(
-                    request,
-                    &proof,
-                    interaction_data,
-                    protocol_type,
-                )
-                .await
-            }
-            (None, Some(_)) => {
-                self.process_proof_submission_presentation_exchange(
-                    request,
-                    &proof,
-                    interaction_data,
-                    protocol_type,
-                )
-                .await
-            }
-            (None, None) => Err(OpenID4VCError::ValidationError(
-                "Missing DCQL query and presentation submission".to_string(),
-            )),
-        }?;
+        let proved_claims = self
+            .process_proof_submission_dcql_query(request, &proof, interaction_data, protocol_type)
+            .await?;
+
         let redirect_uri: Option<String> = proof.redirect_uri.to_owned();
         Ok((
             ValidatedProofResult::new(&proof, proved_claims).await?,
@@ -153,13 +125,7 @@ impl OpenId4VpProofValidatorProto {
             ));
         };
 
-        let dcql_query = interaction_data
-            .dcql_query
-            .as_ref()
-            .ok_or(OpenID4VCError::ValidationError(
-                "Missing DCQL query".to_string(),
-            ))?
-            .to_owned();
+        let dcql_query = interaction_data.dcql_query.to_owned();
 
         let proof_schema = proof
             .schema
@@ -249,271 +215,6 @@ impl OpenId4VpProofValidatorProto {
             &transaction_data_evidence,
         )
         .await?;
-
-        Ok(total_proved_claims)
-    }
-
-    /// Validates a legacy Presentation Exchange submission. Only reachable via the verifier
-    /// side of proximity protocol version 1; Presentation Exchange has no `transaction_data`,
-    /// so no transaction data validation happens here.
-    async fn process_proof_submission_presentation_exchange(
-        &self,
-        submission: SubmissionRequestData,
-        proof: &Proof,
-        interaction_data: OpenID4VPVerifierInteractionContent,
-        protocol_type: VerificationProtocolType,
-    ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
-        let VpSubmissionData::Pex(PexSubmission {
-            presentation_submission,
-            vp_token,
-        }) = submission.submission_data
-        else {
-            return Err(OpenID4VCError::ValidationError(
-                "Missing presentation submission".to_string(),
-            ));
-        };
-
-        let definition_id = presentation_submission.definition_id.clone();
-        let state = submission.state;
-
-        if definition_id != state.to_string() {
-            return Err(OpenID4VCError::ValidationError(
-                "Invalid submission state".to_string(),
-            ));
-        }
-
-        let presentation_strings: Vec<String> = if vp_token.len() == 1
-            && let Some(token) = vp_token.first()
-            && token.starts_with('[')
-        {
-            serde_json::from_str(token)
-                .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?
-        } else {
-            vp_token
-        };
-
-        // collect expected credentials
-        let proof_schema = proof
-            .schema
-            .as_ref()
-            .ok_or(OpenID4VCError::MappingError(
-                "missing proof schema".to_string(),
-            ))?
-            .as_ref()
-            .await
-            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
-
-        let proof_schema_inputs = match proof_schema
-            .input_schemas
-            .as_ref()
-            .await
-            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?
-        {
-            input_schemas if !input_schemas.is_empty() => input_schemas.to_vec(),
-            _ => {
-                return Err(OpenID4VCError::Other(
-                    "Missing proof input schema".to_owned(),
-                ));
-            }
-        };
-
-        let Some(presentation_definition) = interaction_data.presentation_definition.clone() else {
-            return Err(OpenID4VCError::ValidationError(
-                "Missing presentation definition".to_string(),
-            ));
-        };
-
-        if presentation_submission.descriptor_map.len()
-            != (presentation_definition.input_descriptors.len())
-        {
-            return Err(OpenID4VCError::ValidationError(
-                "different count of requested and submitted credentials".to_string(),
-            ));
-        }
-
-        for descriptor in &presentation_definition.input_descriptors {
-            if presentation_submission
-                .descriptor_map
-                .iter()
-                .all(|entry| entry.id != descriptor.id)
-            {
-                return Err(OpenID4VCError::ValidationError(format!(
-                    "No descriptor map entry for input descriptor `{}`",
-                    descriptor.id
-                )));
-            }
-        }
-
-        let mut total_proved_claims = Vec::new();
-
-        // Unpack presentations and credentials
-        for presentation_submitted in &presentation_submission.descriptor_map {
-            let input_descriptor = presentation_definition
-                .input_descriptors
-                .iter()
-                .find(|descriptor| descriptor.id == presentation_submitted.id)
-                .ok_or(OpenID4VCError::ValidationError(format!(
-                    "Could not find input descriptor id: {}",
-                    presentation_submitted.id
-                )))?;
-
-            let presentation_string_index =
-                vec_last_position_from_token_path(&presentation_submitted.path)?;
-
-            let presentation_string = presentation_strings.get(presentation_string_index).ok_or(
-                OpenID4VCError::ValidationError(format!(
-                    "Could not find presentation at index: {presentation_string_index}",
-                )),
-            )?;
-
-            let context = if &presentation_submitted.format == "mso_mdoc" {
-                ExtractPresentationCtx {
-                    format_nonce: submission.mdoc_generated_nonce.clone(),
-                    ..extract_presentation_ctx_from_interaction_content(
-                        interaction_data.clone(),
-                        protocol_type,
-                    )
-                }
-            } else {
-                ExtractPresentationCtx {
-                    verification_protocol_type: protocol_type,
-                    nonce: Some(interaction_data.nonce.clone()),
-                    format_nonce: None,
-                    issuance_date: None,
-                    expiration_date: None,
-                    client_id: Some(interaction_data.client_id.clone()),
-                    response_uri: None,
-                    mdoc_session_transcript: None,
-                    verifier_key: None,
-                }
-            };
-
-            let presentation_format_type = map_from_oidc_format_to_core_detailed(
-                &presentation_submitted.format,
-                Some(presentation_string),
-            )
-            .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-            let (presentation_format, _) = self
-                .presentation_formatter_provider
-                .get_presentation_formatter_by_type(presentation_format_type)
-                .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
-
-            let presentation = self
-                .validate_presentation(
-                    presentation_string,
-                    &interaction_data.nonce,
-                    &presentation_format,
-                    context,
-                )
-                .await?;
-
-            let path_nested = presentation_submitted.path_nested.as_ref();
-            if let Some(path_nested) = path_nested
-                && !input_descriptor
-                    .format
-                    .keys()
-                    .any(|format| *format == path_nested.format)
-            {
-                return Err(OpenID4VCError::ValidationError(format!(
-                    "Could not find entry for format: {}",
-                    path_nested.format
-                )));
-            }
-
-            let target_schema_id = if input_descriptor.format.contains_key("mso_mdoc") {
-                input_descriptor.id.to_owned()
-            } else {
-                // ONE-1924: there must be a specific schemaId filter
-                let schema_id_filter = input_descriptor
-                    .constraints
-                    .fields
-                    .iter()
-                    .find(|field| {
-                        field.filter.is_some()
-                            && field.path.contains(&"$.credentialSchema.id".to_string())
-                            || field.path.contains(&"$.vct".to_string())
-                    })
-                    .ok_or(OpenID4VCError::ValidationError(
-                        "Cannot find filter for schemaId".to_string(),
-                    ))?
-                    .filter
-                    .as_ref()
-                    .ok_or(OpenID4VCError::ValidationError(
-                        "Cannot find filter for schemaId".to_string(),
-                    ))?;
-
-                schema_id_filter.r#const.to_owned()
-            };
-
-            let mut proof_schema_input = None;
-            for input in &proof_schema_inputs {
-                let schema_id = input
-                    .credential_schema
-                    .as_ref()
-                    .await
-                    .map_err(|e| OpenID4VCError::Other(e.to_string()))?
-                    .schema_id()
-                    .await
-                    .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
-                if schema_id == target_schema_id {
-                    proof_schema_input = Some(input);
-                    break;
-                }
-            }
-            let proof_schema_input = proof_schema_input.ok_or(OpenID4VCError::Other(
-                "Missing proof input schema for credential schema".to_owned(),
-            ))?;
-
-            let holder_details =
-                presentation
-                    .issuer
-                    .as_ref()
-                    .ok_or(OpenID4VCError::ValidationError(
-                        "Presentation missing holder id".to_string(),
-                    ))?;
-
-            let credential_index = presentation_submitted
-                .path_nested
-                .as_ref()
-                .map(|p| vec_last_position_from_token_path(&p.path))
-                .transpose()?
-                .unwrap_or(0);
-
-            let credential_token = presentation.credentials.get(credential_index).ok_or(
-                OpenID4VCError::ValidationError(format!(
-                    "Credential at index {credential_index} not found",
-                )),
-            )?;
-
-            let credential_schema = proof_schema_input
-                .credential_schema
-                .as_ref()
-                .await
-                .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
-            let formats = credential_schema
-                .formats
-                .as_ref()
-                .await
-                .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
-            let schema_format = formats.first().ok_or_else(|| {
-                OpenID4VCError::MappingError("missing credential schema format".to_string())
-            })?;
-
-            let credential = self
-                .validate_credential(
-                    Some(holder_details),
-                    credential_token,
-                    proof_schema_input,
-                    schema_format,
-                    None,
-                )
-                .await?;
-
-            let proved_claims =
-                validate_claims(credential, proof_schema_input, schema_format).await?;
-
-            total_proved_claims.extend(proved_claims);
-        }
 
         Ok(total_proved_claims)
     }

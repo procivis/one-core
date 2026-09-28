@@ -5,9 +5,6 @@ use standardized_types::openid4vp::dcql::DcqlQuery;
 use uuid::Uuid;
 
 use crate::mapper::secret_slice;
-use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPPresentationDefinition, PexSubmission,
-};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct MQTTSessionKeys {
@@ -45,10 +42,8 @@ pub(crate) struct MQTTOpenID4VPInteractionDataVerifier {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub(crate) enum MQTTVerifierProtocolData {
-    V1 {
-        submission: PexSubmission,
-        presentation_definition: OpenID4VPPresentationDefinition,
-    },
+    // Proximity protocol V1 removed
+    // V1,
     V2 {
         submission: VpTokenResponse,
         dcql_query: DcqlQuery,
@@ -57,55 +52,15 @@ pub(crate) enum MQTTVerifierProtocolData {
 
 #[cfg(test)]
 mod tests {
-
     use std::collections::HashMap;
 
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::provider::verification_protocol::openid4vp::model::{
-        OpenID4VPVerifierInteractionContent, PresentationSubmissionMappingDTO,
-    };
+    use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
     use crate::provider::verification_protocol::{
         deserialize_interaction_data, serialize_interaction_data,
     };
-
-    #[test]
-    fn test_serialization_v1_into_common_interaction_data_structure() {
-        let presentation_definition = OpenID4VPPresentationDefinition {
-            id: "id".to_string(),
-            input_descriptors: vec![],
-        };
-        let data = MQTTOpenID4VPInteractionDataVerifier {
-            client_id: "did:test:id".to_string(),
-            nonce: "nonce".to_string(),
-            mdoc_generated_nonce: None,
-            protocol_data: MQTTVerifierProtocolData::V1 {
-                submission: PexSubmission {
-                    vp_token: vec!["vp_token".to_string()],
-                    presentation_submission: PresentationSubmissionMappingDTO {
-                        id: "id".to_string(),
-                        definition_id: "definition_id".to_string(),
-                        descriptor_map: vec![],
-                    },
-                },
-                presentation_definition: presentation_definition.to_owned(),
-            },
-        };
-
-        let serialized = serialize_interaction_data(&data).unwrap();
-
-        let deserialized: OpenID4VPVerifierInteractionContent =
-            deserialize_interaction_data(Some(&serialized)).unwrap();
-
-        assert_eq!(deserialized.client_id, "did:test:id");
-        assert_eq!(deserialized.nonce, "nonce");
-        assert_eq!(
-            deserialized.presentation_definition,
-            Some(presentation_definition)
-        );
-        assert_eq!(deserialized.dcql_query, None);
-    }
 
     #[test]
     fn test_serialization_v2_into_common_interaction_data_structure() {
@@ -132,7 +87,6 @@ mod tests {
 
         assert_eq!(deserialized.client_id, "client_id");
         assert_eq!(deserialized.nonce, "nonce");
-        assert_eq!(deserialized.presentation_definition, None);
-        assert_eq!(deserialized.dcql_query, Some(dcql_query));
+        assert_eq!(deserialized.dcql_query, dcql_query);
     }
 }

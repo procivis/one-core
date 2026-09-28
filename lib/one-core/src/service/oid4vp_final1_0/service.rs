@@ -94,7 +94,7 @@ impl OID4VPFinal1_0Service {
 
         let OpenID4VPVerifierInteractionContent {
             nonce,
-            dcql_query: Some(dcql_query),
+            dcql_query,
             client_id,
             response_uri: Some(response_uri),
             client_id_scheme: Some(client_id_scheme),

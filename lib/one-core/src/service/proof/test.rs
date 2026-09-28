@@ -200,7 +200,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         id: proof_id.to_owned(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state,
@@ -314,7 +314,7 @@ async fn test_get_proof_exists() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -595,7 +595,7 @@ async fn test_get_proof_with_array_holder() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -848,7 +848,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1115,7 +1115,7 @@ async fn test_get_proof_with_object_array_holder() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1359,7 +1359,7 @@ async fn test_get_proof_with_array() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1622,7 +1622,7 @@ async fn test_get_proof_with_array_in_object() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -1900,7 +1900,7 @@ async fn test_get_proof_with_object_array() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
@@ -2065,7 +2065,7 @@ async fn test_get_proof_list_success() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
@@ -4101,7 +4101,7 @@ async fn test_delete_proof_ok_for_allowed_state(
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, state);
-    proof.protocol = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(
         Interaction {
@@ -4171,7 +4171,7 @@ async fn test_delete_proof_ok_for_requested_state() {
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Requested);
-    proof.protocol = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(
         Interaction {
@@ -4244,7 +4244,7 @@ async fn test_delete_proof_fails_for_invalid_state(
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
     let mut proof = construct_proof_with_state(&proof_id, state);
-    proof.protocol = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(
         Interaction {
@@ -4294,7 +4294,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let device_address = "00000001-5026-444A-9E0E-F6F2450F3A77";
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    proof.protocol = "OPENID4VP_DRAFT20".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".to_string();
     proof.transport = "BLE".to_string();
     proof.interaction = Some(
         Interaction {

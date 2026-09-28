@@ -781,8 +781,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce,
             client_id: authorization_request.client_id.clone(),
-            presentation_definition: None,
-            dcql_query: Some(authorization_request.dcql_query.clone()),
+            dcql_query: authorization_request.dcql_query.clone(),
             encryption_key,
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),

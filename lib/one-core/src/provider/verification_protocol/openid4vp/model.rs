@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use anyhow::Context;
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{ClaimSchemaId, InteractionId, KeyId, TransactionDataId, TransactionDataType};
+use serde_with::skip_serializing_none;
+use shared_types::{InteractionId, KeyId, TransactionDataId, TransactionDataType};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dcql::{CredentialQueryId, DcqlQuery};
 use standardized_types::openid4vp::{
@@ -48,20 +48,11 @@ pub struct DcqlSubmissionEudi {
     pub vp_token: HashMap<String, String>,
 }
 
-#[serde_as]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PexSubmission {
-    #[serde_as(as = "OneOrMany<_>")]
-    pub vp_token: Vec<String>,
-    pub presentation_submission: PresentationSubmissionMappingDTO,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum VpSubmissionData {
     Dcql(#[serde(deserialize_with = "deserialize_lenient_vp_token_response")] VpTokenResponse),
     DcqlEudi(DcqlSubmissionEudi),
-    Pex(PexSubmission),
     EncryptedResponse(EncryptedResponse),
 }
 
@@ -84,28 +75,6 @@ where
     Ok(VpTokenResponse { vp_token })
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PresentationSubmissionMappingDTO {
-    pub id: String,
-    pub definition_id: String,
-    pub descriptor_map: Vec<PresentationSubmissionDescriptorDTO>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PresentationSubmissionDescriptorDTO {
-    pub id: String,
-    pub format: String,
-    pub path: String,
-    pub path_nested: Option<NestedPresentationSubmissionDescriptorDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct NestedPresentationSubmissionDescriptorDTO {
-    pub format: String,
-    pub path: String,
-}
-
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostRequestDTO {
@@ -124,13 +93,8 @@ pub struct OpenID4VPDirectPostRequestDTO {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub nonce: String,
-    /// Legacy Presentation Exchange query, only used by proximity protocol version 1
-    #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub dcql_query: Option<DcqlQuery>,
+    pub dcql_query: DcqlQuery,
     /// with client_id_scheme prefix (for Final 1.0)
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdPrefix>,
@@ -161,132 +125,6 @@ pub(crate) struct TransactionDataRequest {
     pub data: Option<serde_json::Value>,
     /// Base64-encoded transaction data to be included with the proof request
     pub encoded: String,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinition {
-    pub id: String,
-    pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptor>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionInputDescriptor {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub format: HashMap<String, PresentationFormat>,
-    pub constraints: OpenID4VPPresentationDefinitionConstraint,
-}
-
-// All format fields are optional,
-// this variant is matched first
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct EmptyEntry {}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum PresentationFormat {
-    Empty(EmptyEntry),
-    SdJwtVcAlgs(SdJwtVcAlgs),
-    LdpVcAlgs(LdpVcAlgs),
-    W3CJwtAlgs(W3CJwtAlgs),
-    W3CLdpAlgs(W3CLdpAlgs),
-    MdocAlgs(MdocAlgs),
-    // TODO: Clean this up
-    GenericAlgList(GenericAlgs),
-    Other(serde_json::Value),
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct SdJwtVcAlgs {
-    #[serde(
-        rename = "sd-jwt_alg_values",
-        skip_serializing_if = "Vec::is_empty",
-        default
-    )]
-    pub sd_jwt_alg_values: Vec<String>,
-    #[serde(
-        rename = "kb-jwt_alg_values",
-        skip_serializing_if = "Vec::is_empty",
-        default
-    )]
-    pub kb_jwt_alg_values: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct GenericAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub alg: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct W3CJwtAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub alg_values: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct W3CLdpAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub proof_type_values: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub cryptosuite_values: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct MdocAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub issuerauth_alg_values: Vec<i32>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub deviceauth_alg_values: Vec<i32>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct LdpVcAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub proof_type: Vec<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionConstraint {
-    pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
-    #[serde(default)]
-    pub limit_disclosure: Option<OpenID4VPPresentationDefinitionLimitDisclosurePreference>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum OpenID4VPPresentationDefinitionLimitDisclosurePreference {
-    Required,
-    Preferred,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionConstraintField {
-    pub id: Option<ClaimSchemaId>,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub path: Vec<String>,
-    pub optional: Option<bool>,
-    pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilter>,
-    #[serde(default)]
-    pub intent_to_retain: Option<bool>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionConstraintFieldFilter {
-    pub r#type: String,
-    pub r#const: String,
 }
 
 #[derive(Debug, Clone)]
@@ -336,7 +174,7 @@ pub(crate) struct OpenID4VPHolderInteractionData {
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub enum HolderTxData {
+pub(crate) enum HolderTxData {
     Unvalidated(Vec<String>),
     // stored as a sequence: the interaction data passes through `serde_json::Value`,
     // which sorts object keys and would lose the order of the authorization request
@@ -368,7 +206,7 @@ impl HolderTxData {
 
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct ValidatedHolderTxData {
+pub(crate) struct ValidatedHolderTxData {
     /// Raw base64URL-encoded transaction data.
     pub raw: String,
     /// Credential ids the transaction data is for.
@@ -470,21 +308,6 @@ mod test {
             panic!("expected a DCQL submission");
         };
         assert_eq!(expected_dcql_submission(), vp_token);
-    }
-
-    /// A PEX `vp_token` is a bare presentation string, so the lenient DCQL variant must not claim it.
-    #[test]
-    fn test_jwe_payload_keeps_matching_pex_submissions() {
-        let payload = format!(
-            r#"{{"vp_token":"{VP}","presentation_submission":{{"id":"id","definition_id":"definition_id","descriptor_map":[]}}}}"#
-        );
-
-        let payload = JwePayload::try_from_json(payload.as_bytes()).unwrap();
-
-        let VpSubmissionData::Pex(submission) = payload.submission_data else {
-            panic!("expected a PEX submission");
-        };
-        assert_eq!(vec![VP.to_string()], submission.vp_token);
     }
 
     #[test]

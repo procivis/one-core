@@ -683,47 +683,6 @@ async fn test_share_proof_client_id_scheme_redirect_uri_openid4vp_final1_0() {
 }
 
 #[tokio::test]
-async fn test_share_proof_client_id_scheme_did_openid4vp_draft20() {
-    // GIVEN
-    let (context, proof) = prepare_created_openid4vp_proof(None).await;
-
-    // WHEN
-    let resp = context
-        .api
-        .proofs
-        .share(
-            proof.id,
-            Some(ClientIdSchemeRestEnum::DecentralizedIdentifier),
-        )
-        .await;
-
-    // THEN
-    let client_id = extract_client_id(resp).await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(verifier_did),
-            ..
-        } = proof
-            .verifier_identifier
-            .as_ref()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    assert_eq!(
-        client_id,
-        format!(
-            "decentralized_identifier:{}",
-            verifier_did.as_ref().await.unwrap().did
-        )
-    );
-
-    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
-}
-
-#[tokio::test]
 async fn test_share_proof_client_id_scheme_verifier_attestation_openid4vp_final1_0() {
     // GIVEN
     let (context, proof) = prepare_created_openid4vp_proof(None).await;

@@ -33,7 +33,6 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
 };
-use crate::provider::verification_protocol::openid4vp::model::PexSubmission;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
     HolderResponse, HolderSubmission, ProximityVerifierTransport, SubmissionData,
@@ -120,22 +119,6 @@ impl ProximityVerifierTransport for BleVerifierTransport {
         data: SubmissionData,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         let interaction_data = match data {
-            SubmissionData::V1 {
-                request,
-                submission,
-                presentation_definition,
-            } => BLEOpenID4VPInteractionDataVerifier {
-                client_id: request.client_id.to_owned(),
-                nonce,
-                task_id: self.task_id,
-                peer: context.peer,
-                mdoc_generated_nonce: Some(hex::encode(context.identity_request.nonce)),
-                protocol_data: BLEVerifierProtocolData::V1 {
-                    request,
-                    submission: Some(submission),
-                    presentation_definition,
-                },
-            },
             SubmissionData::V2 {
                 request,
                 submission,
@@ -174,15 +157,6 @@ impl BleVerifierTransport {
         context: &BleVerifierContext,
     ) -> Result<HolderResponse, VerificationProtocolError> {
         Ok(match context.identity_request.version {
-            ProtocolVersion::V1 => {
-                let response: Option<PexSubmission> =
-                    read_presentation_submission(&context.peer, &self.peripheral).await?;
-                if let Some(submission) = response {
-                    HolderResponse::Submission(HolderSubmission::V1(submission))
-                } else {
-                    HolderResponse::Rejection
-                }
-            }
             ProtocolVersion::V2 => {
                 let response: Option<VpTokenResponse> =
                     read_presentation_submission(&context.peer, &self.peripheral).await?;

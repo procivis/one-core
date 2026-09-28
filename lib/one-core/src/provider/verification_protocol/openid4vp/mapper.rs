@@ -5,24 +5,19 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use shared_types::{ClaimSchemaId, InteractionId, TransactionDataId};
+use shared_types::{ClaimSchemaId, TransactionDataId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::model::{
-    GenericAlgs, LdpVcAlgs, OpenID4VCVerifierAttestationPayload, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
-    OpenID4VPPresentationDefinitionConstraintFieldFilter,
-    OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVerifierInteractionContent,
-    PresentationFormat, ProvedCredential, SdJwtVcAlgs, ValidatedHolderTxData, VpSubmissionData,
+    OpenID4VCVerifierAttestationPayload, OpenID4VPVerifierInteractionContent, ProvedCredential,
+    ValidatedHolderTxData, VpSubmissionData,
 };
 use super::{JWTSigner, get_jwt_signer};
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
-use crate::mapper::oidc::map_to_openid4vp_format;
+use crate::mapper::value_to_model_claims;
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::mapper::{NESTED_CLAIM_MARKER, value_to_model_claims};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
@@ -30,15 +25,12 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::proof::Proof;
-use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::provider::credential_formatter::model::{CredentialClaim, IdentifierDetails};
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
-use crate::provider::verification_protocol::FormatMapper;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, PresentationDefinitionTransactionDataDTO,
 };
@@ -58,192 +50,7 @@ where
     }
 }
 
-pub(crate) fn vec_last_position_from_token_path(path: &str) -> Result<usize, OpenID4VCError> {
-    // Find the position of '[' and ']'
-    if let Some(open_bracket) = path.rfind('[') {
-        if let Some(close_bracket) = path.rfind(']') {
-            // Extract the substring between '[' and ']'
-            let value = &path[open_bracket + 1..close_bracket];
-
-            let parsed_value = value.parse().map_err(|_| {
-                OpenID4VCError::MappingError("Could not parse vec position".to_string())
-            })?;
-
-            Ok(parsed_value)
-        } else {
-            Err(OpenID4VCError::MappingError(
-                "Credential path is incorrect".to_string(),
-            ))
-        }
-    } else {
-        Ok(0)
-    }
-}
-
-fn create_format_map(
-    format_type: &FormatType,
-) -> Result<HashMap<String, PresentationFormat>, VerificationProtocolError> {
-    match format_type {
-        FormatType::Jwt | FormatType::Mdoc => {
-            let key = map_to_openid4vp_format(format_type).to_string();
-            Ok(HashMap::from([(
-                key,
-                PresentationFormat::GenericAlgList(GenericAlgs {
-                    alg: vec!["EdDSA".to_string(), "ES256".to_string()],
-                }),
-            )]))
-        }
-        FormatType::SdJwt | FormatType::SdJwtVc => {
-            let key = map_to_openid4vp_format(format_type).to_string();
-            Ok(HashMap::from([(
-                key,
-                PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
-                    sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
-                    kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
-                }),
-            )]))
-        }
-        FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => Ok(HashMap::from([(
-            "ldp_vc".to_string(),
-            PresentationFormat::LdpVcAlgs(LdpVcAlgs {
-                proof_type: vec!["DataIntegrityProof".to_string()],
-            }),
-        )])),
-    }
-}
-
-/// Builds the legacy Presentation Exchange query. Only used by the verifier side of
-/// proximity protocol version 1, for backwards compatibility with legacy wallets.
-pub(crate) async fn create_open_id_for_vp_presentation_definition(
-    interaction_id: InteractionId,
-    proof_schema: ProofSchema,
-    format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
-    formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<OpenID4VPPresentationDefinition, VerificationProtocolError> {
-    let proof_schema_inputs = proof_schema.input_schemas.as_ref().await?;
-    if proof_schema_inputs.is_empty() {
-        return Err(VerificationProtocolError::Failed(
-            "Missing proof input schemas".to_owned(),
-        ));
-    }
-
-    // using vec to keep the original order of claims/credentials in the proof request
-    let mut requested_credentials: Vec<(CredentialSchema, Vec<ProofInputClaimSchema>)> = vec![];
-    for input in &proof_schema_inputs {
-        let credential_schema = input.credential_schema.as_ref().await?;
-        let claims = input.claim_schemas.as_ref().await?.to_vec();
-        requested_credentials.push((credential_schema.to_owned(), claims));
-    }
-
-    let mut input_descriptors = Vec::with_capacity(requested_credentials.len());
-    for (idx, (credential_schema, claim_schemas)) in requested_credentials.into_iter().enumerate() {
-        let format_type = format_to_type_mapper(&credential_schema.format().await?)?;
-        input_descriptors.push(
-            create_open_id_for_vp_presentation_definition_input_descriptor(
-                idx,
-                credential_schema,
-                claim_schemas,
-                &format_type,
-                formatter_provider,
-            )
-            .await?,
-        )
-    }
-
-    Ok(OpenID4VPPresentationDefinition {
-        id: interaction_id.to_string(),
-        input_descriptors,
-    })
-}
-
-async fn create_open_id_for_vp_presentation_definition_input_descriptor(
-    index: usize,
-    credential_schema: CredentialSchema,
-    claim_schemas: Vec<ProofInputClaimSchema>,
-    presentation_format_type: &FormatType,
-    formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, VerificationProtocolError> {
-    let (id, schema_fields, intent_to_retain) = match presentation_format_type {
-        FormatType::Mdoc => (credential_schema.schema_id().await?, vec![], Some(true)),
-        format_type => {
-            let path = match format_type {
-                FormatType::SdJwtVc => ["$.vct".to_string()],
-                _ => ["$.credentialSchema.id".to_string()],
-            }
-            .to_vec();
-
-            let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
-                id: None,
-                name: None,
-                purpose: None,
-                path,
-                optional: None,
-                filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
-                    r#type: "string".to_string(),
-                    r#const: credential_schema.schema_id().await?,
-                }),
-                intent_to_retain: None,
-            };
-
-            (format!("input_{index}"), vec![schema_id_field], None)
-        }
-    };
-
-    let schema_format = credential_schema.format().await?;
-    let selectively_disclosable = !formatter_provider
-        .get_credential_formatter(&schema_format)?
-        .get_capabilities()
-        .selective_disclosure
-        .is_empty();
-
-    let limit_disclosure = if selectively_disclosable {
-        Some(OpenID4VPPresentationDefinitionLimitDisclosurePreference::Required)
-    } else {
-        None
-    };
-
-    let claim_fields = claim_schemas
-        .iter()
-        .map(|claim| {
-            Ok(OpenID4VPPresentationDefinitionConstraintField {
-                id: Some(claim.schema.id),
-                name: None,
-                purpose: None,
-                path: vec![format_path(&claim.schema.key, presentation_format_type)?],
-                optional: Some(!claim.required),
-                filter: None,
-                intent_to_retain,
-            })
-        })
-        .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
-
-    Ok(OpenID4VPPresentationDefinitionInputDescriptor {
-        id,
-        name: Some(credential_schema.name),
-        purpose: None,
-        format: create_format_map(presentation_format_type)?,
-        constraints: OpenID4VPPresentationDefinitionConstraint {
-            fields: [schema_fields, claim_fields].concat(),
-            limit_disclosure,
-        },
-    })
-}
-
-fn format_path(
-    claim_key: &str,
-    format_type: &FormatType,
-) -> Result<String, VerificationProtocolError> {
-    match format_type {
-        FormatType::Mdoc => match claim_key.split_once(NESTED_CLAIM_MARKER) {
-            None => Ok(format!("$['{claim_key}']")),
-            Some((namespace, key)) => Ok(format!("$['{namespace}']['{key}']")),
-        },
-        FormatType::SdJwtVc => Ok(format!("$.{claim_key}")),
-        _ => Ok(format!("$.vc.credentialSubject.{claim_key}")),
-    }
-}
-
-pub fn extract_presentation_ctx_from_interaction_content(
+pub(crate) fn extract_presentation_ctx_from_interaction_content(
     content: OpenID4VPVerifierInteractionContent,
     verification_protocol_type: VerificationProtocolType,
 ) -> ExtractPresentationCtx {

@@ -222,12 +222,6 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
 
         Ok(HolderResponse::Submission(
             match context.identity_request.version {
-                ProtocolVersion::V1 => HolderSubmission::V1(
-                    context
-                        .shared_key
-                        .decrypt(&response)
-                        .map_err(VerificationProtocolError::Other)?,
-                ),
                 ProtocolVersion::V2 => HolderSubmission::V2(
                     context
                         .shared_key
@@ -240,24 +234,11 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
 
     fn interaction_data_from_submission(
         &self,
-        context: Self::Context,
+        _context: Self::Context,
         nonce: String,
         data: SubmissionData,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         let interaction_data = match data {
-            SubmissionData::V1 {
-                request,
-                submission,
-                presentation_definition,
-            } => MQTTOpenID4VPInteractionDataVerifier {
-                nonce,
-                client_id: request.client_id,
-                mdoc_generated_nonce: Some(hex::encode(context.identity_request.nonce)),
-                protocol_data: MQTTVerifierProtocolData::V1 {
-                    submission,
-                    presentation_definition,
-                },
-            },
             SubmissionData::V2 {
                 request,
                 submission,

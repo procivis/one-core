@@ -65,8 +65,6 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::model::CommonParams;
-use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_presentation_definition;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 use crate::provider::verification_protocol::{
     FormatMapper, VerificationProtocol, serialize_interaction_data,
 };
@@ -79,7 +77,6 @@ use crate::util::key_selection::KeyFilter;
 
 mod async_verifier_flow;
 pub mod ble;
-pub(crate) mod draft20_request;
 mod dto;
 mod holder_flow;
 mod key_agreement_key;
@@ -400,10 +397,9 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let key_agreement =
             KeyAgreementKey::generate().map_err(VerificationProtocolError::Other)?;
 
-        let (presentation_definition, dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
+        let (dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
             prepare_proof_share(ProofShareParams {
                 proof,
-                interaction_id,
                 key_id,
                 format_to_type_mapper,
                 formatter_provider: &*self.credential_formatter_provider,
@@ -415,7 +411,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let params = AsyncVerifierFlowParams {
             proof_id: proof.id,
             dcql_query,
-            presentation_definition,
             did: verifier_did.did,
             interaction_id,
             proof_repository: self.proof_repository.clone(),
@@ -808,7 +803,6 @@ pub(super) async fn create_presentation(
 
 pub(super) struct ProofShareParams<'a> {
     proof: &'a Proof,
-    interaction_id: InteractionId,
     key_id: KeyId,
 
     format_to_type_mapper: FormatMapper,
@@ -820,16 +814,7 @@ pub(super) struct ProofShareParams<'a> {
 
 pub(super) async fn prepare_proof_share(
     params: ProofShareParams<'_>,
-) -> Result<
-    (
-        OpenID4VPPresentationDefinition,
-        DcqlQuery,
-        Did,
-        AuthenticationFn,
-        AuthenticationFn,
-    ),
-    VerificationProtocolError,
-> {
+) -> Result<(DcqlQuery, Did, AuthenticationFn, AuthenticationFn), VerificationProtocolError> {
     let proof_schema = params
         .proof
         .schema
@@ -843,15 +828,6 @@ pub(super) async fn prepare_proof_share(
     let dcql_query = create_dcql_query(
         &proof_schema,
         &params.format_to_type_mapper,
-        params.formatter_provider,
-    )
-    .await?;
-
-    // only used when a legacy wallet negotiates proximity protocol version 1
-    let presentation_definition = create_open_id_for_vp_presentation_definition(
-        params.interaction_id,
-        proof_schema.to_owned(),
-        params.format_to_type_mapper,
         params.formatter_provider,
     )
     .await?;
@@ -906,7 +882,6 @@ pub(super) async fn prepare_proof_share(
     )?;
 
     Ok((
-        presentation_definition,
         dcql_query,
         verifier_did.to_owned(),
         auth_fn_ble,
