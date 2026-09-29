@@ -24,6 +24,11 @@ app:
       jwksRefreshAfterSeconds: 600 # 10mins
       jwksExpireAfterSeconds: 86400 # 1 day
       leewaySeconds: 60 # 1min
+  databasePool:
+    maxConnections: 15
+    minConnections: 2
+    acquireTimeoutSeconds: 10
+    idleTimeoutSeconds: 60
 globalSettings:
   rehostImportedSchemas: true
 keyStorage:
