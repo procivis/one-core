@@ -2666,7 +2666,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let (did_methods, supported_encryption_algorithms) = if self.params.swiyu_mode {
             (
-                vec![ConfigDidType::WebVh],
+                vec![ConfigDidType::Tdw],
                 // the swiyu iOS app fails on parsing encryption algorithms it does not support
                 vec![EncryptionAlgorithm::A128GCM, EncryptionAlgorithm::A256GCM],
             )
@@ -2676,7 +2676,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     ConfigDidType::Key,
                     ConfigDidType::Jwk,
                     ConfigDidType::Web,
-                    ConfigDidType::WebVh,
+                    ConfigDidType::Tdw,
                 ],
                 vec![
                     EncryptionAlgorithm::A128GCM,

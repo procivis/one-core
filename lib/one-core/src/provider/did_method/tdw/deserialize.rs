@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::dto::DidDocumentDTO;
-use crate::provider::did_method::webvh::common::DidLogParameters;
+use crate::provider::did_method::tdw::common::DidLogParameters;
 
 // https://identity.foundation/didwebvh/v0.3/#the-did-log-file
 #[serde_as]

@@ -2,7 +2,7 @@ use url::Url;
 
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::webvh::serialize::DidDocState;
+use crate::provider::did_method::tdw::serialize::DidDocState;
 
 pub(super) fn url_to_did(url: Url) -> Result<String, DidMethodError> {
     let mut domain = url

@@ -500,7 +500,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
-        let did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::WebVh];
+        let did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::Tdw];
         let mut verifier_identifier_types = HashSet::new();
         let schemes = &self.params.verifier.supported_client_id_schemes;
         let mut features = vec![];

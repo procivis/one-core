@@ -425,7 +425,7 @@ async fn test_create_did_with_same_value_in_different_organisations() {
 }
 
 #[tokio::test]
-async fn test_create_did_webvh_success() {
+async fn test_create_did_tdw_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
@@ -441,7 +441,7 @@ async fn test_create_did_webvh_success() {
         .create(
             organisation.id,
             DidKeys::single(key.id),
-            "WEBVH",
+            "TDW",
             "test",
             None,
         )
@@ -452,7 +452,7 @@ async fn test_create_did_webvh_success() {
     let resp = resp.json_value().await;
 
     let did = context.db.dids.get(&resp["id"].parse()).await;
-    assert_eq!(did.did_method, "WEBVH".into());
+    assert_eq!(did.did_method, "TDW".into());
     assert_eq!(did.did_type, DidType::Local);
 
     assert!(did.did.as_str().starts_with("did:tdw:"));

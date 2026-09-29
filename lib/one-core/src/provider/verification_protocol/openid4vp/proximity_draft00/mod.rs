@@ -576,7 +576,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
-        let did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::WebVh];
+        let did_methods = vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::Tdw];
         let mut features = vec![];
 
         if self.params.common.webhook_task.is_some() {

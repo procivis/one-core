@@ -373,7 +373,7 @@ and regulations mature and harden.
 | Transport and engagement | BLE, MQTT, NFC, QR code |
 | Revocation | Bitstring Status List, Token Status List, CRL |
 | Key storage | Secure Enclave, Android Keystore, Azure Key Vault, HSM, internal database |
-| DID methods | did\:key, did\:web, did\:jwk, did\:webvh |
+| DID methods | did\:key, did\:web, did\:jwk, did\:tdw |
 | Trust infrastructure | ETSI Trusted Lists, Lists of Trusted Lists (LoTL), and Lists of Trusted Entities (LoTE), EUDI Access and Registration Certificates |
 | Cryptographic suites | ES256, Ed25519, ML-DSA-65, BBS |
 | Wallet attestations | Wallet Unit Attestation (WUA) and Wallet Instance Attestation (WIA) |

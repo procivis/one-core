@@ -171,7 +171,7 @@ did:
     params:
       public:
         resolveToInsecureHttp: true
-  WEBVH:
+  TDW:
     params:
       public:
         resolveToInsecureHttp: true

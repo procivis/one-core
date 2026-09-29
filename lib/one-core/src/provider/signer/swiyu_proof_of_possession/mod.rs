@@ -48,7 +48,7 @@ pub struct ProofOfPossessionClaims {
 pub type ProofOfPossession = Jwt<ProofOfPossessionClaims>;
 
 /// Signs a proof of possession JWT (`exp` + `nonce`) using the assertion method key of a
-/// `did:webvh` identifier.
+/// `did:tdw` identifier.
 #[derive(Provider)]
 pub(crate) struct SwiyuProofOfPossessionSigner {
     config_name: SignerId,
@@ -125,7 +125,7 @@ impl Signer for SwiyuProofOfPossessionSigner {
             .did_method_provider
             .get_did_method(&did.did_method)
             .error_while("getting DID method")?;
-        if did_type != DidType::WebVh {
+        if did_type != DidType::Tdw {
             return Err(SignerError::UnsupportedDidMethod(did_type, identifier.id));
         }
 

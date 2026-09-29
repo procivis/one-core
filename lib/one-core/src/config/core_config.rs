@@ -420,9 +420,9 @@ pub enum DidType {
     #[serde(rename = "UNIVERSAL_RESOLVER")]
     #[strum(serialize = "UNIVERSAL_RESOLVER")]
     Universal,
-    #[serde(rename = "WEBVH")]
-    #[strum(serialize = "WEBVH")]
-    WebVh,
+    #[serde(rename = "TDW")]
+    #[strum(serialize = "TDW")]
+    Tdw,
 }
 
 pub type DatatypeConfig = ConfigBlock<String, DatatypeType>;

@@ -520,7 +520,7 @@ impl CredentialFormatter for MdocFormatter {
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
-            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
+            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::Tdw],
         }
     }
 

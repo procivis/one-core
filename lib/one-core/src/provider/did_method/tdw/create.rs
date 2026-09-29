@@ -12,9 +12,9 @@ use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::did_method::dto::DidVerificationMethodDTO;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::webvh::common;
-use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
-use crate::provider::did_method::webvh::serialize::{DidDocState, DidDocument, DidLogEntry};
+use crate::provider::did_method::tdw::common;
+use crate::provider::did_method::tdw::deserialize::DidMethodVersion;
+use crate::provider::did_method::tdw::serialize::{DidDocState, DidDocument, DidLogEntry};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::provider::KeyProvider;
 
@@ -271,8 +271,8 @@ mod test {
     use super::*;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
-    use crate::provider::did_method::webvh::verification::verify_did_log;
-    use crate::provider::did_method::webvh::{Params, deserialize};
+    use crate::provider::did_method::tdw::verification::verify_did_log;
+    use crate::provider::did_method::tdw::{Params, deserialize};
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::eddsa::Eddsa;
@@ -306,7 +306,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_create_did_webvh_ok() {
+    async fn test_create_did_tdw_ok() {
         let KeyProviderSetup {
             mock: key_provider,
             active_key_setup: (active_key, _),
@@ -355,7 +355,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_create_did_webvh_ok_only_authentication_assertion() {
+    async fn test_create_did_tdw_ok_only_authentication_assertion() {
         let KeyProviderSetup {
             mock: key_provider,
             active_key_setup: (active_key, _),
@@ -405,7 +405,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_create_did_webvh_with_prerotation_enabled_ok() {
+    async fn test_create_did_tdw_with_prerotation_enabled_ok() {
         let KeyProviderSetup {
             mock: key_provider,
             active_key_setup: (active_key, _),

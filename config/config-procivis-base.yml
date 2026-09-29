@@ -297,9 +297,9 @@ did:
         resolverUrl: https://dev.uniresolver.io
         supportedMethodNames:
           - "ion"
-  WEBVH:
-    type: "WEBVH"
-    display: "did.webvh"
+  TDW:
+    type: "TDW"
+    display: "did.tdw"
     order: 21
     params:
       public:

@@ -14,9 +14,9 @@ use super::jwk::JWKDidMethod;
 use super::key::KeyDidMethod;
 use super::model::DidDocument;
 use super::resolver::{DidCachingLoader, DidResolver};
+use super::tdw::DidTdw;
 use super::universal::UniversalDidMethod;
 use super::web::WebDidMethod;
-use super::webvh::DidWebVh;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     self, CacheEntitiesConfig, CacheEntityCacheType, CoreConfig, DidType, Fields,
@@ -135,7 +135,7 @@ impl DidMethodProvider for DidMethodProviderImpl {
     }
 }
 
-fn initialize_non_webvh_provider(
+fn initialize_non_tdw_provider(
     name: &DidMethodId,
     fields: &Fields<DidType>,
     core_base_url: &Option<String>,
@@ -166,10 +166,10 @@ fn initialize_non_webvh_provider(
             fields.merge_fields(),
             client.clone(),
         )?),
-        DidType::WebVh => {
+        DidType::Tdw => {
             return Err(
                 ServiceError::MappingError("Invalid intialization".to_string())
-                    .error_while("initializing DID webvh")
+                    .error_while("initializing DID tdw")
                     .into(),
             );
         }
@@ -177,7 +177,7 @@ fn initialize_non_webvh_provider(
     Ok(Arc::new(CapabilityChecked(provider)))
 }
 
-fn initialize_webvh_provider(
+fn initialize_tdw_provider(
     name: &DidMethodId,
     fields: &Fields<DidType>,
     core_base_url: &Option<String>,
@@ -185,7 +185,7 @@ fn initialize_webvh_provider(
     key_provider: &Arc<dyn KeyProvider>,
     client: &Arc<dyn HttpClient>,
 ) -> Result<Arc<dyn DidMethod>, InitializationError> {
-    let did_webvh = Arc::new(DidWebVh::new(
+    let did_tdw = Arc::new(DidTdw::new(
         name.to_owned(),
         fields.merge_fields(),
         core_base_url.clone(),
@@ -193,7 +193,7 @@ fn initialize_webvh_provider(
         intermediary_provider.clone(),
         key_provider.clone(),
     )?);
-    Ok(Arc::new(CapabilityChecked(did_webvh)))
+    Ok(Arc::new(CapabilityChecked(did_tdw)))
 }
 
 pub(crate) fn did_method_provider_from_config(
@@ -204,17 +204,17 @@ pub(crate) fn did_method_provider_from_config(
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
 ) -> Result<Arc<dyn DidMethodProvider>, ConfigValidationError> {
-    // did:webvh cannot be constructed directly, as it needs a did resolver internally
+    // did:tdw cannot be constructed directly, as it needs a did resolver internally
     let directory = {
-        let (webvh, non_webvh): (Vec<_>, Vec<_>) = config
+        let (tdw, non_tdw): (Vec<_>, Vec<_>) = config
             .did
             .iter_mut()
-            .partition(|(_, entry)| entry.r#type == DidType::WebVh);
+            .partition(|(_, entry)| entry.r#type == DidType::Tdw);
 
-        let non_webvh_directory = ProviderDirectory::initialize(
-            non_webvh.into_iter(),
+        let non_tdw_directory = ProviderDirectory::initialize(
+            non_tdw.into_iter(),
             |name: &DidMethodId, fields: &Fields<DidType>| {
-                initialize_non_webvh_provider(
+                initialize_non_tdw_provider(
                     name,
                     fields,
                     &core_base_url,
@@ -230,13 +230,13 @@ pub(crate) fn did_method_provider_from_config(
             remote_entity_cache_repository.clone(),
         );
         let intermediary_provider: Arc<dyn DidMethodProvider> = Arc::new(
-            DidMethodProviderImpl::new(did_caching_loader, non_webvh_directory.clone()),
+            DidMethodProviderImpl::new(did_caching_loader, non_tdw_directory.clone()),
         );
 
         let mut directory = ProviderDirectory::initialize(
-            webvh.into_iter(),
+            tdw.into_iter(),
             |name: &DidMethodId, fields: &Fields<DidType>| {
-                initialize_webvh_provider(
+                initialize_tdw_provider(
                     name,
                     fields,
                     &core_base_url,
@@ -246,9 +246,9 @@ pub(crate) fn did_method_provider_from_config(
                 )
             },
         )
-        .error_while("initializing webvh DID providers")?;
+        .error_while("initializing tdw DID providers")?;
 
-        directory.merge(non_webvh_directory);
+        directory.merge(non_tdw_directory);
         directory
     };
 

@@ -1,4 +1,4 @@
-//! Implementation of did:webvh.
+//! Implementation of did:tdw.
 //! https://identity.foundation/didwebvh/v0.3/
 
 use std::sync::Arc;
@@ -20,11 +20,11 @@ use crate::model::key::Key;
 use crate::proto::http_client::HttpClient;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::did_method::webvh::common::{
+use crate::provider::did_method::tdw::common::{
     build_proof, canonicalize_multihash_encode, make_keyref, now_utc, update_version,
 };
-use crate::provider::did_method::webvh::deserialize::DidLogEntry;
-use crate::provider::did_method::webvh::mapper::url_to_did;
+use crate::provider::did_method::tdw::deserialize::DidLogEntry;
+use crate::provider::did_method::tdw::mapper::url_to_did;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::provider_directory::InitializationError;
 
@@ -61,7 +61,7 @@ struct DidCreateParams {
 }
 
 #[derive(Provider)]
-pub struct DidWebVh {
+pub struct DidTdw {
     config_id: DidMethodId,
     params: Params,
     core_base_url: Option<String>,
@@ -70,7 +70,7 @@ pub struct DidWebVh {
     key_provider: Arc<dyn KeyProvider>,
 }
 
-impl DidWebVh {
+impl DidTdw {
     pub fn new(
         config_id: DidMethodId,
         params: serde_json::Value,
@@ -120,7 +120,7 @@ impl DidWebVh {
 }
 
 #[async_trait]
-impl DidMethod for DidWebVh {
+impl DidMethod for DidTdw {
     async fn create(
         &self,
         id: DidId,
@@ -130,7 +130,7 @@ impl DidMethod for DidWebVh {
         let update_keys = match keys.update_keys.as_deref() {
             None | Some([]) => {
                 return Err(DidMethodError::CreationError(
-                    "Missing update keys for did:webvh".to_string(),
+                    "Missing update keys for did:tdw".to_string(),
                 ));
             }
             Some([active, next @ ..]) => UpdateKeys { active, next },

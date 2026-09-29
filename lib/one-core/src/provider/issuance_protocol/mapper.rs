@@ -192,7 +192,7 @@ fn select_did_method(
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<DidMethodId, IssuanceProtocolError> {
     for method_name in did_method_provider.supported_method_names() {
-        // do not try to autogenerate a did:webvh or did:web for holder binding
+        // Do not autogenerate hosted DID methods for holder binding.
         if method_name == "webvh" || method_name == "tdw" || method_name == "web" {
             continue;
         }

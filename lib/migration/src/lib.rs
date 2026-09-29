@@ -341,6 +341,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 migrations::m20260928_120000_drop_holder_claim_deduplication_progress::Migration,
             ),
+            Box::new(migrations::m20260928_090000_rename_webvh_to_tdw::Migration),
         ]
     }
 }

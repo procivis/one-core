@@ -127,7 +127,7 @@ async fn test_update_did_not_found() {
 }
 
 #[tokio::test]
-async fn test_update_did_webvh_success() {
+async fn test_update_did_tdw_success() {
     let (context, org) = TestContext::new_with_organisation(None).await;
 
     let response = context.api.keys.create(org.id, "ECDSA", "test key").await;
@@ -149,8 +149,8 @@ async fn test_update_did_webvh_success() {
                 capability_invocation: vec![],
                 key_agreement: vec![],
             },
-            "WEBVH",
-            "test did:webvh",
+            "TDW",
+            "test did:tdw",
             None,
         )
         .await;

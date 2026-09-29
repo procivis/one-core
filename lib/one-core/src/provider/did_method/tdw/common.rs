@@ -8,8 +8,8 @@ use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
-use crate::provider::did_method::webvh::serialize::DidLogEntry;
+use crate::provider::did_method::tdw::deserialize::DidMethodVersion;
+use crate::provider::did_method::tdw::serialize::DidLogEntry;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::provider::KeyProvider;
 

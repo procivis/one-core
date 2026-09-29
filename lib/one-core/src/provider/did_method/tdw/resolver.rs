@@ -8,9 +8,9 @@ use crate::proto::http_client::HttpClient;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::did_method::webvh::Params;
-use crate::provider::did_method::webvh::deserialize::DidLogEntry;
-use crate::provider::did_method::webvh::verification::verify_did_log;
+use crate::provider::did_method::tdw::Params;
+use crate::provider::did_method::tdw::deserialize::DidLogEntry;
+use crate::provider::did_method::tdw::verification::verify_did_log;
 
 pub async fn resolve(
     did: &DidValue,
@@ -31,7 +31,7 @@ pub async fn resolve(
         .await
         .and_then(|r| r.error_for_status())
         .map_err(|err| {
-            DidMethodError::ResolutionError(format!("Failed resolving did:webvh: {err}"))
+            DidMethodError::ResolutionError(format!("Failed resolving did:tdw: {err}"))
         })?;
 
     let lines = resp.body.lines().peekable();
@@ -88,21 +88,21 @@ fn transform_did_to_https(did: &str) -> Result<TransformedDid<'_>, DidMethodErro
     // scid
     let Some(scid) = parts.next() else {
         return Err(DidMethodError::ResolutionError(
-            "Invalid did:webvh. missing `scid`".to_string(),
+            "Invalid did:tdw. missing `scid`".to_string(),
         ));
     };
 
     // domain segment
     let Some(domain) = parts.next() else {
         return Err(DidMethodError::ResolutionError(
-            "Invalid did:webvh. missing domain segment".to_string(),
+            "Invalid did:tdw. missing domain segment".to_string(),
         ));
     };
     // percent decode the domain segment in case there's a port
     let domain = domain.replacen("%3A", ":", 1);
 
     let mut url: Url = format!("https://{domain}").parse().map_err(|err| {
-        DidMethodError::ResolutionError(format!("Invalid did:webh domain part: {err}"))
+        DidMethodError::ResolutionError(format!("Invalid did:tdw domain part: {err}"))
     })?;
 
     // append /did.jsonl to the path segment
@@ -146,8 +146,8 @@ mod test {
     use crate::provider::did_method::key::KeyDidMethod;
     use crate::provider::did_method::keys::Keys;
     use crate::provider::did_method::model::DidVerificationMethod;
-    use crate::provider::did_method::webvh::common::DidLogParameters;
-    use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
+    use crate::provider::did_method::tdw::common::DidLogParameters;
+    use crate::provider::did_method::tdw::deserialize::DidMethodVersion;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::{
@@ -156,7 +156,7 @@ mod test {
     use crate::util::test_utilities::mock_http_get_request;
 
     #[test]
-    fn test_transform_did_webvh_to_https() {
+    fn test_transform_did_tdw_to_https() {
         for (did, expected) in [
             (
                 "did:tdw:{SCID}:example.com",
@@ -272,7 +272,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_didwebvh_resolver_returns_last_document() {
+    async fn test_didtdw_resolver_returns_last_document() {
         let did_method_provider = test_did_method_provider();
 
         let did_log = include_str!("test_data/success/did_long_log.jsonl");
@@ -341,7 +341,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_didwebvh_resolver_fail_too_many_entries() {
+    async fn test_didtdw_resolver_fail_too_many_entries() {
         let did_method_provider = test_did_method_provider();
 
         let did_log = include_str!("test_data/success/did_long_log.jsonl");
@@ -384,7 +384,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_didwebvh_resolver_fail_did_document_mismatch() {
+    async fn test_didtdw_resolver_fail_did_document_mismatch() {
         let did_method_provider = test_did_method_provider();
         let did_log = include_str!("test_data/success/did.jsonl");
         let url = "https://evil-example.com/.well-known/did.jsonl";
@@ -432,8 +432,8 @@ mod test {
     ///     - public key bytes: 0x5fdef8f02b852787f802c4f53d04c48183ef5b766d5e6f3d28ff10204b0cd61c, multibase: z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH
     ///     - private key bytes: 0x2d922fd47cda6d5adb72c9d33b63153adf38ee05980da13ce1878704e9f410a55fdef8f02b852787f802c4f53d04c48183ef5b766d5e6f3d28ff10204b0cd61c
     #[tokio::test]
-    async fn test_didwebvh_success() {
-        let folder = fs::read_dir("src/provider/did_method/webvh/test_data/success").unwrap();
+    async fn test_didtdw_success() {
+        let folder = fs::read_dir("src/provider/did_method/tdw/test_data/success").unwrap();
         resolve_log_files(folder, |result, file_name| {
             assert!(
                 result.is_ok(),
@@ -444,7 +444,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_didwebvh_failure() {
+    async fn test_didtdw_failure() {
         let expected_errors = hashmap! {
             "entry_hash_mismatch.jsonl" => ResolutionError("Entry hash mismatch, expected QmQikVGn3cLzaQ8PwqS4KNXtrfCr9Rbf5kTz9ayWXDAZZo, got QmVdZgk73vwTHX7wbNd7bd6jcMZeae88gxCuNqwMTT6PCQ.".to_owned()),
             "invalid_proof_verification_method_key.jsonl" => ResolutionError("Proof verification failed: verification method did:key:z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH#z6MkkuVyV9TbCGwhoJyJfhsFwFZjJ1833oWYtbh5mXGZxDTH is not allowed update_key".to_owned()),
@@ -458,7 +458,7 @@ mod test {
             "invalid_update_key_for_prerotation.jsonl" => ResolutionError("Update key z6MkfrBuadijZeorSayJDG9LQi6BBh3Cn73zhqYucWErRjXV not found in nextKeyHashes".to_owned()),
             "deactivated.jsonl" => Deactivated,
         };
-        let folder = fs::read_dir("src/provider/did_method/webvh/test_data/failure").unwrap();
+        let folder = fs::read_dir("src/provider/did_method/tdw/test_data/failure").unwrap();
         resolve_log_files(folder, |result, file_name| {
             assert2::let_assert!(
                 Err(error) = result,

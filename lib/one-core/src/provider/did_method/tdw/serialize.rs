@@ -5,7 +5,7 @@ use time::format_description::well_known::Rfc3339;
 
 use crate::provider::credential_formatter::vcdm::VcdmProof;
 use crate::provider::did_method::dto::DidVerificationMethodDTO;
-use crate::provider::did_method::webvh::common::DidLogParameters;
+use crate::provider::did_method::tdw::common::DidLogParameters;
 
 #[derive(Debug, Serialize)]
 pub(super) struct DidDocState {

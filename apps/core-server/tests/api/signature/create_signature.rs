@@ -684,11 +684,11 @@ async fn setup_did_identifier(
     (context, identifier, key)
 }
 
-const TEST_WEBVH_DID: &str = "did:tdw:QmdSU7F2rF7YnRRJLpQeYbxtEnwHWReNRSGCJ4Y5cGxrRK:example.com";
+const TEST_TDW_DID: &str = "did:tdw:QmdSU7F2rF7YnRRJLpQeYbxtEnwHWReNRSGCJ4Y5cGxrRK:example.com";
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_create_signature_swiyu_proof_of_possession_success() {
-    let (context, identifier, key) = setup_did_identifier(None, "WEBVH", TEST_WEBVH_DID).await;
+    let (context, identifier, key) = setup_did_identifier(None, "TDW", TEST_TDW_DID).await;
 
     let exp =
         one_core::clock::now_utc().replace_millisecond(0).unwrap() + time::Duration::minutes(2);
@@ -719,7 +719,7 @@ async fn test_create_signature_swiyu_proof_of_possession_success() {
     assert_eq!(decomposed.header.r#type.as_deref(), Some("JWT"));
     assert_eq!(
         decomposed.header.key_id.as_deref(),
-        Some(format!("{TEST_WEBVH_DID}#key-{}", key.id).as_str())
+        Some(format!("{TEST_TDW_DID}#key-{}", key.id).as_str())
     );
     assert_eq!(decomposed.payload.expires_at.unwrap(), exp);
     assert_eq!(decomposed.payload.custom.nonce, "Your Nonce");
@@ -797,7 +797,7 @@ async fn test_create_signature_swiyu_proof_of_possession_fail_on_certificate_ide
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_create_signature_swiyu_proof_of_possession_fail_on_missing_nonce() {
-    let (context, identifier, _key) = setup_did_identifier(None, "WEBVH", TEST_WEBVH_DID).await;
+    let (context, identifier, _key) = setup_did_identifier(None, "TDW", TEST_TDW_DID).await;
 
     let resp = context
         .api
@@ -822,7 +822,7 @@ async fn test_create_signature_swiyu_proof_of_possession_fail_on_missing_nonce()
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_create_signature_swiyu_proof_of_possession_fail_on_validity_too_long() {
-    let (context, identifier, _key) = setup_did_identifier(None, "WEBVH", TEST_WEBVH_DID).await;
+    let (context, identifier, _key) = setup_did_identifier(None, "TDW", TEST_TDW_DID).await;
 
     let resp = context
         .api
@@ -852,8 +852,7 @@ async fn test_create_signature_swiyu_proof_of_possession_fail_on_missing_permiss
         token,
         mock_server: _mock_server,
     } = setup_sts(vec!["X509_CERTIFICATE_SIGN"], None).await;
-    let (context, identifier, _key) =
-        setup_did_identifier(Some(config), "WEBVH", TEST_WEBVH_DID).await;
+    let (context, identifier, _key) = setup_did_identifier(Some(config), "TDW", TEST_TDW_DID).await;
 
     let resp = context
         .api

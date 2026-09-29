@@ -31,9 +31,9 @@ pub mod keys;
 pub mod model;
 pub mod provider;
 pub mod resolver;
+pub mod tdw;
 pub mod universal;
 pub mod web;
-pub mod webvh;
 
 /// Performs operations on DIDs and provides DID utilities.
 #[provider_mock]
@@ -97,6 +97,6 @@ pub struct DidKeys {
     pub key_agreement: Vec<Key>,
     pub capability_invocation: Vec<Key>,
     pub capability_delegation: Vec<Key>,
-    /// used for signing did-log entries for did:webvh
+    /// used for signing did-log entries for did:tdw
     pub update_keys: Option<Vec<Key>>,
 }

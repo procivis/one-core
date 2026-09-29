@@ -205,7 +205,7 @@ impl CredentialFormatter for JsonLdClassic {
                 Features::SupportsTxCode,
             ],
             selective_disclosure: vec![],
-            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::WebVh],
+            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::Tdw],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpFinal1_0,
@@ -237,7 +237,7 @@ impl CredentialFormatter for JsonLdClassic {
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
-            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
+            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::Tdw],
         }
     }
 

@@ -155,7 +155,7 @@ async fn test_multikey_is_present_in_config() {
 }
 
 #[tokio::test]
-async fn test_webvh_did_method_config() {
+async fn test_tdw_did_method_config() {
     // GIVEN
     let context = TestContext::new(None).await;
 
@@ -166,39 +166,39 @@ async fn test_webvh_did_method_config() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    assert!(resp["did"]["WEBVH"].is_object());
+    assert!(resp["did"]["TDW"].is_object());
     assert_eq!(
-        resp["did"]["WEBVH"]["capabilities"]["keyAlgorithms"]
+        resp["did"]["TDW"]["capabilities"]["keyAlgorithms"]
             .as_array()
             .unwrap(),
         &["ECDSA"]
     );
     assert_eq!(
-        resp["did"]["WEBVH"]["capabilities"]["methodNames"]
+        resp["did"]["TDW"]["capabilities"]["methodNames"]
             .as_array()
             .unwrap(),
         &["tdw"]
     );
     assert_eq!(
-        resp["did"]["WEBVH"]["capabilities"]["operations"]
+        resp["did"]["TDW"]["capabilities"]["operations"]
             .as_array()
             .unwrap(),
         &["CREATE", "RESOLVE", "DEACTIVATE"]
     );
     assert_eq!(
-        resp["did"]["WEBVH"]["capabilities"]["supportedUpdateKeyTypes"]
+        resp["did"]["TDW"]["capabilities"]["supportedUpdateKeyTypes"]
             .as_array()
             .unwrap(),
         &["EDDSA"]
     );
     assert_eq!(
-        resp["did"]["WEBVH"]["capabilities"]["features"]
+        resp["did"]["TDW"]["capabilities"]["features"]
             .as_array()
             .unwrap(),
         &["SUPPORTS_EXTERNAL_HOSTING"]
     );
     assert_eq!(
-        resp["did"]["WEBVH"]["params"]["keys"],
+        resp["did"]["TDW"]["params"]["keys"],
         json!({
             "min": 1,
             "max": 5,
