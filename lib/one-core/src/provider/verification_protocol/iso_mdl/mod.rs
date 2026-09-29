@@ -11,6 +11,7 @@ use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
 use mapper::device_request_to_dcql_query;
 use proc_macros::Provider;
+use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
@@ -24,7 +25,7 @@ use super::{
     FormatMapper, VerificationProtocol, VerificationProtocolError, deserialize_interaction_data,
 };
 use crate::config::core_config::{
-    CoreConfig, DidType, IdentifierType, TransportType, VerificationEngagement,
+    CoreConfig, DidType, IdentifierType, KeyAlgorithmType, TransportType, VerificationEngagement,
 };
 use crate::error::ContextWithErrorCode;
 use crate::mapper::decode_cbor_base64;
@@ -45,6 +46,7 @@ use crate::provider::presentation_formatter::model::{
 use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, DocumentError};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
@@ -62,9 +64,23 @@ mod session;
 mod test;
 mod verify_proof;
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct Params {
+    pub holder: HolderParams,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HolderParams {
+    pub session_encryption_algorithm: KeyAlgorithmType,
+}
+
 #[derive(Provider)]
 pub(crate) struct IsoMdl {
     config_id: String,
+    #[expect(unused)]
+    params: Params,
     config: Arc<CoreConfig>,
     credential_repository: Arc<dyn CredentialRepository>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -82,6 +98,7 @@ impl IsoMdl {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         config_id: String,
+        params: serde_json::Value,
         config: Arc<CoreConfig>,
         credential_repository: Arc<dyn CredentialRepository>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -93,9 +110,31 @@ impl IsoMdl {
         wrp_validator: Arc<dyn WRPValidator>,
         ble: Option<BleWaiter>,
         nfc_hce: Option<Arc<dyn NfcHce>>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params: Params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        if !key_algorithm_provider
+            .key_algorithm_from_type(params.holder.session_encryption_algorithm)?
+            .get_capabilities()
+            .features
+            .contains(&crate::provider::key_algorithm::model::Features::KeyAgreement)
+        {
+            return Err(InitializationError::UnsupportedConfiguration {
+                key: config_id,
+                detail: format!(
+                    "Key algorithm `{}` does not support key agreement",
+                    params.holder.session_encryption_algorithm
+                ),
+            });
+        }
+
+        Ok(Self {
             config_id,
+            params,
             config,
             credential_repository,
             presentation_formatter_provider,
@@ -107,7 +146,7 @@ impl IsoMdl {
             wrp_validator,
             ble,
             nfc_hce,
-        }
+        })
     }
 }
 

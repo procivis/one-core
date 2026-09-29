@@ -2,8 +2,8 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use super::common::EReaderKey;
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
+use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
@@ -28,7 +28,7 @@ impl TryFrom<Vec<u8>> for Command {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SessionEstablishment {
-    pub(crate) e_reader_key: EmbeddedCbor<EReaderKey>,
+    pub(crate) e_reader_key: EmbeddedCbor<EphemeralSessionKey>,
     pub(crate) data: Bstr,
 }
 
@@ -52,17 +52,18 @@ mod test {
     use uuid::Uuid;
 
     use super::*;
+    use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
-    use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
+    use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
     use crate::provider::verification_protocol::iso_mdl::device_engagement::{
         BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
     };
 
     #[test]
     fn test_session_establishment_serialization() {
-        let reader_key = KeyAgreement::<EReaderKey>::generate().unwrap();
+        let reader_key = KeyAgreementKey::generate(&Ecdsa).unwrap();
         let session_establishment = SessionEstablishment {
-            e_reader_key: EmbeddedCbor::new(reader_key.reader_key().clone()).unwrap(),
+            e_reader_key: EmbeddedCbor::new(reader_key.ephemeral_key().clone()).unwrap(),
             data: Bstr(b"test data".to_vec()),
         };
 
@@ -90,14 +91,15 @@ mod test {
 
     #[test]
     fn test_session_transcript_serialization() {
-        let device_key = KeyAgreement::<EDeviceKey>::generate().unwrap();
-        let reader_key = KeyAgreement::<EReaderKey>::generate().unwrap();
+        let device_key = KeyAgreementKey::generate(&Ecdsa).unwrap();
+        let reader_key = KeyAgreementKey::generate(&Ecdsa).unwrap();
 
         let session_transcript = SessionTranscript {
             device_engagement_bytes: EmbeddedCbor::new(DeviceEngagement {
                 version: Default::default(),
-                security: Security {
-                    key_bytes: EmbeddedCbor::new(device_key.device_key().clone()).unwrap(),
+                security: Security::V1 {
+                    e_device_key_bytes: EmbeddedCbor::new(device_key.ephemeral_key().clone())
+                        .unwrap(),
                 },
                 device_retrieval_methods: vec![DeviceRetrievalMethod {
                     retrieval_options: RetrievalOptions::Ble(BleOptions {
@@ -108,7 +110,7 @@ mod test {
             })
             .unwrap()
             .into(),
-            e_reader_key_bytes: EmbeddedCbor::new(reader_key.reader_key().clone())
+            e_reader_key_bytes: EmbeddedCbor::new(reader_key.ephemeral_key().clone())
                 .unwrap()
                 .into(),
             handover: None,

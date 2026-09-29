@@ -1,19 +1,18 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{Context, Error};
 use coset::iana::HeaderParameter;
 use coset::{HeaderBuilder, ProtectedHeader};
 use shared_types::ProofId;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
+use super::ble::{CLIENT_2_SERVER, Chunk, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE, split_into_chunks};
 use super::common::{
-    Chunk, DeviceRequest, DocRequest, EReaderKey, ItemsRequest, KeyAgreement, SkDevice,
-    create_session_transcript_bytes, split_into_chunks, to_cbor,
+    DeviceRequest, DocRequest, EphemeralSessionKey, ItemsRequest, KeyAgreementKey, SkDevice,
+    create_session_transcript_bytes, to_cbor,
 };
-use super::device_engagement::{BleOptions, DeviceEngagement};
+use super::device_engagement::{BleOptions, DeviceEngagement, Security};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
@@ -25,6 +24,7 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
 use crate::proto::bluetooth_low_energy::low_level::dto::{
@@ -57,7 +57,7 @@ use crate::repository::proof_repository::ProofRepository;
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
-    pub reader_key: EmbeddedCbor<EReaderKey>,
+    pub reader_key: EmbeddedCbor<EphemeralSessionKey>,
     pub session_transcript: SessionTranscript,
     pub device_request_encrypted: Vec<u8>,
     pub sk_device: SkDevice,
@@ -75,29 +75,31 @@ pub(crate) async fn setup_verifier_session(
     schema: &ProofSchema,
     handover: Option<Handover>,
     verifier: Option<&IsoMdlVerifier>,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<VerifierSession, VerificationProtocolError> {
-    let key_pair =
-        KeyAgreement::<EReaderKey>::generate().map_err(VerificationProtocolError::Other)?;
+    let e_device_key = match &device_engagement.inner().security {
+        Security::V1 { e_device_key_bytes } => e_device_key_bytes.inner(),
+    };
+    let key_algorithm = e_device_key.get_algorithm(key_algorithm_provider)?;
+    let reader_key =
+        KeyAgreementKey::generate(key_algorithm.as_ref()).error_while("generating EReaderKey")?;
 
-    let reader_key = EmbeddedCbor::new(key_pair.reader_key().clone())?;
+    let e_reader_key = EmbeddedCbor::new(reader_key.ephemeral_key().clone())?;
 
     let session_transcript_bytes = create_session_transcript_bytes(
         device_engagement.to_owned(),
-        reader_key.to_owned(),
+        e_reader_key.to_owned(),
         handover,
     )?;
 
-    let (sk_device, sk_reader) = key_pair
+    let (sk_device, sk_reader) = reader_key
         .derive_session_keys(
-            device_engagement
-                .into_inner()
-                .security
-                .key_bytes
-                .into_inner(),
+            e_device_key,
             session_transcript_bytes.bytes(),
+            key_algorithm_provider,
         )
-        .context("failed to derive key")
-        .map_err(VerificationProtocolError::Other)?;
+        .await
+        .error_while("deriving session keys")?;
 
     let mut doc_requests = vec![];
     let input_schemas = schema.input_schemas.as_ref().await?;
@@ -119,12 +121,10 @@ pub(crate) async fn setup_verifier_session(
 
     let device_request_bytes = to_cbor(&device_request)?;
 
-    let device_request_encrypted = sk_reader
-        .encrypt(&device_request_bytes)
-        .map_err(VerificationProtocolError::Other)?;
+    let device_request_encrypted = sk_reader.encrypt(&device_request_bytes)?;
 
     Ok(VerifierSession {
-        reader_key,
+        reader_key: e_reader_key,
         session_transcript: session_transcript_bytes.into_inner(),
         device_request_encrypted,
         sk_device,
@@ -241,7 +241,7 @@ async fn verifier_flow(
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), VerificationProtocolError> {
     let (device, mtu_size) =
         connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
 
@@ -300,7 +300,7 @@ async fn process_proof(
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), VerificationProtocolError> {
     send_session_establishment(
         central,
         device,
@@ -321,7 +321,8 @@ async fn process_proof(
             },
             None,
         )
-        .await?;
+        .await
+        .error_while("updating proof")?;
 
     let session_data = read_response(
         central,
@@ -345,9 +346,14 @@ async fn process_proof(
         tracing::warn!("failed to disconnect BLE central: {err}");
     }
 
-    let decrypted = verifier_session
-        .sk_device
-        .decrypt(&session_data.data.context("data is missing")?.0)?;
+    let decrypted = verifier_session.sk_device.decrypt(
+        &session_data
+            .data
+            .ok_or(VerificationProtocolError::Failed(
+                "session data is missing".to_string(),
+            ))?
+            .0,
+    )?;
     let device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
 
     let empty_documents = device_response
@@ -381,7 +387,8 @@ async fn process_proof(
                     },
                     None,
                 )
-                .await?;
+                .await
+                .error_while("updating proof")?;
         } else {
             let error_metadata = HistoryErrorMetadata {
                 error_code: BR_0000,
@@ -426,7 +433,7 @@ async fn set_proof_to_error(
     proof_repository: &dyn ProofRepository,
     proof_id: ProofId,
     error_metadata: HistoryErrorMetadata,
-) -> Result<(), Error> {
+) -> Result<(), VerificationProtocolError> {
     proof_repository
         .update_proof(
             &proof_id,
@@ -436,7 +443,8 @@ async fn set_proof_to_error(
             },
             Some(error_metadata),
         )
-        .await?;
+        .await
+        .error_while("updating proof")?;
     Ok(())
 }
 
@@ -474,15 +482,10 @@ async fn fill_proof_claims_and_credentials(
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
-) -> Result<(), anyhow::Error> {
-    let proof_schema = proof
-        .schema
-        .as_ref()
-        .context("proof_schema is None".to_string())?
-        .as_ref()
-        .await?;
+) -> Result<(), VerificationProtocolError> {
+    let proof_schema = proof.schema.as_required_ref().await?;
 
-    let encoded = encode_cbor_base64(&device_response)?;
+    let encoded = encode_cbor_base64(&device_response).error_while("encoding device response")?;
 
     let proved_credentials = super::verify_proof::validate_proof(
         &proof_schema,
@@ -494,7 +497,8 @@ async fn fill_proof_claims_and_credentials(
         did_method_provider.clone(),
         certificate_validator.clone(),
     )
-    .await?;
+    .await
+    .error_while("validating proof")?;
 
     super::verify_proof::accept_proof(
         proof.clone(),
@@ -505,7 +509,8 @@ async fn fill_proof_claims_and_credentials(
         identifier_creator,
         &*ecosystem_resolver,
     )
-    .await?;
+    .await
+    .error_while("accepting proof")?;
 
     // todo: history log accepted
 
@@ -515,18 +520,27 @@ async fn fill_proof_claims_and_credentials(
 async fn connect_to_server(
     central: &TrackingBleCentral,
     service_uuid: String,
-) -> anyhow::Result<(PeripheralDiscoveryData, usize)> {
-    central.start_scan(Some(vec![service_uuid.clone()])).await?;
+) -> Result<(PeripheralDiscoveryData, usize), VerificationProtocolError> {
+    central
+        .start_scan(Some(vec![service_uuid.clone()]))
+        .await
+        .error_while("starting BLE scan")?;
 
     let device = central
         .get_discovered_devices()
-        .await?
+        .await
+        .error_while("getting discovered devices")?
         .pop()
-        .context("no discovered devices")?;
+        .ok_or(VerificationProtocolError::Failed(
+            "no discovered devices".to_string(),
+        ))?;
 
-    central.stop_scan().await?;
+    central.stop_scan().await.error_while("stopping BLE scan")?;
 
-    let mtu_size = central.connect(device.device_address.clone()).await?;
+    let mtu_size = central
+        .connect(device.device_address.clone())
+        .await
+        .error_while("connecting to peripheral")?;
 
     central
         .subscribe_to_characteristic_notifications(
@@ -534,7 +548,8 @@ async fn connect_to_server(
             service_uuid.clone(),
             STATE.into(),
         )
-        .await?;
+        .await
+        .error_while("subscribing State characteristic")?;
 
     central
         .subscribe_to_characteristic_notifications(
@@ -542,7 +557,8 @@ async fn connect_to_server(
             service_uuid.clone(),
             SERVER_2_CLIENT.into(),
         )
-        .await?;
+        .await
+        .error_while("subscribing Server2Client characteristic")?;
 
     central
         .write_data(
@@ -552,7 +568,8 @@ async fn connect_to_server(
             &[Command::Start as _],
             CharacteristicWriteType::WithoutResponse,
         )
-        .await?;
+        .await
+        .error_while("writing Start command")?;
 
     Ok((device, mtu_size as _))
 }
@@ -562,9 +579,9 @@ async fn send_session_establishment(
     device: &PeripheralDiscoveryData,
     service_uuid: String,
     mtu_size: usize,
-    e_reader_key: EmbeddedCbor<EReaderKey>,
+    e_reader_key: EmbeddedCbor<EphemeralSessionKey>,
     device_request_encrypted: Vec<u8>,
-) -> anyhow::Result<()> {
+) -> Result<(), VerificationProtocolError> {
     let session_establishment = SessionEstablishment {
         e_reader_key,
         data: Bstr(device_request_encrypted),
@@ -581,7 +598,8 @@ async fn send_session_establishment(
                 &chunk,
                 CharacteristicWriteType::WithoutResponse,
             )
-            .await?
+            .await
+            .error_while("writing Client2Server chunk")?
     }
 
     Ok(())
@@ -605,7 +623,7 @@ async fn read_response(
             .error_while("waiting for Server2Client notification")?;
 
         for msg in data {
-            let chunk: Chunk = msg.try_into().map_err(VerificationProtocolError::Other)?;
+            let chunk: Chunk = msg.try_into()?;
             match chunk {
                 Chunk::Next(payload) => result.extend(payload),
                 Chunk::Last(payload) => {

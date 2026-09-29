@@ -32,6 +32,7 @@ use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
+use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
@@ -93,20 +94,31 @@ async fn test_presentation_reject_ok() {
         .await
         .unwrap();
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .return_once(|_| Ok(Arc::new(Ecdsa)));
+
     let provider = IsoMdl::new(
         "ISO_MDL".to_string(),
+        serde_json::json!({
+            "holder": {
+                "sessionEncryptionAlgorithm": "ECDSA"
+            }
+        }),
         Arc::new(core_config),
         Arc::new(MockCredentialRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(key_algorithm_provider),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockWRPValidator::new()),
         Some(ble_waiter),
         None,
-    );
+    )
+    .unwrap();
 
     let ecosystem_schema_id = "org.iso.18013.5.1".to_string();
     let organisation_id = Uuid::new_v4().into();
@@ -606,20 +618,31 @@ async fn test_get_presentation_definition_v2() {
             Ok(Arc::new(formatter))
         });
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .return_once(|_| Ok(Arc::new(Ecdsa)));
+
     let service = IsoMdl::new(
         "ISO_MDL".to_string(),
+        serde_json::json!({
+            "holder": {
+                "sessionEncryptionAlgorithm": "ECDSA"
+            }
+        }),
         Arc::new(generic_config().core),
         Arc::new(credential_repository),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(key_algorithm_provider),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockWRPValidator::new()),
         None,
         None,
-    );
+    )
+    .unwrap();
 
     let presentation_definition = service
         .holder_get_presentation_definition_v2(&proof, interaction_data, &[])

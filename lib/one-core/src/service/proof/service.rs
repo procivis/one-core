@@ -60,7 +60,7 @@ use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_server,
 };
 use crate::provider::verification_protocol::iso_mdl::ble_verifier::IsoMdlVerifier;
-use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
+use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
@@ -846,15 +846,19 @@ impl ProofService {
         let exchange_type = self
             .config
             .verification_protocol
-            .get_fields(&request.protocol)
-            .error_while("getting protocol")?
-            .r#type;
+            .get_type(&request.protocol)
+            .error_while("getting protocol")?;
         if exchange_type != VerificationProtocolType::IsoMdl {
             return Err(ProofServiceError::InvalidExchangeType {
                 value: request.protocol,
                 source: anyhow::anyhow!("propose_proof"),
             });
         }
+        let protocol_params: crate::provider::verification_protocol::iso_mdl::Params = self
+            .config
+            .verification_protocol
+            .get(&request.protocol)
+            .error_while("getting protocol")?;
 
         let organisation = self
             .organisation_repository
@@ -884,12 +888,16 @@ impl ProofService {
         let ble_server = start_mdl_server(ble)
             .await
             .error_while("starting mDL server")?;
-        let key_pair = KeyAgreement::<EDeviceKey>::generate()
-            .map_err(|e| ProofServiceError::Other(e.to_string()))?;
+
+        let key_algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_type(protocol_params.holder.session_encryption_algorithm)?;
+        let device_key =
+            KeyAgreementKey::generate(key_algorithm.as_ref()).error_while("creating EDeviceKey")?;
         let device_engagement = DeviceEngagement {
             version: Default::default(),
-            security: Security {
-                key_bytes: EmbeddedCbor::new(key_pair.device_key().to_owned())
+            security: Security::V1 {
+                e_device_key_bytes: EmbeddedCbor::new(device_key.ephemeral_key().to_owned())
                     .map_err(|e| ProofServiceError::MappingError(e.to_string()))?,
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
@@ -1016,7 +1024,7 @@ impl ProofService {
 
         receive_mdl_request(
             ble,
-            key_pair,
+            device_key,
             self.interaction_repository.clone(),
             interaction,
             self.proof_repository.clone(),
@@ -1026,6 +1034,7 @@ impl ProofService {
             self.ecosystem_resolver.clone(),
             self.certificate_validator.clone(),
             self.identifier_creator.clone(),
+            self.key_algorithm_provider.clone(),
             self.verification_fn(),
         )
         .await

@@ -6,10 +6,10 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 use uuid::Uuid;
 
-use super::common::EDeviceKey;
 use super::nfc::{BLE_RECORD_TYPE, BLECarrierConfigurationRecord, DEVICE_ENGAGMENT_RECORD_TYPE};
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor, MDLVersion};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
+use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceEngagement {
@@ -21,12 +21,11 @@ pub(crate) struct DeviceEngagement {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Security {
-    // pub version: i8,
-    pub key_bytes: EmbeddedCbor<EDeviceKey>,
+pub(crate) enum Security {
+    V1 {
+        e_device_key_bytes: EmbeddedCbor<EphemeralSessionKey>,
+    },
 }
-
-const SECURITY_VERSION: i8 = 1;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceRetrievalMethod {
@@ -197,9 +196,11 @@ impl Serialize for Security {
     where
         S: Serializer,
     {
-        cbor!([SECURITY_VERSION, self.key_bytes])
-            .map_err(ser::Error::custom)?
-            .serialize(serializer)
+        match &self {
+            Self::V1 { e_device_key_bytes } => cbor!([1, e_device_key_bytes])
+                .map_err(ser::Error::custom)?
+                .serialize(serializer),
+        }
     }
 }
 
@@ -217,22 +218,24 @@ where
 
     let version = array
         .first()
-        .ok_or(de::Error::custom("Missing Security version"))?;
-    if version
+        .ok_or(de::Error::custom("Missing Security version"))?
         .as_integer()
-        .is_none_or(|v| v != SECURITY_VERSION.into())
-    {
-        return Err(de::Error::custom("Invalid Security version"));
+        .ok_or(de::Error::custom("Invalid Security version"))?;
+
+    match i128::from(version) {
+        1 => {
+            let key_bytes = array
+                .get(1)
+                .ok_or(de::Error::custom("missing EDeviceKeyBytes"))?;
+
+            Ok(Security::V1 {
+                e_device_key_bytes: key_bytes.deserialized().map_err(de::Error::custom)?,
+            })
+        }
+        other => Err(de::Error::custom(format!(
+            "Unsupported Security version: {other}"
+        ))),
     }
-
-    let key_bytes = array
-        .get(1)
-        .ok_or(de::Error::custom("Missing Security key_bytes"))?
-        .to_owned();
-
-    Ok(Security {
-        key_bytes: key_bytes.deserialized().map_err(de::Error::custom)?,
-    })
 }
 
 impl Serialize for DeviceRetrievalMethod {
@@ -407,7 +410,8 @@ mod test {
     use uuid::uuid;
 
     use super::*;
-    use crate::provider::verification_protocol::iso_mdl::common::KeyAgreement;
+    use crate::provider::key_algorithm::eddsa::Eddsa;
+    use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
 
     #[test]
     fn test_device_engagement_serialization() {
@@ -437,17 +441,17 @@ mod test {
     fn test_device_engagement_deserialize_iso_example() {
         // ISO 18013-5, D.3.1
         let data = hex!(
-            "a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2e8a968ff289d9\
-             3e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32\
-             fc670281830201a300f401f50b5045efef742b2c4837a9a3b0e1d05a6917"
+            r#"a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2e8a968ff289d9
+               3e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32
+               fc670281830201a300f401f50b5045efef742b2c4837a9a3b0e1d05a6917"#
         )
         .to_vec();
 
-        // failing due to unsupported key type
+        // failing due to unsupported BLE mode
         let failure = ciborium::from_reader::<DeviceEngagement, _>(&data[..]).unwrap_err();
         assert_eq!(
             failure.to_string(),
-            "Semantic(None, \"Custom(\\\"Semantic(None, \\\\\\\"Unsupported key type, expected OKP(x25519) found Assigned(EC2)\\\\\\\")\\\")\")"
+            "Semantic(None, \"Invalid BleOptions peripheral_server_mode_supported\")"
         );
     }
 
@@ -494,12 +498,13 @@ mod test {
     }
 
     fn get_example_engagement() -> DeviceEngagement {
-        let ka_device = KeyAgreement::<EDeviceKey>::generate().unwrap();
+        let ka_device = KeyAgreementKey::generate(&Eddsa).unwrap();
 
         DeviceEngagement {
             version: Default::default(),
-            security: Security {
-                key_bytes: EmbeddedCbor::new(ka_device.device_key().to_owned()).unwrap(),
+            security: Security::V1 {
+                e_device_key_bytes: EmbeddedCbor::new(ka_device.ephemeral_key().to_owned())
+                    .unwrap(),
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {

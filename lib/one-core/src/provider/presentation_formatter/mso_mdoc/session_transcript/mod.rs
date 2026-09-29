@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize, Serializer, de, ser};
 use self::nfc::NFCHandover;
 use self::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
-use crate::provider::verification_protocol::iso_mdl::common::EReaderKey;
+use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::DeviceEngagement;
 
 pub mod nfc;
@@ -24,7 +24,7 @@ pub(crate) enum Handover {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SessionTranscript {
     pub device_engagement_bytes: Option<EmbeddedCbor<DeviceEngagement>>,
-    pub e_reader_key_bytes: Option<EmbeddedCbor<EReaderKey>>,
+    pub e_reader_key_bytes: Option<EmbeddedCbor<EphemeralSessionKey>>,
     pub handover: Option<Handover>,
 }
 

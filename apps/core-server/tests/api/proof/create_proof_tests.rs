@@ -838,6 +838,10 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_none_engagement() {
                 type: 'ISO_MDL'
                 display: 'exchange.isoMdl'
                 order: 4
+                params:
+                  public:
+                    holder:
+                      sessionEncryptionAlgorithm: 'ECDSA'
     "}
     .to_string();
     let (context, organisation, did, ..) = TestContext::new_with_did(Some(config)).await;
@@ -907,6 +911,10 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement(
                 type: 'ISO_MDL'
                 display: 'exchange.isoMdl'
                 order: 4
+                params:
+                  public:
+                    holder:
+                      sessionEncryptionAlgorithm: 'ECDSA'
     "}
     .to_string();
     let (context, organisation, did, ..) = TestContext::new_with_did(Some(config)).await;

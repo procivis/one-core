@@ -63,10 +63,15 @@ impl ProofService {
             .as_ref()
             .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
-        let verifier_session =
-            setup_verifier_session(device_engagement, &schema, handover, verifier.as_ref())
-                .await
-                .error_while("setting up verifier session")?;
+        let verifier_session = setup_verifier_session(
+            device_engagement,
+            &schema,
+            handover,
+            verifier.as_ref(),
+            self.key_algorithm_provider.as_ref(),
+        )
+        .await
+        .error_while("setting up verifier session")?;
 
         let now = crate::clock::now_utc();
         let interaction = Interaction {

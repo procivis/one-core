@@ -39,6 +39,10 @@ verificationProtocol:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
     order: 7
+    params:
+      public:
+        holder:
+          sessionEncryptionAlgorithm: "EDDSA"
 keySecurityLevel:
   MODERATE:
     params:

@@ -2,16 +2,14 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofId};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
+use super::ble::{CLIENT_2_SERVER, Chunk, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE, split_into_chunks};
 use super::common::{
-    Chunk, DeviceRequest, EDeviceKey, KeyAgreement, SkDevice, SkReader,
-    create_session_transcript_bytes, split_into_chunks, to_cbor,
+    DeviceRequest, KeyAgreementKey, SkDevice, SkReader, create_session_transcript_bytes, to_cbor,
 };
 use super::device_engagement::DeviceEngagement;
 use super::holder_trust::resolve_verifier_and_trust;
@@ -35,6 +33,7 @@ use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::credential_formatter::model::VerificationFn;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
@@ -127,7 +126,7 @@ pub(crate) struct NfcHceSession {
 #[expect(clippy::too_many_arguments)]
 pub(crate) async fn receive_mdl_request(
     ble: &BleWaiter,
-    key_pair: KeyAgreement<EDeviceKey>,
+    device_key: KeyAgreementKey,
     interaction_repository: Arc<dyn InteractionRepository>,
     interaction: Interaction,
     proof_repository: Arc<dyn ProofRepository>,
@@ -137,6 +136,7 @@ pub(crate) async fn receive_mdl_request(
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     verify_fn: VerificationFn,
 ) -> Result<(), VerificationProtocolError> {
     let (tx, rx) = oneshot::channel();
@@ -224,17 +224,15 @@ pub(crate) async fn receive_mdl_request(
                         handover,
                     )?;
 
-                    let (sk_device, sk_reader) = key_pair
+                    let (sk_device, sk_reader) = device_key
                         .derive_session_keys(
-                            session_establishment.e_reader_key.clone().into_inner(),
+                            session_establishment.e_reader_key.inner(),
                             session_transcript_bytes.bytes(),
+                            key_algorithm_provider.as_ref(),
                         )
-                        .context("failed to derive key")
-                        .map_err(VerificationProtocolError::Other)?;
+                        .await?;
 
-                    let device_request_bytes = sk_reader
-                        .decrypt(&session_establishment.data.0)
-                        .map_err(VerificationProtocolError::Other)?;
+                    let device_request_bytes = sk_reader.decrypt(&session_establishment.data.0)?;
 
                     let device_request: DeviceRequest =
                         ciborium::from_reader(device_request_bytes.as_slice())?;
@@ -346,8 +344,7 @@ pub(crate) async fn send_mdl_response(
 
     let encrypted_device_response = interaction_session_data
         .sk_device
-        .encrypt(&device_response_bytes)
-        .map_err(VerificationProtocolError::Other)?;
+        .encrypt(&device_response_bytes)?;
 
     let session_data = SessionData {
         data: Some(Bstr(encrypted_device_response)),
@@ -355,8 +352,7 @@ pub(crate) async fn send_mdl_response(
     };
     let session_data_bytes = to_cbor(&session_data)?;
 
-    let chunks = split_into_chunks(session_data_bytes, interaction_session_data.mtu as _)
-        .map_err(VerificationProtocolError::Other)?;
+    let chunks = split_into_chunks(session_data_bytes, interaction_session_data.mtu as _)?;
 
     let (_, result) = ble
         .schedule_continuation(
@@ -522,7 +518,7 @@ async fn read_request(
             .error_while("waiting for Client2Server characteristic write")?;
 
         for msg in data {
-            let chunk: Chunk = msg.try_into().map_err(VerificationProtocolError::Other)?;
+            let chunk: Chunk = msg.try_into()?;
             match chunk {
                 Chunk::Next(payload) => result.extend(payload),
                 Chunk::Last(payload) => {

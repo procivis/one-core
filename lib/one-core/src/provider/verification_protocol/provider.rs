@@ -174,6 +174,7 @@ fn initialize_provider(
         }
         VerificationProtocolType::IsoMdl => Arc::new(IsoMdl::new(
             name.to_owned(),
+            fields.merge_fields(),
             core_config.clone(),
             credential_repository.clone(),
             presentation_formatter_provider.clone(),
@@ -185,7 +186,7 @@ fn initialize_provider(
             wrp_validator.clone(),
             ble.clone(),
             nfc_hce.clone(),
-        )),
+        )?),
     };
     Ok(protocol)
 }
