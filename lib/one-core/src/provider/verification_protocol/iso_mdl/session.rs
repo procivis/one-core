@@ -56,7 +56,7 @@ mod test {
     use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
     use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
     use crate::provider::verification_protocol::iso_mdl::device_engagement::{
-        BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
+        BleOptionsV1, DeviceEngagement, DeviceRetrievalMethod, Security,
     };
 
     #[test]
@@ -101,12 +101,11 @@ mod test {
                     e_device_key_bytes: EmbeddedCbor::new(device_key.ephemeral_key().clone())
                         .unwrap(),
                 },
-                device_retrieval_methods: vec![DeviceRetrievalMethod {
-                    retrieval_options: RetrievalOptions::Ble(BleOptions {
-                        peripheral_server_uuid: Uuid::new_v4(),
-                        peripheral_server_mac_address: None,
-                    }),
-                }],
+                device_retrieval_methods: vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
+                    peripheral_server_uuid: Some(Uuid::new_v4()),
+                    peripheral_server_mac_address: None,
+                    client_central_uuid: None,
+                })],
             })
             .unwrap()
             .into(),

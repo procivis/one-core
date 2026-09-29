@@ -47,8 +47,9 @@ pub(crate) fn create_nfc_handover_select_message(
     );
     nfc_message.add_record(
         BLECarrierConfigurationRecord {
-            peripheral_service_uuid: server.service_uuid,
-            peripheral_mac_address: if let Some(mac) = server.mac_address.as_ref() {
+            le_role: BleRolesSupported::OnlyPeripheral,
+            service_uuid: server.service_uuid,
+            mac_address: if let Some(mac) = server.mac_address.as_ref() {
                 Some(serialize_mac_address(mac)?)
             } else {
                 None
@@ -61,13 +62,68 @@ pub(crate) fn create_nfc_handover_select_message(
 }
 
 pub(super) struct BLECarrierConfigurationRecord {
-    pub(super) peripheral_service_uuid: Uuid,
-    pub(super) peripheral_mac_address: Option<[u8; 6]>,
+    le_role: BleRolesSupported,
+    service_uuid: Uuid,
+    mac_address: Option<[u8; 6]>,
 }
 
 const BLE_CARRIER_ROLE: u8 = 0x1c;
 const BLE_CARRIER_SERVICE_UUID: u8 = 0x07;
 const BLE_CARRIER_MAC_ADDRESS: u8 = 0x1b;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
+enum BleRolesSupported {
+    OnlyPeripheral = 0,
+    OnlyCentral = 1,
+    PeripheralPreferred = 2,
+    CentralPreferred = 3,
+}
+
+impl TryFrom<u8> for BleRolesSupported {
+    type Error = anyhow::Error;
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        Ok(match v {
+            x if x == Self::OnlyPeripheral as u8 => Self::OnlyPeripheral,
+            x if x == Self::OnlyCentral as u8 => Self::OnlyCentral,
+            x if x == Self::PeripheralPreferred as u8 => Self::PeripheralPreferred,
+            x if x == Self::CentralPreferred as u8 => Self::CentralPreferred,
+            other => {
+                return Err(anyhow::anyhow!("Unsupported BLE role {other}"));
+            }
+        })
+    }
+}
+
+impl BLECarrierConfigurationRecord {
+    pub(super) fn peripheral_service_uuid(&self) -> Option<Uuid> {
+        match self.le_role {
+            BleRolesSupported::OnlyCentral => None,
+            BleRolesSupported::OnlyPeripheral
+            | BleRolesSupported::PeripheralPreferred
+            | BleRolesSupported::CentralPreferred => Some(self.service_uuid),
+        }
+    }
+
+    pub(super) fn central_service_uuid(&self) -> Option<Uuid> {
+        match self.le_role {
+            BleRolesSupported::OnlyPeripheral => None,
+            BleRolesSupported::OnlyCentral
+            | BleRolesSupported::PeripheralPreferred
+            | BleRolesSupported::CentralPreferred => Some(self.service_uuid),
+        }
+    }
+
+    pub(super) fn peripheral_mac_address(&self) -> Option<[u8; 6]> {
+        match self.le_role {
+            BleRolesSupported::OnlyCentral => None,
+            BleRolesSupported::OnlyPeripheral
+            | BleRolesSupported::PeripheralPreferred
+            | BleRolesSupported::CentralPreferred => self.mac_address,
+        }
+    }
+}
 
 impl RecordPayload for BLECarrierConfigurationRecord {
     fn record_type(&self) -> Cow<'_, [u8]> {
@@ -78,20 +134,20 @@ impl RecordPayload for BLECarrierConfigurationRecord {
         let mut buffer = Vec::new();
         buffer.push(0x02); // length
         buffer.push(BLE_CARRIER_ROLE); // LE Role
-        buffer.push(0x00); // LE Role: mdocPeripheralServerMode
+        buffer.push(self.le_role as u8);
 
-        let mut peripheral_service_uuid = self.peripheral_service_uuid.into_bytes();
-        peripheral_service_uuid.reverse();
-        buffer.push(peripheral_service_uuid.len() as u8 + 1);
+        let mut service_uuid = self.service_uuid.into_bytes();
+        service_uuid.reverse();
+        buffer.push(service_uuid.len() as u8 + 1);
         buffer.push(BLE_CARRIER_SERVICE_UUID);
-        buffer.extend_from_slice(peripheral_service_uuid.as_slice());
+        buffer.extend_from_slice(service_uuid.as_slice());
 
-        if let Some(peripheral_mac_address) = &self.peripheral_mac_address {
-            let mut peripheral_mac_address = peripheral_mac_address.to_vec();
-            peripheral_mac_address.reverse();
-            buffer.push(peripheral_mac_address.len() as u8 + 1);
+        if let Some(mac_address) = &self.mac_address {
+            let mut mac_address = mac_address.to_vec();
+            mac_address.reverse();
+            buffer.push(mac_address.len() as u8 + 1);
             buffer.push(BLE_CARRIER_MAC_ADDRESS);
-            buffer.extend_from_slice(peripheral_mac_address.as_slice());
+            buffer.extend_from_slice(mac_address.as_slice());
         }
 
         buffer.into()
@@ -128,21 +184,28 @@ impl TryFrom<&NdefRecord> for BLECarrierConfigurationRecord {
             .find(|entry| entry.r#type == BLE_CARRIER_ROLE)
             .ok_or(Self::Error::InvalidPayload)?
             .content;
-        if role.as_slice() != [0x00] {
-            return Err(anyhow::anyhow!("Unsupported BLE role {role:?}").into());
-        }
+        let [le_role] = role.as_slice() else {
+            return Err(anyhow::anyhow!("Invalid BLE role {role:?}").into());
+        };
+        let le_role = BleRolesSupported::try_from(*le_role)?;
 
         let mut service_uuid = entries
             .iter()
             .find(|entry| entry.r#type == BLE_CARRIER_SERVICE_UUID)
-            .ok_or(Self::Error::InvalidPayload)?
+            .ok_or(anyhow::anyhow!("Missing service uuid"))?
             .content
             .to_owned();
         service_uuid.reverse();
+        let service_uuid = Uuid::from_bytes(
+            service_uuid
+                .try_into()
+                .map_err(|v| anyhow::anyhow!("Invalid service uuid: {v:?}"))?,
+        );
 
-        let mac_address = if let Some(entry) = entries
-            .iter()
-            .find(|entry| entry.r#type == BLE_CARRIER_MAC_ADDRESS)
+        let mac_address = if le_role != BleRolesSupported::OnlyCentral
+            && let Some(entry) = entries
+                .iter()
+                .find(|entry| entry.r#type == BLE_CARRIER_MAC_ADDRESS)
         {
             let mut address = entry.content.to_owned();
             address.reverse();
@@ -156,12 +219,9 @@ impl TryFrom<&NdefRecord> for BLECarrierConfigurationRecord {
         };
 
         Ok(Self {
-            peripheral_service_uuid: Uuid::from_bytes(
-                service_uuid
-                    .try_into()
-                    .map_err(|v| anyhow::anyhow!("Invalid service uuid: {v:?}"))?,
-            ),
-            peripheral_mac_address: mac_address,
+            service_uuid,
+            mac_address,
+            le_role,
         })
     }
 }
@@ -256,6 +316,7 @@ impl TryInto<NdefRecord> for DeviceEngagementRecord {
     }
 }
 
+#[derive(Debug)]
 struct Entry {
     pub r#type: u8,
     pub content: Vec<u8>,

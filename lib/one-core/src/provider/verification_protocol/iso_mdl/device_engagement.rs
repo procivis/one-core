@@ -4,6 +4,8 @@ use anyhow::{Context, anyhow};
 use ciborium::cbor;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{Deserialize, Serialize, Serializer, de, ser};
+use serde_repr::{Deserialize_repr, Serialize_repr};
+use strum::Display;
 use uuid::Uuid;
 
 use super::nfc::{BLE_RECORD_TYPE, BLECarrierConfigurationRecord, DEVICE_ENGAGMENT_RECORD_TYPE};
@@ -27,28 +29,30 @@ pub(crate) enum Security {
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct DeviceRetrievalMethod {
-    // pub r#type: u8,
-    // pub version: u8,
-    pub retrieval_options: RetrievalOptions,
+#[expect(clippy::upper_case_acronyms)]
+#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq, Display)]
+#[repr(u8)]
+enum DeviceRetrievalType {
+    NFC = 1,
+    BLE = 2,
+    WifiAware = 3,
 }
 
-const RETRIEVAL_METHOD_TYPE_BLE: u8 = 2;
-const RETRIEVAL_METHOD_VERSION: u8 = 1;
-
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum RetrievalOptions {
-    Ble(BleOptions),
+pub(crate) enum DeviceRetrievalMethod {
+    BleV1(BleOptionsV1),
     // WifiOptions and NfcOptions not implemented
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct BleOptions {
-    // pub peripheral_server_mode_supported: bool, // required to be true
-    // pub central_client_mode_supported: bool,
-    pub peripheral_server_uuid: Uuid,
-    // pub client_central_uuid: Uuid,
+pub(crate) struct BleOptionsV1 {
+    /// filled when peripheral server mode supported
+    pub peripheral_server_uuid: Option<Uuid>,
+
+    /// filled when central client mode supported
+    pub client_central_uuid: Option<Uuid>,
+
+    /// optional when peripheral server mode supported
     pub peripheral_server_mac_address: Option<String>,
 }
 
@@ -103,15 +107,14 @@ impl DeviceEngagement {
                 select_message: Bstr(select_message),
                 request_message: None,
             },
-            DeviceRetrievalMethod {
-                retrieval_options: RetrievalOptions::Ble(BleOptions {
-                    peripheral_server_uuid: ble.peripheral_service_uuid,
-                    peripheral_server_mac_address: ble
-                        .peripheral_mac_address
-                        .as_ref()
-                        .map(deserialize_mac_address),
-                }),
-            },
+            DeviceRetrievalMethod::BleV1(BleOptionsV1 {
+                peripheral_server_uuid: ble.peripheral_service_uuid(),
+                peripheral_server_mac_address: ble
+                    .peripheral_mac_address()
+                    .as_ref()
+                    .map(deserialize_mac_address),
+                client_central_uuid: ble.central_service_uuid(),
+            }),
         ))
     }
 }
@@ -165,13 +168,15 @@ impl<'de> Deserialize<'de> for DeviceEngagement {
             .map_err(|_| de::Error::custom("Invalid DeviceEngagement"))?;
 
         let version = get_cbor_map_value(&map, 0)
-            .ok_or(de::Error::custom("Missing DeviceEngagement version"))?;
-        let version = version
+            .ok_or(de::Error::custom("Missing DeviceEngagement version"))?
             .deserialized()
             .map_err(|err| de::Error::custom(format!("Invalid DeviceEngagement version: {err}")))?;
 
         let security = get_cbor_map_value(&map, 1)
-            .ok_or(de::Error::custom("Missing DeviceEngagement security"))?;
+            .ok_or(de::Error::custom("Missing DeviceEngagement security"))?
+            .deserialized()
+            .map_err(|err| de::Error::custom(format!("Invalid Security: {err}")))?;
+
         let device_retrieval_methods = if let Some(value) = get_cbor_map_value(&map, 2) {
             value.to_owned().into_array().map_err(|_| {
                 de::Error::custom("Invalid DeviceEngagement device_retrieval_methods")
@@ -182,11 +187,18 @@ impl<'de> Deserialize<'de> for DeviceEngagement {
 
         Ok(DeviceEngagement {
             version,
-            security: deserialize_security::<D>(security.to_owned())?,
+            security,
             device_retrieval_methods: device_retrieval_methods
                 .into_iter()
-                .map(deserialize_device_retrieval_method::<D>)
-                .collect::<Result<Vec<_>, _>>()?,
+                .filter_map(|method| {
+                    method
+                        .deserialized::<DeviceRetrievalMethod>()
+                        .inspect_err(|err| {
+                            tracing::info!(%err, "Unrecognized/unsupported retrieval method");
+                        })
+                        .ok()
+                })
+                .collect(),
         })
     }
 }
@@ -204,37 +216,25 @@ impl Serialize for Security {
     }
 }
 
-fn deserialize_security<'de, D>(value: ciborium::Value) -> Result<Security, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let array = value
-        .into_array()
-        .map_err(|_| de::Error::custom("Invalid Security"))?;
+impl<'de> Deserialize<'de> for Security {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Tuple((u8, ciborium::Value));
 
-    if array.len() < 2 {
-        return Err(de::Error::custom("Invalid Security"));
-    }
+        let Tuple((version, key_bytes)) = Tuple::deserialize(deserializer)?;
 
-    let version = array
-        .first()
-        .ok_or(de::Error::custom("Missing Security version"))?
-        .as_integer()
-        .ok_or(de::Error::custom("Invalid Security version"))?;
-
-    match i128::from(version) {
-        1 => {
-            let key_bytes = array
-                .get(1)
-                .ok_or(de::Error::custom("missing EDeviceKeyBytes"))?;
-
-            Ok(Security::V1 {
+        match version {
+            1 => Ok(Self::V1 {
                 e_device_key_bytes: key_bytes.deserialized().map_err(de::Error::custom)?,
-            })
+            }),
+            other => Err(de::Error::custom(format!(
+                "Unsupported Security version: {other}"
+            ))),
         }
-        other => Err(de::Error::custom(format!(
-            "Unsupported Security version: {other}"
-        ))),
     }
 }
 
@@ -243,9 +243,9 @@ impl Serialize for DeviceRetrievalMethod {
     where
         S: Serializer,
     {
-        match &self.retrieval_options {
-            RetrievalOptions::Ble(options) => {
-                cbor!([RETRIEVAL_METHOD_TYPE_BLE, RETRIEVAL_METHOD_VERSION, options])
+        match &self {
+            Self::BleV1(options) => {
+                cbor!([DeviceRetrievalType::BLE, 1u8, options])
             }
         }
         .map_err(ser::Error::custom)?
@@ -253,60 +253,64 @@ impl Serialize for DeviceRetrievalMethod {
     }
 }
 
-fn deserialize_device_retrieval_method<'de, D>(
-    value: ciborium::Value,
-) -> Result<DeviceRetrievalMethod, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let array = value
-        .into_array()
-        .map_err(|_| de::Error::custom("Invalid DeviceRetrievalMethod"))?;
-
-    if array.len() < 3 {
-        return Err(de::Error::custom("Invalid DeviceRetrievalMethod"));
-    }
-
-    let r#type = array
-        .first()
-        .ok_or(de::Error::custom("Missing DeviceRetrievalMethod type"))?;
-    if r#type
-        .as_integer()
-        .is_none_or(|v| v != RETRIEVAL_METHOD_TYPE_BLE.into())
+impl<'de> Deserialize<'de> for DeviceRetrievalMethod {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
     {
-        return Err(de::Error::custom("Invalid DeviceRetrievalMethod type"));
+        #[derive(Deserialize)]
+        #[serde(transparent)]
+        struct Tuple((DeviceRetrievalType, u8, ciborium::Value));
+
+        let Tuple((r#type, version, options)) = Tuple::deserialize(deserializer)?;
+
+        match r#type {
+            DeviceRetrievalType::BLE => match version {
+                1 => Ok(Self::BleV1(options.deserialized().map_err(|err| {
+                    de::Error::custom(format!("Invalid BleOptions: {err}"))
+                })?)),
+                other => Err(de::Error::custom(format!(
+                    "Unsupported BLE options version: {other}"
+                ))),
+            },
+            unsupported => Err(de::Error::custom(format!(
+                "Unsupported DeviceRetrievalMethod type: {unsupported}"
+            ))),
+        }
     }
-
-    let version = array
-        .get(1)
-        .ok_or(de::Error::custom("Missing DeviceRetrievalMethod version"))?;
-    if version
-        .as_integer()
-        .is_none_or(|v| v != RETRIEVAL_METHOD_VERSION.into())
-    {
-        return Err(de::Error::custom("Invalid DeviceRetrievalMethod version"));
-    }
-
-    let options = array
-        .get(2)
-        .ok_or(de::Error::custom("Missing DeviceRetrievalMethod options"))?;
-
-    Ok(DeviceRetrievalMethod {
-        retrieval_options: RetrievalOptions::Ble(deserialize_ble_options::<D>(options.to_owned())?),
-    })
 }
 
-impl Serialize for BleOptions {
+impl Serialize for BleOptionsV1 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
+        let peripheral_server_mode_supported = self.peripheral_server_uuid.is_some();
+        let central_client_mode_supported = self.client_central_uuid.is_some();
+
         let mut data = cbor!({
-            0 => true, // peripheral_server_mode_supported
-            1 => false, // central_client_mode_supported
-            10 => ciborium::Value::Bytes(self.peripheral_server_uuid.into_bytes().to_vec())
+            0 => peripheral_server_mode_supported,
+            1 => central_client_mode_supported,
         })
         .map_err(ser::Error::custom)?;
+
+        let data_ref = data
+            .as_map_mut()
+            .ok_or(ser::Error::custom("data map is not a map"))?;
+
+        if let Some(peripheral_server_uuid) = &self.peripheral_server_uuid {
+            data_ref.push((
+                10.into(),
+                ciborium::Value::Bytes(peripheral_server_uuid.into_bytes().to_vec()),
+            ));
+        }
+
+        if let Some(client_central_uuid) = &self.client_central_uuid {
+            data_ref.push((
+                11.into(),
+                ciborium::Value::Bytes(client_central_uuid.into_bytes().to_vec()),
+            ));
+        }
 
         if let Some(peripheral_server_mac_address) = &self.peripheral_server_mac_address {
             let address: Vec<u8> =
@@ -320,55 +324,79 @@ impl Serialize for BleOptions {
     }
 }
 
-fn deserialize_ble_options<'de, D>(value: ciborium::Value) -> Result<BleOptions, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let map = value
-        .into_map()
-        .map_err(|_| de::Error::custom("Invalid BleOptions"))?;
-
-    let peripheral_server_mode_supported = get_cbor_map_value(&map, 0).ok_or(de::Error::custom(
-        "Missing BleOptions peripheral_server_mode_supported",
-    ))?;
-
-    if !peripheral_server_mode_supported
-        .as_bool()
-        .is_some_and(|v| v)
+impl<'de> Deserialize<'de> for BleOptionsV1 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
     {
-        return Err(de::Error::custom(
-            "Invalid BleOptions peripheral_server_mode_supported",
-        ));
-    }
+        let map = ciborium::Value::deserialize(deserializer)?
+            .into_map()
+            .map_err(|_| de::Error::custom("Invalid BleOptions"))?;
 
-    let peripheral_server_uuid = get_cbor_map_value(&map, 10)
-        .ok_or(de::Error::custom(
-            "Missing BleOptions peripheral_server_uuid",
-        ))?
-        .to_owned()
-        .into_bytes()
-        .map_err(|_| de::Error::custom("Invalid BleOptions peripheral_server_uuid"))?;
+        let peripheral_server_mode_supported: bool = get_cbor_map_value(&map, 0)
+            .ok_or(de::Error::custom(
+                "Missing BleOptions peripheral_server_mode_supported",
+            ))?
+            .deserialized()
+            .map_err(de::Error::custom)?;
 
-    let peripheral_server_mac_address = if let Some(address) = get_cbor_map_value(&map, 20) {
-        let bytes = address
-            .to_owned()
-            .into_bytes()
-            .map_err(|_| de::Error::custom("Invalid BleOptions peripheral_server_mac_address"))?;
-        Some(deserialize_mac_address(&bytes.try_into().map_err(
-            |_| de::Error::custom("Invalid BleOptions peripheral_server_mac_address"),
-        )?))
-    } else {
-        None
-    };
+        let central_client_mode_supported: bool = get_cbor_map_value(&map, 1)
+            .ok_or(de::Error::custom(
+                "Missing BleOptions central_client_mode_supported",
+            ))?
+            .deserialized()
+            .map_err(de::Error::custom)?;
 
-    Ok(BleOptions {
-        peripheral_server_uuid: Uuid::from_bytes(
-            peripheral_server_uuid
+        if !peripheral_server_mode_supported && !central_client_mode_supported {
+            return Err(de::Error::custom("Invalid BleOptions: no mode supported"));
+        }
+
+        let mut result = Self {
+            peripheral_server_uuid: None,
+            peripheral_server_mac_address: None,
+            client_central_uuid: None,
+        };
+
+        if peripheral_server_mode_supported {
+            let peripheral_server_uuid = get_cbor_map_value(&map, 10)
+                .ok_or(de::Error::custom(
+                    "Missing BleOptions peripheral_server_uuid",
+                ))?
+                .to_owned()
+                .into_bytes()
+                .map_err(|_| de::Error::custom("Invalid BleOptions peripheral_server_uuid"))?
                 .try_into()
-                .map_err(|_| de::Error::custom("Invalid BleOptions peripheral_server_uuid"))?,
-        ),
-        peripheral_server_mac_address,
-    })
+                .map_err(|_| de::Error::custom("Invalid BleOptions peripheral_server_uuid"))?;
+            result.peripheral_server_uuid = Some(Uuid::from_bytes(peripheral_server_uuid));
+
+            if let Some(peripheral_server_mac_address) = get_cbor_map_value(&map, 20) {
+                let bytes = peripheral_server_mac_address
+                    .to_owned()
+                    .into_bytes()
+                    .map_err(|_| {
+                        de::Error::custom("Invalid BleOptions peripheral_server_mac_address")
+                    })?
+                    .try_into()
+                    .map_err(|_| {
+                        de::Error::custom("Invalid BleOptions peripheral_server_mac_address")
+                    })?;
+                result.peripheral_server_mac_address = Some(deserialize_mac_address(&bytes));
+            }
+        }
+
+        if central_client_mode_supported {
+            let client_central_uuid = get_cbor_map_value(&map, 11)
+                .ok_or(de::Error::custom("Missing BleOptions client_central_uuid"))?
+                .to_owned()
+                .into_bytes()
+                .map_err(|_| de::Error::custom("Invalid BleOptions client_central_uuid"))?
+                .try_into()
+                .map_err(|_| de::Error::custom("Invalid BleOptions client_central_uuid"))?;
+            result.client_central_uuid = Some(Uuid::from_bytes(client_central_uuid));
+        }
+
+        Ok(result)
+    }
 }
 
 fn serialize_mac_address<S>(mac: &str) -> Result<[u8; 6], S::Error>
@@ -447,11 +475,15 @@ mod test {
         )
         .to_vec();
 
-        // failing due to unsupported BLE mode
-        let failure = ciborium::from_reader::<DeviceEngagement, _>(&data[..]).unwrap_err();
+        let parsed = ciborium::from_reader::<DeviceEngagement, _>(&data[..]).unwrap();
+        assert_eq!(parsed.version, MDLVersion::<1, 0>::default());
         assert_eq!(
-            failure.to_string(),
-            "Semantic(None, \"Invalid BleOptions peripheral_server_mode_supported\")"
+            parsed.device_retrieval_methods,
+            vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
+                peripheral_server_uuid: None,
+                peripheral_server_mac_address: None,
+                client_central_uuid: Some(uuid!("45efef74-2b2c-4837-a9a3-b0e1d05a6917")),
+            })]
         );
     }
 
@@ -469,18 +501,17 @@ mod test {
 
         assert_eq!(
             device_retrieval_method,
-            DeviceRetrievalMethod {
-                retrieval_options: RetrievalOptions::Ble(BleOptions {
-                    peripheral_server_uuid: uuid!("9dbd8e03-0e73-412d-9793-24552b59970a"),
-                    peripheral_server_mac_address: None,
-                }),
-            }
+            DeviceRetrievalMethod::BleV1(BleOptionsV1 {
+                peripheral_server_uuid: Some(uuid!("9dbd8e03-0e73-412d-9793-24552b59970a")),
+                peripheral_server_mac_address: None,
+                client_central_uuid: None
+            }),
         );
     }
 
     #[test]
     fn test_device_engagement_nfc_iso_example() {
-        // ISO 18013-5, D.3.3
+        // ISO 18013-5, D.3.3 - handover select message during negotiated handover
         let data = hex!(
             "91020f487315d10209616301013001046d646f631a200c016170706c69636174696f6e2f766e642e626c756574\
              6f6f74682e6c652e6f6f6230081b28128b37282801021c015c1e580469736f2e6f72673a31383031333a646576\
@@ -490,11 +521,11 @@ mod test {
         )
         .to_vec();
 
-        // failing due to unsupported BLE mode
+        // failing: negotiated handover select message does not include service UUID
         let failure =
             DeviceEngagement::parse_nfc(&Base64UrlSafeNoPadding::encode_to_string(data).unwrap())
                 .unwrap_err();
-        assert_eq!(failure.to_string(), "Other error: Unsupported BLE role [1]");
+        assert_eq!(failure.to_string(), "Other error: Missing service uuid");
     }
 
     fn get_example_engagement() -> DeviceEngagement {
@@ -506,12 +537,11 @@ mod test {
                 e_device_key_bytes: EmbeddedCbor::new(ka_device.ephemeral_key().to_owned())
                     .unwrap(),
             },
-            device_retrieval_methods: vec![DeviceRetrievalMethod {
-                retrieval_options: RetrievalOptions::Ble(BleOptions {
-                    peripheral_server_uuid: uuid!("18c39646-2c91-43d6-b0c7-8cc86efd2573"),
-                    peripheral_server_mac_address: Some("F6:AC:82:54:69:B7".to_string()),
-                }),
-            }],
+            device_retrieval_methods: vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
+                peripheral_server_uuid: Some(uuid!("18c39646-2c91-43d6-b0c7-8cc86efd2573")),
+                peripheral_server_mac_address: Some("F6:AC:82:54:69:B7".to_string()),
+                client_central_uuid: None,
+            })],
         }
     }
 }

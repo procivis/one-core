@@ -62,7 +62,7 @@ use crate::provider::verification_protocol::iso_mdl::ble_holder::{
 use crate::provider::verification_protocol::iso_mdl::ble_verifier::IsoMdlVerifier;
 use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
-    BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
+    BleOptionsV1, DeviceEngagement, DeviceRetrievalMethod, Security,
 };
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -900,12 +900,11 @@ impl ProofService {
                 e_device_key_bytes: EmbeddedCbor::new(device_key.ephemeral_key().to_owned())
                     .map_err(|e| ProofServiceError::MappingError(e.to_string()))?,
             },
-            device_retrieval_methods: vec![DeviceRetrievalMethod {
-                retrieval_options: RetrievalOptions::Ble(BleOptions {
-                    peripheral_server_uuid: ble_server.service_uuid,
-                    peripheral_server_mac_address: ble_server.mac_address.clone(),
-                }),
-            }],
+            device_retrieval_methods: vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
+                peripheral_server_uuid: Some(ble_server.service_uuid),
+                peripheral_server_mac_address: ble_server.mac_address.clone(),
+                client_central_uuid: None,
+            })],
         };
 
         let (qr_code, qr_engagement) = if engagement.contains(&VerificationEngagement::QrCode) {

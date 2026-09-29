@@ -12,7 +12,7 @@ use super::common::{
     DeviceRequest, DocRequest, EphemeralSessionKey, ItemsRequest, KeyAgreementKey, SkDevice,
     create_session_transcript_bytes, to_cbor,
 };
-use super::device_engagement::{BleOptions, DeviceEngagement, Security};
+use super::device_engagement::{BleOptionsV1, DeviceEngagement, Security};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
@@ -136,7 +136,7 @@ pub(crate) async fn setup_verifier_session(
 #[expect(clippy::too_many_arguments)]
 pub(crate) async fn start_client(
     ble: &BleWaiter,
-    ble_options: BleOptions,
+    ble_options: BleOptionsV1,
     verifier_session: VerifierSession,
     proof: Proof,
     interaction: Interaction,
@@ -150,7 +150,13 @@ pub(crate) async fn start_client(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
 ) -> Result<(), VerificationProtocolError> {
-    let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
+    let peripheral_server_uuid = ble_options
+        .peripheral_server_uuid
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "BLE peripheral server mode not supported".to_string(),
+        ))?
+        .to_owned();
 
     let (sender, receiver) = oneshot::channel();
 
@@ -226,7 +232,7 @@ pub(crate) async fn start_client(
 /// we may need to send End command, disconnect BLE central and set proof state to error
 #[expect(clippy::too_many_arguments)]
 async fn verifier_flow(
-    ble_options: BleOptions,
+    ble_options: BleOptionsV1,
     verifier_session: VerifierSession,
     proof: &Proof,
     interaction: &Interaction,
@@ -242,14 +248,19 @@ async fn verifier_flow(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
 ) -> Result<(), VerificationProtocolError> {
-    let (device, mtu_size) =
-        connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
+    let peripheral_server_uuid = ble_options
+        .peripheral_server_uuid
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "BLE peripheral server mode not supported".to_string(),
+        ))?
+        .to_owned();
+
+    let (device, mtu_size) = connect_to_server(central, peripheral_server_uuid.to_string()).await?;
 
     if let Err(err) = sender.send(device.to_owned()) {
         tracing::warn!("failed to send device discovery data: {err:?}");
     }
-
-    let peripheral_server_uuid = ble_options.peripheral_server_uuid;
 
     let result = process_proof(
         ble_options,
@@ -284,7 +295,7 @@ async fn verifier_flow(
 
 #[expect(clippy::too_many_arguments)]
 async fn process_proof(
-    ble_options: BleOptions,
+    ble_options: BleOptionsV1,
     verifier_session: VerifierSession,
     proof: &Proof,
     interaction: &Interaction,
@@ -301,10 +312,17 @@ async fn process_proof(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
 ) -> Result<(), VerificationProtocolError> {
+    let peripheral_server_uuid =
+        ble_options
+            .peripheral_server_uuid
+            .ok_or(VerificationProtocolError::Failed(
+                "BLE peripheral server mode not supported".to_string(),
+            ))?;
+
     send_session_establishment(
         central,
         device,
-        ble_options.peripheral_server_uuid.to_string(),
+        peripheral_server_uuid.to_string(),
         mtu_size,
         verifier_session.reader_key,
         verifier_session.device_request_encrypted,
@@ -324,12 +342,7 @@ async fn process_proof(
         .await
         .error_while("updating proof")?;
 
-    let session_data = read_response(
-        central,
-        device,
-        ble_options.peripheral_server_uuid.to_string(),
-    )
-    .await?;
+    let session_data = read_response(central, device, peripheral_server_uuid.to_string()).await?;
 
     let received_status_termination = session_data
         .status
@@ -337,7 +350,7 @@ async fn process_proof(
     if !received_status_termination {
         send_end(
             device.device_address.to_owned(),
-            &ble_options.peripheral_server_uuid,
+            &peripheral_server_uuid,
             central,
         )
         .await;

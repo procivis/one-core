@@ -13,7 +13,7 @@ use crate::provider::verification_protocol::iso_mdl::ble_verifier::{
     IsoMdlVerifier, setup_verifier_session, start_client,
 };
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
-    DeviceEngagement, RetrievalOptions,
+    DeviceEngagement, DeviceRetrievalMethod,
 };
 
 impl ProofService {
@@ -129,7 +129,7 @@ impl ProofService {
             .await
             .error_while("creating proof")?;
 
-        let RetrievalOptions::Ble(ble_options) = device_retrieval_method.retrieval_options;
+        let DeviceRetrievalMethod::BleV1(ble_options) = device_retrieval_method;
 
         start_client(
             ble,
