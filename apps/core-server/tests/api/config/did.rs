@@ -167,6 +167,19 @@ async fn test_tdw_did_method_config() {
     let resp = resp.json_value().await;
 
     assert!(resp["did"]["TDW"].is_object());
+    assert!(resp["did"]["WEBVH"].is_object());
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["methodNames"],
+        json!(["webvh"])
+    );
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["operations"],
+        json!(["CREATE", "RESOLVE", "DEACTIVATE"])
+    );
+    assert_eq!(
+        resp["did"]["WEBVH"]["capabilities"]["features"],
+        json!(["SUPPORTS_EXTERNAL_HOSTING"])
+    );
     assert_eq!(
         resp["did"]["TDW"]["capabilities"]["keyAlgorithms"]
             .as_array()

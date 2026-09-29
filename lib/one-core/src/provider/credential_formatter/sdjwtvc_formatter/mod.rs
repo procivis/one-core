@@ -371,7 +371,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "ARRAY".to_string(),
         ];
         let issuance_exchange_protocols = vec![IssuanceProtocolType::OpenId4VciFinal1_0];
-        let mut issuance_did_methods = vec![DidType::Tdw];
+        let mut issuance_did_methods = vec![DidType::Tdw, DidType::Webvh];
         let mut issuance_identifier_types = vec![IdentifierType::Did];
         let mut proof_exchange_protocols =
             vec![VerificationProtocolType::OpenId4VpProximityDraft00];
@@ -423,7 +423,13 @@ impl CredentialFormatter for SDJWTVCFormatter {
             verification_identifier_types,
             holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],
             holder_key_algorithms: signing_algorithms,
-            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::Tdw],
+            holder_did_methods: vec![
+                DidType::Web,
+                DidType::Key,
+                DidType::Jwk,
+                DidType::Tdw,
+                DidType::Webvh,
+            ],
         }
     }
 

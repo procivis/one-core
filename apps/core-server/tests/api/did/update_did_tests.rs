@@ -169,3 +169,72 @@ async fn test_update_did_tdw_success() {
     let body_json = response.json_value().await;
     body_json["deactivated"].assert_eq(&Value::Bool(true));
 }
+
+#[tokio::test]
+async fn test_create_and_deactivate_webvh_at_existing_log_endpoint() {
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    let response = context
+        .api
+        .keys
+        .create(org.id, "ECDSA", "webvh document key")
+        .await;
+    assert_eq!(response.status(), 201);
+    let key_id = Uuid::parse_str(response.json_value().await["id"].as_str().unwrap())
+        .unwrap()
+        .into();
+
+    let response = context
+        .api
+        .dids
+        .create(
+            org.id,
+            DidKeys {
+                assertion_method: vec![key_id],
+                authentication: vec![key_id],
+                capability_delegation: vec![],
+                capability_invocation: vec![],
+                key_agreement: vec![],
+            },
+            "WEBVH",
+            "test did:webvh",
+            Some(serde_json::json!({"externalHostingUrl": "https://example.com/issuer"})),
+        )
+        .await;
+    assert_eq!(response.status(), 201);
+    let did_id = Uuid::parse_str(response.json_value().await["id"].as_str().unwrap()).unwrap();
+
+    let response = context.api.dids.get_did_webvh(&did_id).await;
+    assert_eq!(response.status(), 200);
+    let log = response.text().await;
+    let first: Value = serde_json::from_str(&log).unwrap();
+    assert_eq!(first["parameters"]["method"], "did:webvh:1.0");
+    assert_eq!(first["parameters"]["portable"], false);
+    assert_eq!(first["parameters"]["witness"], serde_json::json!({}));
+    assert_eq!(first["parameters"]["watchers"], serde_json::json!([]));
+    assert_eq!(first["parameters"]["nextKeyHashes"], serde_json::json!([]));
+    let verification_method = &first["state"]["verificationMethod"][0];
+    let key_id = verification_method["id"]
+        .as_str()
+        .unwrap()
+        .rsplit_once('#')
+        .unwrap()
+        .1;
+    assert_eq!(verification_method["publicKeyJwk"]["kid"], key_id);
+
+    let response = context.api.dids.deactivate(&did_id).await;
+    assert_eq!(response.status(), 204);
+    let response = context.api.dids.get_did_webvh(&did_id).await;
+    assert_eq!(response.status(), 200);
+    let log = response.text().await;
+    let entries: Vec<Value> = log
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(entries.len(), 2);
+    assert_eq!(entries[1]["parameters"]["deactivated"], true);
+    assert_eq!(
+        entries[1]["parameters"]["updateKeys"],
+        serde_json::json!([])
+    );
+    assert_eq!(entries[0]["state"], entries[1]["state"]);
+}

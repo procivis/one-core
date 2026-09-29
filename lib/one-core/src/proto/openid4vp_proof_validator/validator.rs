@@ -596,6 +596,7 @@ fn check_did_method_allowed(
 ) -> Result<(), OpenID4VCError> {
     let did_type = match did.method() {
         "tdw" => DidType::Tdw,
+        "webvh" => DidType::Webvh,
         method => DidType::from_str(method.to_uppercase().as_str()).map_err(|_| {
             OpenID4VCError::ValidationError(format!(
                 "Unsupported holder DID method: {}",

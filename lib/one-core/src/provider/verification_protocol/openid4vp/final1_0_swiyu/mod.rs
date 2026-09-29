@@ -144,7 +144,7 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         VerificationProtocolCapabilities {
             features,
             supported_transports: vec![TransportType::Http],
-            did_methods: vec![DidType::Tdw],
+            did_methods: vec![DidType::Tdw, DidType::Webvh],
             verifier_identifier_types: vec![IdentifierType::Did],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
             supported_encryption_algorithms: vec![

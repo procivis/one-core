@@ -330,7 +330,13 @@ impl CredentialFormatter for JsonLdBbsplus {
                 Features::SupportsTxCode,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
-            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::Tdw],
+            issuance_did_methods: vec![
+                DidType::Key,
+                DidType::Web,
+                DidType::Jwk,
+                DidType::Tdw,
+                DidType::Webvh,
+            ],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),
@@ -366,7 +372,13 @@ impl CredentialFormatter for JsonLdBbsplus {
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
-            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::Tdw],
+            holder_did_methods: vec![
+                DidType::Web,
+                DidType::Key,
+                DidType::Jwk,
+                DidType::Tdw,
+                DidType::Webvh,
+            ],
         }
     }
 

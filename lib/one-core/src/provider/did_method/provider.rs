@@ -17,6 +17,7 @@ use super::resolver::{DidCachingLoader, DidResolver};
 use super::tdw::DidTdw;
 use super::universal::UniversalDidMethod;
 use super::web::WebDidMethod;
+use super::webvh::DidWebvh;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     self, CacheEntitiesConfig, CacheEntityCacheType, CoreConfig, DidType, Fields,
@@ -135,7 +136,7 @@ impl DidMethodProvider for DidMethodProviderImpl {
     }
 }
 
-fn initialize_non_tdw_provider(
+fn initialize_independent_provider(
     name: &DidMethodId,
     fields: &Fields<DidType>,
     core_base_url: &Option<String>,
@@ -166,10 +167,10 @@ fn initialize_non_tdw_provider(
             fields.merge_fields(),
             client.clone(),
         )?),
-        DidType::Tdw => {
+        DidType::Tdw | DidType::Webvh => {
             return Err(
-                ServiceError::MappingError("Invalid intialization".to_string())
-                    .error_while("initializing DID tdw")
+                ServiceError::MappingError("Invalid initialization".to_string())
+                    .error_while("initializing dependent DID provider")
                     .into(),
             );
         }
@@ -177,23 +178,42 @@ fn initialize_non_tdw_provider(
     Ok(Arc::new(CapabilityChecked(provider)))
 }
 
-fn initialize_tdw_provider(
+fn initialize_dependent_provider(
     name: &DidMethodId,
     fields: &Fields<DidType>,
     core_base_url: &Option<String>,
     intermediary_provider: &Arc<dyn DidMethodProvider>,
     key_provider: &Arc<dyn KeyProvider>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     client: &Arc<dyn HttpClient>,
 ) -> Result<Arc<dyn DidMethod>, InitializationError> {
-    let did_tdw = Arc::new(DidTdw::new(
-        name.to_owned(),
-        fields.merge_fields(),
-        core_base_url.clone(),
-        client.clone(),
-        intermediary_provider.clone(),
-        key_provider.clone(),
-    )?);
-    Ok(Arc::new(CapabilityChecked(did_tdw)))
+    let method: Arc<dyn DidMethod> = match fields.r#type {
+        DidType::Tdw => Arc::new(DidTdw::new(
+            name.to_owned(),
+            fields.merge_fields(),
+            core_base_url.clone(),
+            client.clone(),
+            intermediary_provider.clone(),
+            key_provider.clone(),
+        )?),
+        DidType::Webvh => Arc::new(DidWebvh::new(
+            name.to_owned(),
+            fields.merge_fields(),
+            core_base_url.clone(),
+            client.clone(),
+            intermediary_provider.clone(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+        )?),
+        _ => {
+            return Err(
+                ServiceError::MappingError("Invalid dependent DID type".to_string())
+                    .error_while("initializing dependent DID provider")
+                    .into(),
+            );
+        }
+    };
+    Ok(Arc::new(CapabilityChecked(method)))
 }
 
 pub(crate) fn did_method_provider_from_config(
@@ -204,17 +224,17 @@ pub(crate) fn did_method_provider_from_config(
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
 ) -> Result<Arc<dyn DidMethodProvider>, ConfigValidationError> {
-    // did:tdw cannot be constructed directly, as it needs a did resolver internally
+    // did:tdw and did:webvh depend on did:key to verify their update proofs.
     let directory = {
-        let (tdw, non_tdw): (Vec<_>, Vec<_>) = config
+        let (dependent_methods, independent_methods): (Vec<_>, Vec<_>) = config
             .did
             .iter_mut()
-            .partition(|(_, entry)| entry.r#type == DidType::Tdw);
+            .partition(|(_, entry)| matches!(entry.r#type, DidType::Tdw | DidType::Webvh));
 
-        let non_tdw_directory = ProviderDirectory::initialize(
-            non_tdw.into_iter(),
+        let independent_directory = ProviderDirectory::initialize(
+            independent_methods.into_iter(),
             |name: &DidMethodId, fields: &Fields<DidType>| {
-                initialize_non_tdw_provider(
+                initialize_independent_provider(
                     name,
                     fields,
                     &core_base_url,
@@ -230,25 +250,26 @@ pub(crate) fn did_method_provider_from_config(
             remote_entity_cache_repository.clone(),
         );
         let intermediary_provider: Arc<dyn DidMethodProvider> = Arc::new(
-            DidMethodProviderImpl::new(did_caching_loader, non_tdw_directory.clone()),
+            DidMethodProviderImpl::new(did_caching_loader, independent_directory.clone()),
         );
 
         let mut directory = ProviderDirectory::initialize(
-            tdw.into_iter(),
+            dependent_methods.into_iter(),
             |name: &DidMethodId, fields: &Fields<DidType>| {
-                initialize_tdw_provider(
+                initialize_dependent_provider(
                     name,
                     fields,
                     &core_base_url,
                     &intermediary_provider,
                     &key_provider,
+                    &key_algorithm_provider,
                     &client,
                 )
             },
         )
-        .error_while("initializing tdw DID providers")?;
+        .error_while("initializing dependent DID providers")?;
 
-        directory.merge(non_tdw_directory);
+        directory.merge(independent_directory);
         directory
     };
 

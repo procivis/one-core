@@ -222,7 +222,13 @@ impl CredentialFormatter for SDJWTFormatter {
                 Features::SupportsTxCode,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
-            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::Tdw],
+            issuance_did_methods: vec![
+                DidType::Key,
+                DidType::Web,
+                DidType::Jwk,
+                DidType::Tdw,
+                DidType::Webvh,
+            ],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpFinal1_0,
@@ -248,7 +254,13 @@ impl CredentialFormatter for SDJWTFormatter {
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::MlDsa,
             ],
-            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::Tdw],
+            holder_did_methods: vec![
+                DidType::Web,
+                DidType::Key,
+                DidType::Jwk,
+                DidType::Tdw,
+                DidType::Webvh,
+            ],
         }
     }
 

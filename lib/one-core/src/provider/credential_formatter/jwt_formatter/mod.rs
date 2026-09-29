@@ -263,7 +263,13 @@ impl CredentialFormatter for JWTFormatter {
                 Features::SupportsTxCode,
             ],
             selective_disclosure: vec![],
-            issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::Tdw],
+            issuance_did_methods: vec![
+                DidType::Key,
+                DidType::Web,
+                DidType::Jwk,
+                DidType::Tdw,
+                DidType::Webvh,
+            ],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpFinal1_0,
@@ -303,7 +309,13 @@ impl CredentialFormatter for JWTFormatter {
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::MlDsa,
             ],
-            holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::Tdw],
+            holder_did_methods: vec![
+                DidType::Web,
+                DidType::Key,
+                DidType::Jwk,
+                DidType::Tdw,
+                DidType::Webvh,
+            ],
         }
     }
 

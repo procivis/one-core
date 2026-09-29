@@ -125,6 +125,32 @@ did:
             min: 0
             max: 1
       private:
+  WEBVH:
+    type: "WEBVH"
+    display: "did.webvh"
+    order: 22
+    enabled: true
+    params:
+      public:
+        keys:
+          min: 1
+          max: 5
+          authentication:
+            min: 0
+            max: 5
+          assertionMethod:
+            min: 0
+            max: 5
+          keyAgreement:
+            min: 0
+            max: 1
+          capabilityInvocation:
+            min: 0
+            max: 1
+          capabilityDelegation:
+            min: 0
+            max: 1
+      private:
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"

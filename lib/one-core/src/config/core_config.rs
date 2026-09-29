@@ -423,6 +423,9 @@ pub enum DidType {
     #[serde(rename = "TDW")]
     #[strum(serialize = "TDW")]
     Tdw,
+    #[serde(rename = "WEBVH")]
+    #[strum(serialize = "WEBVH")]
+    Webvh,
 }
 
 pub type DatatypeConfig = ConfigBlock<String, DatatypeType>;
