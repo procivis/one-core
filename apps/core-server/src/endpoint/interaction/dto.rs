@@ -20,7 +20,7 @@ use strum::Display;
 use url::Url;
 use utoipa::ToSchema;
 
-use crate::dto::common::ecosystem::EcosystemOutcomesRestDTO;
+use crate::dto::common::ecosystem::EcosystemErrorsRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::credential_schema::dto::KeyStorageSecurityRestEnum;
 
@@ -59,9 +59,8 @@ pub(crate) struct HandleInvitationRequestRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HandleInvitationResponseRestDTO {
-    /// One entry per ecosystem provider consulted. Empty when the organisation has no
-    /// ecosystem selected.
-    pub ecosystem_errors: EcosystemOutcomesRestDTO,
+    /// One entry per ecosystem provider that rejected the artifact.
+    pub ecosystem_errors: EcosystemErrorsRestDTO,
     pub interaction_id: InteractionId,
     pub interaction_type: InteractionTypeRestEnum,
     /// Requested proof.
@@ -176,9 +175,8 @@ pub(crate) struct IssuanceRejectRequestRestDTO {
 #[from(IssuanceAcceptResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssuanceAcceptResponseRestDTO {
-    /// One entry per ecosystem provider consulted. Empty when the organisation has no
-    /// ecosystem selected.
-    pub ecosystem_errors: EcosystemOutcomesRestDTO,
+    /// One entry per ecosystem provider that rejected the artifact.
+    pub ecosystem_errors: EcosystemErrorsRestDTO,
     /// Deprecated. Use `credentialIds`.
     #[schema(deprecated = true)]
     pub id: CredentialId,

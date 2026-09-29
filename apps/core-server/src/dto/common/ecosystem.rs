@@ -13,6 +13,11 @@ use utoipa::ToSchema;
 }))]
 pub(crate) struct EcosystemOutcomesRestDTO(IndexMap<String, EcosystemOutcomeRestDTO>);
 
+/// Only ecosystems that rejected the artifact, keyed by provider id.
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(transparent)]
+pub(crate) struct EcosystemErrorsRestDTO(IndexMap<String, EcosystemOutcomeRestDTO>);
+
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -56,5 +61,15 @@ impl From<EcosystemOutcomes> for EcosystemOutcomesRestDTO {
                 })
                 .collect(),
         )
+    }
+}
+
+impl From<EcosystemOutcomes> for EcosystemErrorsRestDTO {
+    fn from(value: EcosystemOutcomes) -> Self {
+        let EcosystemOutcomesRestDTO(mut outcomes) = value.into();
+        outcomes.retain(|_, outcome| {
+            matches!(&outcome.result, EcosystemTrustResultRestEnum::NotTrusted)
+        });
+        Self(outcomes)
     }
 }

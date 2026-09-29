@@ -1097,7 +1097,6 @@ impl ProofService {
         }
 
         let mut result = TrustInformationDetailResponseDTO {
-            // an untrusted verifier is an answer, not a failed request, so this is a 200
             ecosystem_errors: recorded_ecosystem_outcomes(id.into(), &*self.history_repository)
                 .await?,
             ..Default::default()

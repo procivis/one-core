@@ -8,7 +8,7 @@ use strum::EnumMessage;
 use thiserror::Error;
 
 use crate::binding::history::EcosystemOutcomeBindingDTO;
-use crate::binding::mapper::convert_ecosystem_outcomes;
+use crate::binding::mapper::convert_ecosystem_errors;
 
 #[derive(Debug, Error)]
 pub(crate) enum SDKError {
@@ -48,7 +48,7 @@ impl From<ErrorData> for ErrorDataBindingDTO {
     fn from(value: ErrorData) -> Self {
         match value {
             ErrorData::EcosystemsResolved(outcomes) => Self {
-                ecosystem_errors: Some(convert_ecosystem_outcomes(&outcomes)),
+                ecosystem_errors: Some(convert_ecosystem_errors(&outcomes)),
             },
         }
     }

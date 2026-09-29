@@ -69,8 +69,9 @@ use super::credential_schema::{
 };
 use super::did::{DidListQueryBindingDTO, DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use super::history::{
-    EcosystemOutcomeBindingDTO, HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO,
-    HistoryListQueryBindingDTO, HistoryMetadataBinding, MultiLangStringBindingDTO,
+    EcosystemOutcomeBindingDTO, EcosystemTrustResultBindingEnum, HistoryErrorMetadataBindingDTO,
+    HistoryListItemBindingDTO, HistoryListQueryBindingDTO, HistoryMetadataBinding,
+    MultiLangStringBindingDTO,
 };
 use super::identifier::{CreateIdentifierDidRequestBindingDTO, IdentifierListQueryBindingDTO};
 use super::interaction::{
@@ -305,6 +306,17 @@ pub(crate) fn convert_ecosystem_outcomes(
         .collect()
 }
 
+pub(crate) fn convert_ecosystem_errors(
+    value: &EcosystemOutcomes,
+) -> HashMap<String, EcosystemOutcomeBindingDTO> {
+    convert_ecosystem_outcomes(value)
+        .into_iter()
+        .filter(|(_, outcome)| {
+            matches!(&outcome.result, EcosystemTrustResultBindingEnum::NotTrusted)
+        })
+        .collect()
+}
+
 impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
     fn from(value: HandleInvitationResultDTO) -> Self {
         match value {
@@ -325,7 +337,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 key_algorithms,
                 requires_wallet_instance_attestation,
                 ecosystem: convert_inner(ecosystem),
-                ecosystem_errors: convert_ecosystem_outcomes(&ecosystem_errors),
+                ecosystem_errors: convert_ecosystem_errors(&ecosystem_errors),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
@@ -338,7 +350,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 authorization_code_flow_url,
                 protocol,
                 ecosystem: convert_inner(ecosystem),
-                ecosystem_errors: convert_ecosystem_outcomes(&ecosystem_errors),
+                ecosystem_errors: convert_ecosystem_errors(&ecosystem_errors),
             },
             HandleInvitationResultDTO::ProofRequest {
                 interaction_id,
@@ -351,7 +363,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 proof_id: proof_id.to_string(),
                 protocol,
                 ecosystem: convert_inner(ecosystem),
-                ecosystem_errors: convert_ecosystem_outcomes(&ecosystem_errors),
+                ecosystem_errors: convert_ecosystem_errors(&ecosystem_errors),
             },
         }
     }

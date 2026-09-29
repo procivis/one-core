@@ -173,6 +173,28 @@ async fn test_get_credential_trust_detail_success() {
         )
         .await;
 
+    let mut outcomes = EcosystemOutcomes::validated("EUDI".into());
+    outcomes.record(
+        "OTHER".into(),
+        Err(HistoryErrorMetadata {
+            error_code: ErrorCode::BR_0477,
+            message: "not on the trust list".to_string(),
+        }),
+    );
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                entity_id: Some(credential.id.into()),
+                action: Some(HistoryAction::EcosystemsResolved),
+                metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes)),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
     let resp = context
         .api
@@ -209,7 +231,12 @@ async fn test_get_credential_trust_detail_success() {
         resp,
         json!({
           "ecosystem": "EUDI",
-          "ecosystemErrors": {},
+          "ecosystemErrors": {
+            "OTHER": {
+              "result": "NOT_TRUSTED",
+              "error": { "code": "BR_0477", "message": "not on the trust list" }
+            }
+          },
           "eudiEcosystem": rp_data,
           "issuer": rp_data
         })

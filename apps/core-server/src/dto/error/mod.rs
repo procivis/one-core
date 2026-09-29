@@ -10,7 +10,7 @@ use proc_macros::options_not_nullable;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::dto::common::ecosystem::EcosystemOutcomesRestDTO;
+use crate::dto::common::ecosystem::EcosystemErrorsRestDTO;
 
 #[options_not_nullable]
 #[derive(Serialize, ToSchema)]
@@ -30,7 +30,7 @@ pub(crate) struct ErrorResponseRestDTO {
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ErrorDataRestDTO {
-    pub ecosystem_errors: Option<EcosystemOutcomesRestDTO>,
+    pub ecosystem_errors: Option<EcosystemErrorsRestDTO>,
 }
 
 impl From<ErrorData> for ErrorDataRestDTO {

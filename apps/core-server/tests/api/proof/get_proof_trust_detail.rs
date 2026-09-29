@@ -1,5 +1,9 @@
+use one_core::error::ErrorCode;
 use one_core::model::blob::BlobType;
-use one_core::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
+use one_core::model::ecosystem::EcosystemOutcomes;
+use one_core::model::history::{
+    HistoryAction, HistoryErrorMetadata, HistoryMetadata, WalletRelyingPartyMetadata,
+};
 use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
@@ -109,6 +113,28 @@ async fn test_get_proof_trust_detail_success() {
         )
         .await;
 
+    let mut outcomes = EcosystemOutcomes::validated("EUDI".into());
+    outcomes.record(
+        "OTHER".into(),
+        Err(HistoryErrorMetadata {
+            error_code: ErrorCode::BR_0477,
+            message: "not on the trust list".to_string(),
+        }),
+    );
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                entity_id: Some(proof.id.into()),
+                action: Some(HistoryAction::EcosystemsResolved),
+                metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes)),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
     let resp = context.api.proofs.get_trust_detail(&proof.id).await;
 
@@ -141,7 +167,12 @@ async fn test_get_proof_trust_detail_success() {
         resp,
         json!({
             "ecosystem": "EUDI",
-            "ecosystemErrors": {},
+            "ecosystemErrors": {
+                "OTHER": {
+                    "result": "NOT_TRUSTED",
+                    "error": { "code": "BR_0477", "message": "not on the trust list" }
+                }
+            },
             "eudiEcosystem": rp_data,
             "verifier": rp_data
         })

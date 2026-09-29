@@ -7,7 +7,7 @@ use one_dto_mapper::{From, convert_inner};
 use standardized_types::etsi_119_475::registration_certificate::SupervisoryAuthority;
 
 use super::history::EcosystemOutcomeBindingDTO;
-use super::mapper::convert_ecosystem_outcomes;
+use super::mapper::convert_ecosystem_errors;
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(TrustInformationDetailResponseDTO)]
@@ -19,8 +19,8 @@ pub struct TrustInformationDetailResponseBindingDTO {
     pub issuer: Option<TrustInformationDetailResponseBindingEnum>,
     #[from(with_fn = convert_inner)]
     pub verifier: Option<TrustInformationDetailResponseBindingEnum>,
-    /// One entry per ecosystem provider consulted, keyed by provider id.
-    #[from(with_fn_ref = "convert_ecosystem_outcomes")]
+    /// One entry per ecosystem provider that rejected the artifact, keyed by provider id.
+    #[from(with_fn_ref = "convert_ecosystem_errors")]
     pub ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
 }
 
