@@ -63,20 +63,58 @@ env = { "ONE_app__serverPort" = "3001", "ONE_app__databaseUrl" = "mysql://core:8
 args    = ["watch", "--ignore", "*.md", "--ignore", "*.yaml", "--ignore", "*.yml", "--exec", "make run"]
 command = "cargo"
 
+[tasks.nextest]
+install_crate = { crate_name = "cargo-nextest", min_version = "0.9.115", binary = "cargo", test_arg = ["nextest", "--version"] }
+
 [tasks.test]
-args    = ["test"]
+args         = ["nextest", "run", "--workspace"]
+command      = "cargo"
+dependencies = ["nextest"]
+
+[tasks.doc-tests]
+args    = ["test", "--workspace", "--doc"]
 command = "cargo"
+
+# Drops every test database on the local containers: the shared init databases
+# and the slot databases of all checkouts. Older test fixtures left databases
+# named by a 26-character ULID behind; they go too.
+[tasks.test-db-clean]
+script = '''
+docker exec core-mariadb-1 sh -c 'mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" -N -e "SELECT CONCAT(\"DROP DATABASE \`\", schema_name, \"\`;\") FROM information_schema.schemata WHERE schema_name LIKE \"INIT_DB%\" OR schema_name LIKE \"one_core_test%\" OR schema_name REGEXP \"^[0-9A-HJKMNP-TV-Z]{26}$\"" | mariadb -uroot -p"$MYSQL_ROOT_PASSWORD"' || true
+docker exec core-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT format(\$q\$DROP DATABASE %I WITH (FORCE);\$q\$, datname) FROM pg_database WHERE datname LIKE \$q\$INIT_DB%\$q\$ OR datname LIKE \$q\$one_core_test%\$q\$ OR datname ~ \$q\$^[0-9A-HJKMNP-TV-Z]{26}$\$q\$" | psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q' || true
+'''
+
+# The database tests on MariaDB and Postgres at the same time, from one build.
+# Needs `makers dbstart` and `makers dbstart_postgres`. Six threads per backend
+# keep the two servers within a laptop's Docker memory.
+[tasks.test-db]
+dependencies = ["nextest"]
+env          = { MARIADB_TEST_URL = { value = "mysql://root:Qpq5nDb5MKD6v9bt8dPD@localhost:3306/core", condition = { env_not_set = ["MARIADB_TEST_URL"] } }, POSTGRES_TEST_URL = { value = "postgresql://core:886eOqVMmlHsayu6Vyxw@localhost:5432/core", condition = { env_not_set = ["POSTGRES_TEST_URL"] } } }
+script       = """
+set -e
+cargo nextest run --workspace --profile ci-mariadb --no-run
+ONE_app__databaseUrl="$MARIADB_TEST_URL" cargo nextest run --workspace --profile ci-mariadb --test-threads 6 &
+mariadb=$!
+ONE_app__databaseUrl="$POSTGRES_TEST_URL" cargo nextest run --workspace --profile ci-postgres --test-threads 6 &
+postgres=$!
+status=0
+wait $mariadb || status=1
+wait $postgres || status=1
+exit $status
+"""
 
 [tasks.check]
-dependencies = ["format", "clippy_warn", "test"]
+dependencies = ["format", "clippy_warn", "test", "doc-tests"]
 
 [tasks.unit-tests]
-args    = ["test", "--lib"]
-command = "cargo"
+args         = ["nextest", "run", "--workspace", "--lib"]
+command      = "cargo"
+dependencies = ["nextest"]
 
 [tasks.integration-tests]
-args    = ["test", "--test", "integration_tests"]
-command = "cargo"
+args         = ["nextest", "run", "--workspace", "--test", "integration_tests"]
+command      = "cargo"
+dependencies = ["nextest"]
 
 [tasks.dbstart]
 args    = ["compose", "-f", "docker/db.yml", "up", "-d", "mariadb", "walletdb"]

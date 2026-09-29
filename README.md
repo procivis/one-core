@@ -36,6 +36,8 @@ See the [key features][key] and complete solution [architecture][archi].
 - Docker with Docker Compose - [Docker Desktop][dock] recommended for
   easiest setup.
 - cargo-make: `cargo install cargo-make`
+- cargo-nextest, the test runner: `cargo install cargo-nextest --locked`
+  (the `makers` test tasks install it on first use)
 
 ### Quick start
 
@@ -106,10 +108,15 @@ Here you are given control of an organization in the Procivis One Desk UI.
 
 ### Tests
 
+Tests run with [nextest](https://nexte.st): one process per test, tests run
+in parallel, and a hung test is killed after 5 minutes. The database tests on
+MariaDB and Postgres need nextest: every test reuses the database of its nextest
+slot, emptied before each test.
+
 To run only the unit tests
 
 ```shell
-cargo test --lib
+cargo nextest run --workspace --lib
 # or
 makers unit-tests
 ```
@@ -117,9 +124,26 @@ makers unit-tests
 To run integration-tests
 
 ```shell
-cargo test --test integration_tests
+cargo nextest run --workspace --test integration_tests
 # or
 makers integration-tests
+```
+
+To run the database tests on MariaDB and Postgres at the same time
+
+```shell
+makers dbstart && makers dbstart_postgres
+makers test-db
+```
+
+The test databases stay on the containers between runs. `makers test-db-clean`
+drops them all.
+
+To run everything, including the doctests that nextest skips
+
+```shell
+makers test
+makers doc-tests
 ```
 
 To run integration-tests with MariaDB

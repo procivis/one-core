@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use migration::runner::run_migrations;
+use migration::test_utilities::{INIT_DB_SCHEMA, prepare_init_db, with_database};
 use regex::Regex;
 use sea_orm::sqlx::Postgres;
 use sea_orm::{ConnectOptions, ConnectionTrait, DatabaseConnection, DbBackend, Statement};
@@ -13,22 +13,12 @@ use similar_asserts::assert_eq;
 use crate::fixtures::{Column, ColumnType, DefaultValue, Table};
 
 pub(super) async fn get_pgsql_schema(url: &str) -> Box<dyn super::Schema> {
-    let mut url: url::Url = url.parse().unwrap();
-    // remove path to connect to cluster
-    url.set_path("");
+    let url = url.parse().unwrap();
+    prepare_init_db(&url).await;
+    println!("USING DATABASE {INIT_DB_SCHEMA}");
 
+    let url = with_database(&url, INIT_DB_SCHEMA);
     let conn = sea_orm::Database::connect(url.to_owned()).await.unwrap();
-    let db_name: String = ulid::Ulid::new().to_string();
-    println!("USING DATABASE {db_name}");
-    conn.execute_unprepared(&format!("CREATE DATABASE \"{db_name}\";"))
-        .await
-        .unwrap();
-
-    url.set_path(&db_name);
-
-    let conn = sea_orm::Database::connect(url.to_owned()).await.unwrap();
-    run_migrations(&conn).await.unwrap();
-
     let non_unique_indexes = extract_non_unique_indexes(&conn).await;
 
     let pool = ConnectOptions::new(url.to_string())

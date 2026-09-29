@@ -16,7 +16,8 @@ use crate::fixtures;
 /// them, i.e. on top of the `config/config.yml` stub.
 #[tokio::test]
 async fn test_server_starts_from_example_configs() {
-    let root = std::env!("CARGO_MANIFEST_DIR");
+    let root = std::env::var("CARGO_MANIFEST_DIR")
+        .expect("CARGO_MANIFEST_DIR must be set by cargo/nextest");
     let examples_dir = PathBuf::from(format!("{root}/../../config/examples"));
 
     let mut examples: Vec<PathBuf> = std::fs::read_dir(&examples_dir)
@@ -34,7 +35,7 @@ async fn test_server_starts_from_example_configs() {
 
     let mut failures = vec![];
     for example in examples {
-        if let Err(err) = start_server_from_example(root, &example).await {
+        if let Err(err) = start_server_from_example(&root, &example).await {
             let name = example.file_name().unwrap_or(example.as_os_str());
             failures.push(format!("{}: {err}", name.to_string_lossy()));
         }

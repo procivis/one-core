@@ -1434,6 +1434,7 @@ dependencies = [
  "indexmap 2.14.0",
  "indoc",
  "maplit",
+ "migration",
  "mime",
  "one-core",
  "one-crypto",
@@ -1466,7 +1467,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "ulid",
  "url",
  "utoipa",
  "utoipa-swagger-ui",
@@ -3640,6 +3640,7 @@ name = "migration"
 version = "0.1.0"
 dependencies = [
  "ct-codecs",
+ "migration",
  "regex",
  "sea-orm",
  "sea-orm-migration",

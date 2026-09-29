@@ -1,0 +1,47 @@
+# `cargo nextest run`, or `makers test`. Nextest does not run doctests:
+# `makers doc-tests`. 0.9.115 is the first version with profile inheritance.
+nextest-version = { required = "0.9.115", recommended = "0.9.146" }
+
+[profile.default]
+# Reported as slow after a minute, killed after 5.
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+# A schema test reads the whole schema from information_schema. On MariaDB that
+# opens every table of every database on the server, so only four run at once.
+[test-groups]
+schema-discovery = { max-threads = 4 }
+
+[[profile.default.overrides]]
+# First: the schema tests build INIT_DB, the database the integration tests copy.
+filter = 'package(migration)'
+priority = 100
+test-group = 'schema-discovery'
+
+[[profile.default.overrides]]
+# Runs eight migrators against one fresh database, a burst of DDL.
+filter = 'test(concurrent_first_time_migrations_against_empty_db_all_succeed)'
+threads-required = 4
+
+[[profile.default.overrides]]
+# The PBKDF2 tests take about 6 s each; started last, they would extend the run.
+filter = 'package(one-core-uniffi) | (package(one-core) & test(/backup/))'
+priority = 50
+
+[profile.ci]
+# A broken fixture fails every database test.
+fail-fast = { max-fail = 50 }
+failure-output = "immediate-final"
+final-status-level = "slow"
+global-timeout = "15m"
+
+[profile.ci.junit]
+path = "junit.xml"
+
+# The tests that use the database server; the others run on SQLite.
+[profile.ci-mariadb]
+inherits = "ci"
+default-filter = 'package(core-server) | package(migration)'
+
+[profile.ci-postgres]
+inherits = "ci"
+default-filter = 'package(core-server) | package(migration)'

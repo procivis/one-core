@@ -24,7 +24,8 @@ async fn test_transport_params_are_filtered_in_config() {
 
 #[tokio::test]
 async fn test_server_starts_with_base_config() {
-    let root = std::env!("CARGO_MANIFEST_DIR");
+    let root = std::env::var("CARGO_MANIFEST_DIR")
+        .expect("CARGO_MANIFEST_DIR must be set by cargo/nextest");
 
     let set_encryption_key = Some(
         indoc::indoc! {"

@@ -17,16 +17,19 @@ serde_with.workspace  = true
 shared-types          = { workspace = true, features = ["sea-orm"] }
 strum.workspace       = true
 time.workspace        = true
-tokio                 = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio                 = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 tracing.workspace     = true
+url                   = { workspace = true, optional = true }
 urlencoding.workspace = true
 uuid                  = { workspace = true, features = ["v4"] }
 
 [features]
-mysql    = ["sea-orm-migration/sqlx-mysql"]
-postgres = ["sea-orm-migration/sqlx-postgres"]
+mysql      = ["sea-orm-migration/sqlx-mysql"]
+postgres   = ["sea-orm-migration/sqlx-postgres"]
+test_utils = ["mysql", "postgres", "dep:url"]
 
 [dev-dependencies]
+migration = { workspace = true, features = ["test_utils"] }
 regex.workspace = true
 sea-schema = { version = "0.18", default-features = false, features = [
     "discovery",

@@ -11,6 +11,8 @@ mod migrations;
 pub(crate) mod nullable_unique_idx;
 pub mod runner;
 pub mod supported_db_type;
+#[cfg(feature = "test_utils")]
+pub mod test_utilities;
 
 pub struct LegacyMigrator;
 
@@ -253,6 +255,12 @@ impl MigratorTrait for LegacyMigrator {
 }
 
 pub struct Migrator;
+
+/// A hash of the migration sources, from `build.rs`. The test fixtures use it to
+/// spot a shared database built from other migrations.
+pub fn migration_fingerprint() -> &'static str {
+    env!("MIGRATION_FINGERPRINT")
+}
 
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {

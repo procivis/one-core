@@ -199,17 +199,17 @@ async fn test_parse_credential() {
             "id": "@id",
             "type": "@type",
             "metadata": {
-              "@id": "http://127.0.0.1:9876/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#metadata",
+              "@id": "{BASE_URL}/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#metadata",
               "@type": "@json"
             }
           },
-          "@id": "http://127.0.0.1:9876/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#ProcivisOneSchema2024"
+          "@id": "{BASE_URL}/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#ProcivisOneSchema2024"
         },
         "8761JsonLd": {
-          "@id": "http://127.0.0.1:9876/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#8761JsonLd"
+          "@id": "{BASE_URL}/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#8761JsonLd"
         },
         "value": {
-          "@id": "http://127.0.0.1:9876/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#value"
+          "@id": "{BASE_URL}/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647#value"
         }
       }
     }
@@ -218,7 +218,7 @@ async fn test_parse_credential() {
     {
       "@context": [
         "https://www.w3.org/ns/credentials/v2",
-        "http://127.0.0.1:9876/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647"
+        "{BASE_URL}/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647"
       ],
       "type": [
         "VerifiableCredential",
@@ -236,7 +236,7 @@ async fn test_parse_credential() {
         "type": "BitstringStatusListEntry",
         "statusPurpose": "revocation",
         "statusListIndex": "0",
-        "statusListCredential": "http://127.0.0.1:9876/ssi/revocation/v1/list/65dbba51-f2ad-4249-888f-5d0f5280f4f7"
+        "statusListCredential": "{BASE_URL}/ssi/revocation/v1/list/65dbba51-f2ad-4249-888f-5d0f5280f4f7"
       },
       "proof": {
         "type": "DataIntegrityProof",
@@ -247,20 +247,22 @@ async fn test_parse_credential() {
         "proofValue": "z2sToy5rhNkV8WPGA8FfxDkYWyK5vR4etvSdWj3WPCbXpTYcQBUcgY6Xur6935Ks5VHHSASQyJhdketMmbpbeyJDu"
       },
       "credentialSchema": {
-        "id": "http://127.0.0.1:9876/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647",
+        "id": "{BASE_URL}/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647",
         "type": "ProcivisOneSchema2024"
       }
     }
     "##;
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:9876").unwrap();
-    let mock_server = MockServer::builder().listener(listener).start().await;
+    let mock_server = MockServer::start().await;
+    let base_url = mock_server.uri();
+    let context = CONTEXT.replace("{BASE_URL}", &base_url);
+    let serialized = CREDENTIAL.replace("{BASE_URL}", &base_url);
 
     mock_server
         .register(
             Mock::given(method("GET"))
                 .and(path("/ssi/context/v1/4224e72d-087c-4376-8dcd-b48e8095e647"))
-                .respond_with(ResponseTemplate::new(200).set_body_raw(CONTEXT, "application/json"))
+                .respond_with(ResponseTemplate::new(200).set_body_raw(context, "application/json"))
                 .named("credential_schema GET /"),
         )
         .await;
@@ -301,7 +303,7 @@ async fn test_parse_credential() {
 
     let credential = formatter
         .parse_credential(
-            &CREDENTIAL.into(),
+            &serialized.into(),
             dummy_organisation(None),
             Box::new(verify_mock),
         )
@@ -351,7 +353,7 @@ async fn test_parse_credential() {
     assert_eq!(schema.name, "8761JsonLd");
     assert_eq!(
         schema.schema_id().await.unwrap(),
-        "http://127.0.0.1:9876/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647"
+        format!("{base_url}/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647")
     );
 
     let claims = credential.claims.as_ref().await.unwrap();

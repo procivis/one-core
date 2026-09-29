@@ -1,6 +1,6 @@
-use migration::runner::run_migrations;
+use migration::test_utilities::{INIT_DB, prepare_init_db, with_database};
 use sea_orm::sqlx::MySql;
-use sea_orm::{ConnectOptions, ConnectionTrait, DatabaseConnection, DbBackend};
+use sea_orm::{ConnectOptions, DbBackend};
 use sea_schema::mysql::def::{
     ColumnDefault, ColumnInfo, ColumnKey, NumericAttr, Schema, StringAttr, TableDef, TimeAttr, Type,
 };
@@ -10,34 +10,18 @@ use similar_asserts::assert_eq;
 use super::{Column, ColumnType, DefaultValue, Table};
 
 pub(super) async fn get_mysql_schema(url: &str) -> Box<dyn super::Schema> {
-    let mut url: url::Url = url.parse().unwrap();
-    // remove path to connect to cluster
-    url.set_path("");
+    let url = url.parse().unwrap();
+    prepare_init_db(&url).await;
+    println!("USING DATABASE {INIT_DB}");
 
-    let conn = sea_orm::Database::connect(url.to_owned()).await.unwrap();
-
-    let db_name: String = ulid::Ulid::new().to_string();
-    println!("USING DATABASE {db_name}");
-
-    conn.execute_unprepared(&format!("CREATE DATABASE {db_name};"))
-        .await
-        .unwrap();
-    conn.execute_unprepared(&format!("USE {db_name};"))
-        .await
-        .unwrap();
-
-    url.set_path(&db_name);
+    let url = with_database(&url, INIT_DB);
     let pool = ConnectOptions::new(url.to_string())
         .sqlx_pool_options::<MySql>()
         .connect(url.as_str())
         .await
         .unwrap();
 
-    run_migrations(&DatabaseConnection::from(pool.to_owned()))
-        .await
-        .unwrap();
-
-    let schema_discovery = SchemaDiscovery::new(pool, &db_name);
+    let schema_discovery = SchemaDiscovery::new(pool, INIT_DB);
     Box::new(SchemaWrapper(schema_discovery.discover().await.unwrap()))
 }
 

@@ -83,6 +83,7 @@ ciborium.workspace         = true
 hex.workspace              = true
 hex-literal.workspace      = true
 maplit.workspace           = true
+migration                  = { workspace = true, features = ["test_utils"] }
 one-core                   = { workspace = true, features = ["config_json", "config_yaml", "config_env", "mock"] }
 rand.workspace             = true
 rcgen.workspace            = true
@@ -95,7 +96,6 @@ serde_json_path.workspace  = true
 serde_urlencoded.workspace = true
 similar-asserts.workspace  = true
 sql-data-provider          = { workspace = true, features = ["test_utils"] }
-ulid.workspace             = true
 validator.workspace        = true
 wiremock.workspace         = true
 x509-parser.workspace      = true

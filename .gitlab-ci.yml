@@ -155,11 +155,13 @@ before_script:
     - rust
   dependencies: []
   script:
+    # The database tests on MariaDB and Postgres need nextest.
+    - docker exec $RUST_CONTAINER_NAME sh -c 'curl -LsSf https://get.nexte.st/0.9.146/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"'
     - |
       if [ -z "$ONE_app__databaseUrl" ]; then
-        docker exec $RUST_CONTAINER_NAME cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
+        docker exec $RUST_CONTAINER_NAME cargo llvm-cov nextest --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
       else
-        docker exec -e ONE_app__databaseUrl=${ONE_app__databaseUrl} $RUST_CONTAINER_NAME cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
+        docker exec -e ONE_app__databaseUrl=${ONE_app__databaseUrl} $RUST_CONTAINER_NAME cargo llvm-cov nextest --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
       fi
     - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report --cobertura --output-path cobertura.xml
     - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report
