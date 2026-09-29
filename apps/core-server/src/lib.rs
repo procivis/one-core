@@ -34,6 +34,8 @@ pub struct ServerConfig {
     #[serde(default)]
     pub database_url: String,
     #[serde(default)]
+    pub database_pool: sql_data_provider::DatabasePoolConfig,
+    #[serde(default)]
     pub server_ip: Option<IpAddr>,
     #[serde(default)]
     pub server_port: Option<u16>,

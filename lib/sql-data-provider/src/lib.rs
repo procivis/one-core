@@ -100,6 +100,8 @@ pub mod trust_list_subscription;
 // Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
 pub type DbConn = DatabaseConnection;
 
+pub use database_config::{DatabasePoolConfig, DatabasePoolConfigError};
+
 #[derive(Clone)]
 pub struct DataLayer {
     // Used for tests for now
@@ -466,25 +468,69 @@ impl DataRepository for DataLayer {
     }
 }
 
-/// Connects to the database and runs the pending migrations (until we externalize them)
+/// Identifies the stage of database setup that failed.
+#[derive(Debug, thiserror::Error)]
+pub enum DatabaseSetupError {
+    #[error("database configuration failed: {0}")]
+    Config(#[source] DatabasePoolConfigError),
+    #[error("database connection failed: {0}")]
+    Connect(#[source] DbErr),
+    #[error("unsupported database backend: {0}")]
+    UnsupportedBackend(#[source] DbErr),
+    #[error("database migration failed: {0}")]
+    Migration(#[source] DbErr),
+}
+
+impl DatabaseSetupError {
+    pub fn stage(&self) -> &'static str {
+        match self {
+            Self::Config(_) => "config",
+            Self::Connect(_) => "connect",
+            Self::UnsupportedBackend(_) => "backend",
+            Self::Migration(_) => "migration",
+        }
+    }
+}
+
+/// Connects using the configured SeaORM options and runs pending migrations.
+pub async fn db_conn_with_config(
+    database_url: &str,
+    config: &DatabasePoolConfig,
+    with_migration: bool,
+) -> Result<DatabaseConnection, DatabaseSetupError> {
+    let options = config
+        .connect_options(database_url)
+        .map_err(DatabaseSetupError::Config)?;
+    db_conn(options, with_migration).await
+}
+
+/// Connects to the database and runs pending migrations.
 pub async fn db_conn(
     database_url: impl Into<ConnectOptions>,
     with_migration: bool,
-) -> Result<DatabaseConnection, DbErr> {
-    let db = sea_orm::Database::connect(database_url).await?;
+) -> Result<DatabaseConnection, DatabaseSetupError> {
+    let db = sea_orm::Database::connect(database_url)
+        .await
+        .map_err(DatabaseSetupError::Connect)?;
 
     // check that DB type is supported
-    let db_type: SupportedDbType = db.get_database_backend().try_into()?;
+    let db_type: SupportedDbType = db
+        .get_database_backend()
+        .try_into()
+        .map_err(DatabaseSetupError::UnsupportedBackend)?;
     tracing::debug!("Connected to DB, type: {db_type}");
 
     if with_migration {
-        run_migrations(&db).await?;
+        run_migrations(&db)
+            .await
+            .map_err(DatabaseSetupError::Migration)?;
     }
 
     Ok(db)
 }
 
 mod blob;
+mod database_config;
 mod identifier_trust_information;
 mod instance;
 mod localized_text;

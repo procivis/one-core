@@ -74,6 +74,7 @@ async fn test_server_starts_with_base_config() {
         } else {
             database_url
         },
+        database_pool: Default::default(),
         server_ip: Default::default(),
         server_port: Default::default(),
         trace_json: Default::default(),

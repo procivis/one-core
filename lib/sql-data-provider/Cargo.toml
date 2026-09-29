@@ -21,6 +21,7 @@ autometrics.workspace        = true
 futures                      = { version = "0.3" }
 hex.workspace                = true
 itertools.workspace          = true
+log = "0.4"
 migration.workspace          = true
 one-core.workspace           = true
 one-dto-mapper.workspace     = true
@@ -32,6 +33,7 @@ shared-types.workspace       = true
 similar-asserts              = { workspace = true, optional = true }
 standardized-types.workspace = true
 time.workspace               = true
+thiserror.workspace          = true
 tokio                        = { workspace = true, features = ["macros"] }
 tracing.workspace            = true
 url                          = { workspace = true }

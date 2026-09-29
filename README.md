@@ -190,6 +190,50 @@ Run compiled application (Local env)
 ./target/debug/core-server --config config/config-procivis-base.yml --config config/config-local.yml
 ```
 
+#### Database connection pool
+
+Core accepts optional SeaORM connection overrides under `app.databasePool`:
+
+```yaml
+app:
+  databasePool:
+    maxConnections: 5
+    minConnections: 0
+    acquireTimeoutSeconds: 45
+    idleTimeoutSeconds: 600
+    maxLifetimeSeconds: 1800
+    testBeforeAcquire: true
+    connectLazy: false
+    sqlxLogging: true
+    recordStmtInSpans: true
+    sqlxLoggingLevel: info
+    sqlxSlowStatementsLoggingLevel: warn
+    sqlxSlowStatementsLoggingThresholdMillis: 2000
+    # PostgreSQL only:
+    # statementTimeoutSeconds: 30
+    # applicationName: one-core
+    # schemaSearchPath: public
+```
+
+Every field is optional; omitted fields retain SeaORM/SQLx defaults. Use `0` for
+`idleTimeoutSeconds` or `maxLifetimeSeconds` to disable that timeout. Instead of
+`testBeforeAcquire`, you can set `testBeforeAcquireIfIdleForSeconds` to ping only
+connections idle for that duration. These two settings cannot both be enabled.
+`sqlxLoggingLevel` and `sqlxSlowStatementsLoggingLevel` accept `off`, `error`,
+`warn`, `info`, `debug`, or `trace`. SeaORM's `connect_timeout` and
+`acquire_timeout` both set the SQLx pool acquire timeout, so the config exposes
+only `acquireTimeoutSeconds`.
+
+`maxConnections` is a limit per core process, not for the whole deployment.
+Budget for the largest number of concurrently running pods, including overlap
+during a rolling deployment.
+`minConnections` sets the warm connection floor; eager startup opens at least
+one connection even when the minimum is zero.
+For in-memory SQLite, Core rejects `maxConnections` and keeps SeaORM's default
+single connection.
+Setting `connectLazy: true` defers the initial connection;
+with migrations skipped, startup can complete before the database is reachable.
+
 ### Docker
 
 - Run MariaDB for local developing

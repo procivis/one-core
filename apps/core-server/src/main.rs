@@ -62,7 +62,10 @@ fn main() {
             // Calling .display() here performs a lossy conversion, which is quite bad,
             // but it's either that, or making cli.backup_to a string.
             Ok(Some(backup_path)) => {
-                config.app.database_url = format!("sqlite://{}", backup_path.display())
+                config.app.database_url = format!("sqlite://{}", backup_path.display());
+                // The backup is SQLite even if the configured server database
+                // uses MySQL or PostgreSQL pool settings.
+                config.app.database_pool = Default::default();
             }
             Ok(None) => { /* Do nothing */ }
             Err(e) => panic!("Failed to load backup: {}", e),
@@ -84,10 +87,16 @@ fn main() {
         .build()
         .expect("Unable to create tokio runtime")
         .block_on(async {
-            let db_conn =
-                sql_data_provider::db_conn(&app_config.app.database_url, !cli.skip_migration)
-                    .await
-                    .expect("Unable to establish database connection");
+            let db_conn = sql_data_provider::db_conn_with_config(
+                &app_config.app.database_url,
+                &app_config.app.database_pool,
+                !cli.skip_migration,
+            )
+            .await
+            .unwrap_or_else(|error| {
+                tracing::error!(stage = error.stage(), %error, "Database setup failed");
+                panic!("Database setup failed: {error}");
+            });
 
             let core = initialize_core(&app_config, db_conn)
                 .await
