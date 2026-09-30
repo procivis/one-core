@@ -1,29 +1,8 @@
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
-
-#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
-#[repr(u8)]
-pub(crate) enum Command {
-    Start = 1,
-    End = 2,
-}
-
-impl TryFrom<Vec<u8>> for Command {
-    type Error = anyhow::Error;
-
-    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-        match value.as_slice() {
-            [1] => Ok(Self::Start),
-            [2] => Ok(Self::End),
-            [_] => Err(anyhow!("value out of range")),
-            _ => Err(anyhow!("invalid payload size")),
-        }
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

@@ -3,17 +3,12 @@ use std::sync::Arc;
 
 use coset::iana::HeaderParameter;
 use coset::{HeaderBuilder, ProtectedHeader};
-use shared_types::ProofId;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use super::ble::{CLIENT_2_SERVER, Chunk, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE, split_into_chunks};
-use super::common::{
-    DeviceRequest, DocRequest, EphemeralSessionKey, ItemsRequest, KeyAgreementKey, SkDevice,
-    create_session_transcript_bytes, to_cbor,
-};
-use super::device_engagement::{BleOptionsV1, DeviceEngagement, Security};
-use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
+use super::ISO_MDL_FLOW;
+use super::central::{read_chunked, send_end_command, wait_for_connection, write_chunked};
+use super::peripheral_server_mode::{CLIENT_2_SERVER, SERVER_2_CLIENT, STATE};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
@@ -27,9 +22,7 @@ use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
-use crate::proto::bluetooth_low_energy::low_level::dto::{
-    CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
-};
+use crate::proto::bluetooth_low_energy::low_level::dto::PeripheralDiscoveryData;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::ecosystem_resolver::EcosystemResolver;
@@ -52,15 +45,25 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::iso_mdl::common::{
+    DeviceRequest, DocRequest, EphemeralSessionKey, ItemsRequest, KeyAgreementKey, SkDevice,
+    create_session_transcript_bytes, set_proof_to_error, to_cbor,
+};
+use crate::provider::verification_protocol::iso_mdl::device_engagement::{
+    BleOptionsV1, DeviceEngagement, Security,
+};
+use crate::provider::verification_protocol::iso_mdl::session::{
+    SessionData, SessionEstablishment, StatusCode,
+};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
-    pub reader_key: EmbeddedCbor<EphemeralSessionKey>,
-    pub session_transcript: SessionTranscript,
-    pub device_request_encrypted: Vec<u8>,
-    pub sk_device: SkDevice,
+    reader_key: EmbeddedCbor<EphemeralSessionKey>,
+    session_transcript: SessionTranscript,
+    device_request_encrypted: Vec<u8>,
+    sk_device: SkDevice,
 }
 
 pub(crate) struct IsoMdlVerifier {
@@ -184,19 +187,8 @@ pub(crate) async fn start_client(
                 .await;
 
                 if let Err(error) = &result {
-                    {
-                        let message = format!("mDL verifier failure: {error:#?}");
-                        tracing::info!(message);
-                        let error_metadata = HistoryErrorMetadata {
-                            error_code: BR_0000,
-                            message,
-                        };
-                        if let Err(err) =
-                            set_proof_to_error(&*proof_repository, proof.id, error_metadata).await
-                        {
-                            tracing::warn!("failed to set proof to error: {err}");
-                        }
-                    }
+                    tracing::info!(%error, "mDL verifier failure");
+                    set_proof_to_error(&*proof_repository, &proof.id, error.into()).await;
                 };
 
                 result
@@ -205,10 +197,11 @@ pub(crate) async fn start_client(
                 let message = "Cancelling mDL verifier flow".to_string();
                 tracing::info!(message);
                 if let Ok(device_info) = receiver.await {
-                    send_end(
-                        device_info.device_address.clone(),
-                        &peripheral_server_uuid,
+                    send_end_command(
                         &central,
+                        &device_info.device_address,
+                        &peripheral_server_uuid,
+                        STATE,
                     )
                     .await;
                 }
@@ -256,7 +249,7 @@ async fn verifier_flow(
         ))?
         .to_owned();
 
-    let (device, mtu_size) = connect_to_server(central, peripheral_server_uuid.to_string()).await?;
+    let (device, mtu_size) = connect_to_server(central, &peripheral_server_uuid).await?;
 
     if let Err(err) = sender.send(device.to_owned()) {
         tracing::warn!("failed to send device discovery data: {err:?}");
@@ -282,10 +275,11 @@ async fn verifier_flow(
     )
     .await;
     if let Err(_error) = &result {
-        send_end(
-            device.device_address.clone(),
-            &peripheral_server_uuid,
+        send_end_command(
             central,
+            &device.device_address,
+            &peripheral_server_uuid,
+            STATE,
         )
         .await;
     }
@@ -322,7 +316,7 @@ async fn process_proof(
     send_session_establishment(
         central,
         device,
-        peripheral_server_uuid.to_string(),
+        &peripheral_server_uuid,
         mtu_size,
         verifier_session.reader_key,
         verifier_session.device_request_encrypted,
@@ -342,16 +336,17 @@ async fn process_proof(
         .await
         .error_while("updating proof")?;
 
-    let session_data = read_response(central, device, peripheral_server_uuid.to_string()).await?;
+    let session_data = read_response(central, device, &peripheral_server_uuid).await?;
 
     let received_status_termination = session_data
         .status
         .is_some_and(|status| status == StatusCode::SessionTermination);
     if !received_status_termination {
-        send_end(
-            device.device_address.to_owned(),
-            &peripheral_server_uuid,
+        send_end_command(
             central,
+            &device.device_address,
+            &peripheral_server_uuid,
+            STATE,
         )
         .await;
     }
@@ -385,7 +380,7 @@ async fn process_proof(
                 "Response received with documents and document errors: {device_response:?}"
             ),
         };
-        set_proof_to_error(&*proof_repository, proof.id, error_metadata).await?;
+        set_proof_to_error(&*proof_repository, &proof.id, error_metadata).await;
         return Ok(());
     }
 
@@ -407,7 +402,7 @@ async fn process_proof(
                 error_code: BR_0000,
                 message: "Response documents are empty but no errors are provided".to_string(),
             };
-            set_proof_to_error(&*proof_repository, proof.id, error_metadata).await?;
+            set_proof_to_error(&*proof_repository, &proof.id, error_metadata).await;
         }
 
         return Ok(());
@@ -430,54 +425,11 @@ async fn process_proof(
     )
     .await
     {
-        let message = format!("mDL proof parsing failure: {error:#?}");
-        tracing::info!(message);
-        let error_metadata = HistoryErrorMetadata {
-            error_code: BR_0000,
-            message,
-        };
-        set_proof_to_error(&*proof_repository, proof.id, error_metadata).await?;
+        tracing::info!(%error, "mDL proof parsing failure");
+        set_proof_to_error(&*proof_repository, &proof.id, (&error).into()).await;
     }
 
     Ok(())
-}
-
-async fn set_proof_to_error(
-    proof_repository: &dyn ProofRepository,
-    proof_id: ProofId,
-    error_metadata: HistoryErrorMetadata,
-) -> Result<(), VerificationProtocolError> {
-    proof_repository
-        .update_proof(
-            &proof_id,
-            UpdateProofRequest {
-                state: Some(ProofStateEnum::Error),
-                ..Default::default()
-            },
-            Some(error_metadata),
-        )
-        .await
-        .error_while("updating proof")?;
-    Ok(())
-}
-
-async fn send_end(
-    device_address: DeviceAddress,
-    peripheral_server_uuid: &Uuid,
-    central: &TrackingBleCentral,
-) {
-    if let Err(err) = central
-        .write_data(
-            device_address,
-            peripheral_server_uuid.to_string(),
-            STATE.into(),
-            &[Command::End as _],
-            CharacteristicWriteType::WithoutResponse,
-        )
-        .await
-    {
-        tracing::warn!("failed to write end: {err}");
-    }
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -500,20 +452,21 @@ async fn fill_proof_claims_and_credentials(
 
     let encoded = encode_cbor_base64(&device_response).error_while("encoding device response")?;
 
-    let proved_credentials = super::verify_proof::validate_proof(
-        &proof_schema,
-        &encoded,
-        session_transcript,
-        credential_formatter_provider,
-        presentation_formatter_provider,
-        &key_algorithm_provider,
-        did_method_provider.clone(),
-        certificate_validator.clone(),
-    )
-    .await
-    .error_while("validating proof")?;
+    let proved_credentials =
+        crate::provider::verification_protocol::iso_mdl::verify_proof::validate_proof(
+            &proof_schema,
+            &encoded,
+            session_transcript,
+            credential_formatter_provider,
+            presentation_formatter_provider,
+            &key_algorithm_provider,
+            did_method_provider.clone(),
+            certificate_validator.clone(),
+        )
+        .await
+        .error_while("validating proof")?;
 
-    super::verify_proof::accept_proof(
+    crate::provider::verification_protocol::iso_mdl::verify_proof::accept_proof(
         proof.clone(),
         interaction,
         proved_credentials,
@@ -532,65 +485,20 @@ async fn fill_proof_claims_and_credentials(
 
 async fn connect_to_server(
     central: &TrackingBleCentral,
-    service_uuid: String,
+    service_uuid: &Uuid,
 ) -> Result<(PeripheralDiscoveryData, usize), VerificationProtocolError> {
     central
-        .start_scan(Some(vec![service_uuid.clone()]))
+        .start_scan(Some(vec![service_uuid.to_string()]))
         .await
         .error_while("starting BLE scan")?;
 
-    let device = central
-        .get_discovered_devices()
-        .await
-        .error_while("getting discovered devices")?
-        .pop()
-        .ok_or(VerificationProtocolError::Failed(
-            "no discovered devices".to_string(),
-        ))?;
-
-    central.stop_scan().await.error_while("stopping BLE scan")?;
-
-    let mtu_size = central
-        .connect(device.device_address.clone())
-        .await
-        .error_while("connecting to peripheral")?;
-
-    central
-        .subscribe_to_characteristic_notifications(
-            device.device_address.clone(),
-            service_uuid.clone(),
-            STATE.into(),
-        )
-        .await
-        .error_while("subscribing State characteristic")?;
-
-    central
-        .subscribe_to_characteristic_notifications(
-            device.device_address.clone(),
-            service_uuid.clone(),
-            SERVER_2_CLIENT.into(),
-        )
-        .await
-        .error_while("subscribing Server2Client characteristic")?;
-
-    central
-        .write_data(
-            device.device_address.clone(),
-            service_uuid,
-            STATE.into(),
-            &[Command::Start as _],
-            CharacteristicWriteType::WithoutResponse,
-        )
-        .await
-        .error_while("writing Start command")?;
-
-    Ok((device, mtu_size as _))
+    wait_for_connection(central, service_uuid, SERVER_2_CLIENT, STATE).await
 }
 
 async fn send_session_establishment(
     central: &TrackingBleCentral,
     device: &PeripheralDiscoveryData,
-    service_uuid: String,
+    service_uuid: &Uuid,
     mtu_size: usize,
     e_reader_key: EmbeddedCbor<EphemeralSessionKey>,
     device_request_encrypted: Vec<u8>,
@@ -600,53 +508,23 @@ async fn send_session_establishment(
         data: Bstr(device_request_encrypted),
     };
 
-    let session_establishment_bytes = to_cbor(&session_establishment)?;
-
-    for chunk in split_into_chunks(session_establishment_bytes, mtu_size)? {
-        central
-            .write_data(
-                device.device_address.clone(),
-                service_uuid.clone(),
-                CLIENT_2_SERVER.into(),
-                &chunk,
-                CharacteristicWriteType::WithoutResponse,
-            )
-            .await
-            .error_while("writing Client2Server chunk")?
-    }
-
-    Ok(())
+    write_chunked(
+        &session_establishment,
+        central,
+        &device.device_address,
+        service_uuid,
+        CLIENT_2_SERVER,
+        mtu_size,
+    )
+    .await
 }
 
 async fn read_response(
     central: &TrackingBleCentral,
     info: &PeripheralDiscoveryData,
-    service_uuid: String,
+    service_uuid: &Uuid,
 ) -> Result<SessionData, VerificationProtocolError> {
-    let mut result = vec![];
-
-    loop {
-        let data = central
-            .get_notifications(
-                info.device_address.clone(),
-                service_uuid.clone(),
-                SERVER_2_CLIENT.into(),
-            )
-            .await
-            .error_while("waiting for Server2Client notification")?;
-
-        for msg in data {
-            let chunk: Chunk = msg.try_into()?;
-            match chunk {
-                Chunk::Next(payload) => result.extend(payload),
-                Chunk::Last(payload) => {
-                    result.extend(payload);
-
-                    return Ok(ciborium::from_reader(result.as_slice())?);
-                }
-            }
-        }
-    }
+    read_chunked(central, &info.device_address, service_uuid, SERVER_2_CLIENT).await
 }
 
 async fn proof_input_schema_to_doc_request(
@@ -719,7 +597,7 @@ async fn proof_input_schema_to_doc_request(
     })
 }
 
-pub(super) async fn prepare_reader_auth(
+pub(crate) async fn prepare_reader_auth(
     session_transcript: SessionTranscript,
     items_request: EmbeddedCbor<ItemsRequest>,
     verifier: &IsoMdlVerifier,

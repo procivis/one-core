@@ -1,22 +1,47 @@
 use std::iter;
 use std::sync::LazyLock;
 
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use uuid::Uuid;
 
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 
-// BLE peripheral server mode characteristics
-pub(crate) const STATE: &str = "00000001-A123-48CE-896B-4C76973373E6";
-pub(crate) const CLIENT_2_SERVER: &str = "00000002-A123-48CE-896B-4C76973373E6";
-pub(crate) const SERVER_2_CLIENT: &str = "00000003-A123-48CE-896B-4C76973373E6";
+mod central;
+mod central_client_mode;
+pub(crate) mod holder;
+mod peripheral;
+mod peripheral_server_mode;
+pub(crate) mod verifier;
 
-// Shared BleWaiter flowId for both verifier and holder
-pub(crate) static ISO_MDL_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
+/// Shared BleWaiter flowId for both verifier and holder
+pub(super) static ISO_MDL_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
+
+/// BLE State commands according to ISO 18013-5, Table 13
+#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
+#[repr(u8)]
+enum Command {
+    Start = 1,
+    End = 2,
+}
+
+impl TryFrom<Vec<u8>> for Command {
+    type Error = VerificationProtocolError;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        match value.as_slice() {
+            [1] => Ok(Self::Start),
+            [2] => Ok(Self::End),
+            value => Err(VerificationProtocolError::Failed(format!(
+                "Unknown State command: {value:?}"
+            ))),
+        }
+    }
+}
 
 /// A single partial message sent over BLE
 /// ISO 18013-5, 8.3.3.1.1.6
 #[derive(Debug, Clone)]
-pub(crate) enum Chunk {
+enum Chunk {
     Next(Vec<u8>),
     Last(Vec<u8>),
 }
@@ -28,9 +53,11 @@ impl TryFrom<Vec<u8>> for Chunk {
         match value.as_slice() {
             [0, tail @ ..] => Ok(Self::Last(tail.to_vec())),
             [1, tail @ ..] => Ok(Self::Next(tail.to_vec())),
-            _ => Err(VerificationProtocolError::Failed(
-                "Invalid BLE chunk".to_string(),
-            )),
+            chunk => Err(VerificationProtocolError::Failed(format!(
+                "Invalid BLE chunk, length: {}, firstByte: {:?}",
+                chunk.len(),
+                chunk.first()
+            ))),
         }
     }
 }
@@ -44,7 +71,7 @@ impl From<Chunk> for Vec<u8> {
     }
 }
 
-pub(super) fn split_into_chunks(
+fn split_into_chunks(
     session_message: Vec<u8>,
     mtu_size: usize,
 ) -> Result<Vec<Vec<u8>>, VerificationProtocolError> {

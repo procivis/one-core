@@ -40,10 +40,10 @@ use crate::provider::presentation_formatter::provider::MockPresentationFormatter
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::iso_mdl::ble_holder::{
+use crate::provider::verification_protocol::iso_mdl::ble::holder::{
     MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
 };
-use crate::provider::verification_protocol::iso_mdl::ble_verifier::{
+use crate::provider::verification_protocol::iso_mdl::ble::verifier::{
     IsoMdlVerifier, prepare_reader_auth,
 };
 use crate::provider::verification_protocol::iso_mdl::common::{
@@ -103,7 +103,8 @@ async fn test_presentation_reject_ok() {
         "ISO_MDL".to_string(),
         serde_json::json!({
             "holder": {
-                "sessionEncryptionAlgorithm": "ECDSA"
+                "sessionEncryptionAlgorithm": "ECDSA",
+                "bleMode": "PERIPHERAL"
             }
         }),
         Arc::new(core_config),
@@ -627,7 +628,8 @@ async fn test_get_presentation_definition_v2() {
         "ISO_MDL".to_string(),
         serde_json::json!({
             "holder": {
-                "sessionEncryptionAlgorithm": "ECDSA"
+                "sessionEncryptionAlgorithm": "ECDSA",
+                "bleMode": "PERIPHERAL"
             }
         }),
         Arc::new(generic_config().core),

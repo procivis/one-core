@@ -275,7 +275,7 @@ impl EcosystemResolverProto {
         for ecosystem_id in candidates {
             let ecosystem = match self.ecosystem_provider.get(ecosystem_id) {
                 Ok(ecosystem) => ecosystem,
-                Err(err) => {
+                Err(ref err) => {
                     tracing::warn!(ecosystem = %ecosystem_id, %err, "Ecosystem unavailable, dropping candidate");
                     outcomes.record(ecosystem_id.to_owned(), Err(err.into()));
                     continue;
@@ -287,7 +287,7 @@ impl EcosystemResolverProto {
                     store_ecosystem_data(interaction, ecosystem_id, data);
                     Ok(())
                 }
-                Err(err) => {
+                Err(ref err) => {
                     tracing::info!(ecosystem = %ecosystem_id, %err, "Ecosystem rejected the artifact, dropping candidate");
                     Err(err.into())
                 }

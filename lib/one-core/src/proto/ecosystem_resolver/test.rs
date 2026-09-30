@@ -314,7 +314,7 @@ fn invitation_artifact() -> ProtocolArtifact<'static> {
 }
 
 fn rejected(error: impl ErrorCodeMixin) -> Result<(), HistoryErrorMetadata> {
-    Err(error.into())
+    Err((&error).into())
 }
 
 fn outcomes(entries: &[(&str, Result<(), HistoryErrorMetadata>)]) -> EcosystemOutcomes {

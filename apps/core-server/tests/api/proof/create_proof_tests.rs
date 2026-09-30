@@ -842,6 +842,7 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_none_engagement() {
                   public:
                     holder:
                       sessionEncryptionAlgorithm: 'ECDSA'
+                      bleMode: 'PERIPHERAL'
     "}
     .to_string();
     let (context, organisation, did, ..) = TestContext::new_with_did(Some(config)).await;
@@ -915,6 +916,7 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement(
                   public:
                     holder:
                       sessionEncryptionAlgorithm: 'ECDSA'
+                      bleMode: 'PERIPHERAL'
     "}
     .to_string();
     let (context, organisation, did, ..) = TestContext::new_with_did(Some(config)).await;

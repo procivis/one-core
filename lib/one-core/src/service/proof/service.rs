@@ -56,10 +56,10 @@ use crate::provider::transaction_data::{
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
 };
-use crate::provider::verification_protocol::iso_mdl::ble_holder::{
+use crate::provider::verification_protocol::iso_mdl::ble::holder::{
     MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_server,
 };
-use crate::provider::verification_protocol::iso_mdl::ble_verifier::IsoMdlVerifier;
+use crate::provider::verification_protocol::iso_mdl::ble::verifier::IsoMdlVerifier;
 use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptionsV1, DeviceEngagement, DeviceRetrievalMethod, Security,
@@ -885,7 +885,8 @@ impl ProofService {
             .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
         let now = crate::clock::now_utc();
-        let ble_server = start_mdl_server(ble)
+        let service_uuid = Uuid::new_v4();
+        let ble_server = start_mdl_server(ble, service_uuid)
             .await
             .error_while("starting mDL server")?;
 
@@ -973,7 +974,7 @@ impl ProofService {
         let interaction_id = Uuid::new_v4().into();
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
             organisation_id: request.organisation_id,
-            service_uuid: ble_server.service_uuid,
+            service_uuid,
             continuation_task_id: ble_server.task_id,
             session: None,
             engagement,

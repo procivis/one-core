@@ -43,6 +43,7 @@ verificationProtocol:
       public:
         holder:
           sessionEncryptionAlgorithm: "EDDSA"
+          bleMode: "BOTH"
 keySecurityLevel:
   MODERATE:
     params:

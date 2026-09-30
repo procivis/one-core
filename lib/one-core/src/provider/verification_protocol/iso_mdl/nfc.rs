@@ -5,7 +5,7 @@ use ndef_rs::payload::RecordPayload;
 use ndef_rs::{NdefMessage, NdefRecord, TNF};
 use uuid::Uuid;
 
-use super::ble_holder::ServerInfo;
+use super::ble::holder::ServerInfo;
 use super::device_engagement::DeviceEngagement;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 

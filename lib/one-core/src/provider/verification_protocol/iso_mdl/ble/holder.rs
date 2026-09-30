@@ -7,24 +7,21 @@ use shared_types::{OrganisationId, ProofId};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use super::ble::{CLIENT_2_SERVER, Chunk, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE, split_into_chunks};
-use super::common::{
-    DeviceRequest, KeyAgreementKey, SkDevice, SkReader, create_session_transcript_bytes, to_cbor,
+use super::ISO_MDL_FLOW;
+use super::peripheral::{notify_end, read_chunked, wait_for_active_device, write_chunked};
+use super::peripheral_server_mode::{
+    CLIENT_2_SERVER, SERVER_2_CLIENT, STATE, get_characteristic_options,
 };
-use super::device_engagement::DeviceEngagement;
-use super::holder_trust::resolve_verifier_and_trust;
-use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::config::core_config::VerificationEngagement;
 use crate::error::ErrorCode::BR_0000;
-use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::{
-    CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
-    CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
+    DeviceAddress, DeviceInfo, ServiceDescription,
 };
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
@@ -37,6 +34,15 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
+use crate::provider::verification_protocol::iso_mdl::common::{
+    DeviceRequest, KeyAgreementKey, SkDevice, SkReader, create_session_transcript_bytes,
+    set_proof_to_error, to_cbor,
+};
+use crate::provider::verification_protocol::iso_mdl::device_engagement::DeviceEngagement;
+use crate::provider::verification_protocol::iso_mdl::holder_trust::resolve_verifier_and_trust;
+use crate::provider::verification_protocol::iso_mdl::session::{
+    SessionData, SessionEstablishment, StatusCode,
+};
 use crate::provider::verification_protocol::{
     VerificationProtocolError, deserialize_interaction_data,
 };
@@ -77,9 +83,8 @@ pub(crate) struct ServerInfo {
 /// Initiates mDL advertisement
 pub(crate) async fn start_mdl_server(
     ble: &BleWaiter,
+    service_uuid: Uuid,
 ) -> Result<ServerInfo, VerificationProtocolError> {
-    let service_uuid = Uuid::new_v4();
-
     let (task_id, result) = ble
         .schedule(
             *ISO_MDL_FLOW,
@@ -161,11 +166,7 @@ pub(crate) async fn receive_mdl_request(
                 let info = match result {
                     Ok(info) => info,
                     Err(err) => {
-                        let error_metadata = HistoryErrorMetadata {
-                            error_code: err.error_code(),
-                            message: err.to_string(),
-                        };
-                        set_proof_error(&*proof_repository, &proof_id, error_metadata).await;
+                        set_proof_to_error(&*proof_repository, &proof_id, (&err).into()).await;
                         return Err(err);
                     }
                 };
@@ -293,12 +294,14 @@ pub(crate) async fn receive_mdl_request(
                 .await;
 
                 if let Err(ref err) = result {
-                    let error_metadata = HistoryErrorMetadata {
-                        error_code: err.error_code(),
-                        message: err.to_string(),
-                    };
-                    set_proof_error(&*proof_repository, &proof_id, error_metadata).await;
-                    notify_end(&peripheral, Some(&info), interaction_data.service_uuid).await;
+                    set_proof_to_error(&*proof_repository, &proof_id, err.into()).await;
+                    notify_end(
+                        &peripheral,
+                        Some(&info.address),
+                        &interaction_data.service_uuid,
+                        STATE,
+                    )
+                    .await;
                 }
 
                 result
@@ -308,11 +311,12 @@ pub(crate) async fn receive_mdl_request(
                     error_code: BR_0000,
                     message: "Propose proof was cancelled".to_string(),
                 };
-                set_proof_error(&*proof_repository_clone, &proof_id, error_metadata).await;
+                set_proof_to_error(&*proof_repository_clone, &proof_id, error_metadata).await;
                 notify_end(
                     &peripheral,
-                    rx.await.ok().as_ref(),
-                    interaction_data.service_uuid,
+                    rx.await.ok().as_ref().map(|info| &info.address),
+                    &interaction_data.service_uuid,
+                    STATE,
                 )
                 .await;
             },
@@ -350,25 +354,20 @@ pub(crate) async fn send_mdl_response(
         data: Some(Bstr(encrypted_device_response)),
         status: Some(StatusCode::SessionTermination),
     };
-    let session_data_bytes = to_cbor(&session_data)?;
-
-    let chunks = split_into_chunks(session_data_bytes, interaction_session_data.mtu as _)?;
 
     let (_, result) = ble
         .schedule_continuation(
             interaction_data.continuation_task_id,
             |_, _, peripheral| async move {
-                for chunk in chunks {
-                    peripheral
-                        .notify_characteristic_data(
-                            interaction_session_data.device_address.clone(),
-                            interaction_data.service_uuid.to_string(),
-                            SERVER_2_CLIENT.into(),
-                            &chunk,
-                        )
-                        .await
-                        .error_while("notifying Server2Client data")?;
-                }
+                write_chunked(
+                    &session_data,
+                    &peripheral,
+                    &interaction_session_data.device_address,
+                    &interaction_data.service_uuid,
+                    SERVER_2_CLIENT,
+                    interaction_session_data.mtu as _,
+                )
+                .await?;
 
                 // End command signal not necessary, since we signal SessionTermination via SessionData status
 
@@ -399,7 +398,7 @@ async fn wait_to_finish_engagement(
     qr_engagement: &Option<EmbeddedCbor<DeviceEngagement>>,
     nfc_engagement: &Option<NfcHceSession>,
 ) -> Result<DeviceInfo, VerificationProtocolError> {
-    let connected_device_future = wait_for_active_device(peripheral, service_uuid);
+    let connected_device_future = wait_for_active_device(peripheral, &service_uuid, STATE);
 
     let info = match (qr_engagement, nfc_engagement) {
         (None, None) => Err(VerificationProtocolError::Failed(
@@ -436,167 +435,10 @@ async fn wait_to_finish_engagement(
     Ok(info)
 }
 
-async fn wait_for_active_device(
-    peripheral: &TrackingBlePeripheral,
-    service_uuid: Uuid,
-) -> Result<DeviceInfo, VerificationProtocolError> {
-    loop {
-        let connected_devices = peripheral
-            .get_connection_change_events()
-            .await
-            .error_while("waiting for BLE connection event")?
-            .into_iter()
-            .filter_map(|info| match info {
-                ConnectionEvent::Connected { device_info } => Some(device_info),
-                ConnectionEvent::Disconnected { .. } => None,
-            });
-
-        for connected_device in connected_devices {
-            tracing::debug!("device connected: {connected_device:?}");
-
-            if wait_for_start(peripheral, &connected_device, service_uuid).await? {
-                return Ok(connected_device);
-            }
-        }
-    }
-}
-
-/// Wait for Start command according to ISO 18013-5 (8.3.3.1.1.6 Data retrieval)
-///
-/// - returns `true` if Start command was written
-/// - returns `false` if no command was written and reconnection should happen
-async fn wait_for_start(
-    peripheral: &TrackingBlePeripheral,
-    info: &DeviceInfo,
-    service_uuid: Uuid,
-) -> Result<bool, VerificationProtocolError> {
-    let command_written = match peripheral
-        .get_characteristic_writes(
-            info.address.clone(),
-            service_uuid.to_string(),
-            STATE.to_string(),
-        )
-        .await
-    {
-        Ok(writes) => writes.concat(),
-        Err(err) => {
-            tracing::warn!("Failed to receive State command: {err}");
-            // according to ISO 18013-5 (8.3.3.1.1.8 Connection re-establishment),
-            // re-connection in this phase is allowed
-            return Ok(false);
-        }
-    };
-
-    let command: Command = command_written
-        .try_into()
-        .map_err(VerificationProtocolError::Other)?;
-
-    if command == Command::Start {
-        Ok(true)
-    } else {
-        Err(VerificationProtocolError::Failed(
-            "invalid command".to_string(),
-        ))
-    }
-}
-
 async fn read_request(
     peripheral: &TrackingBlePeripheral,
     info: &DeviceInfo,
     service_uuid: Uuid,
 ) -> Result<SessionEstablishment, VerificationProtocolError> {
-    let mut result = vec![];
-
-    loop {
-        let data = peripheral
-            .get_characteristic_writes(
-                info.address.clone(),
-                service_uuid.to_string(),
-                CLIENT_2_SERVER.into(),
-            )
-            .await
-            .error_while("waiting for Client2Server characteristic write")?;
-
-        for msg in data {
-            let chunk: Chunk = msg.try_into()?;
-            match chunk {
-                Chunk::Next(payload) => result.extend(payload),
-                Chunk::Last(payload) => {
-                    result.extend(payload);
-
-                    return Ok(ciborium::from_reader(result.as_slice())?);
-                }
-            }
-        }
-    }
-}
-
-pub(crate) async fn notify_end(
-    peripheral: &TrackingBlePeripheral,
-    device_info: Option<&DeviceInfo>,
-    service_uuid: Uuid,
-) {
-    if let Some(device_info) = device_info {
-        let result = peripheral
-            .notify_characteristic_data(
-                device_info.address.clone(),
-                service_uuid.to_string(),
-                STATE.into(),
-                &[Command::End as _],
-            )
-            .await;
-        if let Err(err) = result {
-            tracing::warn!("Failed to notify characteristic data: {err}");
-        }
-    }
-}
-
-pub(crate) async fn set_proof_error(
-    proof_repository: &dyn ProofRepository,
-    proof_id: &ProofId,
-    error_metadata: HistoryErrorMetadata,
-) {
-    tracing::debug!("set_proof_error: {proof_id}, metadata: {error_metadata:?}");
-    if let Err(err) = proof_repository
-        .update_proof(
-            proof_id,
-            UpdateProofRequest {
-                state: Some(ProofStateEnum::Error),
-                ..Default::default()
-            },
-            Some(error_metadata),
-        )
-        .await
-    {
-        tracing::warn!("failed to set proof to error: {err}");
-    }
-}
-
-fn get_characteristic_options() -> Vec<CreateCharacteristicOptions> {
-    vec![
-        CreateCharacteristicOptions {
-            uuid: STATE.into(),
-            permissions: vec![
-                CharacteristicPermissions::Read,
-                CharacteristicPermissions::Write,
-            ],
-            properties: vec![
-                CharacteristicProperties::Notify,
-                CharacteristicProperties::WriteWithoutResponse,
-            ],
-            initial_value: None,
-        },
-        CreateCharacteristicOptions {
-            uuid: CLIENT_2_SERVER.into(),
-            permissions: vec![CharacteristicPermissions::Write],
-            properties: vec![CharacteristicProperties::WriteWithoutResponse],
-            initial_value: None,
-        },
-        CreateCharacteristicOptions {
-            uuid: SERVER_2_CLIENT.into(),
-            permissions: vec![CharacteristicPermissions::Read],
-            properties: vec![CharacteristicProperties::Notify],
-            initial_value: None,
-        },
-    ]
+    read_chunked(peripheral, &info.address, &service_uuid, CLIENT_2_SERVER).await
 }

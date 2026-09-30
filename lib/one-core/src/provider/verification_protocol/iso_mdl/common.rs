@@ -12,10 +12,13 @@ use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use sha2::{Digest, Sha256};
+use shared_types::ProofId;
 
 use super::device_engagement::DeviceEngagement;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::secret_slice;
+use crate::model::history::HistoryErrorMetadata;
+use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::proto::cose::CoseSign1;
 use crate::provider::credential_formatter::mdoc_formatter::util::{EmbeddedCbor, MDLVersion};
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -25,6 +28,7 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::repository::proof_repository::ProofRepository;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -103,7 +107,7 @@ pub(crate) struct KeyAgreementKey {
 }
 
 impl KeyAgreementKey {
-    pub fn generate(algorithm: &dyn KeyAlgorithm) -> Result<Self, KeyAlgorithmError> {
+    pub(crate) fn generate(algorithm: &dyn KeyAlgorithm) -> Result<Self, KeyAlgorithmError> {
         let key_pair = algorithm.generate_key()?;
         let key_agreement = key_pair.key.key_agreement().ok_or_else(move || {
             KeyAlgorithmError::NotSupported(format!(
@@ -131,7 +135,7 @@ impl KeyAgreementKey {
         &self.public_key
     }
 
-    pub(crate) async fn derive_session_keys(
+    pub(super) async fn derive_session_keys(
         &self,
         remote_key: &EphemeralSessionKey,
         session_transcript_bytes: &[u8],
@@ -179,6 +183,7 @@ impl KeyAgreementKey {
     }
 }
 
+/// ISO 18013-5, 9.1.1.5
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SkDevice {
     #[serde(with = "secret_slice")]
@@ -186,15 +191,15 @@ pub(crate) struct SkDevice {
 }
 
 impl SkDevice {
-    pub(crate) fn new(secret_key: SecretSlice<u8>) -> Self {
+    pub(super) fn new(secret_key: SecretSlice<u8>) -> Self {
         Self { secret_key }
     }
 
-    pub(crate) fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
+    pub(super) fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
         encrypt(&self.secret_key, plaintext, Self::iv())
     }
 
-    pub(crate) fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
+    pub(super) fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
         decrypt(&self.secret_key, ciphertext, Self::iv())
     }
 
@@ -204,6 +209,7 @@ impl SkDevice {
     }
 }
 
+/// ISO 18013-5, 9.1.1.5
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SkReader {
     #[serde(with = "secret_slice")]
@@ -211,15 +217,15 @@ pub(crate) struct SkReader {
 }
 
 impl SkReader {
-    pub(crate) fn new(secret_key: SecretSlice<u8>) -> Self {
+    pub(super) fn new(secret_key: SecretSlice<u8>) -> Self {
         Self { secret_key }
     }
 
-    pub(crate) fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
+    pub(super) fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
         encrypt(&self.secret_key, plaintext, Self::iv())
     }
 
-    pub(crate) fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
+    pub(super) fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, VerificationProtocolError> {
         decrypt(&self.secret_key, ciphertext, Self::iv())
     }
 
@@ -258,7 +264,7 @@ fn decrypt(
     Ok(plaintext)
 }
 
-pub(crate) fn create_session_transcript_bytes(
+pub(super) fn create_session_transcript_bytes(
     device_engagement_bytes: EmbeddedCbor<DeviceEngagement>,
     e_reader_key_bytes: EmbeddedCbor<EphemeralSessionKey>,
     handover: Option<Handover>,
@@ -276,6 +282,27 @@ pub(crate) fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, VerificationPr
     let mut buff = vec![];
     ciborium::into_writer(value, &mut buff)?;
     Ok(buff)
+}
+
+pub(super) async fn set_proof_to_error(
+    proof_repository: &dyn ProofRepository,
+    proof_id: &ProofId,
+    error_metadata: HistoryErrorMetadata,
+) {
+    tracing::debug!("set_proof_error: {proof_id}, metadata: {error_metadata:?}");
+    if let Err(err) = proof_repository
+        .update_proof(
+            proof_id,
+            UpdateProofRequest {
+                state: Some(ProofStateEnum::Error),
+                ..Default::default()
+            },
+            Some(error_metadata),
+        )
+        .await
+    {
+        tracing::warn!("failed to set proof to error: {err}");
+    }
 }
 
 #[cfg(test)]

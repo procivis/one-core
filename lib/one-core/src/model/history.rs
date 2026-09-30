@@ -37,8 +37,8 @@ pub struct HistoryErrorMetadata {
     pub message: String,
 }
 
-impl<T: ErrorCodeMixin> From<T> for HistoryErrorMetadata {
-    fn from(value: T) -> Self {
+impl<T: ErrorCodeMixin> From<&T> for HistoryErrorMetadata {
+    fn from(value: &T) -> Self {
         Self {
             error_code: value.error_code(),
             message: value.to_string(),
@@ -82,8 +82,8 @@ impl TrustResolutionResult {
     }
 }
 
-impl<T: ErrorCodeMixin> From<T> for HistoryMetadata {
-    fn from(value: T) -> Self {
+impl<T: ErrorCodeMixin> From<&T> for HistoryMetadata {
+    fn from(value: &T) -> Self {
         Self::ErrorMetadata(value.into())
     }
 }

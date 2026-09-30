@@ -5,8 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
-use ble::ISO_MDL_FLOW;
-use ble_holder::{MdocBleHolderInteractionData, send_mdl_response};
+use ble::holder::{MdocBleHolderInteractionData, send_mdl_response};
 use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
 use mapper::device_request_to_dcql_query;
@@ -51,9 +50,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
-mod ble;
-pub(crate) mod ble_holder;
-pub(crate) mod ble_verifier;
+pub(crate) mod ble;
 pub(crate) mod common;
 pub(crate) mod device_engagement;
 mod holder_trust;
@@ -74,6 +71,16 @@ pub(crate) struct Params {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderParams {
     pub session_encryption_algorithm: KeyAlgorithmType,
+    #[expect(unused)]
+    pub ble_mode: BleMode,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum BleMode {
+    Peripheral,
+    Central,
+    Both,
 }
 
 #[derive(Provider)]
@@ -296,8 +303,8 @@ impl VerificationProtocol for IsoMdl {
         })?;
 
         // There is one shared flowId for both holder and verifier logic.
-        // So this call cancels either one, if it is running
-        ble.abort(Abort::Flow(*ISO_MDL_FLOW)).await;
+        // So this call cancels either one, if running
+        ble.abort(Abort::Flow(*ble::ISO_MDL_FLOW)).await;
 
         // explicitly stop NFC HCE if running
         if proof.role == ProofRole::Holder && proof.state == ProofStateEnum::Pending {

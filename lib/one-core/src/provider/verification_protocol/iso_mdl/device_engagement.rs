@@ -13,6 +13,7 @@ use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, Embedded
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
 use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
 
+/// ISO 18013-5, 8.2.1.1
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceEngagement {
     pub version: MDLVersion<1, 0>,
@@ -22,6 +23,7 @@ pub(crate) struct DeviceEngagement {
     // ServerRetrievalMethods and ProtocolInfo ignored/not implemented
 }
 
+/// ISO 18013-5, 8.2.1.1
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Security {
     V1 {
@@ -29,6 +31,7 @@ pub(crate) enum Security {
     },
 }
 
+/// ISO 18013-5, Table 7
 #[expect(clippy::upper_case_acronyms)]
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq, Display)]
 #[repr(u8)]
@@ -38,12 +41,14 @@ enum DeviceRetrievalType {
     WifiAware = 3,
 }
 
+/// ISO 18013-5, 8.2.1.1
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum DeviceRetrievalMethod {
     BleV1(BleOptionsV1),
     // WifiOptions and NfcOptions not implemented
 }
 
+/// ISO 18013-5, 8.2.2.3
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct BleOptionsV1 {
     /// filled when peripheral server mode supported
@@ -56,6 +61,7 @@ pub(crate) struct BleOptionsV1 {
     pub peripheral_server_mac_address: Option<String>,
 }
 
+/// ISO 18013-5, 8.2.2.3
 const QR_CODE_PREFIX: &str = "mdoc:";
 
 impl DeviceEngagement {

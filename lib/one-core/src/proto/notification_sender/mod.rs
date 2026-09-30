@@ -195,7 +195,7 @@ impl NotificationSenderImpl {
 
         Ok(match result {
             Ok(Ok(())) => (NotificationResult::Delivered, None),
-            Ok(Err(e)) => {
+            Ok(Err(ref e)) => {
                 tracing::info!("MQTT notification failure: {e}");
                 (NotificationResult::Rescheduled, Some(e.into()))
             }
@@ -203,7 +203,7 @@ impl NotificationSenderImpl {
                 tracing::info!("MQTT notification timed out");
                 (
                     NotificationResult::Rescheduled,
-                    Some(MqttConnectionError::ConnectionTimeout.into()),
+                    Some((&MqttConnectionError::ConnectionTimeout).into()),
                 )
             }
         })
