@@ -113,12 +113,21 @@ where
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum Boolean {
     False,
     True,
 }
+
+/// Used to deserialize boolean query params, it doesn't have to impl own Schema as generated clients can use their native boolean here.
+impl utoipa::PartialSchema for Boolean {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        <bool as utoipa::PartialSchema>::schema()
+    }
+}
+
+impl ToSchema for Boolean {}
 
 impl From<Boolean> for bool {
     fn from(boolean: Boolean) -> Self {
