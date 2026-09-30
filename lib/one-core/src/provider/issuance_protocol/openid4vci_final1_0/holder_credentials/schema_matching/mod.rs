@@ -155,7 +155,6 @@ pub(super) async fn find_or_import_credential_schema(
             &parsed_schema,
             parsed_format,
             &config.datatype,
-            &config.global_settings.default_language,
         )
         .await?
         else {
@@ -357,7 +356,6 @@ async fn prepare_display_name_matched_format(
     parsed_schema: &CredentialSchema,
     parsed_format: &CredentialSchemaFormat,
     datatype_config: &DatatypeConfig,
-    default_language: &str,
 ) -> Result<Option<CredentialSchemaFormat>, IssuanceProtocolError> {
     let stored_claim_schemas = stored_schema.claim_schemas.as_ref().await?;
     let parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?;
@@ -368,14 +366,13 @@ async fn prepare_display_name_matched_format(
     for stored_claim_schema in stored_claim_schemas.iter() {
         stored_claims_with_display_names.push((
             stored_claim_schema,
-            claim_display_names(stored_claim_schema, &stored_claim_schemas, default_language)
-                .await?,
+            claim_display_names(stored_claim_schema).await?,
         ));
     }
 
-    let mut sorted_parsed_claim_schemas = parsed_claim_schemas.iter().collect::<Vec<_>>();
+    let mut parsed_claim_schemas = parsed_claim_schemas.iter().collect::<Vec<_>>();
     // sort by key, so parents are ordered before their children
-    sorted_parsed_claim_schemas.sort_by(|left, right| left.key.cmp(&right.key));
+    parsed_claim_schemas.sort_by(|left, right| left.key.cmp(&right.key));
 
     // New-format mappings redirected to matched stored claim schemas.
     let mut reusable_mappings = vec![];
@@ -383,7 +380,7 @@ async fn prepare_display_name_matched_format(
     let mut matched_stored_claim_schema_ids = HashSet::new();
     // Parsed keys mapped to stored keys; `None` marks an entirely new subtree.
     let mut parsed_to_stored_keys = HashMap::<String, Option<String>>::new();
-    for parsed_claim_schema in sorted_parsed_claim_schemas {
+    for parsed_claim_schema in parsed_claim_schemas {
         let parsed_mapping = parsed_mappings
             .iter()
             .find(|mapping| mapping.claim_schema_id == parsed_claim_schema.id)
@@ -408,9 +405,7 @@ async fn prepare_display_name_matched_format(
                 None
             };
 
-        let parsed_display_names =
-            claim_display_names(parsed_claim_schema, &parsed_claim_schemas, default_language)
-                .await?;
+        let parsed_display_names = claim_display_names(parsed_claim_schema).await?;
         let mut matching_stored_claims = stored_claims_with_display_names.iter().filter(
             |(stored_claim_schema, stored_display_names)| {
                 if parsed_claim_schema.metadata {
@@ -472,45 +467,15 @@ fn claim_parent_key(claim_schema: &ClaimSchema) -> Option<&str> {
 
 async fn claim_display_names(
     claim_schema: &ClaimSchema,
-    claim_schemas: &[ClaimSchema],
-    default_language: &str,
 ) -> Result<HashSet<(String, String)>, IssuanceProtocolError> {
-    let mut names = claim_schema
+    Ok(claim_schema
         .translations
         .as_ref()
         .await?
         .iter()
         .filter(|translation| translation.field == LocalizedTextField::Name)
         .map(|translation| (translation.lang.to_owned(), translation.value.to_owned()))
-        .collect::<HashSet<_>>();
-    // TODO ONE-11294: Remove this compatibility fallback once our issuer emits wildcard paths
-    // for array children and their display metadata is applied before schema matching.
-    // Import persists a fallback for untranslated array children; use it before import as well.
-    if !claim_schema.metadata && names.is_empty() && has_array_ancestor(claim_schema, claim_schemas)
-    {
-        let leaf = claim_schema
-            .key
-            .rsplit_once(NESTED_CLAIM_MARKER)
-            .map_or(claim_schema.key.as_str(), |(_, leaf)| leaf);
-        names.insert((default_language.to_owned(), leaf.to_owned()));
-    }
-    Ok(names)
-}
-
-fn has_array_ancestor(claim_schema: &ClaimSchema, claim_schemas: &[ClaimSchema]) -> bool {
-    let mut parent_key = claim_parent_key(claim_schema);
-    while let Some(key) = parent_key {
-        if claim_schemas
-            .iter()
-            .any(|schema| schema.key == key && schema.array)
-        {
-            return true;
-        }
-        parent_key = key
-            .rsplit_once(NESTED_CLAIM_MARKER)
-            .map(|(parent, _)| parent);
-    }
-    false
+        .collect())
 }
 
 fn claim_schemas_are_compatible(

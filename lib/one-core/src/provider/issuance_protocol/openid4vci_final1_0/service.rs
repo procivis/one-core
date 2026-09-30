@@ -14,6 +14,7 @@ use standardized_types::openid4vci::{
     CredentialRequestEncryption, CredentialResponseEncryption, Grants, Image, IssuerDisplay,
     IssuerInfoAttestation, PreAuthorizedCodeGrant, ProofTypeSupported, SigningAlgValue, TxCode,
 };
+use standardized_types::openid4vp::dcql::{ClaimPath, PathSegment};
 use time::Duration;
 use uuid::Uuid;
 
@@ -33,6 +34,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::{LocalizedText, LocalizedTextField};
@@ -221,6 +223,7 @@ async fn create_claims_dtos_from_claims(
         .iter()
         .map(|mapping| (mapping.claim_schema_id, mapping))
         .collect();
+    let mut paths_by_claim_id = claim_metadata_paths(&claim_schemas, &claim_mappings_by_claim_id)?;
 
     let mut result = vec![];
     for claim_schema in &claim_schemas {
@@ -228,30 +231,110 @@ async fn create_claims_dtos_from_claims(
             continue;
         }
 
-        let mapping = claim_mappings_by_claim_id.get(&claim_schema.id).ok_or(
-            OpenID4VCIError::RuntimeError("Missing claim schema mapping".to_string()),
-        )?;
-
-        let mut path = mapping
-            .technical_key
-            .split('/')
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>();
-
-        if let Some(namespace) = &mapping.namespace {
-            path.insert(0, namespace.to_string());
-        }
+        let path = paths_by_claim_id.remove(&claim_schema.id).ok_or_else(|| {
+            OpenID4VCIError::RuntimeError("Missing claim metadata path".to_string())
+        })?;
 
         let display = create_claim_display_dtos(claim_schema).await?;
 
         result.push(ClaimMetadata {
-            path: path.into(),
+            path,
             mandatory: mandatory_by_claim_id.get(&claim_schema.id).copied(),
             additional_values: Default::default(),
             display: Some(display),
         });
     }
     Ok(result)
+}
+
+fn mapping_property_path(mapping: &CredentialSchemaFormatClaimSchema) -> Vec<String> {
+    let mut path = Vec::new();
+    if let Some(namespace) = &mapping.namespace {
+        path.push(namespace.clone());
+    }
+    path.extend(mapping.technical_key.split('/').map(str::to_owned));
+    path
+}
+
+struct MappedClaimPath<'a> {
+    schema_key: &'a str,
+    properties: Vec<String>,
+    path: ClaimPath,
+    array: bool,
+}
+
+/// Build paths from root to leaf. Each path carries the wildcards of its array ancestors, while
+/// mapped technical names (including numeric property names) remain string segments.
+fn claim_metadata_paths(
+    claim_schemas: &[ClaimSchema],
+    mappings_by_claim_id: &HashMap<ClaimSchemaId, &CredentialSchemaFormatClaimSchema>,
+) -> Result<HashMap<ClaimSchemaId, ClaimPath>, OpenID4VCIError> {
+    let mut ordered_schemas = claim_schemas
+        .iter()
+        .filter(|schema| !schema.metadata)
+        .collect::<Vec<_>>();
+    // Compare path components so a parent's entire subtree precedes the next sibling.
+    ordered_schemas.sort_unstable_by(|left, right| {
+        left.key
+            .split(NESTED_CLAIM_MARKER)
+            .cmp(right.key.split(NESTED_CLAIM_MARKER))
+    });
+
+    let mut ancestors: Vec<MappedClaimPath<'_>> = Vec::new();
+    let mut paths_by_claim_id = HashMap::with_capacity(ordered_schemas.len());
+    for schema in ordered_schemas {
+        // Discard finished sibling branches, leaving the nearest mapped ancestor on top.
+        while ancestors.last().is_some_and(|parent| {
+            !schema
+                .key
+                .strip_prefix(parent.schema_key)
+                .is_some_and(|suffix| suffix.starts_with(NESTED_CLAIM_MARKER))
+        }) {
+            ancestors.pop();
+        }
+
+        let mapping = mappings_by_claim_id.get(&schema.id).ok_or_else(|| {
+            OpenID4VCIError::RuntimeError(format!("Missing claim mapping for `{}`", schema.key))
+        })?;
+        let properties = mapping_property_path(mapping);
+        let segments = if let Some(parent) = ancestors.last() {
+            let Some(child_properties) = properties
+                .strip_prefix(parent.properties.as_slice())
+                .filter(|suffix| !suffix.is_empty())
+            else {
+                return Err(OpenID4VCIError::RuntimeError(format!(
+                    "Inconsistent claim mapping: `{}` does not extend its ancestor `{}`",
+                    schema.key, parent.schema_key
+                )));
+            };
+            let mut segments = parent.path.segments.clone();
+            if parent.array {
+                segments.push(PathSegment::ArrayAll);
+            }
+            segments.extend(
+                child_properties
+                    .iter()
+                    .cloned()
+                    .map(PathSegment::PropertyName),
+            );
+            segments
+        } else {
+            properties
+                .iter()
+                .cloned()
+                .map(PathSegment::PropertyName)
+                .collect()
+        };
+        let path = ClaimPath { segments };
+        paths_by_claim_id.insert(schema.id, path.clone());
+        ancestors.push(MappedClaimPath {
+            schema_key: &schema.key,
+            properties,
+            path,
+            array: schema.array,
+        });
+    }
+    Ok(paths_by_claim_id)
 }
 
 pub(super) fn calculate_mandatory_claims(
@@ -700,4 +783,108 @@ pub(crate) fn parse_access_token(access_token: &str) -> Result<InteractionId, Op
             .map_err(|_| OpenID4VCIError::RuntimeError("Could not parse UUID".to_owned()))?
             .into(),
     )
+}
+
+#[cfg(test)]
+mod metadata_path_tests {
+    use serde_json::json;
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::service::test_utilities::dummy_claim_schema;
+
+    fn claim(key: &str, array: bool) -> ClaimSchema {
+        ClaimSchema {
+            key: key.to_owned(),
+            array,
+            ..dummy_claim_schema()
+        }
+    }
+
+    fn mapping(
+        claim_schema_id: ClaimSchemaId,
+        technical_key: &str,
+        namespace: Option<&str>,
+    ) -> CredentialSchemaFormatClaimSchema {
+        let now = crate::clock::now_utc();
+        CredentialSchemaFormatClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_format_id: Uuid::new_v4().into(),
+            claim_schema_id,
+            technical_key: technical_key.to_owned(),
+            namespace: namespace.map(str::to_owned),
+        }
+    }
+
+    #[test]
+    fn metadata_path_uses_array_ancestors_and_keeps_numeric_property_names() {
+        let education = claim("education", true);
+        let degrees = claim("education/degrees", true);
+        let numeric_property = claim("education/degrees/0", false);
+        let mappings = [
+            mapping(education.id, "edu", Some("ns")),
+            mapping(degrees.id, "edu/records", Some("ns")),
+            mapping(numeric_property.id, "edu/records/0", Some("ns")),
+        ];
+        let schemas = [numeric_property, degrees, education];
+        let mappings_by_id = mappings
+            .iter()
+            .map(|mapping| (mapping.claim_schema_id, mapping))
+            .collect();
+
+        let paths = claim_metadata_paths(&schemas, &mappings_by_id).unwrap();
+        assert_eq!(
+            serde_json::to_value(&paths[&schemas[0].id]).unwrap(),
+            json!(["ns", "edu", null, "records", null, "0"])
+        );
+        assert_eq!(
+            serde_json::to_value(&paths[&schemas[1].id]).unwrap(),
+            json!(["ns", "edu", null, "records"])
+        );
+        assert_eq!(
+            serde_json::to_value(&paths[&schemas[2].id]).unwrap(),
+            json!(["ns", "edu"])
+        );
+    }
+
+    #[test]
+    fn metadata_path_keeps_parent_for_child_after_lexically_earlier_sibling() {
+        let parent = claim("a", true);
+        let sibling = claim("a-child", false);
+        let child = claim("a/child", false);
+        let mappings = [
+            mapping(parent.id, "a", None),
+            mapping(sibling.id, "a-child", None),
+            mapping(child.id, "a/child", None),
+        ];
+        let mappings_by_id = mappings
+            .iter()
+            .map(|mapping| (mapping.claim_schema_id, mapping))
+            .collect();
+
+        let paths =
+            claim_metadata_paths(&[child.clone(), sibling, parent], &mappings_by_id).unwrap();
+        assert_eq!(
+            serde_json::to_value(&paths[&child.id]).unwrap(),
+            json!(["a", null, "child"])
+        );
+    }
+
+    #[test]
+    fn metadata_path_without_array_ancestors_remains_property_only() {
+        let numeric_property = claim("address/0", false);
+        let mapping = mapping(numeric_property.id, "address/0", None);
+
+        let paths = claim_metadata_paths(
+            std::slice::from_ref(&numeric_property),
+            &HashMap::from([(numeric_property.id, &mapping)]),
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(&paths[&numeric_property.id]).unwrap(),
+            json!(["address", "0"])
+        );
+    }
 }

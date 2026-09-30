@@ -778,8 +778,6 @@ async fn apply_issuer_metadata_to_schema(
                     .unwrap_or_else(|| claim_schema.key.clone())
             })
             .collect_vec();
-        // TODO ONE-11294: Once our issuer emits wildcards for array children, reject its
-        // string-only array-child paths instead of silently skipping them below.
         let applicable_claims = issuer_metadata_claims
             .iter()
             .filter_map(|claim| {

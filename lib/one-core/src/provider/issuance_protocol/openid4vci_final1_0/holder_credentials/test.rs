@@ -125,7 +125,7 @@ async fn applies_wildcard_metadata_to_array_children_and_skips_concrete_indices(
 }
 
 #[tokio::test]
-async fn own_issuer_array_child_path_without_wildcard_is_skipped() {
+async fn array_child_path_without_wildcard_is_skipped() {
     let mut degrees = claim_schema("degrees", "OBJECT");
     degrees.array = true;
     let mut degree_type = claim_schema("degrees/type", "STRING");

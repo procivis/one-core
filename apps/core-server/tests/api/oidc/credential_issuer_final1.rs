@@ -510,56 +510,49 @@ fn assert_expected_claims(claims: &Value) {
     assert_eq!(claims_array.len(), 14); // Total number of claims including nested ones
 
     // Helper function to find a claim by path
-    let find_claim = |path: &[&str]| -> &Value {
+    let find_claim = |path: Value| -> &Value {
         claims_array
             .iter()
-            .find(|claim| {
-                let claim_path = claim["path"].as_array().unwrap();
-                claim_path.len() == path.len()
-                    && claim_path
-                        .iter()
-                        .zip(path.iter())
-                        .all(|(a, b)| a.as_str().unwrap() == *b)
-            })
+            .find(|claim| claim["path"] == path)
             .unwrap()
     };
 
     // Check root level claims
-    let name_claim = find_claim(&["name"]);
+    let name_claim = find_claim(json!(["name"]));
     assert_eq!(name_claim["mandatory"], true);
     assert_eq!(name_claim["display"][0]["name"], "name");
 
-    let string_array_claim = find_claim(&["string_array"]);
+    let string_array_claim = find_claim(json!(["string_array"]));
     assert_eq!(string_array_claim["mandatory"], true);
     assert_eq!(string_array_claim["display"][0]["name"], "string_array");
 
-    let object_array_claim = find_claim(&["object_array"]);
+    let object_array_claim = find_claim(json!(["object_array"]));
     assert_eq!(object_array_claim["mandatory"], true);
     assert_eq!(object_array_claim["display"][0]["name"], "object_array");
 
-    let address_claim = find_claim(&["address"]);
+    let address_claim = find_claim(json!(["address"]));
     assert_eq!(address_claim["mandatory"], true);
     assert_eq!(address_claim["display"][0]["name"], "address");
 
     // Check nested claims
-    let address_street_claim = find_claim(&["address", "street"]);
+    let address_street_claim = find_claim(json!(["address", "street"]));
     assert_eq!(address_street_claim["mandatory"], true);
     assert_eq!(address_street_claim["display"][0]["name"], "street");
 
-    let coordinates_claim = find_claim(&["address", "coordinates"]);
+    let coordinates_claim = find_claim(json!(["address", "coordinates"]));
     assert_eq!(coordinates_claim["mandatory"], true);
     assert_eq!(coordinates_claim["display"][0]["name"], "coordinates");
 
-    let coordinates_x_claim = find_claim(&["address", "coordinates", "x"]);
+    let coordinates_x_claim = find_claim(json!(["address", "coordinates", "x"]));
     assert_eq!(coordinates_x_claim["mandatory"], true);
     assert_eq!(coordinates_x_claim["display"][0]["name"], "x");
 
-    let coordinates_y_claim = find_claim(&["address", "coordinates", "y"]);
+    let coordinates_y_claim = find_claim(json!(["address", "coordinates", "y"]));
     assert_eq!(coordinates_y_claim["mandatory"], true);
     assert_eq!(coordinates_y_claim["display"][0]["name"], "y");
 
     // Check array claims
-    let nested_string_array_claim = find_claim(&["address", "coordinates", "string_array"]);
+    let nested_string_array_claim = find_claim(json!(["address", "coordinates", "string_array"]));
     assert_eq!(nested_string_array_claim["mandatory"], true);
     assert_eq!(
         nested_string_array_claim["display"][0]["name"],
@@ -567,32 +560,42 @@ fn assert_expected_claims(claims: &Value) {
     );
 
     // Check object array claims
-    let object_array_field1_claim = find_claim(&["object_array", "field1"]);
+    let object_array_field1_claim = find_claim(json!(["object_array", null, "field1"]));
     assert_eq!(object_array_field1_claim["mandatory"], true);
     assert_eq!(object_array_field1_claim["display"][0]["name"], "field1");
 
-    let object_array_field2_claim = find_claim(&["object_array", "field2"]);
+    let object_array_field2_claim = find_claim(json!(["object_array", null, "field2"]));
     assert_eq!(object_array_field2_claim["mandatory"], true);
     assert_eq!(object_array_field2_claim["display"][0]["name"], "field2");
 
     // Check nested object array claims
-    let nested_object_array_claim = find_claim(&["address", "coordinates", "object_array"]);
+    let nested_object_array_claim = find_claim(json!(["address", "coordinates", "object_array"]));
     assert_eq!(nested_object_array_claim["mandatory"], true);
     assert_eq!(
         nested_object_array_claim["display"][0]["name"],
         "object_array"
     );
 
-    let nested_object_array_field1_claim =
-        find_claim(&["address", "coordinates", "object_array", "field1"]);
+    let nested_object_array_field1_claim = find_claim(json!([
+        "address",
+        "coordinates",
+        "object_array",
+        null,
+        "field1"
+    ]));
     assert_eq!(nested_object_array_field1_claim["mandatory"], true);
     assert_eq!(
         nested_object_array_field1_claim["display"][0]["name"],
         "field1"
     );
 
-    let nested_object_array_field2_claim =
-        find_claim(&["address", "coordinates", "object_array", "field2"]);
+    let nested_object_array_field2_claim = find_claim(json!([
+        "address",
+        "coordinates",
+        "object_array",
+        null,
+        "field2"
+    ]));
     assert_eq!(nested_object_array_field2_claim["mandatory"], true);
     assert_eq!(
         nested_object_array_field2_claim["display"][0]["name"],
