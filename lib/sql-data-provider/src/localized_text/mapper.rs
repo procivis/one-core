@@ -1,8 +1,19 @@
+use std::collections::HashSet;
+
 use one_core::clock::now_utc;
 use one_core::model::localized_text::LocalizedText;
 use sea_orm::Set;
 
 use crate::entity::localized_text::{ActiveModel, Model};
+
+pub(super) fn deduplicate_localized_texts(texts: Vec<LocalizedText>) -> Vec<LocalizedText> {
+    let mut seen = HashSet::new();
+    texts
+        .into_iter()
+        .rev()
+        .filter(|text| seen.insert((text.entity_id, text.lang.clone(), text.field.clone())))
+        .collect()
+}
 
 impl From<LocalizedText> for ActiveModel {
     fn from(value: LocalizedText) -> Self {

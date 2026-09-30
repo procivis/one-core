@@ -15,7 +15,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_dto_mapper::convert_inner;
-use sea_orm::ActiveValue::Set;
+use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ColumnRef, Condition, ExprTrait, Query};
 use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, RelationTrait};
@@ -218,6 +218,19 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
             expiration: Set(value.expiration.map(|d| d.whole_seconds() as i32)),
             ecosystem: Set(value.ecosystem),
         }
+    }
+}
+
+pub(super) fn claim_schema_to_update_model(claim_schema: ClaimSchema) -> claim_schema::ActiveModel {
+    claim_schema::ActiveModel {
+        id: Unchanged(claim_schema.id),
+        last_modified: Set(claim_schema.last_modified),
+        key: Set(claim_schema.key),
+        datatype: Set(claim_schema.data_type),
+        array: Set(claim_schema.array),
+        metadata: Set(claim_schema.metadata),
+        required: Set(claim_schema.required),
+        ..Default::default()
     }
 }
 

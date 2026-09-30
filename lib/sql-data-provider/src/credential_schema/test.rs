@@ -18,7 +18,8 @@ use one_core::repository::organisation_repository::{
     MockOrganisationRepository, OrganisationRepository,
 };
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
+use rstest::rstest;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set, Unchanged};
 use shared_types::CredentialSchemaId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -26,8 +27,8 @@ use uuid::Uuid;
 use super::CredentialSchemaProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{
-    credential_schema, credential_schema_format, credential_schema_format_claim_schema,
-    organisation,
+    claim_schema, credential_schema, credential_schema_format,
+    credential_schema_format_claim_schema, organisation,
 };
 use crate::organisation::mapper::organisation_from_model;
 use crate::test_utilities::*;
@@ -613,6 +614,243 @@ async fn test_update_credential_schema_claims_success() {
         .unwrap()
         .unwrap();
     assert_eq!(claim_schema.order, 2);
+}
+
+#[tokio::test]
+async fn test_update_credential_schema_existing_and_new_claims() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+    let original_claims = claim_schema::Entity::find()
+        .order_by_asc(claim_schema::Column::Order)
+        .all(&db)
+        .await
+        .unwrap();
+    let now = now_utc();
+    let translation = LocalizedText {
+        entity_id: original_claims[0].id.into(),
+        field: LocalizedTextField::Name,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        lang: "de".to_string(),
+        value: "Vorname".to_string(),
+        entity_type: LocalizedTextEntityType::ClaimSchema,
+    };
+    let retained_translation = LocalizedText {
+        lang: "en".to_string(),
+        value: "First name".to_string(),
+        ..translation.clone()
+    };
+    repository
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                translations: Some(vec![translation.clone(), retained_translation.clone()]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let updated_translation = LocalizedText {
+        last_modified: now,
+        value: "Alter".to_string(),
+        ..translation
+    };
+    let updated_claim = ClaimSchema {
+        id: original_claims[0].id,
+        key: "updated claim".to_string(),
+        data_type: "NUMBER".to_string(),
+        created_date: now,
+        last_modified: now,
+        array: true,
+        metadata: true,
+        required: false,
+        translations: vec![updated_translation.clone()].into(),
+    };
+    let new_claims: Vec<_> = (0..2)
+        .map(|index| ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: format!("new claim {index}"),
+            translations: Default::default(),
+            ..updated_claim.clone()
+        })
+        .collect();
+    repository
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                claim_schemas: Some(vec![
+                    new_claims[0].clone(),
+                    updated_claim.clone(),
+                    new_claims[1].clone(),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    // Updating only an existing claim, including an unchanged one, must also succeed.
+    repository
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                claim_schemas: Some(vec![updated_claim.clone()]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let stored_claims = claim_schema::Entity::find()
+        .order_by_asc(claim_schema::Column::Order)
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(stored_claims.len(), 4);
+    assert_eq!(
+        stored_claims[0],
+        claim_schema::Model {
+            key: updated_claim.key,
+            datatype: updated_claim.data_type,
+            last_modified: now,
+            array: true,
+            metadata: true,
+            required: false,
+            ..original_claims[0].clone()
+        }
+    );
+    assert_eq!(stored_claims[1], original_claims[1]);
+    for (index, new_claim) in new_claims.iter().enumerate() {
+        assert_eq!(stored_claims[index + 2].id, new_claim.id);
+        assert_eq!(stored_claims[index + 2].order, (index + 2) as i32);
+        assert_eq!(stored_claims[index + 2].created_date, now);
+    }
+
+    let stored_schema = repository
+        .get_credential_schema(&credential_schema.id)
+        .await
+        .unwrap();
+    let stored_claims = stored_schema.claim_schemas.as_ref().await.unwrap();
+    let translations = stored_claims[0].translations.as_ref().await.unwrap();
+    assert_eq!(translations.len(), 2);
+    assert!(translations.iter().any(|translation| {
+        translation.lang == updated_translation.lang
+            && translation.value == updated_translation.value
+            && translation.field == updated_translation.field
+    }));
+    assert!(translations.iter().any(|translation| {
+        translation.lang == retained_translation.lang
+            && translation.value == retained_translation.value
+            && translation.field == retained_translation.field
+    }));
+}
+
+#[rstest]
+#[case(None)]
+#[case(Some(vec![]))]
+#[tokio::test]
+async fn test_update_credential_schema_without_claims_preserves_existing_claims(
+    #[case] claim_schemas: Option<Vec<ClaimSchema>>,
+) {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+    let original_claims = claim_schema::Entity::find()
+        .order_by_asc(claim_schema::Column::Order)
+        .all(&db)
+        .await
+        .unwrap();
+
+    repository
+        .update_credential_schema(
+            &credential_schema.id,
+            UpdateCredentialSchemaRequest {
+                claim_schemas,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let stored_claims = claim_schema::Entity::find()
+        .order_by_asc(claim_schema::Column::Order)
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(stored_claims, original_claims);
+}
+
+#[tokio::test]
+async fn test_update_credential_schema_rejects_claim_from_another_schema() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        organisation,
+        repository,
+        db,
+    } = setup_with_schema(Repositories::default()).await;
+    let other_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation.id,
+        "other schema",
+        false,
+        None,
+    )
+    .await
+    .unwrap();
+    let original_claims = claim_schema::Entity::find()
+        .order_by_asc(claim_schema::Column::Order)
+        .all(&db)
+        .await
+        .unwrap();
+    let other_schema = credential_schema::Entity::find_by_id(other_schema_id)
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap();
+    let foreign_claim = ClaimSchema {
+        key: "must not change".to_string(),
+        ..credential_schema.claim_schemas.as_ref().await.unwrap()[0].clone()
+    };
+    let new_claim = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        ..foreign_claim.clone()
+    };
+
+    let result = repository
+        .update_credential_schema(
+            &other_schema_id,
+            UpdateCredentialSchemaRequest {
+                claim_schemas: Some(vec![new_claim, foreign_claim]),
+                layout_properties: Some(LayoutProperties::default()),
+                ..Default::default()
+            },
+        )
+        .await;
+    assert!(result.is_err());
+
+    let stored_claims = claim_schema::Entity::find()
+        .order_by_asc(claim_schema::Column::Order)
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(stored_claims, original_claims);
+    assert_eq!(
+        credential_schema::Entity::find_by_id(other_schema_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap(),
+        other_schema
+    );
 }
 
 #[tokio::test]

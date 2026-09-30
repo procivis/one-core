@@ -10,6 +10,7 @@ use shared_types::EntityId;
 use crate::entity;
 use crate::entity::localized_text::ActiveModel;
 use crate::localized_text::LocalizedTextProvider;
+use crate::localized_text::mapper::deduplicate_localized_texts;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[async_trait::async_trait]
@@ -25,7 +26,7 @@ impl LocalizedTextRepository for LocalizedTextProvider {
     }
 
     async fn upsert_many(&self, localized_text: Vec<LocalizedText>) -> Result<(), DataLayerError> {
-        let model: Vec<ActiveModel> = convert_inner(localized_text);
+        let model: Vec<ActiveModel> = convert_inner(deduplicate_localized_texts(localized_text));
         Entity::insert_many(model)
             .on_conflict(update_on_conflict())
             .exec(&self.db)

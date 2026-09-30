@@ -20,7 +20,7 @@ pub enum LocalizedTextEntityType {
     Identifier,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LocalizedTextField {
     Name,
     Description,

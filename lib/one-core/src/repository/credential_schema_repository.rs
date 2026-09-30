@@ -32,6 +32,7 @@ pub trait CredentialSchemaRepository: Send + Sync {
         query_params: CredentialSchemaListQuery,
     ) -> Result<GetCredentialSchemaList, DataLayerError>;
 
+    /// Updates the schema, adding or updating supplied claims by ID without deleting omitted claims.
     async fn update_credential_schema(
         &self,
         id: &CredentialSchemaId,

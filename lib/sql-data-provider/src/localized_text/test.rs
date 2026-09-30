@@ -57,8 +57,16 @@ async fn test_upsert_many_get_localized_text_success() {
     let mut localized_text2 = localized_text.clone();
     localized_text2.lang = "de".to_string();
     localized_text2.value = "hello world two".to_string();
+    let stale_text = LocalizedText {
+        value: "stale value".to_string(),
+        ..localized_text.clone()
+    };
     provider
-        .upsert_many(vec![localized_text.clone(), localized_text2.clone()])
+        .upsert_many(vec![
+            stale_text,
+            localized_text2.clone(),
+            localized_text.clone(),
+        ])
         .await
         .unwrap();
     let result = provider.get(&localized_text.entity_id).await.unwrap();

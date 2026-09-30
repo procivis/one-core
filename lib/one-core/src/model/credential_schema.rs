@@ -246,6 +246,10 @@ pub type CredentialSchemaListQuery = ListQuery<
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateCredentialSchemaRequest {
+    /// Claims to add or update, matched by ID within this credential schema.
+    /// Existing claims retain their creation date and order; their other fields are updated
+    /// and supplied translations are upserted. New claims are appended in request order.
+    /// Omitted claims are not deleted or changed, including when this is `None` or empty.
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
     pub formats: Option<Vec<CredentialSchemaFormat>>,

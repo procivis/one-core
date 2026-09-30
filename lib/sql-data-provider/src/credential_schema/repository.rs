@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
@@ -18,7 +20,8 @@ use shared_types::CredentialSchemaId;
 use crate::common::list_query_with_custom_model;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::credential_schema::mapper::{
-    claim_schemas_to_model_vec, credential_schema_formats, credential_schema_from_models,
+    claim_schema_to_update_model, claim_schemas_to_model_vec, credential_schema_formats,
+    credential_schema_from_models,
 };
 use crate::entity::{
     claim_schema, credential_schema, credential_schema_format,
@@ -191,33 +194,52 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         self.db
             .tx(async {
-                let max_existing_order = claim_schema::Entity::find()
-                    .filter(claim_schema::Column::CredentialSchemaId.eq(id))
-                    .order_by_desc(claim_schema::Column::Order)
-                    .one(&self.db)
-                    .await
-                    .map_err(to_data_layer_error)?
-                    .map(|claim_schema| claim_schema.order)
-                    .unwrap_or_default();
-
                 update_model
                     .update(&self.db)
                     .await
                     .map_err(to_update_data_layer_error)?;
 
-                if let Some(claim_schemas) = request.claim_schemas {
+                if let Some(claim_schemas) = request.claim_schemas
+                    && !claim_schemas.is_empty()
+                {
+                    let existing_claim_schemas = claim_schema::Entity::find()
+                        .filter(claim_schema::Column::CredentialSchemaId.eq(id))
+                        .all(&self.db)
+                        .await
+                        .map_err(to_data_layer_error)?;
+                    let next_order = existing_claim_schemas
+                        .iter()
+                        .map(|claim_schema| claim_schema.order)
+                        .max()
+                        .map_or(0, |order| order + 1);
+                    let existing_ids: HashSet<_> = existing_claim_schemas
+                        .into_iter()
+                        .map(|claim_schema| claim_schema.id)
+                        .collect();
+
                     let mut localized_texts = vec![];
-                    for claim_schema in &claim_schemas {
+                    let mut new_claim_schemas = vec![];
+                    for claim_schema in claim_schemas {
                         localized_texts
                             .extend(claim_schema.translations.as_ref().await?.to_owned());
+                        if existing_ids.contains(&claim_schema.id) {
+                            claim_schema_to_update_model(claim_schema)
+                                .update(&self.db)
+                                .await
+                                .map_err(to_update_data_layer_error)?;
+                        } else {
+                            new_claim_schemas.push(claim_schema);
+                        }
                     }
-                    let claim_schema_models =
-                        claim_schemas_to_model_vec(claim_schemas, id, max_existing_order + 1);
 
-                    claim_schema::Entity::insert_many(claim_schema_models)
-                        .exec(&self.db)
-                        .await
-                        .map_err(|e| DataLayerError::Db(e.into()))?;
+                    if !new_claim_schemas.is_empty() {
+                        let claim_schema_models =
+                            claim_schemas_to_model_vec(new_claim_schemas, id, next_order);
+                        claim_schema::Entity::insert_many(claim_schema_models)
+                            .exec(&self.db)
+                            .await
+                            .map_err(|e| DataLayerError::Db(e.into()))?;
+                    }
 
                     if !localized_texts.is_empty() {
                         self.localized_text_repository
