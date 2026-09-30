@@ -110,6 +110,17 @@ redundant_clone         = "warn"
 unwrap_used             = "deny"
 collapsible_match       = "allow" # currently buggy in rust 1.95.0, fixed in the next version: https://github.com/rust-lang/rust-clippy/pull/16878
 
+[profile.ci-test]
+debug    = false
+inherits = "test"
+
+# SCRAM logins and the PBKDF2 of the backup tests are slow without optimization.
+[profile.ci-test.package.sha2]
+opt-level = 3
+
+[profile.ci-test.package.hmac]
+opt-level = 3
+
 [profile.mobile-release]
 codegen-units = 1
 inherits      = "release"

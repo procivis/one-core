@@ -20,9 +20,9 @@ variables:
   CARGO_TARGET_DIR: "/build-cache/target"
   CARGO_HOME: "/build-cache/cargo-home"
   CARGO_UNSTABLE_GC: "true"
+  CARGO_NEXTEST_VERSION: "0.9.146"
+  NEXTEST_ARCHIVE_FILE: "target/nextest/nextest-archive.tar.zst"
   BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.95.1-1.0
-  RUST_CONTAINER_NAME: rust
-  NETWORK_NAME: my_network
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -47,6 +47,14 @@ workflow:
   auto_cancel:
     on_new_commit: conservative
 
+default:
+  retry:
+    max: 1
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - api_failure
+
 stages:
   - lint
   - test
@@ -70,19 +78,29 @@ stages:
   - export D_TRACK_PROJECT_VERSION=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
   - export DEPLOY_IMAGE_TAG=$APP_VERSION
 
-.setup_network: &setup_network
-  - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
-  - docker network inspect $NETWORK_NAME >/dev/null 2>&1 || docker network create -d bridge $NETWORK_NAME
+.job_container: &job_container
+  - |
+    JOB_CONTAINER=$(docker ps -q --filter "label=com.gitlab.gitlab-runner.job.id=$CI_JOB_ID" --filter "label=com.gitlab.gitlab-runner.type=build")
+    if [ -z "$JOB_CONTAINER" ]; then
+      echo "❌ The container of this job was not found."
+      exit 1
+    fi
 
 .setup_mariadb: &setup_mariadb
+  - *job_container
   - >
     docker run -d --name $DB_CONTAINER_NAME
     -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
     -e MYSQL_DATABASE=$MYSQL_DATABASE
     --tmpfs /var/lib/mysql
-    --network=$NETWORK_NAME
-    -p 3306:3306
+    --network container:$JOB_CONTAINER
     mariadb:10.11.3
+    --table-open-cache=10000
+    --table-definition-cache=10000
+    --innodb-flush-log-at-trx-commit=0
+    --innodb-doublewrite=0
+    --innodb-stats-persistent=0
+    --skip-performance-schema
   - |
     for i in $(seq 1 15); do
       STATUS=$(docker exec "$DB_CONTAINER_NAME" mysqladmin ping -p"$MYSQL_ROOT_PASSWORD" 2>/dev/null || true)
@@ -103,15 +121,19 @@ stages:
   - docker exec $DB_CONTAINER_NAME mysql --user=root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL max_connections = 1000;"
 
 .setup_postgres: &setup_postgres
+  - *job_container
   - >
     docker run -d --name $DB_CONTAINER_NAME
     -e POSTGRES_USER=$POSTGRES_USER
     -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD
     -e POSTGRES_DB=$POSTGRES_DB
-    --network=$NETWORK_NAME
+    --network container:$JOB_CONTAINER
     -v ${DB_CONTAINER_NAME}_data:/var/lib/postgresql
-    -p 5432:5432
     postgres:18.3
+    -c max_connections=1000
+    -c fsync=off
+    -c synchronous_commit=off
+    -c full_page_writes=off
   - |
     for i in $(seq 1 15); do
       STATUS=$(docker exec "$DB_CONTAINER_NAME" psql -qtAX -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1" 2>/dev/null || true)
@@ -130,55 +152,81 @@ stages:
       exit 1
     fi
 
-.setup_rust_container: &setup_rust_container
-  - docker run --network=$NETWORK_NAME -d --name $RUST_CONTAINER_NAME $BUILD_IMAGE sleep infinity
-  - sleep 3
-  # Copy project files in (can't use volumes in dind)
-  - docker cp . $RUST_CONTAINER_NAME:/project
-
 .clean_up: &clean_up
   - docker stop $DB_CONTAINER_NAME || true
   - docker rm $DB_CONTAINER_NAME || true
   - docker volume rm ${DB_CONTAINER_NAME}_data || true
-  - docker stop $RUST_CONTAINER_NAME || true
-  - docker rm $RUST_CONTAINER_NAME || true
-  - docker network remove $NETWORK_NAME || true
 
 before_script:
   - *app_settings
 
-.cargo_tests:
+.install_nextest: &install_nextest
+  - |
+    mkdir -p "$CARGO_HOME/bin"
+    export PATH="$CARGO_HOME/bin:$PATH"
+    if ! cargo nextest --version 2>/dev/null | grep -q "$CARGO_NEXTEST_VERSION"; then
+      curl -LsSf "https://get.nexte.st/${CARGO_NEXTEST_VERSION}/linux" | tar zxf - -C "$CARGO_HOME/bin"
+    fi
+
+tests:compile:
   stage: test
   interruptible: true
-  image: docker:28.2.2-dind
   tags:
     - rust
-  dependencies: []
+  needs: []
   script:
-    # The database tests on MariaDB and Postgres need nextest.
-    - docker exec $RUST_CONTAINER_NAME sh -c 'curl -LsSf https://get.nexte.st/0.9.146/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"'
-    - |
-      if [ -z "$ONE_app__databaseUrl" ]; then
-        docker exec $RUST_CONTAINER_NAME cargo llvm-cov nextest --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
-      else
-        docker exec -e ONE_app__databaseUrl=${ONE_app__databaseUrl} $RUST_CONTAINER_NAME cargo llvm-cov nextest --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
-      fi
-    - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report --cobertura --output-path cobertura.xml
-    - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report
-    # Copy files out
-    - docker cp $RUST_CONTAINER_NAME:/project/lcov.info .
-    - docker cp $RUST_CONTAINER_NAME:/project/cobertura.xml .
-  coverage: '/^TOTAL\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(\d+\.\d+)%/'
+    - set -o pipefail
+    - cargo +$(rustup toolchain list | grep nightly | head -n1 | awk '{print $1}') fmt --all -- --check
+    - *install_nextest
+    - mkdir -p "$(dirname "$NEXTEST_ARCHIVE_FILE")"
+    # Clippy as rustc: one build gives the lints and the test binaries.
+    - export RUSTC_WORKSPACE_WRAPPER="$(command -v clippy-driver)"
+    # The form in which cargo-clippy passes `-D warnings`.
+    - export CLIPPY_ARGS="-D__CLIPPY_HACKERY__warnings"
+    # The build is instrumented, so the test jobs also measure the coverage.
+    - eval "$(cargo llvm-cov show-env --export-prefix --no-cfg-coverage)"
+    # The build itself writes no coverage profiles.
+    - export LLVM_PROFILE_FILE=/dev/null
+    - cargo test --no-run --workspace --profile ci-test --message-format=json | tee clippy.json | jq -rj 'select(.reason == "compiler-message") | .message.rendered'
+    - cargo nextest archive --workspace --cargo-profile ci-test --zstd-level 3 --archive-file "$NEXTEST_ARCHIVE_FILE"
+    - ls -lh "$NEXTEST_ARCHIVE_FILE"
+    # All jobs on the runner host share the target directory.
+    - cargo sweep --time 7
   artifacts:
     expire_in: 1 day
     when: always
     paths:
-      - lcov.info
-      - cobertura.xml
+      - target/nextest/nextest-archive.tar.zst
+      - clippy.json
+
+.cargo_nextest:
+  stage: test
+  interruptible: true
+  tags:
+    - rust
+  needs:
+    - job: tests:compile
+      artifacts: true
+  variables:
+    NEXTEST_TEST_THREADS: "16"
+    NEXTEST_PROFILE: "ci"
+    LLVM_PROFILE_FILE: "$CI_PROJECT_DIR/coverage/profraw/%16m.profraw"
+  script:
+    - *install_nextest
+    - cargo nextest run --archive-file "$NEXTEST_ARCHIVE_FILE" --profile "$NEXTEST_PROFILE"
+  after_script:
+    - |
+      mkdir -p coverage/profdata
+      "$(rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-profdata" merge -sparse \
+        coverage/profraw -o "coverage/profdata/$CI_JOB_NAME_SLUG.profdata"
+  artifacts:
+    expire_in: 1 week
+    when: always
+    paths:
+      - coverage/profdata/
+      - database.log
     reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: cobertura.xml
+      junit: target/nextest/*/junit.xml
 
 .run_tests:
   stage: extra_tests
@@ -195,70 +243,93 @@ before_script:
 
 tests:mariadb:
   extends:
-    - .cargo_tests
+    - .cargo_nextest
   variables:
-    DB_CONTAINER_NAME: mariadb
+    DB_CONTAINER_NAME: mariadb-$CI_JOB_ID
     MYSQL_DATABASE: core_db
     MYSQL_ROOT_PASSWORD: root_password
-    ONE_app__databaseUrl: "mysql://root:${MYSQL_ROOT_PASSWORD}@${DB_CONTAINER_NAME}:3306/${MYSQL_DATABASE}"
+    NEXTEST_PROFILE: "ci-mariadb"
+    ONE_app__databaseUrl: "mysql://root:${MYSQL_ROOT_PASSWORD}@127.0.0.1:3306/${MYSQL_DATABASE}"
   before_script:
     - *clean_up # in case gitlab didn't finish previous job gracefully
-    - *setup_network
     - *setup_mariadb
-    - *setup_rust_container
   after_script:
+    - docker logs $DB_CONTAINER_NAME > database.log 2>&1 || true
     - *clean_up
+    - !reference [.cargo_nextest, after_script]
 
 tests:postgres:
   extends:
-    - .cargo_tests
+    - .cargo_nextest
   variables:
-    DB_CONTAINER_NAME: postgres
+    DB_CONTAINER_NAME: postgres-$CI_JOB_ID
     POSTGRES_DB: core
     POSTGRES_USER: core
     POSTGRES_PASSWORD: password
-    ONE_app__databaseUrl: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_CONTAINER_NAME}:5432/${POSTGRES_DB}"
+    NEXTEST_PROFILE: "ci-postgres"
+    ONE_app__databaseUrl: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB}"
   before_script:
     - *clean_up # in case gitlab didn't finish previous job gracefully
-    - *setup_network
     - *setup_postgres
-    - *setup_rust_container
   after_script:
+    - docker logs $DB_CONTAINER_NAME > database.log 2>&1 || true
     - *clean_up
+    - !reference [.cargo_nextest, after_script]
 
 tests:sqlite:
   extends:
-    - .cargo_tests
-  before_script:
-    - *clean_up # in case gitlab didn't finish previous job gracefully
-    - *setup_network
-    - *setup_rust_container
-  after_script:
-    - *clean_up
+    - .cargo_nextest
 
-linter:clippy:
+coverage:report:
+  stage: test
   interruptible: true
-  stage: lint
-  needs: []
+  tags:
+    - rust
+  needs:
+    - job: tests:compile
+    - job: tests:sqlite
+    - job: tests:mariadb
+    - job: tests:postgres
+  variables:
+    CARGO_LLVM_COV_TARGET_DIR: "$CI_PROJECT_DIR/target/llvm-cov-target"
   script:
-    - cargo clippy --all-targets --message-format=json -- -D warnings > clippy.json
+    - *install_nextest
+    - LLVM_BIN="$(rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin"
+    # cargo-llvm-cov reads the test binaries from the extracted archive.
+    - mkdir -p "$CARGO_LLVM_COV_TARGET_DIR"
+    - cargo nextest list --archive-file "$NEXTEST_ARCHIVE_FILE" --extract-to "$CARGO_LLVM_COV_TARGET_DIR" --list-type binaries-only > /dev/null
+    # cargo-llvm-cov reads the merged profile from <workspace directory name>.profdata.
+    - |
+      find coverage -name '*.profdata' | sort > inputs.txt
+      echo "Runs in the report:"; cat inputs.txt
+      "$LLVM_BIN/llvm-profdata" merge -sparse -failure-mode=warn -f inputs.txt -o "$CARGO_LLVM_COV_TARGET_DIR/$(basename "$CI_PROJECT_DIR").profdata"
+    - NO_COVERAGE="^$CARGO_TARGET_DIR/|lib/proc-macros/"
+    - NO_TESTS='.*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$'
+    - report() { cargo llvm-cov report --nextest-archive-file "$NEXTEST_ARCHIVE_FILE" "$@"; }
+    - report --ignore-filename-regex="$NO_COVERAGE|$NO_TESTS" --lcov --output-path lcov.info
+    - report --ignore-filename-regex="$NO_COVERAGE" --cobertura --output-path cobertura.xml
+    # GitLab reads at most 10 MiB of Cobertura and does not use the method elements.
+    - sed -i -e '/<methods>/,/<\/methods>/d' -e '/<methods\/>/d' -e 's/^ *//' -e 's/ branch="false"//g' cobertura.xml
+    - report --ignore-filename-regex="$NO_COVERAGE" --json --summary-only --output-path coverage-summary.json
+    - |
+      printf 'Coverage: %.2f%%\n' "$(jq '.data[0].totals.lines.percent' coverage-summary.json)"
+  coverage: '/^Coverage: (\d+\.\d+)%/'
   artifacts:
     expire_in: 1 day
     when: always
     paths:
-      - clippy.json
-
-linter:rustfmt:
-  interruptible: true
-  stage: lint
-  needs: []
-  script:
-    - TOOLCHAIN_VERSION=$(rustup toolchain list | grep nightly | head -n1 | awk '{print $1}')
-    - cargo +$TOOLCHAIN_VERSION fmt --all -- --check
+      - lcov.info
+      - cobertura.xml
+      - coverage-summary.json
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
 
 linter:dependencies:
   interruptible: true
   stage: lint
+  needs: []
   script:
     - cargo deny --format json check 2> deny.json || true
     - cargo deny check
@@ -271,9 +342,9 @@ linter:dependencies:
 sonarqube-check:
   stage: test
   needs:
-    - job: linter:clippy
+    - job: tests:compile
       artifacts: true
-    - job: tests:sqlite
+    - job: coverage:report
       artifacts: true
   image:
     name: sonarsource/sonar-scanner-cli:latest
@@ -290,6 +361,13 @@ sonarqube-check:
 build_image:
   stage: build
   dependencies: []
+  # Does not wait for the compile job: the API tests wait for the image.
+  needs:
+    - job: linter:dependencies
+      artifacts: false
+    - job: dtrack:upload-bom
+      optional: true
+      artifacts: false
   extends:
     - .release_docker_image
   variables:
@@ -324,6 +402,15 @@ build_image_acr:
     matrix: !reference [.one_core, clients_matrix]
 
 sdk:ios:bitrise:
+  needs:
+    - job: tests:sqlite
+      artifacts: false
+    - job: tests:mariadb
+      artifacts: false
+    - job: tests:postgres
+      artifacts: false
+    - job: tests:api
+      artifacts: false
   stage: sdk_build
   extends:
     - .bitrise:default
@@ -344,7 +431,15 @@ sdk:android:build:
   stage: sdk_build
   tags:
     - rust
-  needs: []
+  needs:
+    - job: tests:sqlite
+      artifacts: false
+    - job: tests:mariadb
+      artifacts: false
+    - job: tests:postgres
+      artifacts: false
+    - job: tests:api
+      artifacts: false
   when: manual
   script:
     - export HOSTNAME=$(docker ps -ql)
@@ -363,7 +458,15 @@ sdk:typescript:interface:
   stage: sdk_build
   tags:
     - rust
-  needs: []
+  needs:
+    - job: tests:sqlite
+      artifacts: false
+    - job: tests:mariadb
+      artifacts: false
+    - job: tests:postgres
+      artifacts: false
+    - job: tests:api
+      artifacts: false
   when: manual
   script:
     - makers generate_ts
@@ -467,7 +570,15 @@ sdk:react-native:
 
 sdk:generate_binding_files:
   stage: sdk_build
-  needs: []
+  needs:
+    - job: tests:sqlite
+      artifacts: false
+    - job: tests:mariadb
+      artifacts: false
+    - job: tests:postgres
+      artifacts: false
+    - job: tests:api
+      artifacts: false
   when: manual
   script:
     - makers generate_uniffi_interfaces
@@ -496,15 +607,15 @@ sdk:update_doc_sdk_version:
   before_script:
     - jq --arg id "$CI_PIPELINE_ID" '.current = ($id|tonumber)' sdk_version.json > tmp.json && mv tmp.json sdk_version.json
 
+# The deploy and SDK jobs need this job, so it cannot be in a later stage.
 tests:api:
+  stage: build
   variables:
     API_TEST: "CORE"
   extends:
     - .run_tests
-  rules:
-    - when: on_success
-      needs:
-        - job: build_image
+  needs:
+    - job: build_image
 
 .deploy_trigger:
   stage: deploy
@@ -524,6 +635,16 @@ deploy:dev:
   resource_group: core-dev
   needs:
     - job: build_image
+    - job: tests:sqlite
+    - job: tests:mariadb
+    - job: tests:postgres
+    - job: tests:api
+    - job: dtrack:policy_violations
+      optional: true
+    - job: dtrack:metrics
+      optional: true
+    - job: sonarqube-check
+      optional: true
   extends:
     - .deploy_trigger
     - .rule:deploy:dev
