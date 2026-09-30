@@ -351,6 +351,7 @@ did:
         leewaySeconds: 60
       private:
         maxDidLogEntryCheck: 10
+        includeSwissProfileMarker: true
 datatype:
   STRING:
     display: "datatype.string"

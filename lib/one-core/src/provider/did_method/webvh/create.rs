@@ -80,7 +80,12 @@ pub(super) async fn create(
         "{PREFIX}QmRXEKqsStiagD4DBZG1gwrtpoNfxSUwHd8vxQMBytR5zW:{domain}"
     ))?;
     let active_ref = make_keyref(active, method.key_provider.as_ref())?;
-    let document = create_document(&placeholder_did, &keys, method.key_provider.as_ref())?;
+    let document = create_document(
+        &placeholder_did,
+        &keys,
+        method.key_provider.as_ref(),
+        method.params.include_swiss_profile_marker,
+    )?;
     let now = now_utc()?;
     let mut entry = LogEntry {
         version_id: SCID_PLACEHOLDER.to_string(),
@@ -124,6 +129,7 @@ fn create_document(
     did: &str,
     keys: &DidKeys,
     provider: &dyn KeyProvider,
+    include_swiss_profile_marker: bool,
 ) -> Result<Value, DidMethodError> {
     let mut verification_methods = vec![];
     let mut seen = HashSet::new();
@@ -136,6 +142,12 @@ fn create_document(
         ]),
     );
     document.insert("id".to_string(), json!(did));
+    if include_swiss_profile_marker {
+        document.insert(
+            "profile_version".to_string(),
+            json!("swiss-profile-anchor:1.0.0"),
+        );
+    }
     for (name, role_keys) in [
         ("authentication", &keys.authentication),
         ("assertionMethod", &keys.assertion_method),

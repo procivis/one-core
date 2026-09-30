@@ -212,6 +212,10 @@ async fn test_create_and_deactivate_webvh_at_existing_log_endpoint() {
     assert_eq!(first["parameters"]["witness"], serde_json::json!({}));
     assert_eq!(first["parameters"]["watchers"], serde_json::json!([]));
     assert_eq!(first["parameters"]["nextKeyHashes"], serde_json::json!([]));
+    assert_eq!(
+        first["state"]["profile_version"],
+        "swiss-profile-anchor:1.0.0"
+    );
     let verification_method = &first["state"]["verificationMethod"][0];
     let key_id = verification_method["id"]
         .as_str()

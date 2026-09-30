@@ -51,6 +51,10 @@ struct Params {
     max_did_log_entry_check: Option<u32>,
     #[serde(default)]
     resolve_to_insecure_http: bool,
+    /// Include `profile_version` in the DID document state as required by the Swiss Profile Anchor.
+    /// https://swiyu-admin-ch.github.io/specifications/swiss-profile-anchor/#did-log-entry-version
+    #[serde(default)]
+    include_swiss_profile_marker: bool,
     #[serde(default)]
     #[serde_as(as = "DurationSeconds<i64>")]
     leeway_seconds: Duration,

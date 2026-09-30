@@ -383,6 +383,7 @@ async fn create_and_resolve_v1_log() {
     assert_eq!(entry["parameters"]["watchers"], json!([]));
     assert_eq!(entry["parameters"]["nextKeyHashes"], json!([]));
     assert_eq!(entry["state"]["id"], created.did.as_str());
+    assert!(entry["state"].get("profile_version").is_none());
     for method in entry["state"]["verificationMethod"].as_array().unwrap() {
         let key_id = method["id"].as_str().unwrap().split_once('#').unwrap().1;
         assert_eq!(method["publicKeyJwk"]["kid"], key_id);
@@ -418,6 +419,38 @@ async fn create_and_resolve_v1_log() {
     setup.method.client = Arc::new(client);
     let document = setup.method.resolve(&created.did).await.unwrap();
     assert_eq!(document.id, created.did);
+}
+
+#[tokio::test]
+async fn swiss_profile_marker_is_configurable_and_signed() {
+    let mut setup = setup(MockHttpClient::new());
+    assert!(
+        !serde_json::from_value::<Params>(json!({}))
+            .unwrap()
+            .include_swiss_profile_marker
+    );
+    setup.method.params = serde_json::from_value(json!({
+        "includeSwissProfileMarker": true,
+        "leewaySeconds": 60
+    }))
+    .unwrap();
+
+    let created = setup
+        .method
+        .create(Uuid::new_v4().into(), &None, did_keys(&setup))
+        .await
+        .unwrap();
+    let log = created.log.unwrap();
+    let entry: Value = serde_json::from_str(&log).unwrap();
+    assert_eq!(
+        entry["state"]["profile_version"],
+        "swiss-profile-anchor:1.0.0"
+    );
+    setup
+        .method
+        .verify_log(&log, Some(&created.did))
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

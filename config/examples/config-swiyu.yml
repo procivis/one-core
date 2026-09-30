@@ -151,6 +151,7 @@ did:
             min: 0
             max: 1
       private:
+        includeSwissProfileMarker: true
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"
