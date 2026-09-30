@@ -5,12 +5,13 @@ use ndef_rs::payload::RecordPayload;
 use ndef_rs::{NdefMessage, NdefRecord, TNF};
 use uuid::Uuid;
 
-use super::ble::holder::ServerInfo;
+use super::BleMode;
+use super::ble::holder::BleHolderSession;
 use super::device_engagement::DeviceEngagement;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 
 // ISO 18013-5 8.2.2.1
-pub(super) const DEVICE_ENGAGMENT_RECORD_ID: &[u8] = b"mdoc";
+const DEVICE_ENGAGMENT_RECORD_ID: &[u8] = b"mdoc";
 pub(super) const DEVICE_ENGAGMENT_RECORD_TYPE: &[u8] = b"iso.org:18013:deviceengagement";
 
 const BLE_CARRIER_DATA_REFERENCE: &[u8] = b"0"; // this is to be compatible with hardcoded choice in OWF implementation
@@ -20,7 +21,7 @@ const ALTERNATIVE_CARRIER_RECORD_TYPE: &[u8] = b"ac";
 const HANDOVER_SELECT_RECORD_TYPE: &[u8] = b"Hs";
 
 pub(crate) fn create_nfc_handover_select_message(
-    server: &ServerInfo,
+    ble_session: &BleHolderSession,
     device_engagement: EmbeddedCbor<DeviceEngagement>,
 ) -> Result<NdefMessage, ndef_rs::error::NdefError> {
     let alternative_carrier_record = AlternativeCarrierRecord {
@@ -47,9 +48,9 @@ pub(crate) fn create_nfc_handover_select_message(
     );
     nfc_message.add_record(
         BLECarrierConfigurationRecord {
-            le_role: BleRolesSupported::OnlyPeripheral,
-            service_uuid: server.service_uuid,
-            mac_address: if let Some(mac) = server.mac_address.as_ref() {
+            le_role: ble_session.mode.into(),
+            service_uuid: ble_session.service_uuid,
+            mac_address: if let Some(mac) = ble_session.mac_address.as_ref() {
                 Some(serialize_mac_address(mac)?)
             } else {
                 None
@@ -62,7 +63,7 @@ pub(crate) fn create_nfc_handover_select_message(
 }
 
 pub(super) struct BLECarrierConfigurationRecord {
-    le_role: BleRolesSupported,
+    le_role: LERole,
     service_uuid: Uuid,
     mac_address: Option<[u8; 6]>,
 }
@@ -73,14 +74,24 @@ const BLE_CARRIER_MAC_ADDRESS: u8 = 0x1b;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
-enum BleRolesSupported {
+enum LERole {
     OnlyPeripheral = 0,
     OnlyCentral = 1,
     PeripheralPreferred = 2,
     CentralPreferred = 3,
 }
 
-impl TryFrom<u8> for BleRolesSupported {
+impl From<BleMode> for LERole {
+    fn from(value: BleMode) -> Self {
+        match value {
+            BleMode::Peripheral => Self::OnlyPeripheral,
+            BleMode::Central => Self::OnlyCentral,
+            BleMode::Both => Self::CentralPreferred,
+        }
+    }
+}
+
+impl TryFrom<u8> for LERole {
     type Error = anyhow::Error;
 
     fn try_from(v: u8) -> Result<Self, Self::Error> {
@@ -99,28 +110,28 @@ impl TryFrom<u8> for BleRolesSupported {
 impl BLECarrierConfigurationRecord {
     pub(super) fn peripheral_service_uuid(&self) -> Option<Uuid> {
         match self.le_role {
-            BleRolesSupported::OnlyCentral => None,
-            BleRolesSupported::OnlyPeripheral
-            | BleRolesSupported::PeripheralPreferred
-            | BleRolesSupported::CentralPreferred => Some(self.service_uuid),
+            LERole::OnlyCentral => None,
+            LERole::OnlyPeripheral | LERole::PeripheralPreferred | LERole::CentralPreferred => {
+                Some(self.service_uuid)
+            }
         }
     }
 
     pub(super) fn central_service_uuid(&self) -> Option<Uuid> {
         match self.le_role {
-            BleRolesSupported::OnlyPeripheral => None,
-            BleRolesSupported::OnlyCentral
-            | BleRolesSupported::PeripheralPreferred
-            | BleRolesSupported::CentralPreferred => Some(self.service_uuid),
+            LERole::OnlyPeripheral => None,
+            LERole::OnlyCentral | LERole::PeripheralPreferred | LERole::CentralPreferred => {
+                Some(self.service_uuid)
+            }
         }
     }
 
     pub(super) fn peripheral_mac_address(&self) -> Option<[u8; 6]> {
         match self.le_role {
-            BleRolesSupported::OnlyCentral => None,
-            BleRolesSupported::OnlyPeripheral
-            | BleRolesSupported::PeripheralPreferred
-            | BleRolesSupported::CentralPreferred => self.mac_address,
+            LERole::OnlyCentral => None,
+            LERole::OnlyPeripheral | LERole::PeripheralPreferred | LERole::CentralPreferred => {
+                self.mac_address
+            }
         }
     }
 }
@@ -187,7 +198,7 @@ impl TryFrom<&NdefRecord> for BLECarrierConfigurationRecord {
         let [le_role] = role.as_slice() else {
             return Err(anyhow::anyhow!("Invalid BLE role {role:?}").into());
         };
-        let le_role = BleRolesSupported::try_from(*le_role)?;
+        let le_role = LERole::try_from(*le_role)?;
 
         let mut service_uuid = entries
             .iter()
@@ -202,7 +213,7 @@ impl TryFrom<&NdefRecord> for BLECarrierConfigurationRecord {
                 .map_err(|v| anyhow::anyhow!("Invalid service uuid: {v:?}"))?,
         );
 
-        let mac_address = if le_role != BleRolesSupported::OnlyCentral
+        let mac_address = if le_role != LERole::OnlyCentral
             && let Some(entry) = entries
                 .iter()
                 .find(|entry| entry.r#type == BLE_CARRIER_MAC_ADDRESS)

@@ -34,6 +34,8 @@ pub enum VerificationProtocolError {
     CBORParsing(#[from] ciborium::de::Error<std::io::Error>),
     #[error("Encoding error: `{0}`")]
     Encoding(#[from] ct_codecs::Error),
+    #[error("NDEF error: `{0}`")]
+    Ndef(#[from] ndef_rs::error::NdefError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -49,7 +51,8 @@ impl ErrorCodeMixin for VerificationProtocolError {
             | Self::Other(_)
             | Self::CBORSerialization(_)
             | Self::CBORParsing(_)
-            | Self::Encoding(_) => ErrorCode::BR_0062,
+            | Self::Encoding(_)
+            | Self::Ndef(_) => ErrorCode::BR_0062,
             Self::InvalidTransactionDataAssignment(_) => ErrorCode::BR_0459,
             Self::Untrusted => ErrorCode::BR_0433,
             Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,

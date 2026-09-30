@@ -57,12 +57,12 @@ use crate::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
 };
 use crate::provider::verification_protocol::iso_mdl::ble::holder::{
-    MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_server,
+    MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_holder,
 };
 use crate::provider::verification_protocol::iso_mdl::ble::verifier::IsoMdlVerifier;
 use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
-    BleOptionsV1, DeviceEngagement, DeviceRetrievalMethod, Security,
+    DeviceEngagement, DeviceRetrievalMethod, Security,
 };
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -885,10 +885,10 @@ impl ProofService {
             .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
         let now = crate::clock::now_utc();
-        let service_uuid = Uuid::new_v4();
-        let ble_server = start_mdl_server(ble, service_uuid)
+
+        let ble_session = start_mdl_holder(ble, protocol_params.holder.ble_mode)
             .await
-            .error_while("starting mDL server")?;
+            .error_while("starting mDL session")?;
 
         let key_algorithm = self
             .key_algorithm_provider
@@ -901,11 +901,7 @@ impl ProofService {
                 e_device_key_bytes: EmbeddedCbor::new(device_key.ephemeral_key().to_owned())
                     .map_err(|e| ProofServiceError::MappingError(e.to_string()))?,
             },
-            device_retrieval_methods: vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
-                peripheral_server_uuid: Some(ble_server.service_uuid),
-                peripheral_server_mac_address: ble_server.mac_address.clone(),
-                client_central_uuid: None,
-            })],
+            device_retrieval_methods: vec![DeviceRetrievalMethod::BleV1((&ble_session).into())],
         };
 
         let (qr_code, qr_engagement) = if engagement.contains(&VerificationEngagement::QrCode) {
@@ -944,7 +940,7 @@ impl ProofService {
             };
 
             let select_message =
-                create_nfc_handover_select_message(&ble_server, device_engagement_bytes.clone())
+                create_nfc_handover_select_message(&ble_session, device_engagement_bytes.clone())
                     .map_err(|err| {
                         ProofServiceError::Other(format!("Failed to create NFC payload: {err}"))
                     })?
@@ -974,9 +970,10 @@ impl ProofService {
         let interaction_id = Uuid::new_v4().into();
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
             organisation_id: request.organisation_id,
-            service_uuid,
-            continuation_task_id: ble_server.task_id,
+            service_uuid: ble_session.service_uuid,
+            continuation_task_id: ble_session.task_id,
             session: None,
+            mode: protocol_params.holder.ble_mode,
             engagement,
         })
         .map_err(|e| ProofServiceError::MappingError(e.to_string()))?;

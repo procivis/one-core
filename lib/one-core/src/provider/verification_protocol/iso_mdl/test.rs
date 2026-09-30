@@ -8,7 +8,10 @@ use secrecy::SecretSlice;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use super::IsoMdl;
+use super::ble::holder::{MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData};
+use super::ble::verifier::{IsoMdlVerifier, prepare_reader_auth};
+use super::common::{DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor};
+use super::{BleMode, IsoMdl};
 use crate::config::core_config::{KeyAlgorithmType, VerificationEngagement};
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::certificate::Certificate;
@@ -40,15 +43,6 @@ use crate::provider::presentation_formatter::provider::MockPresentationFormatter
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::iso_mdl::ble::holder::{
-    MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
-};
-use crate::provider::verification_protocol::iso_mdl::ble::verifier::{
-    IsoMdlVerifier, prepare_reader_auth,
-};
-use crate::provider::verification_protocol::iso_mdl::common::{
-    DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor,
-};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::service::test_utilities::{
@@ -148,6 +142,7 @@ async fn test_presentation_reject_ok() {
         service_uuid: Uuid::new_v4(),
         continuation_task_id,
         organisation_id,
+        mode: BleMode::Peripheral,
         engagement: HashSet::from([VerificationEngagement::QrCode]),
         session: Some(MdocBleHolderInteractionSessionData {
             sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
@@ -156,6 +151,7 @@ async fn test_presentation_reject_ok() {
             device_address: "test address".to_string(),
             mtu: 512,
             session_transcript_bytes: vec![],
+            peripheral_server_mode: true,
         }),
     })
     .unwrap();
@@ -281,6 +277,7 @@ async fn test_get_presentation_definition_v2() {
         continuation_task_id: Uuid::new_v4(),
         engagement: HashSet::from([VerificationEngagement::QrCode]),
         organisation_id,
+        mode: BleMode::Peripheral,
         session: Some(MdocBleHolderInteractionSessionData {
             sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
             sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
@@ -288,6 +285,7 @@ async fn test_get_presentation_definition_v2() {
             device_address: "test address".to_string(),
             mtu: 512,
             session_transcript_bytes: vec![],
+            peripheral_server_mode: true,
         }),
     })
     .unwrap();

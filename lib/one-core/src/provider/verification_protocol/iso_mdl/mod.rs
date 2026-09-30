@@ -10,7 +10,7 @@ use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
 use mapper::device_request_to_dcql_query;
 use proc_macros::Provider;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
@@ -71,11 +71,10 @@ pub(crate) struct Params {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderParams {
     pub session_encryption_algorithm: KeyAlgorithmType,
-    #[expect(unused)]
     pub ble_mode: BleMode,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum BleMode {
     Peripheral,

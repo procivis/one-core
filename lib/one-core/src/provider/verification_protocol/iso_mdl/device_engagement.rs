@@ -1,6 +1,5 @@
 use std::convert::TryInto;
 
-use anyhow::{Context, anyhow};
 use ciborium::cbor;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{Deserialize, Serialize, Serializer, de, ser};
@@ -8,10 +7,11 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use strum::Display;
 use uuid::Uuid;
 
+use super::common::EphemeralSessionKey;
 use super::nfc::{BLE_RECORD_TYPE, BLECarrierConfigurationRecord, DEVICE_ENGAGMENT_RECORD_TYPE};
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor, MDLVersion};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
-use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 
 /// ISO 18013-5, 8.2.1.1
 #[derive(Clone, Debug, PartialEq)]
@@ -29,6 +29,14 @@ pub(crate) enum Security {
     V1 {
         e_device_key_bytes: EmbeddedCbor<EphemeralSessionKey>,
     },
+}
+
+impl Security {
+    pub(crate) fn e_device_key_bytes(&self) -> &EmbeddedCbor<EphemeralSessionKey> {
+        match &self {
+            Self::V1 { e_device_key_bytes } => e_device_key_bytes,
+        }
+    }
 }
 
 /// ISO 18013-5, Table 7
@@ -65,15 +73,17 @@ pub(crate) struct BleOptionsV1 {
 const QR_CODE_PREFIX: &str = "mdoc:";
 
 impl DeviceEngagement {
-    pub(crate) fn into_cbor(self) -> anyhow::Result<EmbeddedCbor<Self>> {
+    pub(crate) fn into_cbor(self) -> Result<EmbeddedCbor<Self>, VerificationProtocolError> {
         EmbeddedCbor::new(self).map_err(Into::into)
     }
 
     pub(crate) fn parse_qr_code(
         qr_code_content: &str,
-    ) -> anyhow::Result<EmbeddedCbor<DeviceEngagement>> {
+    ) -> Result<EmbeddedCbor<DeviceEngagement>, VerificationProtocolError> {
         if !qr_code_content.starts_with(QR_CODE_PREFIX) {
-            return Err(anyhow!("Invalid mdoc QR: {qr_code_content}"));
+            return Err(VerificationProtocolError::Failed(format!(
+                "Invalid mdoc QR: {qr_code_content}"
+            )));
         }
 
         let data =
@@ -85,26 +95,34 @@ impl DeviceEngagement {
     // currently only NFC static handover supported
     pub(crate) fn parse_nfc(
         nfc_select_message: &str,
-    ) -> anyhow::Result<(
-        EmbeddedCbor<DeviceEngagement>,
-        NFCHandover,
-        DeviceRetrievalMethod,
-    )> {
+    ) -> Result<
+        (
+            EmbeddedCbor<DeviceEngagement>,
+            NFCHandover,
+            DeviceRetrievalMethod,
+        ),
+        VerificationProtocolError,
+    > {
         let select_message = Base64UrlSafeNoPadding::decode_to_vec(nfc_select_message, None)?;
-        let ndef_message = ndef_rs::NdefMessage::decode(&select_message)?;
+        let ndef_message = ndef_rs::NdefMessage::decode(&select_message)
+            .map_err(VerificationProtocolError::Other)?;
 
         let device_engagement_record = ndef_message
             .records()
             .iter()
             .find(|record| record.record_type() == DEVICE_ENGAGMENT_RECORD_TYPE)
-            .ok_or(anyhow!("Device engagement NDEF record not found"))?;
+            .ok_or(VerificationProtocolError::Failed(
+                "Device engagement NDEF record not found".to_string(),
+            ))?;
         let device_engagement_cbor = device_engagement_record.payload().to_vec();
 
         let ble: BLECarrierConfigurationRecord = ndef_message
             .records()
             .iter()
             .find(|record| record.record_type() == BLE_RECORD_TYPE)
-            .ok_or(anyhow!("BLE NDEF record not found"))?
+            .ok_or(VerificationProtocolError::Failed(
+                "BLE NDEF record not found".to_string(),
+            ))?
             .try_into()?;
 
         Ok((
@@ -126,20 +144,19 @@ impl DeviceEngagement {
 }
 
 impl EmbeddedCbor<DeviceEngagement> {
-    fn from_raw_cbor(cbor_data: Vec<u8>) -> anyhow::Result<Self> {
+    fn from_raw_cbor(cbor_data: Vec<u8>) -> Result<Self, VerificationProtocolError> {
         let tagged_value = ciborium::tag::Required::<_, 24>(Bstr(cbor_data));
         let mut bytes: Vec<u8> = vec![];
         ciborium::into_writer(&tagged_value, &mut bytes)?;
         Ok(ciborium::from_reader(bytes.as_slice())?)
     }
 
-    pub(crate) fn generate_qr_code(&self) -> anyhow::Result<String> {
+    pub(crate) fn generate_qr_code(&self) -> Result<String, VerificationProtocolError> {
         let ciborium::tag::Required::<_, 24>(Bstr(embedded_cbor)) =
             ciborium::from_reader(self.bytes())?;
 
         let qr_code_content = Base64UrlSafeNoPadding::encode_to_string(&embedded_cbor)
-            .map(|content| format!("{QR_CODE_PREFIX}{content}"))
-            .context("QR code base64 encoding")?;
+            .map(|content| format!("{QR_CODE_PREFIX}{content}"))?;
         Ok(qr_code_content)
     }
 }
@@ -531,7 +548,7 @@ mod test {
         let failure =
             DeviceEngagement::parse_nfc(&Base64UrlSafeNoPadding::encode_to_string(data).unwrap())
                 .unwrap_err();
-        assert_eq!(failure.to_string(), "Other error: Missing service uuid");
+        assert!(failure.to_string().contains("Missing service uuid"));
     }
 
     fn get_example_engagement() -> DeviceEngagement {

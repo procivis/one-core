@@ -54,7 +54,7 @@ pub(crate) fn get_characteristic_options(
 }
 
 /// ISO 18013-5, 8.3.3.1.1.3
-pub(crate) fn derive_ident_value(
+pub(super) fn derive_ident_value(
     e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
 ) -> Result<Vec<u8>, VerificationProtocolError> {
     let mut result = [0u8; 16];

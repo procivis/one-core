@@ -98,6 +98,11 @@ pub(super) async fn wait_for_active_device(
             )
             .await?
             {
+                peripheral
+                    .stop_advertisement()
+                    .await
+                    .error_while("stopping BLE advertisement")?;
+
                 return Ok(connected_device);
             }
         }
@@ -143,14 +148,10 @@ async fn wait_for_start_command(
 
 pub(super) async fn notify_end(
     peripheral: &impl BlePeripheral,
-    device_address: Option<&DeviceAddress>,
+    device_address: &DeviceAddress,
     service_uuid: &Uuid,
     state_characteristic: &str,
 ) {
-    let Some(device_address) = device_address else {
-        return;
-    };
-
     let result = peripheral
         .notify_characteristic_data(
             device_address.clone(),
