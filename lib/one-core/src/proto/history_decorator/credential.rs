@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::fmt::Debug;
 use std::sync::Arc;
 
 use shared_types::{CredentialId, InteractionId};
@@ -9,7 +8,9 @@ use crate::model::credential::{
     Credential, CredentialListQuery, CredentialRole, CredentialStateEnum, GetCredentialList,
     UpdateCredentialRequest,
 };
-use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
+use crate::model::history::{
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
+};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
@@ -29,20 +30,19 @@ impl CredentialHistoryDecorator {
     async fn create_history_entry(
         &self,
         credential_id: CredentialId,
-        actions: impl IntoIterator<Item = HistoryAction> + Debug,
+        action: HistoryAction,
+        error_info: Option<HistoryErrorMetadata>,
     ) {
         let credential = self.get_credential(&credential_id).await;
 
         match credential {
             Ok(credential) => {
-                for action in actions {
-                    self.create_history_entry_for_credential(&credential, action)
-                        .await;
-                }
+                self.create_history_entry_for_credential(&credential, action, error_info)
+                    .await;
             }
             _ => {
                 tracing::warn!(
-                    "failed inserting {actions:?} history event for credential. missing credential {credential_id}",
+                    "failed inserting {action:?} history event for credential. missing credential {credential_id}",
                 );
             }
         }
@@ -52,6 +52,7 @@ impl CredentialHistoryDecorator {
         &self,
         credential: &Credential,
         action: HistoryAction,
+        error_info: Option<HistoryErrorMetadata>,
     ) {
         let credential_schema = match credential.schema.as_ref().await {
             Ok(schema) => schema,
@@ -73,7 +74,7 @@ impl CredentialHistoryDecorator {
             target: target_from_credential(credential),
             entity_id: Some(credential.id.into()),
             entity_type: HistoryEntityType::Credential,
-            metadata: None,
+            metadata: error_info.map(HistoryMetadata::ErrorMetadata),
             metadata_blob_id: None,
             organisation_id: Some(credential_schema.organisation.id()),
             user: self.session_provider.session().user(),
@@ -105,13 +106,14 @@ impl CredentialRepository for CredentialHistoryDecorator {
                 && credential.state == CredentialStateEnum::Accepted
             {
                 for action in [HistoryAction::Issued, HistoryAction::Accepted] {
-                    self.create_history_entry_for_credential(&credential, action)
+                    self.create_history_entry_for_credential(&credential, action, None)
                         .await;
                 }
             } else {
                 self.create_history_entry_for_credential(
                     &credential,
                     action_from_state(credential.state),
+                    None,
                 )
                 .await;
             }
@@ -122,9 +124,10 @@ impl CredentialRepository for CredentialHistoryDecorator {
     async fn update_credential(
         &self,
         credential_id: CredentialId,
-        update: UpdateCredentialRequest,
+        mut update: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError> {
         let stored = self.get_stored(credential_id).await?;
+        let error_info = update.error_info.take();
 
         self.inner
             .update_credential(credential_id, update.clone())
@@ -137,13 +140,13 @@ impl CredentialRepository for CredentialHistoryDecorator {
             && update.state.is_none()
             && Some(interaction_id) != stored.interaction.map(|i| i.id())
         {
-            self.create_history_entry(credential_id, [HistoryAction::Shared])
+            self.create_history_entry(credential_id, HistoryAction::Shared, None)
                 .await;
         }
 
         if let Some(new_state) = update.state {
             if stored.state != new_state {
-                self.create_history_entry(credential_id, [action_from_state(new_state)])
+                self.create_history_entry(credential_id, action_from_state(new_state), error_info)
                     .await;
             }
 
@@ -167,7 +170,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
                 }
                 _ => None,
             } {
-                self.create_history_entry(credential_id, [additional_event])
+                self.create_history_entry(credential_id, additional_event, None)
                     .await;
             }
         }
@@ -178,7 +181,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
     async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
         self.inner.delete_credentials(credentials).await?;
         for credential in credentials {
-            self.create_history_entry_for_credential(credential, HistoryAction::Deleted)
+            self.create_history_entry_for_credential(credential, HistoryAction::Deleted, None)
                 .await;
         }
 
@@ -247,5 +250,88 @@ fn action_from_state(state: CredentialStateEnum) -> HistoryAction {
         CredentialStateEnum::InteractionExpired => HistoryAction::InteractionExpired,
         CredentialStateEnum::Expired => HistoryAction::Expired,
         CredentialStateEnum::Expiring => HistoryAction::Expiring,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use assert2::let_assert;
+    use mockall::Sequence;
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::error::ErrorCode;
+    use crate::proto::session_provider::NoSessionProvider;
+    use crate::repository::credential_repository::MockCredentialRepository;
+    use crate::repository::history_repository::MockHistoryRepository;
+    use crate::service::test_utilities::dummy_credential;
+
+    #[tokio::test]
+    async fn error_context_is_consumed_by_history_decorator() {
+        let credential = dummy_credential();
+        let credential_id = credential.id;
+        let error_info = HistoryErrorMetadata {
+            error_code: ErrorCode::BR_0062,
+            message: "Credential signing failed".to_string(),
+        };
+        let mut sequence = Sequence::new();
+        let mut inner = MockCredentialRepository::new();
+        inner
+            .expect_get_credential()
+            .once()
+            .in_sequence(&mut sequence)
+            .return_once({
+                let credential = credential.clone();
+                move |_| Ok(credential)
+            });
+        inner
+            .expect_update_credential()
+            .once()
+            .in_sequence(&mut sequence)
+            .withf(move |id, request| {
+                *id == credential_id
+                    && request.state == Some(CredentialStateEnum::Error)
+                    && request.error_info.is_none()
+            })
+            .return_once(|_, _| Ok(()));
+        inner
+            .expect_get_credential()
+            .once()
+            .in_sequence(&mut sequence)
+            .return_once(move |_| {
+                Ok(Credential {
+                    state: CredentialStateEnum::Error,
+                    ..credential
+                })
+            });
+
+        let mut history = MockHistoryRepository::new();
+        history.expect_create_history().once().return_once({
+            let expected = error_info.clone();
+            move |entry| {
+                assert_eq!(entry.entity_id, Some(credential_id.into()));
+                assert_eq!(entry.action, HistoryAction::Errored);
+                let_assert!(Some(HistoryMetadata::ErrorMetadata(error)) = entry.metadata);
+                assert_eq!(error, expected);
+                Ok(entry.id)
+            }
+        });
+
+        let repository = CredentialHistoryDecorator {
+            inner: Arc::new(inner),
+            history_repository: Arc::new(history),
+            session_provider: Arc::new(NoSessionProvider),
+        };
+        repository
+            .update_credential(
+                credential_id,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Error),
+                    error_info: Some(error_info),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
     }
 }

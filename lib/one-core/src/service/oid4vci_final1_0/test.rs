@@ -2682,7 +2682,13 @@ async fn test_create_credential_issuer_failed() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id && request.state == Some(CredentialStateEnum::Error)
+                *id == credential.id
+                    && request.state == Some(CredentialStateEnum::Error)
+                    && request.error_info.as_ref().is_some_and(|error| {
+                        error.error_code == ErrorCode::BR_0062
+                            && error.message.contains("issuing credential")
+                            && error.message.contains("issuing failed")
+                    })
             })
             .returning(move |_, _| Ok(()));
     }

@@ -1226,7 +1226,7 @@ async fn test_update_credential_success() {
                     interaction: Some(interaction_id),
                     credential_blob_id: Some(blob_id),
                     ..Default::default()
-                }
+                },
             )
             .await
             .is_ok()

@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use assert2::let_assert;
+use one_core::error::ErrorCode;
 use one_core::model::certificate::CertificateRole;
 use one_core::model::credential::{
     Credential, CredentialFilterValue, CredentialStateEnum, CredentialType,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::history::{HistoryAction, HistoryMetadata};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
 use one_core::model::list_filter::ListFilterValue;
@@ -14,7 +16,7 @@ use one_core::model::revocation_list::{RevocationListPurpose, StatusListCredenti
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
-use shared_types::CredentialSchemaFormatId;
+use shared_types::{CredentialId, CredentialSchemaFormatId};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vci::NotificationEvent;
 use time::macros::format_description;
@@ -48,10 +50,43 @@ async fn test_post_notification_credential_accepted() {
     assert_eq!(credential.state, CredentialStateEnum::Accepted);
 }
 
+#[rstest::rstest]
+#[case(None, "Wallet reported credential_failure")]
+#[case(Some(""), "Wallet reported credential_failure")]
+#[case(
+    Some("Could not store credential"),
+    "Wallet reported credential_failure: Could not store credential"
+)]
 #[tokio::test]
-async fn test_post_notification_credential_failure() {
+async fn test_post_notification_credential_failure(
+    #[case] description: Option<&str>,
+    #[case] expected_message: &str,
+) {
     let (context, credential, credential_schema) = setup_accepted_credential().await;
 
+    let resp = context
+        .api
+        .client
+        .post(
+            &format!(
+                "/ssi/openid4vci/final-1.0/{}/notification",
+                credential_schema.id
+            ),
+            json!({
+                "notification_id": "notification",
+                "event": "credential_failure",
+                "event_description": description,
+            }),
+        )
+        .await;
+
+    assert_eq!(204, resp.status());
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(credential.state, CredentialStateEnum::Error);
+    assert_error_history(&context, credential.id, expected_message).await;
+
+    // Retrying the same notification must not create duplicate error events.
     let resp = context
         .api
         .ssi
@@ -61,11 +96,25 @@ async fn test_post_notification_credential_failure() {
             NotificationEvent::CredentialFailure,
         )
         .await;
-
     assert_eq!(204, resp.status());
+    assert_error_history(&context, credential.id, expected_message).await;
+}
 
-    let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(credential.state, CredentialStateEnum::Error);
+async fn assert_error_history(context: &TestContext, credential_id: CredentialId, message: &str) {
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential_id.into())
+        .await;
+    let errors: Vec<_> = history
+        .values
+        .into_iter()
+        .filter(|entry| entry.action == HistoryAction::Errored)
+        .collect();
+    let_assert!([entry] = errors.as_slice());
+    let_assert!(Some(HistoryMetadata::ErrorMetadata(error)) = &entry.metadata);
+    assert_eq!(error.error_code, ErrorCode::BR_0048);
+    assert_eq!(error.message, message);
 }
 
 #[tokio::test]
@@ -229,8 +278,15 @@ async fn batch_item_states(
     states
 }
 
+#[rstest::rstest]
+#[case(NotificationEvent::CredentialAccepted, CredentialStateEnum::Accepted)]
+#[case(NotificationEvent::CredentialDeleted, CredentialStateEnum::Rejected)]
+#[case(NotificationEvent::CredentialFailure, CredentialStateEnum::Error)]
 #[tokio::test]
-async fn test_post_notification_credential_deleted_for_one_format_keeps_other_format() {
+async fn test_post_notification_for_one_format_keeps_other_format(
+    #[case] event: NotificationEvent,
+    #[case] expected_state: CredentialStateEnum,
+) {
     let MultiFormatBatch {
         context,
         credential_schema,
@@ -242,81 +298,93 @@ async fn test_post_notification_credential_deleted_for_one_format_keeps_other_fo
     let resp = context
         .api
         .ssi
-        .openid4vci_notification(
-            credential_schema.id,
-            "n-sd-jwt-vc",
-            NotificationEvent::CredentialDeleted,
-        )
+        .openid4vci_notification(credential_schema.id, "n-sd-jwt-vc", event)
         .await;
     assert_eq!(204, resp.status());
 
     let states = batch_item_states(&context, &parent).await;
-    assert_eq!(
-        states[&sd_jwt_vc_format.id],
-        [CredentialStateEnum::Rejected]
-    );
+    assert_eq!(states[&sd_jwt_vc_format.id], [expected_state]);
     assert_eq!(states[&mdoc_format.id], [CredentialStateEnum::Accepted]);
     let parent = context.db.credentials.get(&parent.id).await;
     assert_eq!(parent.state, CredentialStateEnum::Accepted);
 
-    // rejecting the last active format rejects the parent
-    let resp = context
-        .api
-        .ssi
-        .openid4vci_notification(
-            credential_schema.id,
-            "n-mdoc",
-            NotificationEvent::CredentialDeleted,
-        )
-        .await;
-    assert_eq!(204, resp.status());
+    // Report the outcome for the remaining format, then retry it.
+    for _ in 0..2 {
+        let resp = context
+            .api
+            .ssi
+            .openid4vci_notification(credential_schema.id, "n-mdoc", event)
+            .await;
+        assert_eq!(204, resp.status());
+    }
 
     let states = batch_item_states(&context, &parent).await;
-    assert_eq!(states[&mdoc_format.id], [CredentialStateEnum::Rejected]);
+    assert_eq!(states[&mdoc_format.id], [expected_state]);
     let parent = context.db.credentials.get(&parent.id).await;
-    assert_eq!(parent.state, CredentialStateEnum::Rejected);
+    assert_eq!(parent.state, expected_state);
+    if event == NotificationEvent::CredentialFailure {
+        assert_error_history(&context, parent.id, "Wallet reported credential_failure").await;
+        let items = context
+            .db
+            .credentials
+            .list(CredentialFilterValue::ParentCredential(parent.id).condition())
+            .await;
+        for item in items {
+            assert_error_history(&context, item.id, "Wallet reported credential_failure").await;
+        }
+    }
 }
 
+#[rstest::rstest]
+#[case(NotificationEvent::CredentialAccepted)]
+#[case(NotificationEvent::CredentialDeleted)]
+#[case(NotificationEvent::CredentialFailure)]
 #[tokio::test]
-async fn test_post_notification_credential_deleted_creates_placeholder_for_format_without_items() {
+async fn test_post_notification_rejects_format_without_items(
+    #[case] event: NotificationEvent,
+    #[values(false, true)] has_other_format: bool,
+) {
     let MultiFormatBatch {
         context,
         credential_schema,
         parent,
         sd_jwt_vc_format,
         mdoc_format,
-    } = setup_multi_format_batch(&["SD_JWT_VC"]).await;
+    } = setup_multi_format_batch(if has_other_format {
+        &["SD_JWT_VC"]
+    } else {
+        &[]
+    })
+    .await;
 
     let resp = context
         .api
         .ssi
-        .openid4vci_notification(
-            credential_schema.id,
-            "n-mdoc",
-            NotificationEvent::CredentialDeleted,
-        )
+        .openid4vci_notification(credential_schema.id, "n-mdoc", event)
         .await;
-    assert_eq!(204, resp.status());
+    assert_eq!(400, resp.status());
+    assert_eq!(
+        resp.json_value().await["error"],
+        "invalid_notification_request"
+    );
 
     let states = batch_item_states(&context, &parent).await;
-    assert_eq!(
-        states[&sd_jwt_vc_format.id],
-        [CredentialStateEnum::Accepted]
-    );
-    assert_eq!(states[&mdoc_format.id], [CredentialStateEnum::Rejected]);
-    let rejected_items = context
-        .db
-        .credentials
-        .list(
-            CredentialFilterValue::ParentCredential(parent.id).condition()
-                & CredentialFilterValue::States(vec![CredentialStateEnum::Rejected]),
-        )
-        .await;
-    let_assert!([placeholder] = rejected_items.as_slice());
-    assert!(placeholder.credential_blob_id.is_none());
-    assert!(placeholder.issuance_date.is_none());
+    assert!(!states.contains_key(&mdoc_format.id));
+    assert_eq!(states.len(), usize::from(has_other_format));
+    if has_other_format {
+        assert_eq!(
+            states[&sd_jwt_vc_format.id],
+            [CredentialStateEnum::Accepted]
+        );
+    }
     let parent = context.db.credentials.get(&parent.id).await;
     assert_eq!(parent.state, CredentialStateEnum::Accepted);
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&parent.id.into())
+        .await;
+    assert!(history.values.is_empty());
 }
 
 #[tokio::test]

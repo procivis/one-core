@@ -44,7 +44,7 @@ use super::validator::{
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{BlobStorageType, FormatType, IssuanceProtocolType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
     get_issuance_param_token_expires_in,
@@ -57,6 +57,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
@@ -499,6 +500,7 @@ impl OID4VCIFinal1_0Service {
                     .await
             }
             Err(error) => {
+                let error = error.error_while("issuing credential");
                 if credential.state == CredentialStateEnum::Offered {
                     // issuance failed, mark as Error
                     self.credential_repository
@@ -506,6 +508,7 @@ impl OID4VCIFinal1_0Service {
                             credential.id,
                             UpdateCredentialRequest {
                                 state: Some(CredentialStateEnum::Error),
+                                error_info: Some((&error).into()),
                                 ..Default::default()
                             },
                         )
@@ -513,7 +516,7 @@ impl OID4VCIFinal1_0Service {
                         .error_while("updating credential")?;
                 }
 
-                Err(error.error_while("issuing credential").into())
+                Err(error.into())
             }
         }
     }
@@ -1376,6 +1379,12 @@ impl OID4VCIFinal1_0Service {
                             credential.id,
                             UpdateCredentialRequest {
                                 state: Some(CredentialStateEnum::Error),
+                                error_info: Some(HistoryErrorMetadata {
+                                    error_code: err.error_code(),
+                                    message: format!(
+                                        "Issuance failed while validating transaction code: {err}"
+                                    ),
+                                }),
                                 ..Default::default()
                             },
                         )
@@ -1650,9 +1659,7 @@ impl OID4VCIFinal1_0Service {
             }
             // repeated requests also allowed
             (CredentialStateEnum::Error, NotificationEvent::CredentialFailure)
-            | (CredentialStateEnum::Rejected, NotificationEvent::CredentialDeleted) => {
-                return Ok(());
-            }
+            | (CredentialStateEnum::Rejected, NotificationEvent::CredentialDeleted) => {}
             // anything else is invalid
             _ => {
                 return Err(OpenID4VCIError::InvalidNotificationRequest.into());
@@ -1660,20 +1667,38 @@ impl OID4VCIFinal1_0Service {
         };
 
         let new_state = match notification.event {
-            NotificationEvent::CredentialAccepted => {
-                // nothing to do
-                return Ok(());
-            }
-            NotificationEvent::CredentialFailure => CredentialStateEnum::Error,
-            NotificationEvent::CredentialDeleted => CredentialStateEnum::Rejected,
+            NotificationEvent::CredentialAccepted => None,
+            NotificationEvent::CredentialFailure => Some(CredentialStateEnum::Error),
+            NotificationEvent::CredentialDeleted => Some(CredentialStateEnum::Rejected),
         };
+        let error_info = (notification.event == NotificationEvent::CredentialFailure).then(|| {
+            let mut message = "Wallet reported credential_failure".to_string();
+            if let Some(description) = &notification.event_description
+                && !description.as_str().is_empty()
+            {
+                message.push_str(": ");
+                message.push_str(description.as_str());
+            }
+            HistoryErrorMetadata {
+                error_code: ErrorCode::BR_0048,
+                message,
+            }
+        });
 
         match (credential.r#type, format_id) {
             (CredentialType::BatchParent, Some(format_id)) => {
-                self.process_notification_for_batch_format(credential, format_id, new_state)
-                    .await
+                self.process_notification_for_batch_format(
+                    credential, format_id, new_state, error_info,
+                )
+                .await
             }
-            _ => self.update_notified_credential(credential, new_state).await,
+            _ => {
+                if let Some(new_state) = new_state {
+                    self.update_notified_credential(credential, new_state, error_info)
+                        .await?;
+                }
+                Ok(())
+            }
         }
     }
 
@@ -1681,7 +1706,8 @@ impl OID4VCIFinal1_0Service {
         &self,
         parent: Credential,
         format_id: CredentialSchemaFormatId,
-        new_state: CredentialStateEnum,
+        new_state: Option<CredentialStateEnum>,
+        error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         let (affected, others): (Vec<_>, Vec<_>) = self
             .get_batch_items(parent.id)
@@ -1690,37 +1716,16 @@ impl OID4VCIFinal1_0Service {
             .partition(|item| item.format.as_ref().is_some_and(|f| f.id() == format_id));
 
         if affected.is_empty() {
-            // placeholder so that the rejection of this format is visible in the credential detail
-            let format = parent
-                .schema
-                .as_ref()
-                .await?
-                .formats
-                .as_ref()
-                .await?
-                .iter()
-                .find(|format| format.id == format_id)
-                .cloned()
-                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                    "credential_schema format missing".to_string(),
-                ))?;
-            let placeholder = self
-                .prepare_batch_item(parent.id, Some(now_utc()), &format)
-                .await?;
-            self.credential_repository
-                .create_credential(Credential {
-                    issuance_date: None,
-                    expires_at: None,
-                    state: new_state,
-                    ..placeholder
-                })
-                .await
-                .error_while("creating placeholder batch item")?;
+            return Err(OpenID4VCIError::InvalidNotificationRequest.into());
         }
+        let Some(new_state) = new_state else {
+            return Ok(());
+        };
 
         for item in affected {
             if item.state != new_state {
-                self.update_notified_credential(item, new_state).await?;
+                self.update_notified_credential(item, new_state, error_info.clone())
+                    .await?;
             }
         }
 
@@ -1736,6 +1741,7 @@ impl OID4VCIFinal1_0Service {
                     parent.id,
                     UpdateCredentialRequest {
                         state: Some(new_state),
+                        error_info,
                         ..Default::default()
                     },
                 )
@@ -1750,6 +1756,7 @@ impl OID4VCIFinal1_0Service {
         &self,
         credential: Credential,
         new_state: CredentialStateEnum,
+        error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         if credential.state == new_state {
             // nothing to do
@@ -1778,6 +1785,7 @@ impl OID4VCIFinal1_0Service {
                 credential.id,
                 UpdateCredentialRequest {
                     state: Some(new_state),
+                    error_info,
                     ..Default::default()
                 },
             )

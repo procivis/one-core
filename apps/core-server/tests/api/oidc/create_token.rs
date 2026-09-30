@@ -1,6 +1,9 @@
+use assert2::let_assert;
 use futures::future::join_all;
+use one_core::error::ErrorCode;
 use one_core::model::credential::{CredentialStateEnum, CredentialType, UpdateCredentialRequest};
 use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
+use one_core::model::history::{HistoryAction, HistoryMetadata};
 use one_core::model::interaction::InteractionType;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -468,6 +471,22 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
     // invalid tx_code means the issuance failed
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(credential.state, CredentialStateEnum::Error);
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    let errors: Vec<_> = history
+        .values
+        .into_iter()
+        .filter(|entry| entry.action == HistoryAction::Errored)
+        .collect();
+    let_assert!([entry] = errors.as_slice());
+    let_assert!(Some(HistoryMetadata::ErrorMetadata(error)) = &entry.metadata);
+    assert_eq!(error.error_code, ErrorCode::BR_0048);
+    assert!(error.message.contains("transaction code"));
+    assert!(error.message.contains("invalid_grant"));
 }
 
 #[tokio::test]

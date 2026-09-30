@@ -16,6 +16,7 @@ use super::list_query::ListQuery;
 use crate::error::NestedError;
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::relation::{Related, RelatedVec};
 
@@ -150,6 +151,9 @@ pub struct UpdateCredentialRequest {
     pub key: Option<KeyId>,
     pub redirect_uri: Option<Option<String>>,
     pub state: Option<CredentialStateEnum>,
+    /// Failure context for the history event when transitioning to Error.
+    /// Consumed by the history decorator; not stored on the credential.
+    pub error_info: Option<HistoryErrorMetadata>,
     pub expires_at: Option<OffsetDateTime>,
     pub suspend_end_date: Clearable<Option<OffsetDateTime>>,
     pub consumed_at: Clearable<Option<OffsetDateTime>>,
