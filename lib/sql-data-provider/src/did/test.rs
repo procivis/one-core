@@ -13,14 +13,14 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use shared_types::{DidId, DidValue};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use uuid::Uuid;
 
 use super::DidProvider;
-use crate::entity::did;
+use crate::entity::{did, key_did};
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -119,6 +119,225 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
         did_name: did_name.to_string(),
         key,
     }
+}
+
+async fn setup_key_update() -> (TestSetup, DidId) {
+    let setup = setup_empty(Repositories::default()).await;
+    let did_id = insert_did_key(
+        &setup.db,
+        "did to update",
+        Uuid::new_v4(),
+        "did:web:example.com:issuer".parse().unwrap(),
+        "WEB",
+        setup.organisation.id,
+    )
+    .await
+    .unwrap();
+    did::ActiveModel {
+        id: Set(did_id),
+        last_modified: Set(get_dummy_date()),
+        log: Set(Some("existing log".to_string())),
+        ..Default::default()
+    }
+    .update(&setup.db)
+    .await
+    .unwrap();
+    insert_key_did(
+        &setup.db,
+        did_id,
+        setup.key.id,
+        KeyRole::Authentication.into(),
+    )
+    .await
+    .unwrap();
+    (setup, did_id)
+}
+
+#[tokio::test]
+async fn test_update_did_keys_replaces_roles_and_references() {
+    let (setup, did_id) = setup_key_update().await;
+    let other_did = insert_did_key(
+        &setup.db,
+        "other did",
+        Uuid::new_v4(),
+        "did:web:example.com:other".parse().unwrap(),
+        "WEB",
+        setup.organisation.id,
+    )
+    .await
+    .unwrap();
+    insert_key_did(
+        &setup.db,
+        other_did,
+        setup.key.id,
+        KeyRole::Authentication.into(),
+    )
+    .await
+    .unwrap();
+    let before = did::Entity::find_by_id(did_id)
+        .one(&setup.db)
+        .await
+        .unwrap()
+        .unwrap();
+    let new_key_id = insert_key_to_database(
+        &setup.db,
+        "EDDSA".to_string(),
+        vec![],
+        vec![],
+        None,
+        setup.organisation.id,
+    )
+    .await
+    .unwrap();
+    let mut new_key = setup.key.clone();
+    new_key.id = new_key_id;
+    let keys = vec![
+        RelatedKey {
+            key: setup.key.clone(),
+            role: KeyRole::AssertionMethod,
+            reference: "retained-key".to_string(),
+        },
+        RelatedKey {
+            key: new_key.clone(),
+            role: KeyRole::Authentication,
+            reference: "rotated-key".to_string(),
+        },
+        RelatedKey {
+            key: new_key,
+            role: KeyRole::KeyAgreement,
+            reference: "rotated-key".to_string(),
+        },
+    ];
+
+    setup
+        .provider
+        .update_did_keys(&did_id, keys.clone())
+        .await
+        .unwrap();
+
+    let rows = key_did::Entity::find()
+        .filter(key_did::Column::DidId.eq(did_id))
+        .all(&setup.db)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), keys.len());
+    for key in keys {
+        assert!(rows.contains(&key_did::Model {
+            did_id,
+            key_id: key.key.id,
+            role: key.role.into(),
+            reference: key.reference,
+        }));
+    }
+    let after = did::Entity::find_by_id(did_id)
+        .one(&setup.db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(after.last_modified > before.last_modified);
+    assert_eq!(
+        did::Model {
+            last_modified: before.last_modified,
+            ..after
+        },
+        before
+    );
+    let other_keys = key_did::Entity::find()
+        .filter(key_did::Column::DidId.eq(other_did))
+        .all(&setup.db)
+        .await
+        .unwrap();
+    assert_eq!(
+        other_keys,
+        vec![key_did::Model {
+            did_id: other_did,
+            key_id: setup.key.id,
+            role: KeyRole::Authentication.into(),
+            reference: "1".to_string(),
+        }]
+    );
+}
+
+#[tokio::test]
+async fn test_update_did_keys_empty_removes_associations_only() {
+    let (setup, did_id) = setup_key_update().await;
+    setup
+        .provider
+        .update_did_keys(&did_id, vec![])
+        .await
+        .unwrap();
+    assert!(
+        key_did::Entity::find()
+            .all(&setup.db)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        crate::entity::key::Entity::find_by_id(setup.key.id)
+            .one(&setup.db)
+            .await
+            .unwrap()
+            .is_some()
+    );
+}
+
+#[rstest::rstest]
+#[case(false)]
+#[case(true)]
+#[tokio::test]
+async fn test_update_did_keys_rolls_back_on_invalid_keys(#[case] duplicate: bool) {
+    let (setup, did_id) = setup_key_update().await;
+    let before = did::Entity::find_by_id(did_id)
+        .one(&setup.db)
+        .await
+        .unwrap()
+        .unwrap();
+    let before_keys = key_did::Entity::find().all(&setup.db).await.unwrap();
+    let mut new_key = setup.key.clone();
+    if !duplicate {
+        new_key.id = Uuid::new_v4().into();
+    }
+    let key = RelatedKey {
+        key: new_key,
+        role: KeyRole::AssertionMethod,
+        reference: "replacement".to_string(),
+    };
+    let keys = if duplicate {
+        vec![key.clone(), key]
+    } else {
+        vec![key]
+    };
+
+    let result = setup.provider.update_did_keys(&did_id, keys).await;
+
+    if duplicate {
+        assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+    } else {
+        assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+    }
+    assert_eq!(
+        did::Entity::find_by_id(did_id)
+            .one(&setup.db)
+            .await
+            .unwrap()
+            .unwrap(),
+        before
+    );
+    assert_eq!(
+        key_did::Entity::find().all(&setup.db).await.unwrap(),
+        before_keys
+    );
+}
+
+#[tokio::test]
+async fn test_update_did_keys_missing_did() {
+    let setup = setup_empty(Repositories::default()).await;
+    let result = setup
+        .provider
+        .update_did_keys(&Uuid::new_v4().into(), vec![])
+        .await;
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 
 #[tokio::test]

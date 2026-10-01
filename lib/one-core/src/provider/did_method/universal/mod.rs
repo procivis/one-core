@@ -92,6 +92,16 @@ impl DidMethod for UniversalDidMethod {
             .into())
     }
 
+    async fn update(
+        &self,
+        _did_id: DidId,
+        _keys: DidKeys,
+        _new_keys: DidKeys,
+        _log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
+        Err(DidMethodError::OperationNotSupported)
+    }
+
     async fn deactivate(
         &self,
         _id: DidId,

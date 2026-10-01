@@ -112,8 +112,19 @@ impl DidMethod for WebDidMethod {
         })
     }
 
+    async fn update(
+        &self,
+        _id: DidId,
+        _keys: DidKeys,
+        _new_keys: DidKeys,
+        _log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
+        // The published did:web document is generated from the persisted key associations.
+        Ok(DidUpdate::default())
+    }
+
     fn get_capabilities(&self) -> DidCapabilities {
-        let mut operations = vec![Operation::RESOLVE, Operation::DEACTIVATE];
+        let mut operations = vec![Operation::RESOLVE, Operation::DEACTIVATE, Operation::UPDATE];
         if self.did_base_string.is_some() {
             operations.push(Operation::CREATE);
         }

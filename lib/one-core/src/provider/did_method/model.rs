@@ -12,6 +12,7 @@ use crate::config::core_config::KeyAlgorithmType;
 pub enum Operation {
     RESOLVE,
     CREATE,
+    UPDATE,
     DEACTIVATE,
 }
 

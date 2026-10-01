@@ -21,6 +21,8 @@ pub enum DidMethodError {
     InitializationError(String),
     #[error("DID: Invalid key number")]
     InvalidNumberOfKeys,
+    #[error("Key type `{0}` is not supported")]
+    UnsupportedKeyType(String),
 
     #[error("JSON serialization error: `{0}`")]
     Json(#[from] serde_json::Error),
@@ -56,6 +58,7 @@ impl ErrorCodeMixin for DidMethodError {
             | Self::Hash(_)
             | Self::Multihash(_)
             | Self::URL(_)
+            | Self::UnsupportedKeyType(_)
             | Self::InitializationError(_)
             | Self::CreationError(_) => ErrorCode::BR_0064,
             Self::Nested(nested) => nested.error_code(),

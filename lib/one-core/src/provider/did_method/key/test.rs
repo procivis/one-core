@@ -10,8 +10,9 @@ use uuid::Uuid;
 use super::KeyDidMethod;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
+use crate::provider::did_method::decorators::CapabilityChecked;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod, Operation};
 use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
@@ -36,6 +37,31 @@ fn setup_key_did_method(
         .returning(move |_| Ok(alg.clone()));
 
     KeyDidMethod::new("key".into(), Arc::new(key_algorithm_provider))
+}
+
+#[tokio::test]
+async fn test_did_key_update_is_not_supported() {
+    let method: Arc<dyn DidMethod> = Arc::new(KeyDidMethod::new(
+        "KEY".into(),
+        Arc::new(MockKeyAlgorithmProvider::default()),
+    ));
+    assert!(
+        !method
+            .get_capabilities()
+            .operations
+            .contains(&Operation::UPDATE)
+    );
+    for method in [method.clone(), Arc::new(CapabilityChecked(method))] {
+        let result = method
+            .update(
+                Uuid::new_v4().into(),
+                DidKeys::default(),
+                DidKeys::default(),
+                None,
+            )
+            .await;
+        assert!(matches!(result, Err(DidMethodError::OperationNotSupported)));
+    }
 }
 
 #[tokio::test]

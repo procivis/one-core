@@ -43,6 +43,16 @@ impl<T: Provider + DidMethod + Display + ?Sized> DidMethod for DisabledProvider<
         self.inner().deactivate(did_id, keys, log).await
     }
 
+    async fn update(
+        &self,
+        did_id: DidId,
+        keys: DidKeys,
+        new_keys: DidKeys,
+        log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
+        self.inner().update(did_id, keys, new_keys, log).await
+    }
+
     fn get_capabilities(&self) -> DidCapabilities {
         let mut capabilities = self.inner().get_capabilities();
         capabilities
@@ -83,28 +93,19 @@ fn check_key_types<'a, I: Iterator<Item = &'a Key>>(
             .error_while("parsing key algorithm")?;
 
         if !supported_algorithms.contains(&key_type) {
-            return Err(DidMethodError::CreationError(format!(
-                "Key type: {key_type} not supported"
-            )));
+            return Err(DidMethodError::UnsupportedKeyType(key_type.to_string()));
         }
     }
 
     Ok(())
 }
 
-#[async_trait::async_trait]
-impl DidMethod for CapabilityChecked {
-    async fn create(
+impl CapabilityChecked {
+    fn validate_keys(
         &self,
-        id: DidId,
-        params: &Option<serde_json::Value>,
-        keys: DidKeys,
-    ) -> Result<DidCreated, DidMethodError> {
-        let capabilities = self.0.get_capabilities();
-        if !capabilities.operations.contains(&Operation::CREATE) {
-            return Err(DidMethodError::OperationNotSupported);
-        }
-
+        keys: &DidKeys,
+        capabilities: &DidCapabilities,
+    ) -> Result<(), DidMethodError> {
         if let Some(update_keys) = &keys.update_keys {
             check_key_types(update_keys.iter(), &capabilities.supported_update_key_types)?;
         }
@@ -121,10 +122,29 @@ impl DidMethod for CapabilityChecked {
         check_key_types(content_keys, &capabilities.key_algorithms)?;
 
         if let Some(limits) = self.0.get_keys()
-            && !limits.validate_keys(&keys)
+            && !limits.validate_keys(keys)
         {
             return Err(DidMethodError::InvalidNumberOfKeys);
         }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl DidMethod for CapabilityChecked {
+    async fn create(
+        &self,
+        id: DidId,
+        params: &Option<serde_json::Value>,
+        keys: DidKeys,
+    ) -> Result<DidCreated, DidMethodError> {
+        let capabilities = self.0.get_capabilities();
+        if !capabilities.operations.contains(&Operation::CREATE) {
+            return Err(DidMethodError::OperationNotSupported);
+        }
+
+        self.validate_keys(&keys, &capabilities)?;
 
         self.0.create(id, params, keys).await
     }
@@ -158,6 +178,21 @@ impl DidMethod for CapabilityChecked {
         }
 
         self.0.deactivate(did_id, keys, log).await
+    }
+
+    async fn update(
+        &self,
+        did_id: DidId,
+        keys: DidKeys,
+        new_keys: DidKeys,
+        log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError> {
+        let capabilities = self.0.get_capabilities();
+        if !capabilities.operations.contains(&Operation::UPDATE) {
+            return Err(DidMethodError::OperationNotSupported);
+        }
+        self.validate_keys(&new_keys, &capabilities)?;
+        self.0.update(did_id, keys, new_keys, log).await
     }
 
     fn get_capabilities(&self) -> DidCapabilities {

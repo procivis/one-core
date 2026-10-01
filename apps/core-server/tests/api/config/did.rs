@@ -29,7 +29,7 @@ async fn test_capabilities_are_present_in_config() {
         resp["did"]["WEB"]["capabilities"],
         json!({
             "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "ML_DSA"],
-            "operations": ["RESOLVE", "DEACTIVATE", "CREATE"],
+            "operations": ["RESOLVE", "DEACTIVATE", "UPDATE", "CREATE"],
             "methodNames": ["web"],
             "features": [],
             "supportedUpdateKeyTypes": [],

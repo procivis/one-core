@@ -3,7 +3,7 @@ use std::sync::Arc;
 use shared_types::{DidId, DidValue, OrganisationId};
 use uuid::Uuid;
 
-use crate::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
+use crate::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::did_repository::DidRepository;
@@ -100,6 +100,23 @@ impl DidRepository for DidHistoryDecorator {
             .await;
         };
 
+        Ok(())
+    }
+
+    async fn update_did_keys(
+        &self,
+        id: &DidId,
+        keys: Vec<RelatedKey>,
+    ) -> Result<(), DataLayerError> {
+        self.inner.update_did_keys(id, keys).await?;
+        let did = self.inner.get_did(id).await?;
+        self.create_history(
+            did.id,
+            did.name,
+            HistoryAction::Updated,
+            did.organisation.id(),
+        )
+        .await;
         Ok(())
     }
 

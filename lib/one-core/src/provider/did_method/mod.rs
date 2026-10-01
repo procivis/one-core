@@ -51,6 +51,16 @@ pub trait DidMethod: Provider + Send + Sync {
     /// Resolve a DID to its DID document.
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError>;
 
+    /// Prepares a key replacement, using the current keys and log to authorize it.
+    /// The caller must persist the new keys and returned metadata after this succeeds.
+    async fn update(
+        &self,
+        did_id: DidId,
+        keys: DidKeys,
+        new_keys: DidKeys,
+        log: Option<String>,
+    ) -> Result<DidUpdate, DidMethodError>;
+
     /// Deactivates a DID. Note that DID deactivation is permanent.
     async fn deactivate(
         &self,
@@ -85,7 +95,7 @@ pub struct DidCreated {
     pub log: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DidUpdate {
     pub deactivated: Option<bool>,
     pub log: Option<String>,

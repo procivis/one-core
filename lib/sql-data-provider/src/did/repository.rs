@@ -1,7 +1,7 @@
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
-use one_core::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
+use one_core::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
@@ -154,6 +154,47 @@ impl DidRepository for DidProvider {
             .map_err(to_update_data_layer_error)?;
 
         Ok(())
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+    async fn update_did_keys(
+        &self,
+        id: &DidId,
+        keys: Vec<RelatedKey>,
+    ) -> Result<(), DataLayerError> {
+        self.db
+            .tx(async {
+                did::ActiveModel {
+                    id: Unchanged(*id),
+                    last_modified: Set(one_core::clock::now_utc()),
+                    ..Default::default()
+                }
+                .update(&self.db)
+                .await
+                .map_err(to_update_data_layer_error)?;
+
+                key_did::Entity::delete_many()
+                    .filter(key_did::Column::DidId.eq(*id))
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+
+                if !keys.is_empty() {
+                    key_did::Entity::insert_many(keys.into_iter().map(|key| {
+                        key_did::ActiveModel {
+                            did_id: Set(*id),
+                            key_id: Set(key.key.id),
+                            role: Set(key.role.into()),
+                            reference: Set(key.reference),
+                        }
+                    }))
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+                }
+                Ok::<_, DataLayerError>(())
+            })
+            .await?
     }
 
     async fn delete_did(&self, did: &Did) -> Result<(), DataLayerError> {

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use shared_types::{DidId, DidValue, OrganisationId};
 
-use crate::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
+use crate::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
 use crate::model::relation::AsyncModelLoader;
 use crate::repository::error::DataLayerError;
 
@@ -27,6 +27,14 @@ pub trait DidRepository: Send + Sync {
 
     async fn update_did(&self, id: &DidId, request: UpdateDidRequest)
     -> Result<(), DataLayerError>;
+
+    /// Atomically replaces all key associations, including roles and references,
+    /// and updates the DID's last-modified timestamp. An empty list removes all keys.
+    async fn update_did_keys(
+        &self,
+        id: &DidId,
+        keys: Vec<RelatedKey>,
+    ) -> Result<(), DataLayerError>;
 
     async fn delete_did(&self, did: &Did) -> Result<(), DataLayerError>;
 

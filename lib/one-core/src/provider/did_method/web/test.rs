@@ -13,8 +13,105 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::{WebDidMethod, did_value_to_url, fetch_did_web_document};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::http_client::{HttpClient, MockHttpClient};
+use crate::provider::did_method::decorators::CapabilityChecked;
 use crate::provider::did_method::error::DidMethodError;
+use crate::provider::did_method::model::Operation;
 use crate::provider::did_method::{DidKeys, DidMethod};
+use crate::provider::provider_directory::WithDisabledDecorator;
+use crate::service::test_utilities::dummy_key;
+
+fn single_key_set() -> DidKeys {
+    let key = dummy_key();
+    DidKeys {
+        authentication: vec![key.clone()],
+        assertion_method: vec![key.clone()],
+        key_agreement: vec![key.clone()],
+        capability_invocation: vec![key.clone()],
+        capability_delegation: vec![key],
+        update_keys: None,
+    }
+}
+
+fn web_method_for_update() -> Arc<dyn DidMethod> {
+    Arc::new(CapabilityChecked(Arc::new(
+        WebDidMethod::new(
+            "WEB".into(),
+            &Some("https://example.com".to_string()),
+            Arc::new(MockHttpClient::new()),
+            json!({}),
+        )
+        .unwrap(),
+    )))
+}
+
+#[rstest::rstest]
+#[case(false)]
+#[case(true)]
+#[tokio::test]
+async fn test_did_web_update(#[case] disabled: bool) {
+    let mut method = web_method_for_update();
+    if disabled {
+        method = method.decorate();
+    }
+    assert!(
+        method
+            .get_capabilities()
+            .operations
+            .contains(&Operation::UPDATE)
+    );
+    let update = method
+        .update(
+            Uuid::new_v4().into(),
+            single_key_set(),
+            single_key_set(),
+            None,
+        )
+        .await
+        .unwrap();
+
+    // did:web needs only the caller's new keys persisted, without a log or state change.
+    assert!(update.deactivated.is_none());
+    assert!(update.log.is_none());
+}
+
+#[tokio::test]
+async fn test_did_web_update_rejects_invalid_key_count() {
+    let method = web_method_for_update();
+    let result = method
+        .update(
+            Uuid::new_v4().into(),
+            single_key_set(),
+            DidKeys::default(),
+            None,
+        )
+        .await;
+    assert!(matches!(result, Err(DidMethodError::InvalidNumberOfKeys)));
+}
+
+#[tokio::test]
+async fn test_did_web_update_rejects_unsupported_update_keys() {
+    let method = web_method_for_update();
+    let mut keys = single_key_set();
+    // did:web does not support the log-signing keys used by did:tdw/webvh.
+    keys.update_keys = Some(vec![dummy_key()]);
+
+    let result = method
+        .update(Uuid::new_v4().into(), single_key_set(), keys, None)
+        .await;
+    assert!(matches!(result, Err(DidMethodError::UnsupportedKeyType(_))));
+}
+
+#[tokio::test]
+async fn test_did_web_update_rejects_invalid_authentication_key_type() {
+    let method = web_method_for_update();
+    let mut keys = single_key_set();
+    keys.authentication[0].key_type = "RSA".to_string();
+
+    let result = method
+        .update(Uuid::new_v4().into(), single_key_set(), keys, None)
+        .await;
+    assert!(matches!(result, Err(DidMethodError::Nested(_))));
+}
 
 static JSON_DATA: &str = r#"
     {
