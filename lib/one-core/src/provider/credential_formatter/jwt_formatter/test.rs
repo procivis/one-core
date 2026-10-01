@@ -42,7 +42,7 @@ use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
-    let issuance_date: OffsetDateTime = crate::clock::now_utc();
+    let issuance_date = datetime!(2024-01-01 0:00 UTC);
     let valid_for = time::Duration::days(365 * 2);
 
     let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())
@@ -112,7 +112,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         metadata: None,
     };
 
-    let issuance_date = crate::clock::now_utc();
+    let issuance_date = datetime!(2024-01-01 0:00 UTC);
     let valid_for = time::Duration::days(365 * 2);
 
     let holder_did: DidValue = "did:example:123".parse().unwrap();
@@ -288,6 +288,9 @@ async fn test_format_credential_with_layout_properties() {
     vcdm.context.insert(context);
     vcdm.r#type.push("Type1".to_string());
 
+    let expected_expires_at = vcdm.valid_until;
+    let expected_invalid_before = vcdm.valid_from;
+
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = formatter
@@ -316,11 +319,8 @@ async fn test_format_credential_with_layout_properties() {
     )
     .unwrap();
 
-    assert_eq!(
-        payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
-    );
-    assert_eq!(payload.invalid_before, payload.issued_at,);
+    assert_eq!(payload.expires_at, expected_expires_at);
+    assert_eq!(payload.invalid_before, expected_invalid_before);
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("did:example:123")));
@@ -381,6 +381,10 @@ async fn test_format_credential_nested_array() {
         "http://base_url",
     );
 
+    let_assert!(UnsignedCredential::Vcdm(vcdm) = &credential_data.credential);
+    let expected_expires_at = vcdm.valid_until;
+    let expected_invalid_before = vcdm.valid_from;
+
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
@@ -409,11 +413,8 @@ async fn test_format_credential_nested_array() {
     )
     .unwrap();
 
-    assert_eq!(
-        payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
-    );
-    assert_eq!(payload.invalid_before, payload.issued_at,);
+    assert_eq!(payload.expires_at, expected_expires_at);
+    assert_eq!(payload.invalid_before, expected_invalid_before);
 
     let vc = payload.custom.vc;
 
