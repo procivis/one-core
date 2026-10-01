@@ -296,7 +296,6 @@ fn get_advertise_data() -> ServiceDescription {
             uuid: uuid.to_string(),
             permissions: vec![CharacteristicPermissions::Read],
             properties: vec![CharacteristicProperties::Read],
-            initial_value: None,
         })
         .chain(
             write_characteristics
@@ -308,7 +307,6 @@ fn get_advertise_data() -> ServiceDescription {
                         CharacteristicProperties::Write,
                         CharacteristicProperties::WriteWithoutResponse,
                     ],
-                    initial_value: None,
                 }),
         )
         .chain(
@@ -321,7 +319,6 @@ fn get_advertise_data() -> ServiceDescription {
                         CharacteristicProperties::Read,
                         CharacteristicProperties::Notify,
                     ],
-                    initial_value: None,
                 }),
         )
         .collect();

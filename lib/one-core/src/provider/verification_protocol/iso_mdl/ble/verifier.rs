@@ -516,13 +516,21 @@ async fn connect_central_client_mode(
                 uuid: service_uuid.to_string(),
                 advertise: true,
                 advertised_service_data: None,
-                characteristics: central_client_mode::get_characteristic_options(
-                    e_device_key_bytes,
-                )?,
+                characteristics: central_client_mode::get_characteristic_options(),
             }],
         )
         .await
         .error_while("starting BLE advertisement")?;
+
+    let ident_value = central_client_mode::derive_ident_value(e_device_key_bytes)?;
+    peripheral
+        .set_characteristic_data(
+            service_uuid.to_string(),
+            central_client_mode::IDENT.into(),
+            &ident_value,
+        )
+        .await
+        .error_while("setting Ident value")?;
 
     let device_info =
         peripheral::wait_for_active_device(peripheral, service_uuid, central_client_mode::STATE)

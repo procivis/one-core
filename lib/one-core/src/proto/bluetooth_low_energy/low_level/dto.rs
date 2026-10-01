@@ -66,7 +66,6 @@ pub struct CreateCharacteristicOptions {
     pub uuid: CharacteristicUUID,
     pub permissions: Vec<CharacteristicPermissions>,
     pub properties: Vec<CharacteristicProperties>,
-    pub initial_value: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone)]

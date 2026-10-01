@@ -15,10 +15,8 @@ pub(crate) const SERVER_2_CLIENT: &str = "00000007-A123-48CE-896B-4C76973373E6";
 pub(crate) const IDENT: &str = "00000008-A123-48CE-896B-4C76973373E6";
 
 /// set of BLE service characteristics with settings according to ISO 18013-5, Table 12
-pub(crate) fn get_characteristic_options(
-    e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
-) -> Result<Vec<CreateCharacteristicOptions>, VerificationProtocolError> {
-    Ok(vec![
+pub(crate) fn get_characteristic_options() -> Vec<CreateCharacteristicOptions> {
+    vec![
         CreateCharacteristicOptions {
             uuid: STATE.into(),
             permissions: vec![
@@ -29,27 +27,23 @@ pub(crate) fn get_characteristic_options(
                 CharacteristicProperties::Notify,
                 CharacteristicProperties::WriteWithoutResponse,
             ],
-            initial_value: None,
         },
         CreateCharacteristicOptions {
             uuid: CLIENT_2_SERVER.into(),
             permissions: vec![CharacteristicPermissions::Write],
             properties: vec![CharacteristicProperties::WriteWithoutResponse],
-            initial_value: None,
         },
         CreateCharacteristicOptions {
             uuid: SERVER_2_CLIENT.into(),
             permissions: vec![CharacteristicPermissions::Read],
             properties: vec![CharacteristicProperties::Notify],
-            initial_value: None,
         },
         CreateCharacteristicOptions {
             uuid: IDENT.into(),
             permissions: vec![CharacteristicPermissions::Read],
             properties: vec![CharacteristicProperties::Read],
-            initial_value: Some(derive_ident_value(e_device_key_bytes)?),
         },
-    ])
+    ]
 }
 
 /// ISO 18013-5, 8.3.3.1.1.3

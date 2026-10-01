@@ -20,19 +20,16 @@ pub(crate) fn get_characteristic_options() -> Vec<CreateCharacteristicOptions> {
                 CharacteristicProperties::Notify,
                 CharacteristicProperties::WriteWithoutResponse,
             ],
-            initial_value: None,
         },
         CreateCharacteristicOptions {
             uuid: CLIENT_2_SERVER.into(),
             permissions: vec![CharacteristicPermissions::Write],
             properties: vec![CharacteristicProperties::WriteWithoutResponse],
-            initial_value: None,
         },
         CreateCharacteristicOptions {
             uuid: SERVER_2_CLIENT.into(),
             permissions: vec![CharacteristicPermissions::Read],
             properties: vec![CharacteristicProperties::Notify],
-            initial_value: None,
         },
     ]
 }
