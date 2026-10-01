@@ -12,7 +12,7 @@ pub(super) async fn deactivate(
     log: Option<String>,
 ) -> Result<DidUpdate, DidMethodError> {
     let log = log.ok_or_else(|| DidMethodError::CouldNotDeactivate("Missing log".to_string()))?;
-    let verified = method.verify_log(&log, None).await?;
+    let verified = method.verify_stored_log(&log, None).await?;
     if verified.deactivated {
         return Err(DidMethodError::Deactivated);
     }

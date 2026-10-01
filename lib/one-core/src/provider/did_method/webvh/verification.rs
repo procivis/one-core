@@ -53,14 +53,24 @@ impl DidWebvh {
         log: &str,
         expected_did: Option<&DidValue>,
     ) -> Result<VerifiedLog, DidMethodError> {
+        if let Some(limit) = self.params.max_did_log_entry_check
+            && log.lines().count() > limit as usize
+        {
+            return Err(resolution_error("DID log has too many entries"));
+        }
+        self.verify_stored_log(log, expected_did).await
+    }
+
+    /// Verify the complete locally stored history before updating it. The entry
+    /// limit protects remote resolution and must not prevent local maintenance.
+    pub(super) async fn verify_stored_log(
+        &self,
+        log: &str,
+        expected_did: Option<&DidValue>,
+    ) -> Result<VerifiedLog, DidMethodError> {
         let lines: Vec<_> = log.lines().collect();
         if lines.is_empty() {
             return Err(resolution_error("DID log is empty"));
-        }
-        if let Some(limit) = self.params.max_did_log_entry_check
-            && lines.len() > limit as usize
-        {
-            return Err(resolution_error("DID log has too many entries"));
         }
 
         let mut state = VerificationState::default();
@@ -74,6 +84,7 @@ impl DidWebvh {
         Ok(VerifiedLog {
             entries,
             active_keys: state.active_keys,
+            next_key_hashes: state.next_key_hashes,
             deactivated: state.deactivated,
         })
     }

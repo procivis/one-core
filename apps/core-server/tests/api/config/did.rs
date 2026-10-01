@@ -174,7 +174,7 @@ async fn test_tdw_did_method_config() {
     );
     assert_eq!(
         resp["did"]["WEBVH"]["capabilities"]["operations"],
-        json!(["CREATE", "RESOLVE", "DEACTIVATE"])
+        json!(["CREATE", "RESOLVE", "DEACTIVATE", "UPDATE"])
     );
     assert_eq!(
         resp["did"]["WEBVH"]["capabilities"]["features"],

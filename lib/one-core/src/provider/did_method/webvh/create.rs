@@ -125,7 +125,7 @@ pub(super) async fn create(
     })
 }
 
-fn create_document(
+pub(super) fn create_document(
     did: &str,
     keys: &DidKeys,
     provider: &dyn KeyProvider,

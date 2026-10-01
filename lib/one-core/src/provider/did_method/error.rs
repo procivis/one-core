@@ -13,6 +13,8 @@ pub enum DidMethodError {
     CreationError(String),
     #[error("Could not deactivate DID: `{0}`")]
     CouldNotDeactivate(String),
+    #[error("Could not update DID: `{0}`")]
+    CouldNotUpdate(String),
     #[error("Did operation not supported")]
     OperationNotSupported,
     #[error("Did is deactivated")]
@@ -49,6 +51,7 @@ impl ErrorCodeMixin for DidMethodError {
             Self::Deactivated => ErrorCode::BR_0027,
             Self::InvalidNumberOfKeys => ErrorCode::BR_0030,
             Self::CouldNotDeactivate(_) => ErrorCode::BR_0029,
+            Self::CouldNotUpdate(_) => ErrorCode::BR_0181,
             Self::ResolutionError(_) => ErrorCode::BR_0363,
             Self::DidValueError(_) => ErrorCode::BR_0364,
             Self::OperationNotSupported => ErrorCode::BR_0365,

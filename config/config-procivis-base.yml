@@ -323,7 +323,7 @@ did:
             max: 1
         leewaySeconds: 60
       private:
-        maxDidLogEntryCheck: 10
+        maxDidLogEntryCheck: 25
   WEBVH:
     type: "WEBVH"
     display: "did.webvh"
@@ -350,7 +350,7 @@ did:
             max: 1
         leewaySeconds: 60
       private:
-        maxDidLogEntryCheck: 10
+        maxDidLogEntryCheck: 25
         includeSwissProfileMarker: true
 datatype:
   STRING:

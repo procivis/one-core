@@ -25,6 +25,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::service::test_utilities::dummy_organisation;
 
 mod failure;
+mod update;
 
 fn mock_webvh_log_request(client: &mut MockHttpClient, url: String, response: Response) {
     let mut sender = MockHttpClient::new();
@@ -90,6 +91,8 @@ struct Setup {
     method: DidWebvh,
     active: Key,
     document: Key,
+    new_document: Key,
+    new_update: Key,
 }
 
 fn setup(client: MockHttpClient) -> Setup {
@@ -108,12 +111,27 @@ fn setup(client: MockHttpClient) -> Setup {
     let active = key(active_id, &active_handle, KeyAlgorithmType::Eddsa);
     let document = key(document_id, &document_handle, KeyAlgorithmType::Ecdsa);
 
+    let new_document_handle = Ecdsa.generate_key().unwrap().key;
+    let new_update_handle = Eddsa.generate_key().unwrap().key;
+    let new_document = key(
+        Uuid::new_v4(),
+        &new_document_handle,
+        KeyAlgorithmType::Ecdsa,
+    );
+    let new_update = key(Uuid::new_v4(), &new_update_handle, KeyAlgorithmType::Eddsa);
+    let new_document_id = new_document.id;
+    let new_update_id = new_update.id;
+
     let mut storage = MockKeyStorage::new();
     storage.expect_key_handle().returning(move |key| {
         if key.id == active_id {
             Ok(active_handle.clone())
         } else if key.id == document_id {
             Ok(document_handle.clone())
+        } else if key.id == new_document_id {
+            Ok(new_document_handle.clone())
+        } else if key.id == new_update_id {
+            Ok(new_update_handle.clone())
         } else {
             panic!("unexpected key")
         }
@@ -133,14 +151,11 @@ fn setup(client: MockHttpClient) -> Setup {
             })
         });
 
-    let docs: HashMap<_, _> = [did_key_document(
-        &Eddsa
-            .reconstruct_key(&active.public_key, None, None)
-            .unwrap(),
-    )]
-    .into_iter()
-    .map(|doc| (doc.id.to_string(), doc))
-    .collect();
+    let docs: HashMap<_, _> = [&active, &new_update]
+        .map(|key| did_key_document(&Eddsa.reconstruct_key(&key.public_key, None, None).unwrap()))
+        .into_iter()
+        .map(|doc| (doc.id.to_string(), doc))
+        .collect();
     let mut did_provider = MockDidMethodProvider::new();
     did_provider
         .expect_resolve()
@@ -161,6 +176,8 @@ fn setup(client: MockHttpClient) -> Setup {
         },
         active,
         document,
+        new_document,
+        new_update,
     }
 }
 
@@ -343,6 +360,17 @@ async fn append_signed_update(
     key: &Key,
 ) -> String {
     let previous: LogEntry = serde_json::from_str(log.lines().last().unwrap()).unwrap();
+    append_signed_state_update(setup, log, parameters, key, previous.state).await
+}
+
+async fn append_signed_state_update(
+    setup: &Setup,
+    log: &str,
+    parameters: LogParameters,
+    key: &Key,
+    state: Value,
+) -> String {
+    let previous: LogEntry = serde_json::from_str(log.lines().last().unwrap()).unwrap();
     let signer = make_keyref(key, setup.method.key_provider.as_ref()).unwrap();
     let time =
         OffsetDateTime::parse(&previous.version_time, &Rfc3339).unwrap() + Duration::seconds(1);
@@ -350,7 +378,7 @@ async fn append_signed_update(
         version_id: previous.version_id.clone(),
         version_time: time.format(&Rfc3339).unwrap(),
         parameters,
-        state: previous.state,
+        state,
         proof: vec![],
     };
     let hash = hash_entry(&serde_json::to_value(&entry).unwrap(), &previous.version_id).unwrap();

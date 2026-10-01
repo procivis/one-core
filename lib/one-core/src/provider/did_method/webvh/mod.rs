@@ -31,6 +31,7 @@ mod deactivate;
 mod identifier;
 mod mapper;
 mod resolver;
+mod update;
 mod verification;
 
 #[cfg(test)]
@@ -94,6 +95,7 @@ struct KeyRef {
 struct VerifiedLog {
     entries: Vec<LogEntry>,
     active_keys: Vec<String>,
+    next_key_hashes: Vec<String>,
     deactivated: bool,
 }
 
@@ -154,11 +156,11 @@ impl DidMethod for DidWebvh {
     async fn update(
         &self,
         _did_id: DidId,
-        _keys: DidKeys,
-        _new_keys: DidKeys,
-        _log: Option<String>,
+        keys: DidKeys,
+        new_keys: DidKeys,
+        log: Option<String>,
     ) -> Result<DidUpdate, DidMethodError> {
-        Err(DidMethodError::OperationNotSupported)
+        update::update(self, keys, new_keys, log).await
     }
 
     async fn deactivate(
@@ -172,7 +174,12 @@ impl DidMethod for DidWebvh {
 
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
-            operations: vec![Operation::CREATE, Operation::RESOLVE, Operation::DEACTIVATE],
+            operations: vec![
+                Operation::CREATE,
+                Operation::RESOLVE,
+                Operation::DEACTIVATE,
+                Operation::UPDATE,
+            ],
             key_algorithms: vec![
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
