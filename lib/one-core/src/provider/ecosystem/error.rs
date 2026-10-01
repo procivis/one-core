@@ -29,6 +29,13 @@ pub enum EcosystemError {
     MappingError(String),
     #[error(transparent)]
     Nested(#[from] NestedError),
+
+    /// This ecosystem does not handle the trust information type(s) it was asked to parse.
+    /// The caller should try the next candidate ecosystem, if any.
+    #[error("Trust information not applicable to this ecosystem")]
+    NotApplicable,
+    #[error("Invalid trust information: {0}")]
+    InvalidTrustInformation(String),
 }
 
 impl ErrorCodeMixin for EcosystemError {
@@ -39,8 +46,11 @@ impl ErrorCodeMixin for EcosystemError {
             | Self::InvalidIdentifier(_)
             | Self::DisallowedSchemaFormat(_) => ErrorCode::BR_0477,
             Self::WalletAttestation(rejection) => rejection.error_code(),
-            Self::UnsupportedRole(_) | Self::InvalidRoleFilter { .. } => ErrorCode::BR_0479,
+            Self::UnsupportedRole(_) | Self::InvalidRoleFilter { .. } | Self::NotApplicable => {
+                ErrorCode::BR_0479
+            }
             Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::InvalidTrustInformation(_) => ErrorCode::BR_0416,
             Self::Nested(nested) => nested.error_code(),
         }
     }

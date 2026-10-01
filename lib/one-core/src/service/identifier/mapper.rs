@@ -1,7 +1,5 @@
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialSchemaId, EcosystemId, OrganisationId, ProofSchemaId};
-use standardized_types::etsi_119_475::Credential;
-use standardized_types::openid4vp::dcql;
 
 use super::dto::{
     CertificateRolesMatchMode, CreateIdentifierDidRequestDTO, GetIdentifierListItemResponseDTO,
@@ -235,6 +233,18 @@ impl From<IdentifierTrustInformationType> for BlobType {
         match value {
             IdentifierTrustInformationType::RegistrationCertificate => {
                 BlobType::RegistrationCertificate
+            }
+        }
+    }
+}
+
+impl From<IdentifierTrustInformationType>
+    for crate::provider::ecosystem::model::IdentifierTrustInformationType
+{
+    fn from(value: IdentifierTrustInformationType) -> Self {
+        match value {
+            IdentifierTrustInformationType::RegistrationCertificate => {
+                crate::provider::ecosystem::model::IdentifierTrustInformationType::RegistrationCertificate
             }
         }
     }
@@ -540,38 +550,6 @@ async fn filter_value_from_credential_schema(
         }
     };
     Ok(filter_value)
-}
-
-pub(super) fn map_dcql_credentials(
-    credentials: Vec<Credential>,
-) -> Result<Vec<SchemaFormat>, IdentifierServiceError> {
-    let schema_formats = credentials
-        .into_iter()
-        .map(credential_to_schema_formats)
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(schema_formats.into_iter().flatten().collect())
-}
-
-fn credential_to_schema_formats(
-    value: Credential,
-) -> Result<Vec<SchemaFormat>, IdentifierServiceError> {
-    let dcql_format = value.format.dcql_format().to_owned();
-    let schema_ids = match value.format {
-        dcql::CredentialFormat::MsoMdoc(meta) => vec![meta.doctype_value],
-        dcql::CredentialFormat::SdJwtVc(meta) => meta.vct_values,
-        _ => {
-            return Err(IdentifierServiceError::InvalidTrustInformation(
-                "W3C credentials are not supported in trust information".to_string(),
-            ));
-        }
-    };
-    Ok(schema_ids
-        .into_iter()
-        .map(|c| SchemaFormat {
-            format: dcql_format.to_owned(),
-            schema_id: c,
-        })
-        .collect())
 }
 
 async fn ecosystem_filter(

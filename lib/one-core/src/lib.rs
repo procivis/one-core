@@ -503,7 +503,7 @@ impl OneCore {
             client.clone(),
             Some(mqtt_client),
             nfc_hce.clone(),
-            wrp_validator.clone(),
+            wrp_validator,
             ecosystem_provider.clone(),
             transaction_data_provider.clone(),
         )?;
@@ -871,7 +871,6 @@ impl OneCore {
                 session_provider.clone(),
                 trust_list_subscriber_provider.clone(),
                 data_provider.get_tx_manager(),
-                wrp_validator,
                 ecosystem_provider.clone(),
             ),
             instance_service: InstanceService::new(

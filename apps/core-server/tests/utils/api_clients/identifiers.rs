@@ -289,6 +289,30 @@ impl IdentifiersApi {
         self.client.post("/api/identifier/v1", body).await
     }
 
+    /// Create a key identifier with a `trustInformation` entry attached.
+    pub async fn create_key_identifier_with_trust_information(
+        &self,
+        name: &str,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+        trust_information_data: &str,
+    ) -> Response {
+        self.client
+            .post(
+                "/api/identifier/v1",
+                json!({
+                    "name": name,
+                    "key": { "keyId": key_id },
+                    "organisationId": organisation_id,
+                    "trustInformation": [{
+                        "data": trust_information_data,
+                        "type": "REGISTRATION_CERTIFICATE",
+                    }],
+                }),
+            )
+            .await
+    }
+
     pub async fn get(&self, id: &IdentifierId) -> Response {
         self.client.get(&format!("/api/identifier/v1/{id}")).await
     }

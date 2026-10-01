@@ -3,7 +3,8 @@ use shared_types::{
 };
 
 use crate::config::core_config::IdentifierType;
-use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::error::{ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
+use crate::model::ecosystem::EcosystemOutcomes;
 
 #[derive(thiserror::Error, Debug)]
 pub enum IdentifierServiceError {
@@ -26,6 +27,10 @@ pub enum IdentifierServiceError {
     MissingLogoBlob(BlobId),
     #[error("Invalid trust information: {0}")]
     InvalidTrustInformation(String),
+    #[error("No ecosystem enabled to validate trust information")]
+    NoEcosystemEnabledForTrustInformation,
+    #[error("Trust information rejected by all enabled ecosystems")]
+    TrustInformationRejected(EcosystemOutcomes),
 
     #[error("Missing trust list subscriber `{0}`")]
     MissingTrustListSubscriber(TrustListSubscriberId),
@@ -54,11 +59,23 @@ impl ErrorCodeMixin for IdentifierServiceError {
             Self::ProofSchemaNotFound(_) => ErrorCode::BR_0414,
             Self::MissingTrustListSubscriber(_) => ErrorCode::BR_0388,
             Self::MissingTrustInformationBlob(_) => ErrorCode::BR_0415,
-            Self::InvalidTrustInformation(_) => ErrorCode::BR_0416,
+            Self::InvalidTrustInformation(_)
+            | Self::NoEcosystemEnabledForTrustInformation
+            | Self::TrustInformationRejected(_) => ErrorCode::BR_0416,
             Self::InvalidEcosystemQuery(_) => ErrorCode::BR_0479,
             Self::MissingLogoBlob(_) => ErrorCode::BR_0484,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
+        }
+    }
+
+    fn error_data(&self) -> Option<ErrorData> {
+        match self {
+            Self::TrustInformationRejected(outcomes) => {
+                Some(ErrorData::EcosystemsResolved(outcomes.to_owned()))
+            }
+            Self::Nested(nested) => nested.error_data(),
+            _ => None,
         }
     }
 }

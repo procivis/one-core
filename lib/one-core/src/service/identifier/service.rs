@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::FutureExt;
@@ -18,15 +18,15 @@ use super::dto::{
 };
 use super::error::IdentifierServiceError;
 use super::mapper::{
-    identifier_to_response_dto, identifiers_to_list_response_dto, map_dcql_credentials,
-    params_to_query, to_create_did_request,
+    identifier_to_response_dto, identifiers_to_list_response_dto, params_to_query,
+    to_create_did_request,
 };
 use super::validator::validate_identifier_type;
 use crate::config::core_config;
 use crate::config::core_config::BlobStorageType;
-use crate::error::ErrorCode::{BR_0224, BR_0487};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::Blob;
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::identifier::{
     Identifier, IdentifierData, IdentifierFilterValue, IdentifierListIncludeEntity,
     IdentifierListQuery, IdentifierType, SortableIdentifierColumn,
@@ -47,6 +47,7 @@ use crate::proto::identifier_creator::{
 };
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::ecosystem::model::TrustInformationInput;
 use crate::provider::trust_list_subscriber::{
     Feature, TrustEntityResponse, TrustListSubscriber, TrustListSubscriberCapabilities,
 };
@@ -463,42 +464,45 @@ impl IdentifierService {
         identifier: &Identifier,
         now: OffsetDateTime,
     ) -> Result<(), IdentifierServiceError> {
+        if trust_information.is_empty() {
+            return Ok(());
+        }
+
+        let inputs: Vec<TrustInformationInput> = trust_information
+            .iter()
+            .map(|info| TrustInformationInput {
+                data: info.data.clone(),
+                r#type: info.r#type.clone().into(),
+            })
+            .collect();
+
+        let enabled_ecosystems = self.ecosystem_provider.enabled_ecosystems();
+        if enabled_ecosystems.is_empty() {
+            return Err(IdentifierServiceError::NoEcosystemEnabledForTrustInformation);
+        }
+
+        let mut outcomes = EcosystemOutcomes::default();
+        let mut parsed = None;
+        for ecosystem in enabled_ecosystems {
+            let ecosystem_id = ecosystem.config_name().to_owned();
+            match ecosystem
+                .parse_identifier_trust_information(identifier, &inputs)
+                .await
+            {
+                Ok(result) => {
+                    outcomes.record(ecosystem_id, Ok(()));
+                    parsed = Some(result);
+                    break;
+                }
+                Err(err) => outcomes.record(ecosystem_id, Err((&err).into())),
+            }
+        }
+        let parsed = parsed.ok_or(IdentifierServiceError::TrustInformationRejected(outcomes))?;
+
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
-
-        let rp_id = self.etsi_rp_id_for_identifier(identifier).await?;
-        let mut last_reg_cert_jwt: Option<
-            standardized_types::etsi_119_475::registration_certificate::Payload,
-        > = None;
-        for trust_info in trust_information {
-            let reg_cert_info = self
-                .wrp_validator
-                .validate_registration_certificate(
-                    &trust_info.data,
-                    rp_id.as_ref().ok_or_else(|| {
-                        IdentifierServiceError::InvalidTrustInformation(
-                            "No organization_id specified".to_string(),
-                        )
-                    })?,
-                    None,
-                    self.config
-                        .global_settings
-                        .certificate_validation
-                        .leeway_seconds,
-                )
-                .await
-                .error_while("validating registration certificate")?;
-            if let Some(last_reg_cert) = &last_reg_cert_jwt {
-                self.wrp_validator
-                    .validate_registration_certificates_consistency(
-                        last_reg_cert,
-                        &reg_cert_info.payload.custom,
-                    )
-                    .error_while("validating registration certificates similarity")?;
-            }
-            last_reg_cert_jwt = Some(reg_cert_info.payload.custom.clone());
-
+        for (trust_info, parsed_info) in trust_information.into_iter().zip(parsed) {
             let blob_id = Uuid::new_v4().into();
             blob_storage
                 .create(Blob {
@@ -506,7 +510,7 @@ impl IdentifierService {
                     created_date: now,
                     last_modified: now,
                     value: trust_info.data.into_bytes(),
-                    r#type: trust_info.r#type.into(),
+                    r#type: parsed_info.blob_type,
                 })
                 .await
                 .error_while("saving trust information blob")?;
@@ -516,19 +520,11 @@ impl IdentifierService {
                     id: Uuid::new_v4().into(),
                     created_date: now,
                     last_modified: now,
-                    valid_from: reg_cert_info.payload.invalid_before,
-                    valid_to: reg_cert_info.payload.expires_at,
-                    intended_use: reg_cert_info.payload.custom.intended_use_id,
-                    allowed_issuance_types: map_dcql_credentials(
-                        reg_cert_info
-                            .payload
-                            .custom
-                            .provides_attestations
-                            .unwrap_or_default(),
-                    )?,
-                    allowed_verification_types: map_dcql_credentials(
-                        reg_cert_info.payload.custom.credentials.unwrap_or_default(),
-                    )?,
+                    valid_from: parsed_info.valid_from,
+                    valid_to: parsed_info.valid_to,
+                    intended_use: parsed_info.intended_use,
+                    allowed_issuance_types: parsed_info.allowed_issuance_types,
+                    allowed_verification_types: parsed_info.allowed_verification_types,
                     identifier_id: identifier.id,
                     blob_id,
                 })
@@ -536,41 +532,6 @@ impl IdentifierService {
                 .error_while("creating trust information")?;
         }
         Ok(())
-    }
-
-    async fn etsi_rp_id_for_identifier(
-        &self,
-        identifier: &Identifier,
-    ) -> Result<Option<String>, IdentifierServiceError> {
-        let mut rp_ids = HashSet::new();
-        let certificates = match &identifier.data {
-            IdentifierData::Certificate(certificates)
-            | IdentifierData::CertificateAuthority(certificates) => {
-                certificates.as_ref().await?.to_owned()
-            }
-            _ => vec![],
-        };
-        for cert in &certificates {
-            let result = self
-                .wrp_validator
-                .validate_access_certificate(&cert.chain, None)
-                .await;
-            match result {
-                Ok(ac_info) => {
-                    rp_ids.insert(ac_info.relying_party_id);
-                }
-                Err(err) if matches!(err.error_code(), BR_0224 | BR_0487) => {
-                    // ignore this error, as the identifier might have additional certificates that are not access certificates
-                }
-                Err(err) => return Err(err.error_while("validating access cert").into()),
-            }
-        }
-        if rp_ids.len() > 1 {
-            return Err(IdentifierServiceError::InvalidTrustInformation(
-                "Conflicting organization identifier values specified".to_string(),
-            ));
-        };
-        Ok(rp_ids.into_iter().next())
     }
 
     /// Deletes an identifier

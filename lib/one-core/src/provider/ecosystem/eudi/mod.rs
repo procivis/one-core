@@ -12,12 +12,13 @@ use time::Duration;
 use super::Ecosystem;
 use super::error::EcosystemError;
 use super::model::{
-    EcosystemCapabilities, EcosystemRole, ProtocolArtifact, SchemaFilter, TrustDetail,
+    EcosystemCapabilities, EcosystemRole, ParsedTrustInformation, ProtocolArtifact, SchemaFilter,
+    TrustDetail, TrustInformationInput,
 };
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
-use crate::model::identifier::IdentifierFilterValue;
+use crate::model::identifier::{Identifier, IdentifierFilterValue};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::proof::Proof;
@@ -41,6 +42,7 @@ mod issuer_issuance;
 mod lifecycle;
 mod mapper;
 mod trust_detail;
+mod trust_information;
 mod validator;
 mod verifier_submission;
 
@@ -298,5 +300,14 @@ impl Ecosystem for EudiEcosystem {
 
     async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError> {
         self.run_lifecycle_check().await
+    }
+
+    async fn parse_identifier_trust_information(
+        &self,
+        identifier: &Identifier,
+        trust_information: &[TrustInformationInput],
+    ) -> Result<Vec<ParsedTrustInformation>, EcosystemError> {
+        self.parse_trust_information(identifier, trust_information)
+            .await
     }
 }

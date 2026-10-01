@@ -5,7 +5,6 @@ use crate::error::ErrorCode;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
@@ -50,7 +49,6 @@ pub struct IdentifierService {
     session_provider: Arc<dyn SessionProvider>,
     trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
     transaction_manager: Arc<dyn TransactionManager>,
-    wrp_validator: Arc<dyn WRPValidator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
 }
 
@@ -74,7 +72,6 @@ impl IdentifierService {
         session_provider: Arc<dyn SessionProvider>,
         trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
         transaction_manager: Arc<dyn TransactionManager>,
-        wrp_validator: Arc<dyn WRPValidator>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ) -> Self {
         Self {
@@ -95,7 +92,6 @@ impl IdentifierService {
             proof_schema_repository,
             identifier_trust_information_repository,
             transaction_manager,
-            wrp_validator,
             ecosystem_provider,
         }
     }

@@ -454,3 +454,31 @@ async fn test_get_identifier_list_include_translations_and_logo() {
         "English name"
     );
 }
+
+#[tokio::test]
+async fn test_create_identifier_with_trust_information_fails_without_access_certificate() {
+    // given: a KEY identifier carries no access certificate the registration certificate could be matched against
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key_id = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await
+        .id;
+
+    // when
+    let result = context
+        .api
+        .identifiers
+        .create_key_identifier_with_trust_information(
+            "identifier-with-trust-information",
+            key_id,
+            organisation.id,
+            "not-a-real-registration-certificate-jwt",
+        )
+        .await;
+
+    // then
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0416");
+}

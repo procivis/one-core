@@ -7,14 +7,15 @@ use shared_types::{CredentialId, EcosystemId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use crate::model::credential::Credential;
-use crate::model::identifier::IdentifierFilterValue;
+use crate::model::identifier::{Identifier, IdentifierFilterValue};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::proof::Proof;
 use crate::provider::Provider;
 use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::ecosystem::model::{
-    EcosystemCapabilities, EcosystemRole, ProtocolArtifact, SchemaFilter, TrustDetail,
+    EcosystemCapabilities, EcosystemRole, ParsedTrustInformation, ProtocolArtifact, SchemaFilter,
+    TrustDetail, TrustInformationInput,
 };
 
 pub(crate) mod decorators;
@@ -67,6 +68,15 @@ pub trait Ecosystem: Provider + Send + Sync {
     ) -> Result<Option<I18nString>, EcosystemError>;
 
     async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError>;
+
+    /// Validates uploaded trust information against the identifier's access certificates.
+    /// Returns `Err(EcosystemError::NotApplicable)` when this ecosystem does not handle the
+    /// given trust information type(s), so the caller can try the next candidate ecosystem.
+    async fn parse_identifier_trust_information(
+        &self,
+        identifier: &Identifier,
+        trust_information: &[TrustInformationInput],
+    ) -> Result<Vec<ParsedTrustInformation>, EcosystemError>;
 }
 
 impl Display for dyn Ecosystem {

@@ -1,18 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::TrustCollectionId;
+use shared_types::{EcosystemId, TrustCollectionId};
 use similar_asserts::assert_eq;
-use standardized_types::etsi_119_475::Credential;
-use standardized_types::etsi_119_475::registration_certificate::{
-    Payload, Status, SupervisoryAuthority,
-};
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
-use standardized_types::openid4vp::dcql::{CredentialFormat, SdJwtVcMeta};
-use url::Url;
 use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::model::blob::BlobType;
 use crate::model::certificate::Certificate;
 use crate::model::identifier::{GetIdentifierList, Identifier, IdentifierData, IdentifierType};
 use crate::model::relation::RelatedVec;
@@ -24,17 +19,15 @@ use crate::model::trust_list_subscription::{
 use crate::proto::identifier_creator::{
     IdentifierName, MockIdentifierCreator, RemoteIdentifierOutcome, RemoteIdentifierRelation,
 };
-use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
-use crate::proto::wrp_validator::MockWRPValidator;
-use crate::proto::wrp_validator::error::WRPValidatorError;
-use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCertificateResult};
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
-use crate::provider::signer::registration_certificate::model::WRPRegistrationCertificatePayload;
+use crate::provider::ecosystem::error::EcosystemError;
+use crate::provider::ecosystem::model::ParsedTrustInformation;
+use crate::provider::ecosystem::{Ecosystem, MockEcosystem};
 use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberProvider;
 use crate::provider::trust_list_subscriber::{
     Feature, MockTrustListSubscriber, TrustEntityMetadata, TrustEntityResponse,
@@ -83,7 +76,6 @@ struct Mocks {
     identifier_trust_information_repository: MockIdentifierTrustInformationRepository,
     localized_text_repository: MockLocalizedTextRepository,
     blob_storage_provider: MockBlobStorageProvider,
-    wrp_validator: MockWRPValidator,
     ecosystem_provider: MockEcosystemDirectory,
 }
 
@@ -108,7 +100,6 @@ fn setup_service(mocks: Mocks) -> IdentifierService {
         session_provider: Arc::new(mocks.session_provider),
         trust_list_subscriber_provider: Arc::new(mocks.trust_list_subscriber_provider),
         transaction_manager: Arc::new(NoTransactionManager),
-        wrp_validator: Arc::new(mocks.wrp_validator),
         ecosystem_provider: Arc::new(mocks.ecosystem_provider),
     }
 }
@@ -741,17 +732,104 @@ async fn test_resolve_trust_entries_filters_key_type() {
     assert_eq!(result[0].trust_entries.len(), 0);
 }
 
-#[tokio::test]
-async fn test_create_identifier_with_trust_information() {
+fn setup_for_trust_information() -> (
+    StaticSessionProvider,
+    MockOrganisationRepository,
+    MockKeyRepository,
+    MockIdentifierCreator,
+    shared_types::OrganisationId,
+    shared_types::KeyId,
+) {
     let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+
     let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(dummy_organisation(Some(organisation_id))));
+
     let mut key_repository = MockKeyRepository::default();
     let dummy_key = dummy_key();
     let key_id = dummy_key.id;
     key_repository
         .expect_get_key()
         .returning(move |_| Ok(dummy_key.clone()));
+
+    let mut identifier = dummy_identifier();
+    identifier.id = Uuid::new_v4().into();
+    identifier.organisation = dummy_organisation(Some(organisation_id)).into();
+
     let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_create_local_identifier()
+        .returning(move |_, _| Ok(identifier.clone()));
+
+    (
+        session_provider,
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        organisation_id,
+        key_id,
+    )
+}
+
+fn create_identifier_with_trust_information_request(
+    organisation_id: shared_types::OrganisationId,
+    key_id: shared_types::KeyId,
+) -> CreateIdentifierRequestDTO {
+    CreateIdentifierRequestDTO {
+        name: "test identifier".to_string(),
+        did: None,
+        key: Some(CreateIdentifierKeyRequestDTO { key_id }),
+        key_id: None,
+        certificates: None,
+        certificate_authorities: None,
+        translations: None,
+        logo: None,
+        organisation_id,
+        trust_information: vec![CreateIdentifierTrustInformationRequestDTO {
+            data: "dummy reg cert".to_string(),
+            r#type: IdentifierTrustInformationType::RegistrationCertificate,
+        }],
+    }
+}
+
+fn ecosystem_accepting_trust_information(config_name: &'static str) -> MockEcosystem {
+    let mut ecosystem = MockEcosystem::new();
+    ecosystem
+        .expect_config_name()
+        .return_const(EcosystemId::from(config_name));
+    ecosystem
+        .expect_parse_identifier_trust_information()
+        .once()
+        .returning(|_, inputs| {
+            Ok(inputs
+                .iter()
+                .map(|_| ParsedTrustInformation {
+                    valid_from: None,
+                    valid_to: None,
+                    intended_use: None,
+                    allowed_issuance_types: vec![],
+                    allowed_verification_types: vec![],
+                    blob_type: BlobType::RegistrationCertificate,
+                })
+                .collect())
+        });
+    ecosystem
+}
+
+#[tokio::test]
+async fn test_create_identifier_with_trust_information() {
+    let (
+        session_provider,
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        organisation_id,
+        key_id,
+    ) = setup_for_trust_information();
+
     let mut identifier_trust_information_repository =
         MockIdentifierTrustInformationRepository::default();
     identifier_trust_information_repository
@@ -767,41 +845,11 @@ async fn test_create_identifier_with_trust_information() {
         .once()
         .returning(move |_| Ok(blob_storage.clone()));
 
-    let organisation_id = session_provider.0.organisation_id.unwrap();
-    organisation_repository
-        .expect_get_organisation()
-        .returning(move |_| Ok(dummy_organisation(Some(organisation_id))));
-
-    let identifier_id = Uuid::new_v4().into();
-    let mut identifier = dummy_identifier();
-    identifier.data =
-        IdentifierData::Certificate(RelatedVec::from(vec![dummy_certificate(identifier_id)]));
-    identifier.id = identifier_id;
-    identifier.organisation = dummy_organisation(Some(organisation_id)).into();
-
-    identifier_creator
-        .expect_create_local_identifier()
-        .returning(move |_, _| Ok(identifier.clone()));
-    let mut wrp_validator = MockWRPValidator::new();
-    wrp_validator
-        .expect_validate_access_certificate()
-        .once()
-        .returning(|_, _| {
-            Ok(AccessCertificateResult {
-                trust_entity: None,
-                relying_party_id: "test_wrp".to_string(),
-                registry_url: None,
-            })
-        });
-    wrp_validator
-        .expect_validate_registration_certificate()
-        .once()
-        .returning(|_, rp_id, _, _| {
-            assert_eq!(rp_id, "test_wrp");
-            Ok(RegistrationCertificateResult {
-                trust_entity: None,
-                payload: dummy_reg_cert(),
-            })
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_enabled_ecosystems()
+        .returning(|| {
+            vec![Arc::new(ecosystem_accepting_trust_information("EUDI")) as Arc<dyn Ecosystem>]
         });
 
     let service = setup_service(Mocks {
@@ -811,45 +859,134 @@ async fn test_create_identifier_with_trust_information() {
         identifier_trust_information_repository,
         blob_storage_provider,
         session_provider,
-        wrp_validator,
+        ecosystem_provider,
         ..Default::default()
     });
 
     let result = service
-        .create_identifier(CreateIdentifierRequestDTO {
-            name: "test identifier".to_string(),
-            did: None,
-            key: Some(CreateIdentifierKeyRequestDTO { key_id }),
-            key_id: None,
-            certificates: None,
-            certificate_authorities: None,
-            translations: None,
-            logo: None,
+        .create_identifier(create_identifier_with_trust_information_request(
             organisation_id,
-            trust_information: vec![CreateIdentifierTrustInformationRequestDTO {
-                data: "dummy reg cert".to_string(),
-                r#type: IdentifierTrustInformationType::RegistrationCertificate,
-            }],
-        })
+            key_id,
+        ))
         .await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
-async fn test_create_identifier_with_inconsistent_reg_certs_fails() {
-    // given
-    let session_provider = StaticSessionProvider::new_random();
-    let mut organisation_repository = MockOrganisationRepository::default();
-    let mut key_repository = MockKeyRepository::default();
-    let dummy_key = dummy_key();
-    let key_id = dummy_key.id;
-    key_repository
-        .expect_get_key()
-        .returning(move |_| Ok(dummy_key.clone()));
-    let mut identifier_creator = MockIdentifierCreator::default();
+async fn test_create_identifier_trust_information_fails_when_no_ecosystem_enabled() {
+    // given: no ecosystem is enabled
+    let (
+        session_provider,
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        organisation_id,
+        key_id,
+    ) = setup_for_trust_information();
+
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_enabled_ecosystems()
+        .returning(Vec::new);
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        session_provider,
+        ecosystem_provider,
+        ..Default::default()
+    });
+
+    // when
+    let result = service
+        .create_identifier(create_identifier_with_trust_information_request(
+            organisation_id,
+            key_id,
+        ))
+        .await;
+
+    // then
+    let error = result.unwrap_err();
+    assert_eq!(error.error_code(), ErrorCode::BR_0416);
+    assert!(matches!(
+        error,
+        IdentifierServiceError::NoEcosystemEnabledForTrustInformation
+    ));
+}
+
+#[tokio::test]
+async fn test_create_identifier_trust_information_fails_when_not_applicable() {
+    // given: EUDI is enabled, but reports it does not handle this trust
+    // information type
+    let (
+        session_provider,
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        organisation_id,
+        key_id,
+    ) = setup_for_trust_information();
+
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_enabled_ecosystems()
+        .returning(|| {
+            let mut ecosystem = MockEcosystem::new();
+            ecosystem
+                .expect_config_name()
+                .return_const(EcosystemId::from("EUDI"));
+            ecosystem
+                .expect_parse_identifier_trust_information()
+                .once()
+                .returning(|_, _| Err(EcosystemError::NotApplicable));
+            vec![Arc::new(ecosystem) as Arc<dyn Ecosystem>]
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        session_provider,
+        ecosystem_provider,
+        ..Default::default()
+    });
+
+    // when
+    let result = service
+        .create_identifier(create_identifier_with_trust_information_request(
+            organisation_id,
+            key_id,
+        ))
+        .await;
+
+    // then
+    let error = result.unwrap_err();
+    assert_eq!(error.error_code(), ErrorCode::BR_0416);
+    let IdentifierServiceError::TrustInformationRejected(outcomes) = error else {
+        panic!("expected TrustInformationRejected, got {error:?}");
+    };
+    let outcome = outcomes.get(&EcosystemId::from("EUDI")).unwrap();
+    assert!(!outcome.is_trusted());
+    assert_eq!(
+        outcome.error.as_ref().unwrap().error_code,
+        ErrorCode::BR_0479
+    );
+}
+
+#[tokio::test]
+async fn test_create_identifier_trust_information_tries_next_ecosystem_after_rejection() {
+    let (
+        session_provider,
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        organisation_id,
+        key_id,
+    ) = setup_for_trust_information();
+
     let mut identifier_trust_information_repository =
         MockIdentifierTrustInformationRepository::default();
-    // Only the first trust_info item is persisted; the second fails consistency check
     identifier_trust_information_repository
         .expect_create()
         .once()
@@ -863,51 +1000,26 @@ async fn test_create_identifier_with_inconsistent_reg_certs_fails() {
         .once()
         .returning(move |_| Ok(blob_storage.clone()));
 
-    let organisation_id = session_provider.0.organisation_id.unwrap();
-    organisation_repository
-        .expect_get_organisation()
-        .returning(move |_| Ok(dummy_organisation(Some(organisation_id))));
-
-    let identifier_id = Uuid::new_v4().into();
-    let mut identifier = dummy_identifier();
-    identifier.data =
-        IdentifierData::Certificate(RelatedVec::from(vec![dummy_certificate(identifier_id)]));
-    identifier.id = identifier_id;
-    identifier.organisation = dummy_organisation(Some(organisation_id)).into();
-
-    identifier_creator
-        .expect_create_local_identifier()
-        .returning(move |_, _| Ok(identifier.clone()));
-
-    let mut wrp_validator = MockWRPValidator::new();
-    wrp_validator
-        .expect_validate_access_certificate()
-        .once()
-        .returning(|_, _| {
-            Ok(AccessCertificateResult {
-                trust_entity: None,
-                relying_party_id: "test_wrp".to_string(),
-                registry_url: None,
-            })
-        });
-    wrp_validator
-        .expect_validate_registration_certificate()
-        .times(2)
-        .returning(|_, _, _, _| {
-            Ok(RegistrationCertificateResult {
-                trust_entity: None,
-                payload: dummy_reg_cert(),
-            })
-        });
-    wrp_validator
-        .expect_validate_registration_certificates_consistency()
-        .once()
-        .returning(|_, _| {
-            Err(WRPValidatorError::RegistrationCertificateMissmatch {
-                field_name: "name".to_string(),
-                first_value: "\"RP One\"".to_string(),
-                second_value: "\"RP Two\"".to_string(),
-            })
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_enabled_ecosystems()
+        .returning(|| {
+            let mut rejecting = MockEcosystem::new();
+            rejecting
+                .expect_config_name()
+                .return_const(EcosystemId::from("FIRST"));
+            rejecting
+                .expect_parse_identifier_trust_information()
+                .once()
+                .returning(|_, _| {
+                    Err(EcosystemError::InvalidTrustInformation(
+                        "invalid".to_string(),
+                    ))
+                });
+            vec![
+                Arc::new(rejecting) as Arc<dyn Ecosystem>,
+                Arc::new(ecosystem_accepting_trust_information("EUDI")) as Arc<dyn Ecosystem>,
+            ]
         });
 
     let service = setup_service(Mocks {
@@ -917,89 +1029,18 @@ async fn test_create_identifier_with_inconsistent_reg_certs_fails() {
         identifier_trust_information_repository,
         blob_storage_provider,
         session_provider,
-        wrp_validator,
+        ecosystem_provider,
         ..Default::default()
     });
 
-    // when
     let result = service
-        .create_identifier(CreateIdentifierRequestDTO {
-            name: "test identifier".to_string(),
-            did: None,
-            key: Some(CreateIdentifierKeyRequestDTO { key_id }),
-            key_id: None,
-            certificates: None,
-            certificate_authorities: None,
-            translations: None,
-            logo: None,
+        .create_identifier(create_identifier_with_trust_information_request(
             organisation_id,
-            trust_information: vec![
-                CreateIdentifierTrustInformationRequestDTO {
-                    data: "first reg cert".to_string(),
-                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
-                },
-                CreateIdentifierTrustInformationRequestDTO {
-                    data: "second reg cert".to_string(),
-                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
-                },
-            ],
-        })
+            key_id,
+        ))
         .await;
 
-    // then
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0224);
-}
-
-fn dummy_reg_cert() -> JWTPayload<Payload> {
-    WRPRegistrationCertificatePayload {
-        issued_at: None,
-        expires_at: None,
-        invalid_before: None,
-        issuer: None,
-        subject: Some("subject".to_string()),
-        audience: None,
-        jwt_id: None,
-        proof_of_possession_key: None,
-        custom: Payload {
-            name: "".to_string(),
-            sub_ln: None,
-            sub_gn: None,
-            sub_fn: None,
-            country: "".to_string(),
-            registry_uri: Url::parse("https://example.com").unwrap(),
-            service_descriptions: vec![],
-            entitlements: vec![],
-            privacy_policy: Url::parse("https://example.com").unwrap(),
-            info_uri: Url::parse("https://example.com").unwrap(),
-            supervisory_authority: SupervisoryAuthority {
-                email: "".to_string(),
-                phone: "".to_string(),
-                uri: "".to_string(),
-            },
-            policy_id: vec![],
-            certificate_policy: Url::parse("https://example.com").unwrap(),
-            status: Status {
-                status_list: HashMap::new(),
-            },
-            provides_attestations: Some(vec![Credential {
-                format: CredentialFormat::SdJwtVc(SdJwtVcMeta {
-                    vct_values: vec!["https://example.com".to_string()],
-                }),
-                claim: None,
-            }]),
-            credentials: Some(vec![Credential {
-                format: CredentialFormat::SdJwtVc(SdJwtVcMeta {
-                    vct_values: vec!["https://example2.com".to_string()],
-                }),
-                claim: None,
-            }]),
-            purpose: None,
-            intended_use_id: Some("intended_use_id".to_string()),
-            public_body: None,
-            support_uri: Url::parse("https://example.com").unwrap(),
-            intermediary: None,
-        },
-    }
+    assert!(result.is_ok());
 }
 
 #[tokio::test]

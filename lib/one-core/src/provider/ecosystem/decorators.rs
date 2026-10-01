@@ -9,10 +9,11 @@ use standardized_types::openid4vp::dcql::CredentialQueryId;
 use super::Ecosystem;
 use super::error::EcosystemError;
 use super::model::{
-    EcosystemCapabilities, EcosystemRole, ProtocolArtifact, SchemaFilter, TrustDetail,
+    EcosystemCapabilities, EcosystemRole, ParsedTrustInformation, ProtocolArtifact, SchemaFilter,
+    TrustDetail, TrustInformationInput,
 };
 use crate::model::credential::Credential;
-use crate::model::identifier::IdentifierFilterValue;
+use crate::model::identifier::{Identifier, IdentifierFilterValue};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::proof::Proof;
@@ -82,6 +83,14 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
     }
 
     async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError> {
+        self.disabled_error()
+    }
+
+    async fn parse_identifier_trust_information(
+        &self,
+        _identifier: &Identifier,
+        _trust_information: &[TrustInformationInput],
+    ) -> Result<Vec<ParsedTrustInformation>, EcosystemError> {
         self.disabled_error()
     }
 }
@@ -159,5 +168,15 @@ impl Ecosystem for CapabilityChecked {
 
     async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError> {
         self.0.lifecycle_hook().await
+    }
+
+    async fn parse_identifier_trust_information(
+        &self,
+        identifier: &Identifier,
+        trust_information: &[TrustInformationInput],
+    ) -> Result<Vec<ParsedTrustInformation>, EcosystemError> {
+        self.0
+            .parse_identifier_trust_information(identifier, trust_information)
+            .await
     }
 }

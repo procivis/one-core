@@ -10,8 +10,10 @@ use standardized_types::openid4vp::dcql::DcqlQuery;
 use strum::Display;
 use time::OffsetDateTime;
 
+use crate::model::blob::BlobType;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::WalletAttestation;
+use crate::model::identifier_trust_information::SchemaFormat;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::service::common_dto::EudiTrustInformationResponseDTO;
@@ -104,4 +106,29 @@ pub struct TrustDetail {
 
 pub enum TrustDetailInfo {
     Eudi(EudiTrustInformationResponseDTO),
+}
+
+/// The kind of trust information document uploaded for an identifier.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IdentifierTrustInformationType {
+    RegistrationCertificate,
+}
+
+/// A single trust information document, still in its raw (serialized) form.
+#[derive(Clone, Debug)]
+pub struct TrustInformationInput {
+    pub data: String,
+    pub r#type: IdentifierTrustInformationType,
+}
+
+/// The data extracted from a [`TrustInformationInput`] once an ecosystem has validated it,
+/// ready to be persisted alongside the original blob.
+#[derive(Clone, Debug)]
+pub struct ParsedTrustInformation {
+    pub valid_from: Option<OffsetDateTime>,
+    pub valid_to: Option<OffsetDateTime>,
+    pub intended_use: Option<String>,
+    pub allowed_issuance_types: Vec<SchemaFormat>,
+    pub allowed_verification_types: Vec<SchemaFormat>,
+    pub blob_type: BlobType,
 }
