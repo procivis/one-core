@@ -146,8 +146,8 @@ pub enum HistoryMetadataBinding {
     TrustResolution {
         value: TrustResolutionMetadataBindingDTO,
     },
-    /// One entry per ecosystem provider consulted, keyed by provider id.
     EcosystemsResolved {
+        /// One entry per ecosystem provider consulted, keyed by provider id.
         value: HashMap<String, EcosystemOutcomeBindingDTO>,
     },
 }
