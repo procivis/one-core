@@ -6,21 +6,24 @@ use standardized_types::openid4vci::{
 use standardized_types::openid4vp::dcql::PathSegment;
 use uuid::Uuid;
 
-use super::apply_issuer_metadata_to_schema;
+use super::{
+    apply_issuer_metadata_to_schema, ensure_required_claims, issuer_mandatory_claim_ids,
+    map_issuer_claim_metadata,
+};
 use crate::clock::now_utc;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
-use crate::service::test_utilities::dummy_organisation;
+use crate::service::test_utilities::{dummy_credential, dummy_organisation};
 
 #[tokio::test]
-async fn applies_mandatory_issuer_metadata_to_claim_schema() {
+async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
     let mut claim = claim_schema("localKey", "STRING");
     claim.required = false;
     let claim_id = claim.id;
     let format_id = Uuid::new_v4().into();
-    let mut schema = credential_schema(
+    let schema = credential_schema(
         Uuid::new_v4().into(),
         format_id,
         "JWT",
@@ -37,12 +40,29 @@ async fn applies_mandatory_issuer_metadata_to_claim_schema() {
         ..Default::default()
     };
 
-    apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
         .await
         .unwrap();
+    let mandatory_claim_ids = issuer_mandatory_claim_ids(&issuer_claim_metadata).unwrap();
 
-    let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
-    assert!(claim_schemas[0].required);
+    assert_eq!(mandatory_claim_ids, vec![claim_id]);
+    assert!(!schema.claim_schemas.as_ref().await.unwrap()[0].required);
+
+    let credential = crate::model::credential::Credential {
+        schema: schema.clone().into(),
+        format: Some(schema.formats.as_ref().await.unwrap()[0].clone().into()),
+        claims: vec![].into(),
+        ..dummy_credential()
+    };
+    let error = ensure_required_claims(&schema, &credential, &issuer_claim_metadata)
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("localKey"));
+    // Another issuer can omit this claim when it is not mandatory in its metadata.
+    ensure_required_claims(&schema, &credential, &[])
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -111,16 +131,25 @@ async fn applies_wildcard_metadata_to_array_children_and_skips_concrete_indices(
         ..Default::default()
     };
 
-    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
         .await
         .unwrap();
+    let translations =
+        apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
+            .await
+            .unwrap();
 
+    assert_eq!(
+        issuer_mandatory_claim_ids(&issuer_claim_metadata).unwrap(),
+        vec![claim_id, degree_type.id]
+    );
     assert_eq!(translations.len(), 2);
     assert!(translations.iter().any(|t| t.value == "Issuer key"));
     assert!(translations.iter().any(|t| t.value == "Degree type"));
     let claims = schema.claim_schemas.as_ref().await.unwrap();
     assert!(claims[0].required);
-    assert!(claims[2].required);
+    assert!(!claims[2].required);
     assert!(!claims[3].required);
 }
 
@@ -154,11 +183,21 @@ async fn array_child_path_without_wildcard_is_skipped() {
         ..Default::default()
     };
 
-    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
         .await
         .unwrap();
+    let translations =
+        apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
+            .await
+            .unwrap();
 
     assert!(translations.is_empty());
+    assert!(
+        issuer_mandatory_claim_ids(&issuer_claim_metadata)
+            .unwrap()
+            .is_empty()
+    );
     assert!(!schema.claim_schemas.as_ref().await.unwrap()[1].required);
 }
 
@@ -189,11 +228,21 @@ async fn wildcard_metadata_requires_an_array_parent() {
         ..Default::default()
     };
 
-    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
         .await
         .unwrap();
+    let translations =
+        apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
+            .await
+            .unwrap();
 
     assert!(translations.is_empty());
+    assert!(
+        issuer_mandatory_claim_ids(&issuer_claim_metadata)
+            .unwrap()
+            .is_empty()
+    );
     assert!(!schema.claim_schemas.as_ref().await.unwrap()[1].required);
 }
 
@@ -239,9 +288,15 @@ async fn errors_when_mandatory_issuer_metadata_claims_are_missing_from_parsed_sc
         ..Default::default()
     };
 
-    let error = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
         .await
-        .unwrap_err();
+        .unwrap();
+    // Display enrichment does not validate issuer requirements.
+    apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
+        .await
+        .unwrap();
+    let error = issuer_mandatory_claim_ids(&issuer_claim_metadata).unwrap_err();
 
     assert!(error.to_string().contains("['missing', 'address/street']"));
 }
@@ -290,9 +345,14 @@ async fn returns_all_issuer_metadata_translations_for_persistence() {
         }]),
     };
 
-    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
         .await
         .unwrap();
+    let translations =
+        apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
+            .await
+            .unwrap();
 
     assert_eq!(translations.len(), 6);
     assert!(translations.iter().any(|translation| {

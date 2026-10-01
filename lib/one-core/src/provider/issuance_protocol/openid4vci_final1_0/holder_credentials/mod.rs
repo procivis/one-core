@@ -1,4 +1,6 @@
-use standardized_types::openid4vci::{CredentialMetadata, IssuerDisplay, KeyStorageSecurityLevel};
+use standardized_types::openid4vci::{
+    ClaimMetadata, CredentialMetadata, IssuerDisplay, KeyStorageSecurityLevel,
+};
 use standardized_types::openid4vp::dcql::{ClaimPath, PathSegment};
 mod schema_matching;
 #[cfg(test)]
@@ -8,7 +10,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialId, SerializedCredential};
+use shared_types::{ClaimSchemaId, CredentialId, SerializedCredential};
 use uuid::Uuid;
 
 use self::schema_matching::{
@@ -25,6 +27,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER_STR;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -150,18 +153,25 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
+        let parsed_format = credential.format.as_required_ref().await?.to_owned();
+        let issuer_claim_metadata = if let Some(metadata) = &configuration.credential_metadata {
+            let schema = credential.schema.as_ref().await?;
+            map_issuer_claim_metadata(&schema, metadata, &parsed_format).await?
+        } else {
+            vec![]
+        };
         self.enrich_credential_schema(
             credential.schema.as_mut().await?.as_mut(),
             interaction_data,
             configuration,
             organisation,
+            &issuer_claim_metadata,
         )
         .await?;
 
         let parsed_schema = credential.schema.as_ref().await?.to_owned();
-        // Issuer metadata is already applied; reject missing advertised claims before import.
-        ensure_required_claims(&parsed_schema, credential).await?;
-        let parsed_format = credential.format.as_required_ref().await?;
+        // Validate issuer requirements before import without storing them on the schema.
+        ensure_required_claims(&parsed_schema, credential, &issuer_claim_metadata).await?;
         let CredentialSchemaResolution {
             mut schema,
             new_format,
@@ -174,7 +184,6 @@ impl OpenID4VCIFinal1_0 {
             &self.config,
         )
         .await?;
-        drop(parsed_format);
 
         self.align_credential_schema(
             &mut schema,
@@ -205,15 +214,20 @@ impl OpenID4VCIFinal1_0 {
         // metadata again after alignment so changed translations target the persisted schema and
         // claim IDs.
         let current_format = credential.format.as_required_ref().await?.to_owned();
+        let issuer_claim_metadata = if let Some(metadata) = metadata {
+            map_issuer_claim_metadata(schema, metadata, &current_format).await?
+        } else {
+            vec![]
+        };
         let translations = apply_issuer_metadata_to_schema(
             schema,
             metadata,
             &self.config.global_settings.default_language,
-            Some(&current_format),
+            &issuer_claim_metadata,
         )
         .await?;
         // A reused schema may require claims that the parsed schema did not.
-        ensure_required_claims(schema, credential).await?;
+        ensure_required_claims(schema, credential, &issuer_claim_metadata).await?;
         credential.schema = schema.clone().into();
 
         if !alignment.new_claim_schemas.is_empty()
@@ -613,12 +627,13 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
         organisation: &Organisation,
+        issuer_claim_metadata: &[IssuerClaimMetadata<'_>],
     ) -> Result<(), IssuanceProtocolError> {
         apply_issuer_metadata_to_schema(
             schema,
             configuration.credential_metadata.as_ref(),
             &self.config.global_settings.default_language,
-            None,
+            issuer_claim_metadata,
         )
         .await?;
         schema.batch_size = interaction_data.batch_size.map(|size| size as _);
@@ -639,8 +654,10 @@ impl OpenID4VCIFinal1_0 {
 async fn ensure_required_claims(
     schema: &CredentialSchema,
     credential: &Credential,
+    issuer_claim_metadata: &[IssuerClaimMetadata<'_>],
 ) -> Result<(), IssuanceProtocolError> {
-    let missing = missing_required_claims(schema, credential).await?;
+    let mandatory_claim_ids = issuer_mandatory_claim_ids(issuer_claim_metadata)?;
+    let missing = missing_required_claims(schema, credential, &mandatory_claim_ids).await?;
     if !missing.is_empty() {
         return Err(IssuanceProtocolError::Failed(format!(
             "Issued credential is missing required claims: {}",
@@ -685,12 +702,106 @@ fn metadata_path_to_formatted_technical_key(
     Some(properties.join(NESTED_CLAIM_MARKER_STR))
 }
 
-/// Applies issuer metadata and returns changed translations for persistence.
+struct IssuerClaimMetadata<'a> {
+    formatted_key: String,
+    claim_schema_ids: Vec<ClaimSchemaId>,
+    metadata: &'a ClaimMetadata,
+}
+
+/// Match issuer metadata paths to schema claims using the current format's technical keys.
+/// Keep unmatched paths so validation can report missing mandatory claims, while display
+/// enrichment can ignore them.
+async fn map_issuer_claim_metadata<'a>(
+    schema: &CredentialSchema,
+    metadata: &'a CredentialMetadata,
+    current_format: &CredentialSchemaFormat,
+) -> Result<Vec<IssuerClaimMetadata<'a>>, IssuanceProtocolError> {
+    let issuer_metadata_claims = metadata.claims.as_deref().unwrap_or(&[]);
+    if issuer_metadata_claims.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let claim_schemas = schema.claim_schemas.as_ref().await?;
+    let mappings = current_format.claim_mappings.as_ref().await?;
+    let mappings_by_schema_id: HashMap<_, _> = mappings
+        .iter()
+        .map(|mapping| (mapping.claim_schema_id, mapping))
+        .collect();
+    let formatted_key = |claim_schema: &ClaimSchema| {
+        mappings_by_schema_id
+            .get(&claim_schema.id)
+            .map(|mapping| mapping.formatted_technical_key())
+            .unwrap_or_else(|| claim_schema.key.clone())
+    };
+    let array_technical_keys = claim_schemas
+        .iter()
+        .filter(|claim_schema| claim_schema.array)
+        .map(&formatted_key)
+        .collect_vec();
+    let mut schema_ids_by_key: HashMap<String, Vec<ClaimSchemaId>> = HashMap::new();
+    for claim_schema in claim_schemas.iter().filter(|claim| !claim.metadata) {
+        schema_ids_by_key
+            .entry(formatted_key(claim_schema))
+            .or_default()
+            .push(claim_schema.id);
+    }
+
+    Ok(issuer_metadata_claims
+        .iter()
+        .filter_map(|claim| {
+            let Some(key) =
+                metadata_path_to_formatted_technical_key(&claim.path, &array_technical_keys)
+            else {
+                tracing::debug!(
+                    path = %claim.path,
+                    "Skipping issuer claim metadata path that does not match the credential schema"
+                );
+                return None;
+            };
+            Some(IssuerClaimMetadata {
+                claim_schema_ids: schema_ids_by_key.get(&key).cloned().unwrap_or_default(),
+                formatted_key: key,
+                metadata: claim,
+            })
+        })
+        .collect())
+}
+
+/// Resolve this issuer's mandatory claims for validation without modifying schema requirements.
+/// Fail when an applicable mandatory metadata path has no corresponding schema claim.
+fn issuer_mandatory_claim_ids(
+    claim_metadata: &[IssuerClaimMetadata<'_>],
+) -> Result<Vec<ClaimSchemaId>, IssuanceProtocolError> {
+    let mandatory_claims = claim_metadata
+        .iter()
+        .filter(|claim| claim.metadata.mandatory == Some(true))
+        .collect_vec();
+    let missing = mandatory_claims
+        .iter()
+        .filter(|claim| claim.claim_schema_ids.is_empty())
+        .map(|claim| &claim.formatted_key)
+        .unique()
+        .collect_vec();
+    if !missing.is_empty() {
+        return Err(IssuanceProtocolError::Failed(format!(
+            "Mandatory claims are missing from the parsed credential schema: [{}]",
+            missing.iter().map(|path| format!("'{path}'")).join(", ")
+        )));
+    }
+
+    Ok(mandatory_claims
+        .into_iter()
+        .flat_map(|claim| claim.claim_schema_ids.iter().copied())
+        .unique()
+        .collect())
+}
+
+/// Applies display metadata and returns changed translations for persistence.
 async fn apply_issuer_metadata_to_schema(
     schema: &mut CredentialSchema,
     metadata: Option<&CredentialMetadata>,
     default_language: &str,
-    current_format: Option<&CredentialSchemaFormat>,
+    issuer_claim_metadata: &[IssuerClaimMetadata<'_>],
 ) -> Result<Vec<LocalizedText>, IssuanceProtocolError> {
     let now = now_utc();
     let all_displays = metadata.and_then(|m| m.display.as_deref()).unwrap_or(&[]);
@@ -749,80 +860,16 @@ async fn apply_issuer_metadata_to_schema(
         schema.translations = schema_translations.into();
     }
 
-    let issuer_metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
-    if !issuer_metadata_claims.is_empty() {
+    if !issuer_claim_metadata.is_empty() {
         let mut claim_schemas = schema.claim_schemas.as_mut().await?;
-        let formats = schema.formats.as_ref().await?;
-        let format = if let Some(current_format) = current_format {
-            current_format
-        } else {
-            formats
-                .first()
-                .ok_or(IssuanceProtocolError::Failed(format!(
-                    "empty formats on credential schema {}",
-                    schema.id
-                )))?
-        };
-        let mappings = format.claim_mappings.as_ref().await?;
-        let mappings_by_schema_id: HashMap<_, _> = mappings
-            .into_iter()
-            .map(|m| (m.claim_schema_id, m))
-            .collect();
-        let array_technical_keys = claim_schemas
-            .iter()
-            .filter(|claim_schema| claim_schema.array)
-            .map(|claim_schema| {
-                mappings_by_schema_id
-                    .get(&claim_schema.id)
-                    .map(|mapping| mapping.formatted_technical_key())
-                    .unwrap_or_else(|| claim_schema.key.clone())
-            })
-            .collect_vec();
-        let applicable_claims = issuer_metadata_claims
-            .iter()
-            .filter_map(|claim| {
-                let Some(key) =
-                    metadata_path_to_formatted_technical_key(&claim.path, &array_technical_keys)
-                else {
-                    tracing::debug!(
-                        path = %claim.path,
-                        "Skipping issuer claim metadata path that does not match the credential schema"
-                    );
-                    return None;
-                };
-                Some((key, claim))
-            })
-            .collect_vec();
-        let mandatory_claim_paths = applicable_claims
-            .iter()
-            .filter(|(_, claim)| claim.mandatory == Some(true))
-            .map(|(key, _)| key.clone())
-            .unique()
-            .collect_vec();
-        let mut parsed_claim_paths = Vec::with_capacity(claim_schemas.len());
-
         for claim_schema in &mut claim_schemas {
-            if claim_schema.metadata {
-                continue;
-            }
-
-            let metadata_key = if let Some(mapping) = mappings_by_schema_id.get(&claim_schema.id) {
-                mapping.formatted_technical_key()
-            } else {
-                claim_schema.key.to_string()
-            };
-            parsed_claim_paths.push(metadata_key.clone());
-
-            let Some((_, issuer_metadata_claim)) = applicable_claims
+            let Some(issuer_metadata_claim) = issuer_claim_metadata
                 .iter()
-                .find(|(key, _)| key == &metadata_key)
+                .find(|claim| claim.claim_schema_ids.contains(&claim_schema.id))
+                .map(|claim| claim.metadata)
             else {
                 continue;
             };
-
-            if mandatory_claim_paths.contains(&metadata_key) {
-                claim_schema.required = true;
-            }
 
             let claim_translations: Vec<LocalizedText> = issuer_metadata_claim
                 .display
@@ -856,20 +903,6 @@ async fn apply_issuer_metadata_to_schema(
                 drop(current_translations);
                 claim_schema.translations = claim_translations.into();
             }
-        }
-
-        let missing_mandatory_claims = mandatory_claim_paths
-            .iter()
-            .filter(|path| !parsed_claim_paths.contains(path))
-            .collect_vec();
-        if !missing_mandatory_claims.is_empty() {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Mandatory claims are missing from the parsed credential schema: [{}]",
-                missing_mandatory_claims
-                    .iter()
-                    .map(|path| format!("'{path}'"))
-                    .join(", ")
-            )));
         }
     }
 

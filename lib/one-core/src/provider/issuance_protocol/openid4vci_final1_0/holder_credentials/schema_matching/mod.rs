@@ -228,11 +228,23 @@ async fn find_schema_by_ecosystem_schema_id(
     Ok(None)
 }
 
-/// Check required claims after the credential has been linked to this schema. Required children
-/// are checked under each present parent, including every concrete array element.
+/// Return missing claim paths required by the schema or this issuer's metadata.
+///
+/// # Arguments
+///
+/// * `schema` - The parsed or reused credential schema whose `required` flags are validated.
+/// * `credential` - The issued claims and current format mappings. Their claim schema IDs and
+///   claim paths must already be aligned with `schema`.
+/// * `mandatory_claim_ids` - Claim schema IDs from `schema` that this issuer marks as mandatory.
+///   These add validation requirements without changing the schema's `required` flags. An empty
+///   slice checks only the schema's requirements.
+///
+/// Only non-metadata claims mapped to the credential's current format are checked. Required
+/// children are checked under each present parent, including every concrete array element.
 pub(super) async fn missing_required_claims(
     schema: &CredentialSchema,
     credential: &Credential,
+    mandatory_claim_ids: &[ClaimSchemaId],
 ) -> Result<Vec<String>, IssuanceProtocolError> {
     let format = credential.format.as_required_ref().await?;
     let credential_mappings = format.claim_mappings.as_ref().await?;
@@ -256,7 +268,7 @@ pub(super) async fn missing_required_claims(
         .collect::<HashMap<_, _>>();
     let mut missing = vec![];
     for claim_schema in claim_schemas.iter() {
-        if !claim_schema.required
+        if (!claim_schema.required && !mandatory_claim_ids.contains(&claim_schema.id))
             || claim_schema.metadata
             || !format_schema_ids.contains(&claim_schema.id)
         {

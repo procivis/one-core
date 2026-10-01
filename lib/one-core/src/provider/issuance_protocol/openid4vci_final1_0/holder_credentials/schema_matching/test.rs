@@ -21,14 +21,17 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::test_utilities::dummy_organisation;
 
+#[rstest]
+#[case::stored_requirements(true)]
+#[case::issuer_requirements(false)]
 #[tokio::test]
-async fn required_array_child_must_exist_in_every_element() {
+async fn required_array_child_must_exist_in_every_element(#[case] stored_required: bool) {
     let mut degrees = claim_schema("degrees", "OBJECT");
     degrees.array = true;
     let degree_type = claim_schema("degrees/type", "STRING");
     let name = claim_schema("name", "STRING");
     let format_id = Uuid::new_v4().into();
-    let schema = credential_schema(
+    let mut schema = credential_schema(
         Uuid::new_v4().into(),
         format_id,
         "JWT",
@@ -39,6 +42,21 @@ async fn required_array_child_must_exist_in_every_element() {
             mapping(format_id, name.id, "name", None),
         ],
     );
+    let mandatory_claim_ids = if stored_required {
+        vec![]
+    } else {
+        schema
+            .claim_schemas
+            .as_mut()
+            .await
+            .unwrap()
+            .iter_mut()
+            .map(|claim| {
+                claim.required = false;
+                claim.id
+            })
+            .collect()
+    };
     let mut claims = vec![
         claim("degrees", &degrees),
         claim("degrees/0", &degrees),
@@ -47,7 +65,9 @@ async fn required_array_child_must_exist_in_every_element() {
     ];
     let incomplete = credential(schema.clone(), claims.clone()).await;
     assert_eq!(
-        missing_required_claims(&schema, &incomplete).await.unwrap(),
+        missing_required_claims(&schema, &incomplete, &mandatory_claim_ids)
+            .await
+            .unwrap(),
         vec!["degrees/1/type", "name"]
     );
 
@@ -55,7 +75,7 @@ async fn required_array_child_must_exist_in_every_element() {
     claims.push(claim("name", &name));
     let complete = credential(schema.clone(), claims).await;
     assert!(
-        missing_required_claims(&schema, &complete)
+        missing_required_claims(&schema, &complete, &mandatory_claim_ids)
             .await
             .unwrap()
             .is_empty()
@@ -94,7 +114,9 @@ async fn required_child_of_nested_arrays_must_exist_at_every_nested_index() {
     )
     .await;
     assert_eq!(
-        missing_required_claims(&schema, &credential).await.unwrap(),
+        missing_required_claims(&schema, &credential, &[])
+            .await
+            .unwrap(),
         vec!["degrees/0/courses/1/type"]
     );
 }
@@ -118,7 +140,7 @@ async fn required_array_child_not_mapped_to_current_format_is_ignored() {
     )
     .await;
     assert!(
-        missing_required_claims(&schema, &credential)
+        missing_required_claims(&schema, &credential, &[])
             .await
             .unwrap()
             .is_empty()
@@ -144,7 +166,7 @@ async fn required_child_is_checked_only_when_optional_parent_is_present() {
 
     let absent_parent = credential(schema.clone(), vec![]).await;
     assert!(
-        missing_required_claims(&schema, &absent_parent)
+        missing_required_claims(&schema, &absent_parent, &[])
             .await
             .unwrap()
             .is_empty()
@@ -152,7 +174,7 @@ async fn required_child_is_checked_only_when_optional_parent_is_present() {
 
     let present_parent = credential(schema.clone(), vec![claim("address", &address)]).await;
     assert_eq!(
-        missing_required_claims(&schema, &present_parent)
+        missing_required_claims(&schema, &present_parent, &[])
             .await
             .unwrap(),
         vec!["address/city"]
@@ -162,7 +184,7 @@ async fn required_child_is_checked_only_when_optional_parent_is_present() {
     required_parent_schema.claim_schemas.as_mut().await.unwrap()[0].required = true;
     let missing_required_parent = credential(required_parent_schema.clone(), vec![]).await;
     assert_eq!(
-        missing_required_claims(&required_parent_schema, &missing_required_parent)
+        missing_required_claims(&required_parent_schema, &missing_required_parent, &[])
             .await
             .unwrap(),
         vec!["address"]
@@ -200,7 +222,9 @@ async fn required_child_is_checked_only_in_array_elements_with_optional_parent()
     .await;
 
     assert_eq!(
-        missing_required_claims(&schema, &credential).await.unwrap(),
+        missing_required_claims(&schema, &credential, &[])
+            .await
+            .unwrap(),
         vec!["degrees/0/details/type"]
     );
 }
@@ -218,7 +242,7 @@ async fn missing_ancestor_claim_schema_is_an_error() {
     );
     let missing_root_credential = credential(schema.clone(), vec![]).await;
 
-    let error = missing_required_claims(&schema, &missing_root_credential)
+    let error = missing_required_claims(&schema, &missing_root_credential, &[])
         .await
         .unwrap_err();
     assert!(
@@ -240,7 +264,7 @@ async fn missing_ancestor_claim_schema_is_an_error() {
         ],
     );
     let nested_credential = credential(nested_schema.clone(), vec![]).await;
-    let error = missing_required_claims(&nested_schema, &nested_credential)
+    let error = missing_required_claims(&nested_schema, &nested_credential, &[])
         .await
         .unwrap_err();
     assert!(
@@ -308,7 +332,7 @@ async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
     .unwrap();
 
     assert_eq!(
-        missing_required_claims(&selected_schema, &parsed_credential)
+        missing_required_claims(&selected_schema, &parsed_credential, &[])
             .await
             .unwrap(),
         vec!["required"]
@@ -384,7 +408,7 @@ async fn formatted_key_match_with_different_namespace_does_not_satisfy_stored_re
     .await
     .unwrap();
     assert_eq!(
-        missing_required_claims(&selected_schema, &parsed_credential)
+        missing_required_claims(&selected_schema, &parsed_credential, &[])
             .await
             .unwrap(),
         vec!["stored-city"]
@@ -471,7 +495,7 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
     .await
     .unwrap();
     assert!(
-        missing_required_claims(&selected_schema, &parsed_credential)
+        missing_required_claims(&selected_schema, &parsed_credential, &[])
             .await
             .unwrap()
             .is_empty()
@@ -1290,7 +1314,10 @@ async fn remaps_nested_and_array_claim_paths() {
 
 #[tokio::test]
 async fn returns_new_claim_schemas() {
-    let parsed_cs = claim_schema("newClaim", "STRING");
+    let parsed_cs = ClaimSchema {
+        required: false,
+        ..claim_schema("newClaim", "STRING")
+    };
     let parsed_format_id = Uuid::new_v4().into();
     let parsed_schema = credential_schema(
         Uuid::new_v4().into(),
@@ -1321,6 +1348,7 @@ async fn returns_new_claim_schemas() {
 
     assert_eq!(alignment.new_claim_schemas.len(), 1);
     assert_eq!(alignment.new_claim_schemas[0].key, "newClaim");
+    assert!(!alignment.new_claim_schemas[0].required);
     assert_eq!(alignment.new_mappings.len(), 1);
     assert_eq!(alignment.new_mappings[0].technical_key, "newClaim");
     assert_eq!(alignment.new_mappings[0].namespace, None);
@@ -1336,6 +1364,20 @@ async fn returns_new_claim_schemas() {
     // the new claim schema was appended to the stored schema
     let stored_claim_schemas = stored_schema.claim_schemas.as_ref().await.unwrap();
     assert_eq!(stored_claim_schemas.iter().count(), 2);
+    assert!(
+        stored_claim_schemas
+            .iter()
+            .find(|claim| claim.id == cs_id)
+            .unwrap()
+            .required
+    );
+    assert!(
+        !stored_claim_schemas
+            .iter()
+            .find(|claim| claim.id == parsed_cs.id)
+            .unwrap()
+            .required
+    );
 }
 
 #[tokio::test]
