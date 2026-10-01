@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use one_core::model::claim_schema::ClaimSchema;
+use rstest::rstest;
 use serde_json::json;
 use shared_types::ProofSchemaId;
 use similar_asserts::assert_eq;
@@ -10,6 +11,68 @@ use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+
+#[rstest]
+#[case::reject_empty("", false, false)]
+#[case::rehost_empty("", true, true)]
+#[tokio::test]
+async fn test_import_proof_schema_source_url(
+    #[case] source_url: &str,
+    #[case] rehost: bool,
+    #[case] should_succeed: bool,
+) {
+    let (context, organisation) = TestContext::new_with_organisation(Some(format!(
+        "globalSettings:\n  rehostImportedSchemas: {rehost}"
+    )))
+    .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("Credential schema", &organisation, Default::default())
+        .await;
+    let claims = credential_schema.claim_schemas.as_ref().await.unwrap();
+    let response = context
+        .api
+        .proof_schemas
+        .create(
+            "Source proof schema",
+            organisation.id,
+            claims.iter().map(|claim| (claim.id, true)),
+            credential_schema.id,
+        )
+        .await;
+    assert_eq!(response.status(), 201);
+    let id: ProofSchemaId =
+        serde_json::from_value(response.json_value().await["id"].clone()).unwrap();
+    let response = context.api.ssi.get_proof_schema(id).await;
+    assert_eq!(response.status(), 200);
+    let mut schema = response.json_value().await;
+    schema["name"] = json!("Imported proof schema");
+    schema["importedSourceUrl"] = json!(source_url);
+    let response = context
+        .api
+        .proof_schemas
+        .import(schema, organisation.id)
+        .await;
+
+    if should_succeed {
+        assert_eq!(response.status(), 201);
+        let id = serde_json::from_value(response.json_value().await["id"].clone()).unwrap();
+        let schema = context.db.proof_schemas.get(&id).await;
+        let expected_url = if rehost {
+            format!(
+                "{}/ssi/proof-schema/v1/{id}",
+                context.config.app.core_base_url
+            )
+        } else {
+            source_url.to_owned()
+        };
+        assert_eq!(schema.imported_source_url, Some(expected_url));
+    } else {
+        assert_eq!(response.status(), 400);
+        assert_eq!(response.error_code().await, "BR_0512");
+    }
+}
 
 #[tokio::test]
 async fn test_import_proof_schema_ok() {
@@ -83,7 +146,7 @@ async fn test_import_proof_schema_ok() {
         "lastModified": now,
         "name": "test-proof-schema",
         "organisationId": Uuid::new_v4(),
-        "importedSourceUrl": "test",
+        "importedSourceUrl": "https://source.example/proof-schema",
         "expireDuration": 1000,
         "ecosystem": "EUDI",
         "proofInputSchemas": [
@@ -171,7 +234,7 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
         "createdDate": now,
         "lastModified": now,
         "name": "test-proof-schema",
-        "importedSourceUrl": "TEST",
+        "importedSourceUrl": "https://source.example/proof-schema",
         "organisationId": organisation.id,
         "expireDuration": 1000,
         "proofInputSchemas": [
@@ -239,7 +302,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         "createdDate": now,
         "lastModified": now,
         "name": "test-proof-schema",
-        "importedSourceUrl": "TEST",
+        "importedSourceUrl": "https://source.example/proof-schema",
         "organisationId": Uuid::new_v4(),
         "expireDuration": 1000,
         "proofInputSchemas": [
@@ -367,7 +430,7 @@ async fn test_import_proof_schema_nested_array() {
         "createdDate": now,
         "lastModified": now,
         "name": "test-proof-schema",
-        "importedSourceUrl": "TEST",
+        "importedSourceUrl": "https://source.example/proof-schema",
         "organisationId": Uuid::new_v4(),
         "expireDuration": 1000,
         "proofInputSchemas": [

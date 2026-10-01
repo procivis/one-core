@@ -72,8 +72,11 @@ fn setup_service(
         revocation_method_provider.clone(),
     );
 
-    let importer =
-        CredentialSchemaImporterProto::new(credential_schema_repository.clone(), "en".to_string());
+    let importer = CredentialSchemaImporterProto::new(
+        credential_schema_repository.clone(),
+        config.clone(),
+        Some("http://127.0.0.1:4321".to_string()),
+    );
 
     CredentialSchemaService::new(
         Some("http://127.0.0.1:4321".to_string()),
@@ -2787,7 +2790,7 @@ async fn test_import_credential_schema_success() {
             schema: ImportCredentialSchemaRequestSchemaDTO {
                 id: external_schema_id.into(),
                 created_date: now,
-                imported_source_url: "CORE_URL".to_string(),
+                imported_source_url: "https://source.example/schema".to_string(),
                 last_modified: now,
                 name: "external schema".to_string(),
                 format: "JWT".to_string(),

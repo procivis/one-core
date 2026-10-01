@@ -20,6 +20,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::proof_schema::dto::ImportProofSchemaDTO;
+use crate::validator::schema::validate_imported_source_url;
 
 pub(crate) struct ProofSchemaImporterProto {
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
@@ -27,6 +28,7 @@ pub(crate) struct ProofSchemaImporterProto {
     credential_schema_url_importer: Arc<dyn CredentialSchemaUrlImporter>,
     client: Arc<dyn HttpClient>,
     config: Arc<CoreConfig>,
+    base_url: Option<String>,
 }
 
 impl ProofSchemaImporterProto {
@@ -36,6 +38,7 @@ impl ProofSchemaImporterProto {
         credential_schema_url_importer: Arc<dyn CredentialSchemaUrlImporter>,
         client: Arc<dyn HttpClient>,
         config: Arc<CoreConfig>,
+        base_url: Option<String>,
     ) -> Self {
         Self {
             proof_schema_repository,
@@ -43,6 +46,7 @@ impl ProofSchemaImporterProto {
             credential_schema_url_importer,
             client,
             config,
+            base_url,
         }
     }
 }
@@ -56,6 +60,16 @@ impl ProofSchemaImporter for ProofSchemaImporterProto {
         organisation: &Organisation,
         imported_source_url: String,
     ) -> Result<(), Error> {
+        let imported_source_url = if self.config.global_settings.rehost_imported_schemas
+            && let Some(base_url) = self.base_url.as_deref()
+        {
+            format!("{base_url}/ssi/proof-schema/v1/{id}")
+        } else {
+            validate_imported_source_url(&imported_source_url)
+                .error_while("validating imported source URL")?;
+            imported_source_url
+        };
+
         validate_imported_proof_schema(&schema, &self.config)?;
 
         proof_schema_name_already_exists(

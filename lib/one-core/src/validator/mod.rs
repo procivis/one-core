@@ -19,6 +19,7 @@ pub(crate) mod ecosystem;
 pub(crate) mod key_security;
 pub(crate) mod permissions;
 pub mod proof_schema;
+pub(crate) mod schema;
 pub(crate) mod x509;
 
 pub(crate) fn throw_if_org_id_not_matching_session(

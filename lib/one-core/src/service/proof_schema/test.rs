@@ -111,11 +111,13 @@ fn setup_service(repositories: Repositories) -> ProofSchemaService {
                 )),
                 Arc::new(CredentialSchemaImporterProto::new(
                     credential_schema_repository,
-                    "en".to_string(),
+                    config.clone(),
+                    None,
                 )),
             )),
             Arc::new(MockHttpClient::new()),
             config,
+            Some("BASE_URL".to_string()),
         )),
         ecosystem_provider: Arc::new(repositories.ecosystem_provider),
     }
@@ -1423,7 +1425,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: "https://source.example/proof-schema".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -1556,11 +1558,13 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 )),
                 Arc::new(CredentialSchemaImporterProto::new(
                     credential_schema_repository,
-                    "en".to_string(),
+                    config.clone(),
+                    None,
                 )),
             )),
             Arc::new(MockHttpClient::new()),
             config,
+            None,
         )),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
@@ -1626,7 +1630,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: "https://source.example/proof-schema".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -1763,11 +1767,13 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
                 )),
                 Arc::new(CredentialSchemaImporterProto::new(
                     credential_schema_repository,
-                    "en".to_string(),
+                    config.clone(),
+                    None,
                 )),
             )),
             Arc::new(MockHttpClient::new()),
             config,
+            None,
         )),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
@@ -1834,7 +1840,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
 
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: "https://source.example/proof-schema".to_string(),
         created_date: now,
         last_modified: now,
         name: "test-proof-schema".to_string(),
@@ -1969,11 +1975,13 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 )),
                 Arc::new(CredentialSchemaImporterProto::new(
                     credential_schema_repository,
-                    "en".to_string(),
+                    config.clone(),
+                    None,
                 )),
             )),
             Arc::new(MockHttpClient::new()),
             config,
+            None,
         )),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
@@ -2072,7 +2080,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
         created_date: now,
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: "https://source.example/proof-schema".to_string(),
         last_modified: now,
         name: "test-proof-schema".to_string(),
         organisation_id,
@@ -2141,8 +2149,11 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         Arc::new(MockRevocationMethodProvider::new()),
     );
 
-    let importer =
-        CredentialSchemaImporterProto::new(credential_schema_repository.clone(), "en".to_string());
+    let importer = CredentialSchemaImporterProto::new(
+        credential_schema_repository.clone(),
+        Arc::new(generic_config().core),
+        None,
+    );
 
     let proof_schema_repository = Arc::new(proof_schema_repository);
 
@@ -2164,6 +2175,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
             )),
             Arc::new(MockHttpClient::new()),
             Arc::new(generic_config().core),
+            None,
         )),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
@@ -2343,8 +2355,11 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         Arc::new(MockRevocationMethodProvider::new()),
     );
 
-    let importer =
-        CredentialSchemaImporterProto::new(credential_schema_repository.clone(), "en".to_string());
+    let importer = CredentialSchemaImporterProto::new(
+        credential_schema_repository.clone(),
+        config.clone(),
+        Some("BASE_URL".to_string()),
+    );
 
     let proof_schema_repository = Arc::new(proof_schema_repository);
 
@@ -2366,6 +2381,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
             )),
             Arc::new(MockHttpClient::new()),
             config,
+            Some("BASE_URL".to_string()),
         )),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
@@ -2405,7 +2421,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: "https://source.example/proof-schema".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -2460,6 +2476,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
             )),
             Arc::new(MockHttpClient::new()),
             Arc::new(generic_config().core),
+            None,
         )),
         ecosystem_provider: Arc::new(MockEcosystemDirectory::new()),
     };
@@ -2487,7 +2504,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: "https://source.example/proof-schema".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -2552,7 +2569,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: "https://source.example/proof-schema".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,

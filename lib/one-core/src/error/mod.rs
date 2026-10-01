@@ -1131,6 +1131,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Selected credential formats have no common identifier capabilities")]
     BR_0511,
+
+    #[strum(message = "Schema importedSourceUrl must be a valid HTTP(S) URL")]
+    BR_0512,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

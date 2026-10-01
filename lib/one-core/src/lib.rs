@@ -309,7 +309,8 @@ impl OneCore {
 
         let credential_schema_importer = Arc::new(CredentialSchemaImporterProto::new(
             data_provider.get_credential_schema_repository(),
-            config.global_settings.default_language.clone(),
+            Arc::new(config.clone()),
+            core_base_url.clone(),
         ));
 
         let wallet_provider_metadata_cache = Arc::new(wallet_provider_metadata_cache_from_config(
@@ -545,6 +546,7 @@ impl OneCore {
             credential_schema_url_importer.clone(),
             client.clone(),
             config.clone(),
+            core_base_url.clone(),
         ));
 
         let schema_importer = Arc::new(SchemaImporterProto::new(

@@ -263,16 +263,7 @@ impl ProofSchemaService {
         }
 
         let proof_schema_id = Uuid::new_v4().into();
-        let imported_source_url = if self.config.global_settings.rehost_imported_schemas {
-            let base_url = self.base_url.as_deref().ok_or_else(|| {
-                ProofSchemaServiceError::MappingError(
-                    "Missing core base_url, cannot rehost schema".to_string(),
-                )
-            })?;
-            format!("{base_url}/ssi/proof-schema/v1/{proof_schema_id}")
-        } else {
-            request.schema.imported_source_url.to_owned()
-        };
+        let imported_source_url = request.schema.imported_source_url.to_owned();
 
         let success_log = format!(
             "Imported proof schema `{}` ({proof_schema_id})",

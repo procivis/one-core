@@ -267,7 +267,11 @@ async fn test_importer_import_credential_schema_success() {
         .once()
         .return_once(move |_| Ok(credential_schema_id));
 
-    let importer = CredentialSchemaImporterProto::new(Arc::new(repository), "en".to_string());
+    let importer = CredentialSchemaImporterProto::new(
+        Arc::new(repository),
+        Arc::new(generic_config().core),
+        None,
+    );
 
     // when
     let result = importer.import_credential_schema(credential_schema).await;
@@ -333,7 +337,11 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         .once()
         .returning(move |_| Ok(existing_schema.id));
 
-    let importer = CredentialSchemaImporterProto::new(Arc::new(repository), "en".to_string());
+    let importer = CredentialSchemaImporterProto::new(
+        Arc::new(repository),
+        Arc::new(generic_config().core),
+        None,
+    );
 
     existing_schema.formats = vec![CredentialSchemaFormat {
         id: Uuid::new_v4().into(),
@@ -408,7 +416,11 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
             })
         });
 
-    let importer = CredentialSchemaImporterProto::new(Arc::new(repository), "en".to_string());
+    let importer = CredentialSchemaImporterProto::new(
+        Arc::new(repository),
+        Arc::new(generic_config().core),
+        None,
+    );
 
     // when
     let result = importer

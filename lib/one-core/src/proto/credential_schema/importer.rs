@@ -7,6 +7,7 @@ use time::format_description::well_known::iso8601::{
 };
 
 use super::Error;
+use crate::config::core_config::CoreConfig;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
@@ -34,17 +35,20 @@ pub(crate) trait CredentialSchemaImporter: Send + Sync {
 
 pub struct CredentialSchemaImporterProto {
     repository: Arc<dyn CredentialSchemaRepository>,
-    default_language: String,
+    config: Arc<CoreConfig>,
+    core_base_url: Option<String>,
 }
 
 impl CredentialSchemaImporterProto {
     pub(crate) fn new(
         repository: Arc<dyn CredentialSchemaRepository>,
-        default_language: String,
+        config: Arc<CoreConfig>,
+        core_base_url: Option<String>,
     ) -> Self {
         Self {
             repository,
-            default_language,
+            config,
+            core_base_url,
         }
     }
 }
@@ -59,6 +63,13 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
         &self,
         mut credential_schema: CredentialSchema,
     ) -> Result<CredentialSchema, Error> {
+        if self.config.global_settings.rehost_imported_schemas
+            && let Some(base_url) = self.core_base_url.as_deref()
+        {
+            credential_schema.imported_source_url =
+                format!("{base_url}/ssi/schema/v2/{}", credential_schema.id);
+        }
+
         let schema_ids: Vec<String> = {
             let formats = credential_schema.formats.as_ref().await?;
             formats
@@ -89,10 +100,12 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
                 self.generate_unique_credential_schema_name(&credential_schema)?;
         }
 
-        let credential_schema =
-            backfill_default_translations(credential_schema, &self.default_language)
-                .await
-                .error_while("backfilling default translations")?;
+        let credential_schema = backfill_default_translations(
+            credential_schema,
+            &self.config.global_settings.default_language,
+        )
+        .await
+        .error_while("backfilling default translations")?;
 
         self.repository
             .create_credential_schema(credential_schema.clone())

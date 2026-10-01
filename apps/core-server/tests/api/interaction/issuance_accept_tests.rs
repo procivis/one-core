@@ -20,6 +20,7 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use rstest::rstest;
 use serde_json::json;
 use shared_types::{DidValue, InteractionId};
 use similar_asserts::assert_eq;
@@ -1755,10 +1756,14 @@ async fn test_issuance_accept_with_new_nested_optional_claims() {
     assert!(claim_schema_keys.contains("address/city"));
 }
 
+#[rstest]
 #[tokio::test]
-async fn test_issuance_accept_schema_name_already_exists() {
+async fn test_issuance_accept_schema_name_already_exists(#[values(false, true)] rehost: bool) {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let (context, organisation) = TestContext::new_with_organisation(Some(format!(
+        "globalSettings:\n  rehostImportedSchemas: {rehost}"
+    )))
+    .await;
 
     let issuer_key = Ecdsa.generate_key().unwrap();
     let multibase = issuer_key.key.public_key_as_multibase().unwrap();
@@ -1936,6 +1941,15 @@ async fn test_issuance_accept_schema_name_already_exists() {
     // also named "test".
     assert_ne!(credential_schema.name, "test");
     assert!(credential_schema.name.starts_with("test_"));
+    let expected_source_url = if rehost {
+        format!(
+            "{}/ssi/schema/v2/{}",
+            context.config.app.core_base_url, credential_schema.id
+        )
+    } else {
+        String::new()
+    };
+    assert_eq!(credential_schema.imported_source_url, expected_source_url);
 }
 
 #[tokio::test]

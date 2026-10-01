@@ -37,6 +37,7 @@ use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::credential_schema::dto::CredentialSchemaWalletAttestationDTO;
 use crate::service::credential_schema::mapper::schema_translations_from_dto;
+use crate::validator::schema::validate_imported_source_url;
 
 pub(crate) struct CredentialSchemaImportParserImpl {
     config: Arc<CoreConfig>,
@@ -170,14 +171,10 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             self.parse_all_claim_schemas_v2(now, dto.schema.claims, formatters.as_ref())?;
 
         let credential_schema_id = Uuid::new_v4().into();
-        let imported_source_url = if self.config.global_settings.rehost_imported_schemas {
-            let base_url = self.core_base_url.as_ref().ok_or_else(|| {
-                Error::MappingError("Missing core base_url, cannot rehost schema".to_string())
-            })?;
-            format!("{base_url}/ssi/schema/v2/{credential_schema_id}")
-        } else {
-            dto.schema.imported_source_url
-        };
+        if !self.config.global_settings.rehost_imported_schemas || self.core_base_url.is_none() {
+            validate_imported_source_url(&dto.schema.imported_source_url)
+                .error_while("validating imported source URL")?;
+        }
 
         let mut formats = vec![];
         let mut claim_schemas: Vec<_> = claim_schemas_with_raw_mappings
@@ -223,7 +220,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 &claim_schemas,
                 formatters.as_ref(),
             )?,
-            imported_source_url,
+            imported_source_url: dto.schema.imported_source_url,
             allow_suspension: dto.schema.allow_suspension.unwrap_or(false),
             claim_schemas: claim_schemas.into(),
             organisation: dto.organisation.into(),
