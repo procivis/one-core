@@ -245,7 +245,7 @@ async fn create_claims_dtos_from_claims(
         let display = create_claim_display_dtos(claim_schema).await?;
 
         result.push(ClaimMetadata {
-            path,
+            path: path.into(),
             mandatory: mandatory_by_claim_id.get(&claim_schema.id).copied(),
             additional_values: Default::default(),
             display: Some(display),

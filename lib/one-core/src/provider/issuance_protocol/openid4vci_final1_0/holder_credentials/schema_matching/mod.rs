@@ -73,7 +73,6 @@ pub(super) async fn find_or_import_credential_schema(
     credential_schema_repository: &dyn CredentialSchemaRepository,
     parsed_schema: CredentialSchema,
     parsed_format: &CredentialSchemaFormat,
-    credential: &Credential,
     organisation_id: OrganisationId,
     config: &CoreConfig,
 ) -> Result<CredentialSchemaResolution, IssuanceProtocolError> {
@@ -132,14 +131,6 @@ pub(super) async fn find_or_import_credential_schema(
             );
         };
 
-        let missing_required_claims = missing_required_claims(&stored_schema, credential).await?;
-        if !missing_required_claims.is_empty() {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Credential schema conflict: issued credential is missing required claims: {}",
-                missing_required_claims.join(", ")
-            )));
-        }
-
         return Ok(CredentialSchemaResolution {
             schema: stored_schema,
             new_format: None,
@@ -164,6 +155,7 @@ pub(super) async fn find_or_import_credential_schema(
             &parsed_schema,
             parsed_format,
             &config.datatype,
+            &config.global_settings.default_language,
         )
         .await?
         else {
@@ -199,8 +191,7 @@ pub(super) async fn find_or_import_credential_schema(
         }
     };
 
-    // Another request may have imported the same ecosystem schema concurrently. Refetch it and
-    // apply the same required-claim validation before continuing.
+    // Another request may have imported the same ecosystem schema concurrently -> refetch it.
     let stored_schemas = find_credential_schemas(
         credential_schema_repository,
         &parsed_format.ecosystem_schema_id,
@@ -214,14 +205,6 @@ pub(super) async fn find_or_import_credential_schema(
             .ok_or(IssuanceProtocolError::Failed(
                 "Credential schema not found".to_string(),
             ))?;
-    let missing_required_claims = missing_required_claims(&stored_schema, credential).await?;
-    if !missing_required_claims.is_empty() {
-        return Err(IssuanceProtocolError::Failed(format!(
-            "Credential schema conflict: issued credential is missing required claims: {}",
-            missing_required_claims.join(", ")
-        )));
-    }
-
     Ok(CredentialSchemaResolution {
         schema: stored_schema,
         new_format: None,
@@ -246,48 +229,127 @@ async fn find_schema_by_ecosystem_schema_id(
     Ok(None)
 }
 
-async fn missing_required_claims(
-    stored_schema: &CredentialSchema,
+/// Check required claims after the credential has been linked to this schema. Required children
+/// are checked under each present parent, including every concrete array element.
+pub(super) async fn missing_required_claims(
+    schema: &CredentialSchema,
     credential: &Credential,
 ) -> Result<Vec<String>, IssuanceProtocolError> {
+    let format = credential.format.as_required_ref().await?;
+    let credential_mappings = format.claim_mappings.as_ref().await?;
     let claims = credential.claims.as_ref().await?;
-    let mut present_schema_ids = HashSet::new();
-    for claim in claims.iter() {
-        let claim_schema = claim.schema.as_ref().await?;
-        present_schema_ids.insert(claim_schema.id);
-    }
-    drop(claims);
-
-    let parsed_mappings = credential
-        .format
-        .as_required_ref()
-        .await?
-        .claim_mappings
-        .as_ref()
-        .await?
+    let format_schema_ids = credential_mappings
         .iter()
-        .filter(|mapping| present_schema_ids.contains(&mapping.claim_schema_id))
-        .map(CredentialSchemaFormatClaimSchema::formatted_technical_key)
+        .map(|mapping| mapping.claim_schema_id)
         .collect::<HashSet<_>>();
+    let mut issued_paths_by_schema_id: HashMap<ClaimSchemaId, HashSet<&str>> = HashMap::new();
+    for claim in claims.iter() {
+        issued_paths_by_schema_id
+            .entry(claim.schema.id())
+            .or_default()
+            .insert(&claim.path);
+    }
 
-    let stored_formats = stored_schema.formats.as_ref().await?;
-    let stored_mappings = collect_claim_mappings(&stored_formats).await?;
-    let stored_claim_schemas = stored_schema.claim_schemas.as_ref().await?;
-    let mut missing = stored_claim_schemas
+    let claim_schemas = schema.claim_schemas.as_ref().await?;
+    let claim_schemas_by_key = claim_schemas
         .iter()
-        // Metadata is format-specific and may belong to another format of this schema.
-        .filter(|claim_schema| claim_schema.required && !claim_schema.metadata)
-        .filter(|claim_schema| {
-            !stored_mappings.iter().any(|stored_mapping| {
-                stored_mapping.claim_schema_id == claim_schema.id
-                    && parsed_mappings.contains(&stored_mapping.formatted_technical_key())
-            })
-        })
-        .map(|claim_schema| claim_schema.key.to_owned())
-        .collect::<Vec<_>>();
+        .map(|claim_schema| (claim_schema.key.as_str(), claim_schema))
+        .collect::<HashMap<_, _>>();
+    let mut missing = vec![];
+    for claim_schema in claim_schemas.iter() {
+        if !claim_schema.required
+            || claim_schema.metadata
+            || !format_schema_ids.contains(&claim_schema.id)
+        {
+            continue;
+        }
+        let issued_paths = issued_paths_by_schema_id.get(&claim_schema.id);
+        for expected_path in expected_required_claim_paths(
+            claim_schema,
+            &claim_schemas_by_key,
+            &issued_paths_by_schema_id,
+        )? {
+            if !issued_paths.is_some_and(|paths| paths.contains(expected_path.as_str())) {
+                missing.push(expected_path);
+            }
+        }
+    }
     missing.sort();
     missing.dedup();
     Ok(missing)
+}
+
+/// Return the concrete claim paths required under present parents. A root schema yields its own
+/// key. A required child of an absent parent yields no paths; a missing required parent is checked
+/// separately. An array parent expands only the element paths already present in issued claims.
+/// A missing ancestor schema definition is an error.
+fn expected_required_claim_paths(
+    claim_schema: &ClaimSchema,
+    claim_schemas_by_key: &HashMap<&str, &ClaimSchema>,
+    issued_paths_by_schema_id: &HashMap<ClaimSchemaId, HashSet<&str>>,
+) -> Result<Vec<String>, IssuanceProtocolError> {
+    let segments = claim_schema
+        .key
+        .split(NESTED_CLAIM_MARKER)
+        .collect::<Vec<_>>();
+    let Some((leaf, ancestors)) = segments.split_last() else {
+        return Ok(vec![]);
+    };
+    let mut ancestor_schema_key = String::new();
+    let mut concrete_parent_paths = vec![String::new()];
+    for segment in ancestors {
+        if !ancestor_schema_key.is_empty() {
+            ancestor_schema_key.push(NESTED_CLAIM_MARKER);
+        }
+        ancestor_schema_key.push_str(segment);
+        let parent_schema = claim_schemas_by_key
+            .get(ancestor_schema_key.as_str())
+            .ok_or_else(|| {
+                IssuanceProtocolError::Failed(format!(
+                    "Malformed credential schema: claim `{}` is missing ancestor `{}`",
+                    claim_schema.key, ancestor_schema_key
+                ))
+            })?;
+        let Some(parent_claim_paths) = issued_paths_by_schema_id.get(&parent_schema.id) else {
+            concrete_parent_paths.clear();
+            continue;
+        };
+        let mut next_parent_paths = vec![];
+        for parent_path in concrete_parent_paths {
+            let property_path = if parent_path.is_empty() {
+                (*segment).to_string()
+            } else {
+                format!("{parent_path}{NESTED_CLAIM_MARKER}{segment}")
+            };
+            if parent_schema.array {
+                for array_element_path in parent_claim_paths {
+                    // An issued array element is a direct indexed child, such as `degrees/0`.
+                    let Some(index) = array_element_path
+                        .strip_prefix(&property_path)
+                        .and_then(|suffix| suffix.strip_prefix(NESTED_CLAIM_MARKER))
+                    else {
+                        continue;
+                    };
+                    if index.parse::<usize>().is_ok() {
+                        next_parent_paths.push((*array_element_path).to_string());
+                    }
+                }
+            } else if parent_claim_paths.contains(property_path.as_str()) {
+                next_parent_paths.push(property_path);
+            }
+        }
+        concrete_parent_paths = next_parent_paths;
+    }
+    Ok(concrete_parent_paths
+        .into_iter()
+        .map(|parent_path| {
+            if parent_path.is_empty() {
+                (*leaf).to_string()
+            } else {
+                format!("{parent_path}{NESTED_CLAIM_MARKER}{leaf}")
+            }
+        })
+        .collect())
 }
 
 async fn prepare_display_name_matched_format(
@@ -295,6 +357,7 @@ async fn prepare_display_name_matched_format(
     parsed_schema: &CredentialSchema,
     parsed_format: &CredentialSchemaFormat,
     datatype_config: &DatatypeConfig,
+    default_language: &str,
 ) -> Result<Option<CredentialSchemaFormat>, IssuanceProtocolError> {
     let stored_claim_schemas = stored_schema.claim_schemas.as_ref().await?;
     let parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?;
@@ -305,13 +368,14 @@ async fn prepare_display_name_matched_format(
     for stored_claim_schema in stored_claim_schemas.iter() {
         stored_claims_with_display_names.push((
             stored_claim_schema,
-            claim_display_names(stored_claim_schema).await?,
+            claim_display_names(stored_claim_schema, &stored_claim_schemas, default_language)
+                .await?,
         ));
     }
 
-    let mut parsed_claim_schemas = parsed_claim_schemas.iter().collect::<Vec<_>>();
+    let mut sorted_parsed_claim_schemas = parsed_claim_schemas.iter().collect::<Vec<_>>();
     // sort by key, so parents are ordered before their children
-    parsed_claim_schemas.sort_by(|left, right| left.key.cmp(&right.key));
+    sorted_parsed_claim_schemas.sort_by(|left, right| left.key.cmp(&right.key));
 
     // New-format mappings redirected to matched stored claim schemas.
     let mut reusable_mappings = vec![];
@@ -319,7 +383,7 @@ async fn prepare_display_name_matched_format(
     let mut matched_stored_claim_schema_ids = HashSet::new();
     // Parsed keys mapped to stored keys; `None` marks an entirely new subtree.
     let mut parsed_to_stored_keys = HashMap::<String, Option<String>>::new();
-    for parsed_claim_schema in parsed_claim_schemas {
+    for parsed_claim_schema in sorted_parsed_claim_schemas {
         let parsed_mapping = parsed_mappings
             .iter()
             .find(|mapping| mapping.claim_schema_id == parsed_claim_schema.id)
@@ -344,7 +408,9 @@ async fn prepare_display_name_matched_format(
                 None
             };
 
-        let parsed_display_names = claim_display_names(parsed_claim_schema).await?;
+        let parsed_display_names =
+            claim_display_names(parsed_claim_schema, &parsed_claim_schemas, default_language)
+                .await?;
         let mut matching_stored_claims = stored_claims_with_display_names.iter().filter(
             |(stored_claim_schema, stored_display_names)| {
                 if parsed_claim_schema.metadata {
@@ -406,15 +472,45 @@ fn claim_parent_key(claim_schema: &ClaimSchema) -> Option<&str> {
 
 async fn claim_display_names(
     claim_schema: &ClaimSchema,
+    claim_schemas: &[ClaimSchema],
+    default_language: &str,
 ) -> Result<HashSet<(String, String)>, IssuanceProtocolError> {
-    Ok(claim_schema
+    let mut names = claim_schema
         .translations
         .as_ref()
         .await?
         .iter()
         .filter(|translation| translation.field == LocalizedTextField::Name)
         .map(|translation| (translation.lang.to_owned(), translation.value.to_owned()))
-        .collect())
+        .collect::<HashSet<_>>();
+    // TODO ONE-11294: Remove this compatibility fallback once our issuer emits wildcard paths
+    // for array children and their display metadata is applied before schema matching.
+    // Import persists a fallback for untranslated array children; use it before import as well.
+    if !claim_schema.metadata && names.is_empty() && has_array_ancestor(claim_schema, claim_schemas)
+    {
+        let leaf = claim_schema
+            .key
+            .rsplit_once(NESTED_CLAIM_MARKER)
+            .map_or(claim_schema.key.as_str(), |(_, leaf)| leaf);
+        names.insert((default_language.to_owned(), leaf.to_owned()));
+    }
+    Ok(names)
+}
+
+fn has_array_ancestor(claim_schema: &ClaimSchema, claim_schemas: &[ClaimSchema]) -> bool {
+    let mut parent_key = claim_parent_key(claim_schema);
+    while let Some(key) = parent_key {
+        if claim_schemas
+            .iter()
+            .any(|schema| schema.key == key && schema.array)
+        {
+            return true;
+        }
+        parent_key = key
+            .rsplit_once(NESTED_CLAIM_MARKER)
+            .map(|(parent, _)| parent);
+    }
+    false
 }
 
 fn claim_schemas_are_compatible(
@@ -441,16 +537,6 @@ fn claim_schemas_are_compatible(
         );
     }
     Ok(parsed.array == stored.array && parsed.metadata == stored.metadata)
-}
-
-async fn collect_claim_mappings(
-    formats: &[CredentialSchemaFormat],
-) -> Result<Vec<CredentialSchemaFormatClaimSchema>, IssuanceProtocolError> {
-    let mut mappings = vec![];
-    for format in formats {
-        mappings.extend(format.claim_mappings.as_ref().await?.to_owned());
-    }
-    Ok(mappings)
 }
 
 pub(super) struct AlignmentUpdate {

@@ -10,7 +10,7 @@ use crate::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use crate::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use crate::jwe::CompressionAlgorithm;
 use crate::jwk::Jwks;
-use crate::openid4vp::dcql::CredentialQueryId;
+use crate::openid4vp::dcql::{ClaimPath, CredentialQueryId};
 use crate::w3c_vcdm::Context;
 
 /// Credential Issuer Metadata document, served from
@@ -189,7 +189,7 @@ pub struct CredentialDisplay {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct ClaimMetadata {
-    pub path: Vec<String>,
+    pub path: ClaimPath,
     pub display: Option<Vec<ClaimDisplay>>,
     pub mandatory: Option<bool>,
     /// The Claims Description Object is open; members not defined by the specification are
@@ -343,9 +343,36 @@ mod test {
         // unrecognized claim members are retained
         let claim = &metadata.claims.as_ref().unwrap()[0];
         assert_eq!(
+            serde_json::to_value(&claim.path).unwrap(),
+            serde_json::json!(["degree"])
+        );
+        assert_eq!(
             Some(&serde_json::json!("STRING")),
             claim.additional_values.get("value_type")
         );
+    }
+
+    #[test]
+    fn test_issuer_metadata_round_trips_array_claim_paths() {
+        let json = serde_json::json!({
+            "credential_issuer": "https://issuer.example.com",
+            "credential_endpoint": "https://issuer.example.com/credential",
+            "credential_configurations_supported": {
+                "Degree": {
+                    "format": "dc+sd-jwt",
+                    "vct": "https://issuer.example.com/Degree",
+                    "credential_metadata": {
+                        "claims": [
+                            { "path": ["degrees", null, "type"], "mandatory": true },
+                            { "path": ["degrees", 0, "university"], "mandatory": true }
+                        ]
+                    }
+                }
+            }
+        });
+
+        let metadata: CredentialIssuerMetadata = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(metadata).unwrap(), json);
     }
 
     #[test]

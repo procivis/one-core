@@ -964,7 +964,10 @@ async fn test_get_issuer_metadata_mdoc() {
 
     let claims = credential.credential_metadata.unwrap().claims.unwrap();
     assert_eq!(claims.len(), 1);
-    assert_eq!(claims[0].path, ["namespace".to_string(), "X".to_string()]);
+    assert_eq!(
+        claims[0].path,
+        vec!["namespace".to_string(), "X".to_string()].into()
+    );
     assert_eq!(claims[0].mandatory, Some(true));
 }
 

@@ -1,4 +1,5 @@
 use standardized_types::openid4vci::{CredentialMetadata, IssuerDisplay, KeyStorageSecurityLevel};
+use standardized_types::openid4vp::dcql::{ClaimPath, PathSegment};
 mod schema_matching;
 #[cfg(test)]
 mod test;
@@ -12,7 +13,7 @@ use uuid::Uuid;
 
 use self::schema_matching::{
     CredentialSchemaResolution, align_format_claim_schemas_and_mappings,
-    find_or_import_credential_schema,
+    find_or_import_credential_schema, missing_required_claims,
 };
 use super::mapper::convert_metadata_to_layout_properties;
 use super::model::{HolderBinding, HolderCredentialConfiguration};
@@ -158,6 +159,8 @@ impl OpenID4VCIFinal1_0 {
         .await?;
 
         let parsed_schema = credential.schema.as_ref().await?.to_owned();
+        // Issuer metadata is already applied; reject missing advertised claims before import.
+        ensure_required_claims(&parsed_schema, credential).await?;
         let parsed_format = credential.format.as_required_ref().await?;
         let CredentialSchemaResolution {
             mut schema,
@@ -167,7 +170,6 @@ impl OpenID4VCIFinal1_0 {
             self.credential_schema_repository.as_ref(),
             parsed_schema,
             &parsed_format,
-            credential,
             organisation.id,
             &self.config,
         )
@@ -210,6 +212,8 @@ impl OpenID4VCIFinal1_0 {
             Some(&current_format),
         )
         .await?;
+        // A reused schema may require claims that the parsed schema did not.
+        ensure_required_claims(schema, credential).await?;
         credential.schema = schema.clone().into();
 
         if !alignment.new_claim_schemas.is_empty()
@@ -632,7 +636,56 @@ impl OpenID4VCIFinal1_0 {
     }
 }
 
-/// Applies issuer metadata and returns only new or changed translations for persistence.
+async fn ensure_required_claims(
+    schema: &CredentialSchema,
+    credential: &Credential,
+) -> Result<(), IssuanceProtocolError> {
+    let missing = missing_required_claims(schema, credential).await?;
+    if !missing.is_empty() {
+        return Err(IssuanceProtocolError::Failed(format!(
+            "Issued credential is missing required claims: {}",
+            missing.join(", ")
+        )));
+    }
+    Ok(())
+}
+
+/// Drop array wildcards from a metadata path to get the formatted technical key used by claim
+/// mappings. Reject paths that omit a wildcard when descending into an array or select an index.
+fn metadata_path_to_formatted_technical_key(
+    path: &ClaimPath,
+    array_technical_keys: &[String],
+) -> Option<String> {
+    let mut properties = vec![];
+    for (position, segment) in path.segments.iter().enumerate() {
+        let next_segment = path.segments.get(position + 1);
+        match segment {
+            PathSegment::PropertyName(name) => {
+                properties.push(name.as_str());
+                let is_array_property =
+                    array_technical_keys.contains(&properties.join(NESTED_CLAIM_MARKER_STR));
+                let descends_without_wildcard =
+                    next_segment.is_some_and(|next| !matches!(next, PathSegment::ArrayAll));
+                if is_array_property && descends_without_wildcard {
+                    return None;
+                }
+            }
+            PathSegment::ArrayAll => {
+                let follows_array_property =
+                    array_technical_keys.contains(&properties.join(NESTED_CLAIM_MARKER_STR));
+                let selects_child_property =
+                    matches!(next_segment, Some(PathSegment::PropertyName(_)));
+                if !follows_array_property || !selects_child_property {
+                    return None;
+                }
+            }
+            PathSegment::ArrayIndex(_) => return None,
+        }
+    }
+    Some(properties.join(NESTED_CLAIM_MARKER_STR))
+}
+
+/// Applies issuer metadata and returns changed translations for persistence.
 async fn apply_issuer_metadata_to_schema(
     schema: &mut CredentialSchema,
     metadata: Option<&CredentialMetadata>,
@@ -698,12 +751,6 @@ async fn apply_issuer_metadata_to_schema(
 
     let issuer_metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
     if !issuer_metadata_claims.is_empty() {
-        let mandatory_claim_paths = issuer_metadata_claims
-            .iter()
-            .filter(|claim| claim.mandatory == Some(true))
-            .map(|claim| claim.path.join(NESTED_CLAIM_MARKER_STR))
-            .unique()
-            .collect_vec();
         let mut claim_schemas = schema.claim_schemas.as_mut().await?;
         let formats = schema.formats.as_ref().await?;
         let format = if let Some(current_format) = current_format {
@@ -721,6 +768,39 @@ async fn apply_issuer_metadata_to_schema(
             .into_iter()
             .map(|m| (m.claim_schema_id, m))
             .collect();
+        let array_technical_keys = claim_schemas
+            .iter()
+            .filter(|claim_schema| claim_schema.array)
+            .map(|claim_schema| {
+                mappings_by_schema_id
+                    .get(&claim_schema.id)
+                    .map(|mapping| mapping.formatted_technical_key())
+                    .unwrap_or_else(|| claim_schema.key.clone())
+            })
+            .collect_vec();
+        // TODO ONE-11294: Once our issuer emits wildcards for array children, reject its
+        // string-only array-child paths instead of silently skipping them below.
+        let applicable_claims = issuer_metadata_claims
+            .iter()
+            .filter_map(|claim| {
+                let Some(key) =
+                    metadata_path_to_formatted_technical_key(&claim.path, &array_technical_keys)
+                else {
+                    tracing::debug!(
+                        path = %claim.path,
+                        "Skipping issuer claim metadata path that does not match the credential schema"
+                    );
+                    return None;
+                };
+                Some((key, claim))
+            })
+            .collect_vec();
+        let mandatory_claim_paths = applicable_claims
+            .iter()
+            .filter(|(_, claim)| claim.mandatory == Some(true))
+            .map(|(key, _)| key.clone())
+            .unique()
+            .collect_vec();
         let mut parsed_claim_paths = Vec::with_capacity(claim_schemas.len());
 
         for claim_schema in &mut claim_schemas {
@@ -735,13 +815,9 @@ async fn apply_issuer_metadata_to_schema(
             };
             parsed_claim_paths.push(metadata_key.clone());
 
-            // NOTE: OpenID4VCI allows putting array selectors into the issuer metadata claim path.
-            // (I.e. giving the different indices of the array different descriptions)
-            // This is explicitly not supported for now since the translation is stored on the schema,
-            // which exists only once to represent the whole array.
-            let Some(issuer_metadata_claim) = issuer_metadata_claims
+            let Some((_, issuer_metadata_claim)) = applicable_claims
                 .iter()
-                .find(|mc| mc.path.join("/") == metadata_key)
+                .find(|(key, _)| key == &metadata_key)
             else {
                 continue;
             };

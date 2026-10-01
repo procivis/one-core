@@ -3,6 +3,7 @@ use similar_asserts::assert_eq;
 use standardized_types::openid4vci::{
     ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialMetadata,
 };
+use standardized_types::openid4vp::dcql::PathSegment;
 use uuid::Uuid;
 
 use super::apply_issuer_metadata_to_schema;
@@ -28,7 +29,7 @@ async fn applies_mandatory_issuer_metadata_to_claim_schema() {
     );
     let metadata = CredentialMetadata {
         claims: Some(vec![ClaimMetadata {
-            path: vec!["namespace".to_string(), "issuerKey".to_string()],
+            path: vec!["namespace".to_string(), "issuerKey".to_string()].into(),
             display: None,
             mandatory: Some(true),
             additional_values: Default::default(),
@@ -42,6 +43,158 @@ async fn applies_mandatory_issuer_metadata_to_claim_schema() {
 
     let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
     assert!(claim_schemas[0].required);
+}
+
+#[tokio::test]
+async fn applies_wildcard_metadata_to_array_children_and_skips_concrete_indices() {
+    let claim = claim_schema("localKey", "STRING");
+    let claim_id = claim.id;
+    let mut degrees = claim_schema("degrees", "OBJECT");
+    degrees.array = true;
+    let mut degree_type = claim_schema("degrees/type", "STRING");
+    degree_type.required = false;
+    let mut university = claim_schema("degrees/university", "STRING");
+    university.required = false;
+    let format_id = Uuid::new_v4().into();
+    let mut schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![
+            claim,
+            degrees.clone(),
+            degree_type.clone(),
+            university.clone(),
+        ],
+        vec![
+            mapping(format_id, claim_id, "issuerKey", None),
+            mapping(format_id, degrees.id, "degrees", None),
+            mapping(format_id, degree_type.id, "degrees/type", None),
+            mapping(format_id, university.id, "degrees/university", None),
+        ],
+    );
+    let metadata = CredentialMetadata {
+        claims: Some(vec![
+            ClaimMetadata {
+                path: vec!["issuerKey".to_string()].into(),
+                display: Some(vec![ClaimDisplay {
+                    name: Some("Issuer key".to_string()),
+                    locale: Some("en".to_string()),
+                }]),
+                mandatory: Some(true),
+                additional_values: Default::default(),
+            },
+            ClaimMetadata {
+                path: vec!["degrees".into(), PathSegment::ArrayAll, "type".into()].into(),
+                display: Some(vec![ClaimDisplay {
+                    name: Some("Degree type".to_string()),
+                    locale: Some("en".to_string()),
+                }]),
+                mandatory: Some(true),
+                additional_values: Default::default(),
+            },
+            ClaimMetadata {
+                path: vec![
+                    "degrees".into(),
+                    PathSegment::ArrayIndex(0),
+                    "university".into(),
+                ]
+                .into(),
+                display: Some(vec![ClaimDisplay {
+                    name: Some("University".to_string()),
+                    locale: Some("en".to_string()),
+                }]),
+                mandatory: Some(true),
+                additional_values: Default::default(),
+            },
+        ]),
+        ..Default::default()
+    };
+
+    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+        .await
+        .unwrap();
+
+    assert_eq!(translations.len(), 2);
+    assert!(translations.iter().any(|t| t.value == "Issuer key"));
+    assert!(translations.iter().any(|t| t.value == "Degree type"));
+    let claims = schema.claim_schemas.as_ref().await.unwrap();
+    assert!(claims[0].required);
+    assert!(claims[2].required);
+    assert!(!claims[3].required);
+}
+
+#[tokio::test]
+async fn own_issuer_array_child_path_without_wildcard_is_skipped() {
+    let mut degrees = claim_schema("degrees", "OBJECT");
+    degrees.array = true;
+    let mut degree_type = claim_schema("degrees/type", "STRING");
+    degree_type.required = false;
+    let format_id = Uuid::new_v4().into();
+    let mut schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![degrees.clone(), degree_type.clone()],
+        vec![
+            mapping(format_id, degrees.id, "degrees", None),
+            mapping(format_id, degree_type.id, "degrees/type", None),
+        ],
+    );
+    let metadata = CredentialMetadata {
+        claims: Some(vec![ClaimMetadata {
+            path: vec!["degrees".to_string(), "type".to_string()].into(),
+            display: Some(vec![ClaimDisplay {
+                name: Some("Degree type".into()),
+                locale: Some("en".into()),
+            }]),
+            mandatory: Some(true),
+            additional_values: Default::default(),
+        }]),
+        ..Default::default()
+    };
+
+    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+        .await
+        .unwrap();
+
+    assert!(translations.is_empty());
+    assert!(!schema.claim_schemas.as_ref().await.unwrap()[1].required);
+}
+
+#[tokio::test]
+async fn wildcard_metadata_requires_an_array_parent() {
+    let mut parent = claim_schema("degrees", "OBJECT");
+    parent.array = false;
+    let mut child = claim_schema("degrees/type", "STRING");
+    child.required = false;
+    let format_id = Uuid::new_v4().into();
+    let mut schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![parent.clone(), child.clone()],
+        vec![
+            mapping(format_id, parent.id, "degrees", None),
+            mapping(format_id, child.id, "degrees/type", None),
+        ],
+    );
+    let metadata = CredentialMetadata {
+        claims: Some(vec![ClaimMetadata {
+            path: vec!["degrees".into(), PathSegment::ArrayAll, "type".into()].into(),
+            display: None,
+            mandatory: Some(true),
+            additional_values: Default::default(),
+        }]),
+        ..Default::default()
+    };
+
+    let translations = apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", None)
+        .await
+        .unwrap();
+
+    assert!(translations.is_empty());
+    assert!(!schema.claim_schemas.as_ref().await.unwrap()[1].required);
 }
 
 #[tokio::test]
@@ -59,25 +212,25 @@ async fn errors_when_mandatory_issuer_metadata_claims_are_missing_from_parsed_sc
     let metadata = CredentialMetadata {
         claims: Some(vec![
             ClaimMetadata {
-                path: vec!["present".to_string()],
+                path: vec!["present".to_string()].into(),
                 display: None,
                 mandatory: Some(true),
                 additional_values: Default::default(),
             },
             ClaimMetadata {
-                path: vec!["missing".to_string()],
+                path: vec!["missing".to_string()].into(),
                 display: None,
                 mandatory: Some(true),
                 additional_values: Default::default(),
             },
             ClaimMetadata {
-                path: vec!["address".to_string(), "street".to_string()],
+                path: vec!["address".to_string(), "street".to_string()].into(),
                 display: None,
                 mandatory: Some(true),
                 additional_values: Default::default(),
             },
             ClaimMetadata {
-                path: vec!["optional".to_string()],
+                path: vec!["optional".to_string()].into(),
                 display: None,
                 mandatory: Some(false),
                 additional_values: Default::default(),
@@ -121,7 +274,7 @@ async fn returns_all_issuer_metadata_translations_for_persistence() {
             },
         ]),
         claims: Some(vec![ClaimMetadata {
-            path: vec!["given_name".to_string()],
+            path: vec!["given_name".to_string()].into(),
             display: Some(vec![
                 ClaimDisplay {
                     name: Some("Given name".to_string()),

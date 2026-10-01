@@ -3,7 +3,10 @@ use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaFormatId, Cr
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use super::{align_format_claim_schemas_and_mappings, find_or_import_credential_schema};
+use super::{
+    align_format_claim_schemas_and_mappings, find_or_import_credential_schema,
+    missing_required_claims,
+};
 use crate::clock::now_utc;
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields};
 use crate::model::claim::Claim;
@@ -19,8 +22,238 @@ use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::test_utilities::dummy_organisation;
 
 #[tokio::test]
-async fn existing_ecosystem_schema_id_fails_when_required_claim_is_missing() {
-    let parsed_claim = claim_schema("present", "STRING");
+async fn required_array_child_must_exist_in_every_element() {
+    let mut degrees = claim_schema("degrees", "OBJECT");
+    degrees.array = true;
+    let degree_type = claim_schema("degrees/type", "STRING");
+    let name = claim_schema("name", "STRING");
+    let format_id = Uuid::new_v4().into();
+    let schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![degrees.clone(), degree_type.clone(), name.clone()],
+        vec![
+            mapping(format_id, degrees.id, "degrees", None),
+            mapping(format_id, degree_type.id, "degrees/type", None),
+            mapping(format_id, name.id, "name", None),
+        ],
+    );
+    let mut claims = vec![
+        claim("degrees", &degrees),
+        claim("degrees/0", &degrees),
+        claim("degrees/0/type", &degree_type),
+        claim("degrees/1", &degrees),
+    ];
+    let incomplete = credential(schema.clone(), claims.clone()).await;
+    assert_eq!(
+        missing_required_claims(&schema, &incomplete).await.unwrap(),
+        vec!["degrees/1/type", "name"]
+    );
+
+    claims.push(claim("degrees/1/type", &degree_type));
+    claims.push(claim("name", &name));
+    let complete = credential(schema.clone(), claims).await;
+    assert!(
+        missing_required_claims(&schema, &complete)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn required_child_of_nested_arrays_must_exist_at_every_nested_index() {
+    let mut degrees = claim_schema("degrees", "OBJECT");
+    degrees.array = true;
+    let mut courses = claim_schema("degrees/courses", "OBJECT");
+    courses.array = true;
+    let course_type = claim_schema("degrees/courses/type", "STRING");
+    let format_id = Uuid::new_v4().into();
+    let schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![degrees.clone(), courses.clone(), course_type.clone()],
+        vec![
+            mapping(format_id, degrees.id, "degrees", None),
+            mapping(format_id, courses.id, "degrees/courses", None),
+            mapping(format_id, course_type.id, "degrees/courses/type", None),
+        ],
+    );
+    let credential = credential(
+        schema.clone(),
+        vec![
+            claim("degrees", &degrees),
+            claim("degrees/0", &degrees),
+            claim("degrees/0/courses", &courses),
+            claim("degrees/0/courses/0", &courses),
+            claim("degrees/0/courses/0/type", &course_type),
+            claim("degrees/0/courses/1", &courses),
+        ],
+    )
+    .await;
+    assert_eq!(
+        missing_required_claims(&schema, &credential).await.unwrap(),
+        vec!["degrees/0/courses/1/type"]
+    );
+}
+
+#[tokio::test]
+async fn required_array_child_not_mapped_to_current_format_is_ignored() {
+    let mut degrees = claim_schema("degrees", "OBJECT");
+    degrees.array = true;
+    let degree_type = claim_schema("degrees/type", "STRING");
+    let format_id = Uuid::new_v4().into();
+    let schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![degrees.clone(), degree_type],
+        vec![mapping(format_id, degrees.id, "degrees", None)],
+    );
+    let credential = credential(
+        schema.clone(),
+        vec![claim("degrees", &degrees), claim("degrees/0", &degrees)],
+    )
+    .await;
+    assert!(
+        missing_required_claims(&schema, &credential)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn required_child_is_checked_only_when_optional_parent_is_present() {
+    let mut address = claim_schema("address", "OBJECT");
+    address.required = false;
+    let city = claim_schema("address/city", "STRING");
+    let format_id = Uuid::new_v4().into();
+    let schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![address.clone(), city.clone()],
+        vec![
+            mapping(format_id, address.id, "address", None),
+            mapping(format_id, city.id, "address/city", None),
+        ],
+    );
+
+    let absent_parent = credential(schema.clone(), vec![]).await;
+    assert!(
+        missing_required_claims(&schema, &absent_parent)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    let present_parent = credential(schema.clone(), vec![claim("address", &address)]).await;
+    assert_eq!(
+        missing_required_claims(&schema, &present_parent)
+            .await
+            .unwrap(),
+        vec!["address/city"]
+    );
+
+    let mut required_parent_schema = schema.clone();
+    required_parent_schema.claim_schemas.as_mut().await.unwrap()[0].required = true;
+    let missing_required_parent = credential(required_parent_schema.clone(), vec![]).await;
+    assert_eq!(
+        missing_required_claims(&required_parent_schema, &missing_required_parent)
+            .await
+            .unwrap(),
+        vec!["address"]
+    );
+}
+
+#[tokio::test]
+async fn required_child_is_checked_only_in_array_elements_with_optional_parent() {
+    let mut degrees = claim_schema("degrees", "OBJECT");
+    degrees.array = true;
+    let mut details = claim_schema("degrees/details", "OBJECT");
+    details.required = false;
+    let detail_type = claim_schema("degrees/details/type", "STRING");
+    let format_id = Uuid::new_v4().into();
+    let schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![degrees.clone(), details.clone(), detail_type.clone()],
+        vec![
+            mapping(format_id, degrees.id, "degrees", None),
+            mapping(format_id, details.id, "degrees/details", None),
+            mapping(format_id, detail_type.id, "degrees/details/type", None),
+        ],
+    );
+    let credential = credential(
+        schema.clone(),
+        vec![
+            claim("degrees", &degrees),
+            claim("degrees/0", &degrees),
+            claim("degrees/0/details", &details),
+            claim("degrees/1", &degrees),
+        ],
+    )
+    .await;
+
+    assert_eq!(
+        missing_required_claims(&schema, &credential).await.unwrap(),
+        vec!["degrees/0/details/type"]
+    );
+}
+
+#[tokio::test]
+async fn missing_ancestor_claim_schema_is_an_error() {
+    let city = claim_schema("address/city", "STRING");
+    let format_id = Uuid::new_v4().into();
+    let schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![city.clone()],
+        vec![mapping(format_id, city.id, "address/city", None)],
+    );
+    let missing_root_credential = credential(schema.clone(), vec![]).await;
+
+    let error = missing_required_claims(&schema, &missing_root_credential)
+        .await
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("claim `address/city` is missing ancestor `address`")
+    );
+
+    let address = claim_schema("address", "OBJECT");
+    let nested_city = claim_schema("address/location/city", "STRING");
+    let nested_schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "JWT",
+        vec![address.clone(), nested_city.clone()],
+        vec![
+            mapping(format_id, address.id, "address", None),
+            mapping(format_id, nested_city.id, "address/location/city", None),
+        ],
+    );
+    let nested_credential = credential(nested_schema.clone(), vec![]).await;
+    let error = missing_required_claims(&nested_schema, &nested_credential)
+        .await
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("claim `address/location/city` is missing ancestor `address/location`")
+    );
+}
+
+#[tokio::test]
+async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
+    let mut parsed_claim = claim_schema("present", "STRING");
+    parsed_claim.required = false;
     let parsed_format_id = Uuid::new_v4().into();
     let parsed_schema = credential_schema(
         Uuid::new_v4().into(),
@@ -30,7 +263,7 @@ async fn existing_ecosystem_schema_id_fails_when_required_claim_is_missing() {
         vec![mapping(parsed_format_id, parsed_claim.id, "present", None)],
     );
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(parsed_schema.clone(), vec![]).await;
+    let mut parsed_credential = credential(parsed_schema.clone(), vec![]).await;
 
     let required_claim = claim_schema("required", "STRING");
     let stored_format_id = Uuid::new_v4().into();
@@ -54,27 +287,36 @@ async fn existing_ecosystem_schema_id_fails_when_required_claim_is_missing() {
         .return_once(move |_| Ok(credential_schema_list(vec![stored_schema])));
     let importer = MockCredentialSchemaImporter::new();
 
-    let error = find_or_import_credential_schema(
+    let resolution = find_or_import_credential_schema(
         &importer,
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
     .await
-    .unwrap_err();
+    .unwrap();
+    let mut selected_schema = resolution.schema;
+    align_format_claim_schemas_and_mappings(
+        &mut selected_schema,
+        &mut parsed_credential,
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
-    assert!(
-        error
-            .to_string()
-            .contains("missing required claims: required")
+    assert_eq!(
+        missing_required_claims(&selected_schema, &parsed_credential)
+            .await
+            .unwrap(),
+        vec!["required"]
     );
 }
 
 #[tokio::test]
-async fn existing_ecosystem_schema_id_accepts_required_claim_by_formatted_technical_key() {
+async fn formatted_key_match_with_different_namespace_does_not_satisfy_stored_requirement() {
     let parsed_claim = claim_schema("parsed-city", "STRING");
     let parsed_format_id = Uuid::new_v4().into();
     let parsed_schema = credential_schema(
@@ -90,7 +332,7 @@ async fn existing_ecosystem_schema_id_accepts_required_claim_by_formatted_techni
         )],
     );
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(
+    let mut parsed_credential = credential(
         parsed_schema.clone(),
         vec![claim("parsed-city", &parsed_claim)],
     )
@@ -124,7 +366,6 @@ async fn existing_ecosystem_schema_id_accepts_required_claim_by_formatted_techni
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -133,6 +374,21 @@ async fn existing_ecosystem_schema_id_accepts_required_claim_by_formatted_techni
 
     assert_eq!(resolution.schema.id, stored_schema_id);
     assert!(resolution.new_format.is_none());
+    let mut selected_schema = resolution.schema;
+    align_format_claim_schemas_and_mappings(
+        &mut selected_schema,
+        &mut parsed_credential,
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        missing_required_claims(&selected_schema, &parsed_credential)
+            .await
+            .unwrap(),
+        vec!["stored-city"]
+    );
 }
 
 #[rstest]
@@ -150,7 +406,7 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
         vec![mapping(parsed_format_id, parsed_claim.id, "name", None)],
     );
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential =
+    let mut parsed_credential =
         credential(parsed_schema.clone(), vec![claim("name", &parsed_claim)]).await;
 
     let stored_claim = claim_schema("name", "STRING");
@@ -197,7 +453,6 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -206,6 +461,21 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
 
     assert_eq!(resolution.schema.id, stored_schema_id);
     assert!(resolution.new_format.is_none());
+    let mut selected_schema = resolution.schema;
+    align_format_claim_schemas_and_mappings(
+        &mut selected_schema,
+        &mut parsed_credential,
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
+    assert!(
+        missing_required_claims(&selected_schema, &parsed_credential)
+            .await
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[tokio::test]
@@ -220,7 +490,6 @@ async fn ecosystem_schema_id_match_takes_precedence_over_display_name_match() {
     );
     add_name_translation(&mut parsed_schema, "en", "Display name").await;
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(parsed_schema.clone(), vec![]).await;
 
     let mut display_name_schema = credential_schema(
         Uuid::new_v4().into(),
@@ -258,7 +527,6 @@ async fn ecosystem_schema_id_match_takes_precedence_over_display_name_match() {
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -298,11 +566,6 @@ async fn matches_display_name_translation_and_adds_new_format(
     set_ecosystem_schema_id(&mut parsed_schema, "new-schema-id").await;
     add_name_translation(&mut parsed_schema, "de", "Mein Ausweis").await;
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(
-        parsed_schema.clone(),
-        vec![claim("parsed-name", &parsed_claim)],
-    )
-    .await;
 
     // The internal and technical keys are entirely different. Claim display names establish the
     // match, and the heuristic data type mismatch must not reject it.
@@ -344,7 +607,6 @@ async fn matches_display_name_translation_and_adds_new_format(
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &config_with_datatypes(),
     )
@@ -416,7 +678,6 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -503,7 +764,6 @@ async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key(
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -530,6 +790,75 @@ async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key(
         parsed_credential.claims.as_ref().await.unwrap()[0].path,
         new_key
     );
+}
+
+#[tokio::test]
+async fn matches_array_child_without_usable_issuer_display_metadata() {
+    let mut parsed_address = claim_schema_with_name("Address", "OBJECT", "Address").await;
+    parsed_address.array = true;
+    // Our issuer currently advertises this child's display with a path missing the wildcard.
+    // The holder skips that metadata, so the parsed child has no translation yet.
+    let parsed_country = claim_schema("Address/Country", "STRING");
+    let parsed_format_id = Uuid::new_v4().into();
+    let mut parsed_schema = credential_schema(
+        Uuid::new_v4().into(),
+        parsed_format_id,
+        "SD_JWT",
+        vec![parsed_address.clone(), parsed_country.clone()],
+        vec![
+            mapping(parsed_format_id, parsed_address.id, "Address", None),
+            mapping(parsed_format_id, parsed_country.id, "Address/Country", None),
+        ],
+    );
+    set_ecosystem_schema_id(&mut parsed_schema, "sd-jwt-schema-id").await;
+    add_name_translation(&mut parsed_schema, "en", "Person").await;
+    let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
+
+    let mut stored_address = claim_schema_with_name("Address", "OBJECT", "Address").await;
+    stored_address.array = true;
+    let stored_country = claim_schema_with_name("Address/Country", "STRING", "Country").await;
+    let stored_format_id = Uuid::new_v4().into();
+    let stored_schema_id = Uuid::new_v4().into();
+    let mut stored_schema = credential_schema(
+        stored_schema_id,
+        stored_format_id,
+        "JWT",
+        vec![stored_address.clone(), stored_country.clone()],
+        vec![
+            mapping(stored_format_id, stored_address.id, "Address", None),
+            mapping(stored_format_id, stored_country.id, "Address/Country", None),
+        ],
+    );
+    set_ecosystem_schema_id(&mut stored_schema, "jwt-schema-id").await;
+    add_name_translation(&mut stored_schema, "en", "Person").await;
+
+    let mut repository = MockCredentialSchemaRepository::new();
+    repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(move |_| Ok(credential_schema_list(vec![stored_schema])));
+    let importer = MockCredentialSchemaImporter::new();
+    let mut config = CoreConfig::default();
+    config.global_settings.default_language = "en".to_string();
+
+    let resolution = find_or_import_credential_schema(
+        &importer,
+        &repository,
+        parsed_schema,
+        &parsed_format,
+        dummy_organisation(None).id,
+        &config,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(resolution.schema.id, stored_schema_id);
+    let new_format = resolution.new_format.unwrap();
+    let mappings = new_format.claim_mappings.as_ref().await.unwrap();
+    assert_eq!(mappings.len(), 2);
+    assert!(mappings.iter().any(|mapping| {
+        mapping.technical_key == "Address/Country" && mapping.claim_schema_id == stored_country.id
+    }));
 }
 
 #[tokio::test]
@@ -564,14 +893,6 @@ async fn matches_duplicate_claim_display_names_within_their_parent_hierarchy() {
     set_ecosystem_schema_id(&mut parsed_schema, "new-schema-id").await;
     add_name_translation(&mut parsed_schema, "en", "Family").await;
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(
-        parsed_schema.clone(),
-        parsed_claim_schemas
-            .iter()
-            .map(|claim_schema| claim(&claim_schema.key, claim_schema))
-            .collect(),
-    )
-    .await;
 
     let stored_mother = claim_schema_with_name("maternal", "OBJECT", "Mother").await;
     let stored_mother_name = claim_schema_with_name("maternal/full-name", "STRING", "Name").await;
@@ -624,7 +945,6 @@ async fn matches_duplicate_claim_display_names_within_their_parent_hierarchy() {
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -663,7 +983,6 @@ async fn display_name_match_with_same_format_and_different_schema_id_imports_new
     set_ecosystem_schema_id(&mut parsed_schema, "new-schema-id").await;
     add_name_translation(&mut parsed_schema, "en", "Display name").await;
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(parsed_schema.clone(), vec![]).await;
 
     let mut stored_schema = credential_schema(
         Uuid::new_v4().into(),
@@ -692,7 +1011,6 @@ async fn display_name_match_with_same_format_and_different_schema_id_imports_new
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -732,8 +1050,6 @@ async fn display_name_match_with_conflicting_claim_imports_new_schema(
     set_ecosystem_schema_id(&mut parsed_schema, "new-schema-id").await;
     add_name_translation(&mut parsed_schema, "en", "Display name").await;
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential =
-        credential(parsed_schema.clone(), vec![claim("claim", &parsed_claim)]).await;
 
     let mut stored_claim = claim_schema("claim", stored_data_type);
     stored_claim.array = stored_array;
@@ -766,7 +1082,6 @@ async fn display_name_match_with_conflicting_claim_imports_new_schema(
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &config_with_datatypes(),
     )
@@ -803,11 +1118,6 @@ async fn display_name_match_requires_only_non_metadata_claims(
     set_ecosystem_schema_id(&mut parsed_schema, "new-schema-id").await;
     add_name_translation(&mut parsed_schema, "en", "Display name").await;
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(
-        parsed_schema.clone(),
-        vec![claim("parsed-present", &parsed_claim)],
-    )
-    .await;
 
     let mut stored_present = claim_schema("stored-present", "STRING");
     add_claim_name_translation(&mut stored_present, "en", "Present").await;
@@ -848,7 +1158,6 @@ async fn display_name_match_requires_only_non_metadata_claims(
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )
@@ -886,11 +1195,6 @@ async fn display_name_match_with_metadata_mismatch_imports_new_schema() {
     set_ecosystem_schema_id(&mut parsed_schema, "new-schema-id").await;
     add_name_translation(&mut parsed_schema, "en", "Display name").await;
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
-    let parsed_credential = credential(
-        parsed_schema.clone(),
-        vec![claim("parsed-claim", &parsed_claim)],
-    )
-    .await;
 
     let mut stored_claim = claim_schema("stored-claim", "STRING");
     stored_claim.metadata = true;
@@ -928,7 +1232,6 @@ async fn display_name_match_with_metadata_mismatch_imports_new_schema() {
         &repository,
         parsed_schema,
         &parsed_format,
-        &parsed_credential,
         dummy_organisation(None).id,
         &CoreConfig::default(),
     )

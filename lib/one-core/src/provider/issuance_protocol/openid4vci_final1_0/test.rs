@@ -654,7 +654,7 @@ async fn test_holder_accept_credential_success() {
                     ..Default::default()
                 }]),
                 claims: Some(vec![ClaimMetadata {
-                    path: vec!["NUMBER".to_string()],
+                    path: vec!["NUMBER".to_string()].into(),
                     display: Some(vec![ClaimDisplay {
                         name: Some("Number".to_string()),
                         locale: Some("en".to_string()),
@@ -4356,7 +4356,7 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
             ..Default::default()
         }]),
         claims: Some(vec![ClaimMetadata {
-            path: vec!["NUMBER".to_string()],
+            path: vec!["NUMBER".to_string()].into(),
             display: Some(vec![
                 ClaimDisplay {
                     name: Some("Number".to_string()),
@@ -4658,7 +4658,7 @@ async fn test_holder_accept_credential_updates_only_changed_translations_from_me
             ..Default::default()
         }]),
         claims: Some(vec![ClaimMetadata {
-            path: vec!["NUMBER".to_string()],
+            path: vec!["NUMBER".to_string()].into(),
             display: Some(vec![ClaimDisplay {
                 name: Some("Updated number name".to_string()),
                 locale: Some("en".to_string()),
