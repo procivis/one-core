@@ -26,7 +26,7 @@ use crate::provider::verification_protocol::openid4vp::VerificationProtocolError
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
-    validate_x509_hash_matching_client_id,
+    validate_x509_hash_request_token,
 };
 use crate::validator::x509::is_dns_name_matching;
 
@@ -111,57 +111,19 @@ impl OpenID4VPFinal1_0 {
         &self,
         request_token: DecomposedJwt<AuthorizationRequest>,
     ) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
-        let x5c = request_token
-            .header
-            .x5c
-            .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
-
         let (client_id, _) = decode_client_id_with_scheme(
             &request_token.payload.custom.client_id,
             self.params.use_legacy_did_client_id_scheme,
         )?;
 
-        let pem_chain = x5c_into_pem_chain(&x5c).error_while("parsing x5c")?;
+        let certificate = validate_x509_hash_request_token(
+            &request_token,
+            &client_id,
+            &*self.certificate_validator,
+        )
+        .await?;
 
-        let ParsedCertificate {
-            public_key,
-            attributes,
-            subject_common_name,
-            ..
-        } = self
-            .certificate_validator
-            .parse_pem_chain(
-                &pem_chain,
-                CertificateValidationOptions::signature_and_revocation(None),
-            )
-            .await
-            .error_while("parsing PEM chain")?;
-
-        public_key
-            .signature()
-            .ok_or(VerificationProtocolError::Failed(
-                "Signature key missing".to_string(),
-            ))?
-            .public()
-            .verify(
-                request_token.unverified_jwt.as_bytes(),
-                &request_token.signature,
-            )
-            .error_while("verifying signature")?;
-
-        // client_id hash must match certificate fingerprint
-        validate_x509_hash_matching_client_id(&attributes, &client_id)?;
-
-        Ok((
-            request_token.payload.custom,
-            CertificateDetails {
-                chain: pem_chain,
-                fingerprint: attributes.fingerprint,
-                expiry: attributes.not_after,
-                subject_common_name,
-                x5_references: Default::default(),
-            },
-        ))
+        Ok((request_token.payload.custom, certificate))
     }
 
     async fn parse_referenced_data_from_did_signed_token(

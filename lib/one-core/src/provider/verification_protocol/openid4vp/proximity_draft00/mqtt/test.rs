@@ -10,25 +10,36 @@ use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::AuthorizationRequest;
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
 
 use super::model::{MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys};
 use super::oidc_mqtt_verifier::MqttVerifier;
 use super::{ConfigParams, MqttHolderTransport, generate_session_keys};
 use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
+use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
+use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
 use crate::provider::credential_formatter::model::{
     IdentifierDetails, MockSignatureProvider, MockTokenVerifier,
 };
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::request_as_signed_jwt;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
+    VerifierIdentifier, request_as_signed_jwt,
+};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
     IdentityRequest, ProtocolVersion,
 };
@@ -37,6 +48,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::test_utilities::{dummy_dcql_query, dummy_organisation, generic_config};
 
 #[derive(Default)]
@@ -238,9 +250,6 @@ async fn test_handle_invitation_success() {
             })
         });
 
-    let (verifier_key, verifier_public_key) = generate_verifier_key();
-    let holder_identity_request = Arc::new(Mutex::new(None));
-    let handle = holder_identity_request.clone();
     let request = AuthorizationRequest {
         client_id: format!("decentralized_identifier:{verifier_did}"),
         state: None,
@@ -257,51 +266,14 @@ async fn test_handle_invitation_success() {
         verifier_info: vec![],
         transaction_data: vec![],
     };
-    let signed = request_as_signed_jwt(request, &verifier_did, Box::new(auth_fn))
-        .await
-        .unwrap();
-    let mut identify_topic = MockMqttTopic::default();
-    identify_topic
-        .expect_send()
-        .with(always())
-        .return_once(move |identity_request| {
-            let request = IdentityRequest::parse(identity_request).unwrap();
-
-            let mut lock = handle.lock().unwrap();
-            *lock = Some(request);
-
-            Ok(())
-        });
-
-    let handle = holder_identity_request.clone();
-    let mut presentation_definition_topic = MockMqttTopic::default();
-    presentation_definition_topic
-        .expect_recv()
-        .return_once(move || {
-            let lock = handle.lock().unwrap();
-
-            let holder_identity_request = lock.clone().unwrap();
-
-            let encryption = generate_verifier_encryption(verifier_key, holder_identity_request);
-
-            Ok(encryption.encrypt(&signed).unwrap())
-        });
-
-    let mut mqtt_client = MockMqttClient::default();
-
-    mqtt_client
-        .expect_subscribe()
-        .withf(|_, _, url| url.ends_with("/identify"))
-        .return_once(move |_, _, _| Ok(Box::new(identify_topic)));
-    mqtt_client
-        .expect_subscribe()
-        .withf(|_, _, url| url.ends_with("/presentation-definition"))
-        .return_once(move |_, _, _| Ok(Box::new(presentation_definition_topic)));
-
-    let valid =
-        format!("openid4vp://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key={verifier_public_key}&topicId={}", Uuid::new_v4())
-            .parse()
-            .unwrap();
+    let signed = request_as_signed_jwt(
+        request,
+        &VerifierIdentifier::Did(verifier_did),
+        Box::new(auth_fn),
+    )
+    .await
+    .unwrap();
+    let (mqtt_client, valid) = holder_mqtt_client(signed);
 
     let mut verifier = MockTokenVerifier::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -332,11 +304,234 @@ async fn test_handle_invitation_success() {
         &identifier_creator,
         &setup_holder_transport(None, Some(Arc::new(mqtt_client))),
         Box::new(verifier),
+        &MockCertificateValidator::new(),
     )
     .await
     .expect("handle invitation failed");
 
     assert_eq!(response.interaction_id, interaction_id);
+}
+
+fn dummy_verifier_certificate() -> Certificate {
+    let now = crate::clock::now_utc();
+    Certificate {
+        id: Uuid::new_v4().into(),
+        identifier_id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        deleted_at: None,
+        expiry_date: now,
+        name: "verifier".to_string(),
+        chain: "-----BEGIN CERTIFICATE-----\nY2VydA==\n-----END CERTIFICATE-----\n".to_string(),
+        fingerprint: "aabbcc".to_string(),
+        state: CertificateState::Active,
+        roles: vec![CertificateRole::Authentication],
+        key: None,
+        organisation: dummy_organisation(None).into(),
+    }
+}
+
+async fn request_signed_with_certificate(verifier_certificate: Certificate) -> String {
+    let verifier = VerifierIdentifier::certificate(&verifier_certificate).unwrap();
+
+    let mut auth_fn = MockSignatureProvider::new();
+    auth_fn.expect_get_key_id().return_const(None);
+    auth_fn
+        .expect_jose_alg()
+        .returning(|| Ok("ES256".to_string()));
+    auth_fn.expect_sign().returning(move |_| Ok(vec![1, 2, 3]));
+    let request = AuthorizationRequest {
+        client_id: verifier.client_id(),
+        state: None,
+        nonce: Some("nonce".to_string()),
+        response_type: None,
+        response_mode: None,
+        response_uri: None,
+        client_metadata: None,
+        dcql_query: DcqlQuery {
+            credentials: vec![],
+            credential_sets: None,
+        },
+        redirect_uri: None,
+        verifier_info: vec![],
+        transaction_data: vec![],
+    };
+    request_as_signed_jwt(request, &verifier, Box::new(auth_fn))
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn test_request_signed_with_certificate() {
+    let signed = request_signed_with_certificate(dummy_verifier_certificate()).await;
+
+    let token: DecomposedJwt<AuthorizationRequest> = Jwt::decompose_token(&signed).unwrap();
+    assert_eq!(token.payload.custom.client_id, "x509_hash:qrvM");
+    assert_eq!(token.header.x5c, Some(vec!["Y2VydA==".to_string()]));
+    assert_eq!(token.header.key_id, None);
+    assert_eq!(token.payload.issuer, None);
+}
+
+#[tokio::test]
+async fn test_handle_invitation_certificate_verifier() {
+    let now = crate::clock::now_utc();
+    let organisation = dummy_organisation(None);
+    let verifier_certificate = dummy_verifier_certificate();
+    let signed = request_signed_with_certificate(verifier_certificate.clone()).await;
+    let (mqtt_client, url) = holder_mqtt_client(signed);
+
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
+        .once()
+        .returning(move |_, _| {
+            let mut public_key = MockSignaturePublicKeyHandle::default();
+            public_key
+                .expect_verify()
+                .once()
+                .withf(|_, signature| signature == [1, 2, 3])
+                .returning(|_, _| Ok(()));
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "serial".to_string(),
+                    not_before: now,
+                    not_after: now,
+                    issuer: "issuer".to_string(),
+                    subject: "subject".to_string(),
+                    fingerprint: "aabbcc".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("verifier".to_string()),
+                subject_key_identifier: None,
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    public_key,
+                ))),
+            })
+        });
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .returning({
+            let verifier_certificate = verifier_certificate.clone();
+            move |organisation, details, _, _, _, _| {
+                let IdentifierDetails::Certificate(details) = details else {
+                    panic!("expected a certificate identifier");
+                };
+                assert_eq!(details.fingerprint, "aabbcc");
+                Ok((
+                    Identifier {
+                        id: verifier_certificate.identifier_id,
+                        created_date: now,
+                        last_modified: now,
+                        name: "verifier".to_string(),
+                        organisation: organisation.clone().into(),
+                        data: IdentifierData::Certificate(
+                            vec![verifier_certificate.clone()].into(),
+                        ),
+                        is_remote: true,
+                        state: IdentifierState::Active,
+                        deleted_at: None,
+                        trust_information: Default::default(),
+                        logo: None,
+                        translations: Default::default(),
+                        autogenerated: false,
+                    },
+                    RemoteIdentifierRelation::Certificate(verifier_certificate.clone()),
+                ))
+            }
+        });
+
+    let interaction_id = Uuid::new_v4().into();
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .returning(move |_| Ok(interaction_id));
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let response = handle_invitation_with_transport(
+        url,
+        organisation,
+        &interaction_repository,
+        &identifier_creator,
+        &setup_holder_transport(None, Some(Arc::new(mqtt_client))),
+        Box::new(MockTokenVerifier::new()),
+        &certificate_validator,
+    )
+    .await
+    .expect("handle invitation failed");
+
+    assert_eq!(response.interaction_id, interaction_id);
+    assert_eq!(
+        response.proof.verifier_certificate.unwrap().id(),
+        verifier_certificate.id
+    );
+    let ProtocolArtifact::HolderProof {
+        verifier_details, ..
+    } = response.ecosystem_artifact
+    else {
+        panic!("expected a holder proof artifact");
+    };
+    assert!(matches!(
+        verifier_details.as_ref(),
+        Some(IdentifierDetails::Certificate(_))
+    ));
+}
+
+fn holder_mqtt_client(signed_request: String) -> (MockMqttClient, Url) {
+    let (verifier_key, verifier_public_key) = generate_verifier_key();
+    let holder_identity_request = Arc::new(Mutex::new(None));
+
+    let handle = holder_identity_request.clone();
+    let mut identify_topic = MockMqttTopic::default();
+    identify_topic
+        .expect_send()
+        .with(always())
+        .return_once(move |identity_request| {
+            let request = IdentityRequest::parse(identity_request).unwrap();
+
+            let mut lock = handle.lock().unwrap();
+            *lock = Some(request);
+
+            Ok(())
+        });
+
+    let handle = holder_identity_request;
+    let mut presentation_definition_topic = MockMqttTopic::default();
+    presentation_definition_topic
+        .expect_recv()
+        .return_once(move || {
+            let lock = handle.lock().unwrap();
+
+            let holder_identity_request = lock.clone().unwrap();
+
+            let encryption = generate_verifier_encryption(verifier_key, holder_identity_request);
+
+            Ok(encryption.encrypt(&signed_request).unwrap())
+        });
+
+    let mut mqtt_client = MockMqttClient::default();
+
+    mqtt_client
+        .expect_subscribe()
+        .withf(|_, _, url| url.ends_with("/identify"))
+        .return_once(move |_, _, _| Ok(Box::new(identify_topic)));
+    mqtt_client
+        .expect_subscribe()
+        .withf(|_, _, url| url.ends_with("/presentation-definition"))
+        .return_once(move |_, _, _| Ok(Box::new(presentation_definition_topic)));
+
+    let url =
+        format!("openid4vp://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key={verifier_public_key}&topicId={}", Uuid::new_v4())
+            .parse()
+            .unwrap();
+
+    (mqtt_client, url)
 }
 
 #[tokio::test]

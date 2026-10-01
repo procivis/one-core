@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use asn1_rs::Oid;
-use ct_codecs::{Base64, Decoder, Encoder};
+use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use futures::executor::block_on;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use standardized_types::x509::KeyIdentifier;
@@ -33,6 +33,14 @@ pub fn pem_chain_into_x5c(pem_chain: &str) -> Result<Vec<String>, CertificatePar
             Ok(encoded)
         })
         .collect()
+}
+
+pub(crate) fn fingerprint_into_sha256_thumbprint(
+    fingerprint: &str,
+) -> Result<String, CertificateParsingError> {
+    Ok(Base64UrlSafeNoPadding::encode_to_string(hex::decode(
+        fingerprint,
+    )?)?)
 }
 
 pub(crate) fn x5c_into_pem_chain(x5c: &[String]) -> Result<String, CertificateParsingError> {
@@ -76,6 +84,8 @@ pub enum CertificateParsingError {
     X509ParserError(#[from] x509_parser::error::X509Error),
     #[error("Encoding error: `{0}`")]
     Encoding(#[from] ct_codecs::Error),
+    #[error("Hex error: `{0}`")]
+    Hex(#[from] hex::FromHexError),
     #[error("OID error: `{0}`")]
     Oid(#[from] asn1_rs::OidParseError),
 }

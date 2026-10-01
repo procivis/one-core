@@ -21,7 +21,9 @@ use super::final1_0::dcql::create_dcql_query;
 use super::mapper::format_to_type;
 use super::mdoc::mdoc_presentation_context;
 use super::model::default_presentation_url_scheme;
-use super::proximity_draft00::async_verifier_flow::{AsyncVerifierFlowParams, verifier_flow};
+use super::proximity_draft00::async_verifier_flow::{
+    AsyncVerifierFlowParams, VerifierIdentifier, verifier_flow,
+};
 use super::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
 use super::proximity_draft00::ble::oidc_ble_verifier::{
     retract_proof_ble, schedule_ble_verifier_flow,
@@ -220,6 +222,7 @@ impl OpenID4VPProximityDraft00 {
             self.identifier_creator.as_ref(),
             holder_transport,
             verification_fn,
+            self.certificate_validator.as_ref(),
         )
         .await
     }
@@ -397,7 +400,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let key_agreement =
             KeyAgreementKey::generate().map_err(VerificationProtocolError::Other)?;
 
-        let (dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
+        let (dcql_query, verifier, auth_fn_ble, auth_fn_mqtt) =
             prepare_proof_share(ProofShareParams {
                 proof,
                 key_id,
@@ -411,7 +414,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let params = AsyncVerifierFlowParams {
             proof_id: proof.id,
             dcql_query,
-            did: verifier_did.did,
+            verifier,
             interaction_id,
             proof_repository: self.proof_repository.clone(),
             interaction_repository: self.interaction_repository.clone(),
@@ -593,7 +596,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             features,
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods,
-            verifier_identifier_types: vec![IdentifierType::Did],
+            verifier_identifier_types: vec![IdentifierType::Certificate, IdentifierType::Did],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
             supported_encryption_algorithms: vec![],
         }
@@ -818,9 +821,17 @@ pub(super) struct ProofShareParams<'a> {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
-pub(super) async fn prepare_proof_share(
+async fn prepare_proof_share(
     params: ProofShareParams<'_>,
-) -> Result<(DcqlQuery, Did, AuthenticationFn, AuthenticationFn), VerificationProtocolError> {
+) -> Result<
+    (
+        DcqlQuery,
+        VerifierIdentifier,
+        AuthenticationFn,
+        AuthenticationFn,
+    ),
+    VerificationProtocolError,
+> {
     let proof_schema = params
         .proof
         .schema
@@ -848,51 +859,77 @@ pub(super) async fn prepare_proof_share(
         .as_ref()
         .await?;
 
-    let Identifier {
-        data: IdentifierData::Did(verifier_did),
-        ..
-    } = verifier_identifier.as_ref()
-    else {
-        return Err(VerificationProtocolError::InvalidRequest(format!(
-            "Verifier not a DID for proof {}",
-            params.proof.id
-        )));
-    };
-    let verifier_did = verifier_did.as_ref().await?;
+    let (verifier, verifier_key, verifier_jwk_key_id) = match &verifier_identifier.data {
+        IdentifierData::Did(verifier_did) => {
+            let verifier_did = verifier_did.as_ref().await?;
 
-    let Ok(verifier_key) = verifier_did
-        .find_key(
-            &params.key_id,
-            &KeyFilter::did_role(KeyRole::Authentication),
-        )
-        .await
-    else {
-        return Err(VerificationProtocolError::InvalidRequest(format!(
-            "Verifier key {} not found for proof {}",
-            params.key_id,
-            { params.proof.id }
-        )));
-    };
+            let Ok(verifier_key) = verifier_did
+                .find_key(
+                    &params.key_id,
+                    &KeyFilter::did_role(KeyRole::Authentication),
+                )
+                .await
+            else {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "Verifier key {} not found for proof {}",
+                    params.key_id,
+                    { params.proof.id }
+                )));
+            };
 
-    let verifier_jwk_key_id = verifier_did.verification_method_id(&verifier_key);
+            let verifier_jwk_key_id = verifier_did.verification_method_id(&verifier_key);
+            (
+                VerifierIdentifier::Did(verifier_did.did.to_owned()),
+                verifier_key.key,
+                Some(verifier_jwk_key_id),
+            )
+        }
+        IdentifierData::Certificate(_) => {
+            let verifier_certificate = params
+                .proof
+                .verifier_certificate
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "verifier_certificate is None".to_string(),
+                ))?
+                .as_ref()
+                .await?;
+            let verifier_key = params
+                .proof
+                .verifier_key
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "verifier_key is None".to_string(),
+                ))?
+                .as_ref()
+                .await?;
+            (
+                VerifierIdentifier::certificate(&verifier_certificate)?,
+                verifier_key.to_owned(),
+                None,
+            )
+        }
+        IdentifierData::Key(_) | IdentifierData::CertificateAuthority(_) => {
+            return Err(VerificationProtocolError::InvalidRequest(format!(
+                "Invalid verifier identifier type {} for proof {}",
+                verifier_identifier.data.r#type(),
+                params.proof.id
+            )));
+        }
+    };
 
     let auth_fn_ble = params.key_provider.get_signature_provider(
-        &verifier_key.key,
-        Some(verifier_jwk_key_id.clone()),
+        &verifier_key,
+        verifier_jwk_key_id.clone(),
         params.key_algorithm_provider.clone(),
     )?;
     let auth_fn_mqtt = params.key_provider.get_signature_provider(
-        &verifier_key.key,
-        Some(verifier_jwk_key_id),
+        &verifier_key,
+        verifier_jwk_key_id,
         params.key_algorithm_provider,
     )?;
 
-    Ok((
-        dcql_query,
-        verifier_did.to_owned(),
-        auth_fn_ble,
-        auth_fn_mqtt,
-    ))
+    Ok((dcql_query, verifier, auth_fn_ble, auth_fn_mqtt))
 }
 
 fn format_presentation_context(

@@ -16,7 +16,10 @@ use super::model::{
     PublicKeySource, SettableClaims, SignatureProvider, VerificationFn, X5References,
 };
 use crate::error::ContextWithErrorCode;
-use crate::mapper::x509::{CertificateParsingError, pem_chain_into_x5c, x5c_into_pem_chain};
+use crate::mapper::x509::{
+    CertificateParsingError, fingerprint_into_sha256_thumbprint, pem_chain_into_x5c,
+    x5c_into_pem_chain,
+};
 use crate::model::certificate::Certificate;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -183,14 +186,11 @@ fn certificate_into_x5c_and_x5u(
 ) -> Result<JwtPublicKeyInfo, FormatterError> {
     let chain = pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?;
     let url = format!("{base_url}/ssi/certificate/{}", certificate.id);
-    let der_fingerprint = hex::decode(&certificate.fingerprint)?;
-    let fingerprint = Base64UrlSafeNoPadding::encode_to_string(&der_fingerprint)
-        .map_err(CertificateParsingError::from)
-        .error_while("encoding chain as base64url")?;
     Ok(JwtPublicKeyInfo::X5cAndU {
         chain,
         url,
-        fingerprint,
+        fingerprint: fingerprint_into_sha256_thumbprint(&certificate.fingerprint)
+            .error_while("encoding certificate thumbprint")?,
     })
 }
 

@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::future::BoxFuture;
 use indexmap::IndexMap;
 use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
@@ -30,6 +29,7 @@ use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
 use crate::error::ContextWithErrorCode;
+use crate::mapper::x509::fingerprint_into_sha256_thumbprint;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
@@ -706,10 +706,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                     .as_ref()
                     .await?;
 
-                let fingerprint = hex::decode(&verifier_certificate.fingerprint)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-                Base64UrlSafeNoPadding::encode_to_string(fingerprint)?
+                fingerprint_into_sha256_thumbprint(&verifier_certificate.fingerprint)
+                    .error_while("computing x509_hash client_id")?
             }
             ClientIdPrefix::DecentralizedIdentifier => {
                 let verifier_identifier = proof

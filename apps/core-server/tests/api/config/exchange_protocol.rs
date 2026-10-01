@@ -28,4 +28,10 @@ async fn test_verification_protocol_capabilities() {
         haip["capabilities"]["verifierIdentifierTypes"],
         json!(["CERTIFICATE"])
     );
+
+    let proximity = &resp["verificationProtocol"]["OPENID4VP_PROXIMITY_DRAFT00"];
+    assert_eq!(
+        proximity["capabilities"]["verifierIdentifierTypes"],
+        json!(["CERTIFICATE", "DID"])
+    );
 }
