@@ -244,7 +244,9 @@ fn encrypt(
 
     let ciphertext = Aes256Gcm::new(key)
         .encrypt(&nonce, plaintext)
-        .map_err(|e| VerificationProtocolError::Failed(format!("Encryption failed: {e}")))?;
+        .map_err(|e| {
+            VerificationProtocolError::EncryptionError(format!("Encryption failed: {e}"))
+        })?;
 
     Ok(ciphertext)
 }
@@ -259,7 +261,9 @@ fn decrypt(
 
     let plaintext = Aes256Gcm::new(key)
         .decrypt(&nonce, ciphertext)
-        .map_err(|e| VerificationProtocolError::Failed(format!("Decryption failed: {e}")))?;
+        .map_err(|e| {
+            VerificationProtocolError::EncryptionError(format!("Decryption failed: {e}"))
+        })?;
 
     Ok(plaintext)
 }

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
-use ble::holder::{MdocBleHolderInteractionData, send_mdl_response};
+use ble::holder::{MdocBleHolderInteractionData, send_device_response};
 use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
 use mapper::device_request_to_dcql_query;
@@ -212,7 +212,7 @@ impl VerificationProtocol for IsoMdl {
             status: 0,
         };
 
-        send_mdl_response(ble, device_response, interaction_data).await?;
+        send_device_response(ble, device_response, interaction_data).await?;
 
         Ok(())
     }
@@ -291,7 +291,7 @@ impl VerificationProtocol for IsoMdl {
 
         let device_response = decode_cbor_base64(&vp_token).error_while("decoding vp_token")?;
 
-        send_mdl_response(&ble, device_response, interaction_data).await?;
+        send_device_response(&ble, device_response, interaction_data).await?;
 
         Ok(UpdateResponse { update_proof: None })
     }

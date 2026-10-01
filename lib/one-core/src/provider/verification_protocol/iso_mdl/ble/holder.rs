@@ -17,9 +17,7 @@ use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
-use crate::proto::bluetooth_low_energy::low_level::dto::{
-    DeviceAddress, DeviceInfo, ServiceDescription,
-};
+use crate::proto::bluetooth_low_energy::low_level::dto::{DeviceAddress, ServiceDescription};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
@@ -29,8 +27,10 @@ use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, Embedded
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
-use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
+    Handover, SessionTranscript,
+};
 use crate::provider::verification_protocol::iso_mdl::BleMode;
 use crate::provider::verification_protocol::iso_mdl::common::{
     DeviceRequest, EphemeralSessionKey, KeyAgreementKey, SkDevice, SkReader,
@@ -69,10 +69,14 @@ pub(crate) struct MdocBleHolderInteractionSessionData {
     pub sk_device: SkDevice,
     pub sk_reader: SkReader,
     pub device_request_bytes: Vec<u8>,
-    pub device_address: DeviceAddress,
-    pub mtu: usize,
     pub session_transcript_bytes: Vec<u8>,
-    pub peripheral_server_mode: bool,
+    pub connected_verifier: ConnectedVerifier,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) enum ConnectedVerifier {
+    CentralClientMode { address: DeviceAddress, mtu: usize },
+    PeripheralServerMode { address: DeviceAddress, mtu: usize },
 }
 
 #[derive(Debug, Clone)]
@@ -178,12 +182,14 @@ pub(crate) async fn receive_mdl_request(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     verify_fn: VerificationFn,
 ) -> Result<(), VerificationProtocolError> {
-    let (tx, rx) = oneshot::channel();
-    let proof_repository_clone = proof_repository.clone();
-
     let interaction_data: MdocBleHolderInteractionData =
         deserialize_interaction_data(interaction.data.as_ref())
             .error_while("parsing interaction data")?;
+
+    // share connection with the cancellation handler
+    let (connection_sender, connection_receiver) = oneshot::channel();
+    let proof_repository_clone = proof_repository.clone();
+    let service_uuid = interaction_data.service_uuid;
 
     let ScheduleResult::Scheduled { .. } = ble
         .schedule_continuation(
@@ -193,7 +199,7 @@ pub(crate) async fn receive_mdl_request(
                     &central,
                     &peripheral,
                     interaction_data.mode,
-                    interaction_data.service_uuid,
+                    service_uuid,
                     &qr_engagement,
                     &nfc_engagement,
                 )
@@ -207,81 +213,42 @@ pub(crate) async fn receive_mdl_request(
                     }
                 };
 
-                let result = tx.send(connected_verifier.clone());
-                if let Err(connected_verifier) = result {
+                // stop other BLE mode when connection established
+                if interaction_data.mode == BleMode::Both
+                    && let Err(error) = match &connected_verifier {
+                        ConnectedVerifier::CentralClientMode { .. } => {
+                            peripheral.stop_advertisement().await
+                        }
+                        ConnectedVerifier::PeripheralServerMode { .. } => central.stop_scan().await,
+                    }
+                {
+                    tracing::warn!(%error, "Failed to cancel other BLE mode");
+                }
+
+                // share connection details with the cancellation handler
+                if connection_sender.send(connected_verifier.clone()).is_err() {
                     tracing::warn!("failed to send device info: {connected_verifier:?}");
                 }
 
                 let result = async {
-                    let (engagement_type, handover, device_engagement) = match nfc_engagement {
-                        None => {
-                            // NFC not used, the engagement must have been via QR-code
-                            (VerificationEngagement::QrCode, None, qr_engagement)
-                        }
-                        Some(NfcHceSession {
-                            handler,
-                            hce,
-                            select_message,
-                            device_engagement,
-                        }) => {
-                            if handler
-                                .message_read()
-                                .error_while("checking message read")?
-                            {
-                                // the NFC select message was read by a remote device, continue as NFC engaged
-                                (
-                                    VerificationEngagement::NFC,
-                                    Some(Handover::Nfc(NFCHandover {
-                                        select_message: Bstr(select_message),
-                                        request_message: None,
-                                    })),
-                                    Some(device_engagement),
-                                )
-                            } else {
-                                // no NFC contact, the engagement must have been via QR-code
-                                hce.stop_hosting(true)
-                                    .await
-                                    .error_while("stopping NFC hosting")?;
+                    let (engagement_type, device_engagement, handover) =
+                        resolve_engagement(qr_engagement, nfc_engagement).await?;
 
-                                (VerificationEngagement::QrCode, None, qr_engagement)
-                            }
-                        }
-                    };
-
-                    let device_engagement = device_engagement.ok_or(
-                        VerificationProtocolError::Failed("Missing device engagement".to_string()),
-                    )?;
-
-                    let session_establishment = read_request(
+                    let (device_request, session_data, session_transcript) = obtain_device_request(
                         &central,
                         &peripheral,
                         &connected_verifier,
-                        &interaction_data.service_uuid,
+                        device_key,
+                        &service_uuid,
+                        device_engagement,
+                        handover,
+                        key_algorithm_provider.as_ref(),
                     )
                     .await?;
 
-                    let session_transcript_bytes = create_session_transcript_bytes(
-                        device_engagement,
-                        session_establishment.e_reader_key.clone(),
-                        handover,
-                    )?;
-
-                    let (sk_device, sk_reader) = device_key
-                        .derive_session_keys(
-                            session_establishment.e_reader_key.inner(),
-                            session_transcript_bytes.bytes(),
-                            key_algorithm_provider.as_ref(),
-                        )
-                        .await?;
-
-                    let device_request_bytes = sk_reader.decrypt(&session_establishment.data.0)?;
-
-                    let device_request: DeviceRequest =
-                        ciborium::from_reader(device_request_bytes.as_slice())?;
-
                     let (verifier_identifier, ecosystem) = resolve_verifier_and_trust(
                         &device_request,
-                        session_transcript_bytes.inner(),
+                        &session_transcript,
                         proof_id,
                         &interaction,
                         ecosystem_resolver.as_ref(),
@@ -293,18 +260,7 @@ pub(crate) async fn receive_mdl_request(
 
                     let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
                         continuation_task_id: task_id,
-                        session: Some(MdocBleHolderInteractionSessionData {
-                            sk_device,
-                            sk_reader,
-                            device_address: connected_verifier.address().clone(),
-                            device_request_bytes,
-                            mtu: connected_verifier.mtu_size(),
-                            session_transcript_bytes: session_transcript_bytes.into_bytes(),
-                            peripheral_server_mode: matches!(
-                                connected_verifier,
-                                ConnectedVerifier::PeripheralServerMode(..)
-                            ),
-                        }),
+                        session: Some(session_data),
                         ..interaction_data
                     })?;
 
@@ -338,15 +294,49 @@ pub(crate) async fn receive_mdl_request(
                 }
                 .await;
 
-                if let Err(ref err) = result {
-                    set_proof_to_error(&*proof_repository, &proof_id, err.into()).await;
-                    send_end(
-                        &central,
-                        &peripheral,
-                        Some(&connected_verifier),
-                        &interaction_data.service_uuid,
-                    )
-                    .await;
+                if let Err(error) = &result {
+                    set_proof_to_error(&*proof_repository, &proof_id, error.into()).await;
+
+                    // if specific error while parsing the request occurs, send a proper feedback to verifier
+                    let status_code = match error {
+                        VerificationProtocolError::EncryptionError(_) => {
+                            Some(StatusCode::SessionEncryptionError)
+                        }
+                        VerificationProtocolError::CBORSerialization(_)
+                        | VerificationProtocolError::CBORParsing(_) => {
+                            Some(StatusCode::CborDecodingError)
+                        }
+
+                        _ => None,
+                    };
+
+                    if let Some(status_code) = status_code {
+                        let session_data = SessionData {
+                            data: None,
+                            status: Some(status_code),
+                        };
+
+                        if let Err(err) = send_session_data(
+                            &central,
+                            &peripheral,
+                            session_data,
+                            &connected_verifier,
+                            &service_uuid,
+                        )
+                        .await
+                        {
+                            tracing::warn!(%err, "Failed to send closing session data");
+                        }
+                    } else {
+                        // otherwise just notify end of session
+                        send_end(
+                            &central,
+                            &peripheral,
+                            Some(&connected_verifier),
+                            &service_uuid,
+                        )
+                        .await;
+                    }
                 }
 
                 result
@@ -360,8 +350,8 @@ pub(crate) async fn receive_mdl_request(
                 send_end(
                     &central,
                     &peripheral,
-                    rx.await.ok().as_ref(),
-                    &interaction_data.service_uuid,
+                    connection_receiver.await.ok().as_ref(),
+                    &service_uuid,
                 )
                 .await;
             },
@@ -377,7 +367,116 @@ pub(crate) async fn receive_mdl_request(
     Ok(())
 }
 
-pub(crate) async fn send_mdl_response(
+async fn resolve_engagement(
+    qr_engagement: Option<EmbeddedCbor<DeviceEngagement>>,
+    nfc_engagement: Option<NfcHceSession>,
+) -> Result<
+    (
+        VerificationEngagement,
+        EmbeddedCbor<DeviceEngagement>,
+        Option<Handover>,
+    ),
+    VerificationProtocolError,
+> {
+    // default treat as QR-code engagement
+    let mut engagement_type = VerificationEngagement::QrCode;
+    let mut engagement = qr_engagement;
+    let mut handover = None;
+
+    match nfc_engagement {
+        None => {
+            // NFC not used, the engagement must have been via QR-code
+        }
+        Some(NfcHceSession {
+            handler,
+            hce,
+            select_message,
+            device_engagement,
+        }) => {
+            if handler
+                .message_read()
+                .error_while("checking message read")?
+            {
+                // the NFC select message was read by a remote device, continue as NFC engaged
+                engagement_type = VerificationEngagement::NFC;
+                engagement = Some(device_engagement);
+                handover = Some(Handover::Nfc(NFCHandover {
+                    select_message: Bstr(select_message),
+                    request_message: None,
+                }));
+            } else {
+                // no NFC contact, the engagement must have been via QR-code
+                hce.stop_hosting(true)
+                    .await
+                    .error_while("stopping NFC hosting")?;
+            }
+        }
+    };
+
+    Ok((
+        engagement_type,
+        engagement.ok_or(VerificationProtocolError::Failed(
+            "Missing device engagement".to_string(),
+        ))?,
+        handover,
+    ))
+}
+
+#[expect(clippy::too_many_arguments)]
+async fn obtain_device_request(
+    central: &TrackingBleCentral,
+    peripheral: &TrackingBlePeripheral,
+    connected_verifier: &ConnectedVerifier,
+    device_key: KeyAgreementKey,
+    service_uuid: &Uuid,
+    device_engagement: EmbeddedCbor<DeviceEngagement>,
+    handover: Option<Handover>,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<
+    (
+        DeviceRequest,
+        MdocBleHolderInteractionSessionData,
+        SessionTranscript,
+    ),
+    VerificationProtocolError,
+> {
+    let session_establishment =
+        read_session_establishment(central, peripheral, connected_verifier, service_uuid).await?;
+
+    let session_transcript_bytes = create_session_transcript_bytes(
+        device_engagement,
+        session_establishment.e_reader_key.clone(),
+        handover,
+    )?;
+
+    let (sk_device, sk_reader) = device_key
+        .derive_session_keys(
+            session_establishment.e_reader_key.inner(),
+            session_transcript_bytes.bytes(),
+            key_algorithm_provider,
+        )
+        .await?;
+
+    let device_request_bytes = sk_reader.decrypt(&session_establishment.data.0)?;
+
+    let device_request = ciborium::from_reader(device_request_bytes.as_slice())?;
+
+    let session_data = MdocBleHolderInteractionSessionData {
+        sk_device,
+        sk_reader,
+        connected_verifier: connected_verifier.clone(),
+        device_request_bytes,
+        session_transcript_bytes: session_transcript_bytes.bytes().to_vec(),
+    };
+
+    Ok((
+        device_request,
+        session_data,
+        session_transcript_bytes.into_inner(),
+    ))
+}
+
+pub(crate) async fn send_device_response(
     ble: &BleWaiter,
     device_response: DeviceResponse,
     interaction_data: MdocBleHolderInteractionData,
@@ -404,41 +503,14 @@ pub(crate) async fn send_mdl_response(
         .schedule_continuation(
             interaction_data.continuation_task_id,
             |_, central, peripheral| async move {
-                if interaction_session_data.peripheral_server_mode {
-                    peripheral::write_chunked(
-                        &session_data,
-                        &peripheral,
-                        &interaction_session_data.device_address,
-                        &interaction_data.service_uuid,
-                        peripheral_server_mode::SERVER_2_CLIENT,
-                        interaction_session_data.mtu,
-                    )
-                    .await?;
-
-                    // Wait for device disconnection here (but this means blocking UI)
-                    tokio::time::sleep(Duration::from_millis(200)).await;
-                } else {
-                    central::write_chunked(
-                        &session_data,
-                        &central,
-                        &interaction_session_data.device_address,
-                        &interaction_data.service_uuid,
-                        central_client_mode::CLIENT_2_SERVER,
-                        interaction_session_data.mtu,
-                    )
-                    .await?;
-
-                    if let Err(err) = central
-                        .disconnect(interaction_session_data.device_address)
-                        .await
-                    {
-                        tracing::warn!("failed to disconnect BLE central: {err}");
-                    }
-                }
-
-                // End command signal not necessary, since we signal SessionTermination via SessionData status
-
-                Ok::<_, VerificationProtocolError>(())
+                send_session_data(
+                    &central,
+                    &peripheral,
+                    session_data,
+                    &interaction_session_data.connected_verifier,
+                    &interaction_data.service_uuid,
+                )
+                .await
             },
             |_, _| async {},
             false,
@@ -456,26 +528,52 @@ pub(crate) async fn send_mdl_response(
     Ok(())
 }
 
-#[derive(Debug, Clone)]
-enum ConnectedVerifier {
-    CentralClientMode(DeviceAddress, usize),
-    PeripheralServerMode(DeviceInfo),
-}
+async fn send_session_data(
+    central: &TrackingBleCentral,
+    peripheral: &TrackingBlePeripheral,
+    session_data: SessionData,
+    connected_verifier: &ConnectedVerifier,
+    service_uuid: &Uuid,
+) -> Result<(), VerificationProtocolError> {
+    // sending error status code means session should be terminated right after
+    // ISO 18013-5, Table 20
+    let should_disconnect = session_data.status.is_some();
 
-impl ConnectedVerifier {
-    fn address(&self) -> &DeviceAddress {
-        match &self {
-            Self::CentralClientMode(address, _) => address,
-            Self::PeripheralServerMode(info) => &info.address,
-        }
-    }
+    match connected_verifier {
+        ConnectedVerifier::CentralClientMode { address, mtu } => {
+            central::write_chunked(
+                &session_data,
+                central,
+                address,
+                service_uuid,
+                central_client_mode::CLIENT_2_SERVER,
+                *mtu,
+            )
+            .await?;
 
-    fn mtu_size(&self) -> usize {
-        match &self {
-            Self::CentralClientMode(_, mtu_size) => *mtu_size,
-            Self::PeripheralServerMode(info) => info.mtu() as _,
+            if should_disconnect && let Err(err) = central.disconnect(address.to_owned()).await {
+                tracing::warn!("failed to disconnect BLE central: {err}");
+            }
         }
-    }
+        ConnectedVerifier::PeripheralServerMode { address, mtu } => {
+            peripheral::write_chunked(
+                &session_data,
+                peripheral,
+                address,
+                service_uuid,
+                peripheral_server_mode::SERVER_2_CLIENT,
+                *mtu,
+            )
+            .await?;
+
+            if should_disconnect {
+                // Wait for client disconnection here (but this means blocking UI)
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+        }
+    };
+
+    Ok(())
 }
 
 async fn wait_for_central_client_mode(
@@ -483,7 +581,7 @@ async fn wait_for_central_client_mode(
     service_uuid: &Uuid,
     e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
 ) -> Result<ConnectedVerifier, VerificationProtocolError> {
-    let (device, mtu_size) = central::wait_for_connection(
+    let (device, mtu) = central::wait_for_connection(
         central,
         service_uuid,
         central_client_mode::SERVER_2_CLIENT,
@@ -507,20 +605,24 @@ async fn wait_for_central_client_mode(
         ));
     }
 
-    Ok(ConnectedVerifier::CentralClientMode(
-        device.device_address,
-        mtu_size,
-    ))
+    Ok(ConnectedVerifier::CentralClientMode {
+        address: device.device_address,
+        mtu,
+    })
 }
 
 async fn wait_for_peripheral_server_mode(
     peripheral: &TrackingBlePeripheral,
     service_uuid: &Uuid,
 ) -> Result<ConnectedVerifier, VerificationProtocolError> {
-    Ok(ConnectedVerifier::PeripheralServerMode(
+    let device_info =
         peripheral::wait_for_active_device(peripheral, service_uuid, peripheral_server_mode::STATE)
-            .await?,
-    ))
+            .await?;
+    let mtu = device_info.mtu() as _;
+    Ok(ConnectedVerifier::PeripheralServerMode {
+        address: device_info.address,
+        mtu,
+    })
 }
 
 async fn wait_for_connected_verifier(
@@ -597,26 +699,26 @@ async fn wait_to_finish_engagement(
     }
 }
 
-async fn read_request(
+async fn read_session_establishment(
     central: &TrackingBleCentral,
     peripheral: &TrackingBlePeripheral,
     connected_verifier: &ConnectedVerifier,
     service_uuid: &Uuid,
 ) -> Result<SessionEstablishment, VerificationProtocolError> {
     match connected_verifier {
-        ConnectedVerifier::CentralClientMode(_, _) => {
+        ConnectedVerifier::CentralClientMode { address, .. } => {
             central::read_chunked(
                 central,
-                connected_verifier.address(),
+                address,
                 service_uuid,
                 central_client_mode::SERVER_2_CLIENT,
             )
             .await
         }
-        ConnectedVerifier::PeripheralServerMode(_) => {
+        ConnectedVerifier::PeripheralServerMode { address, .. } => {
             peripheral::read_chunked(
                 peripheral,
-                connected_verifier.address(),
+                address,
                 service_uuid,
                 peripheral_server_mode::CLIENT_2_SERVER,
             )
@@ -636,19 +738,14 @@ async fn send_end(
     };
 
     match connected_verifier {
-        ConnectedVerifier::CentralClientMode(_, _) => {
-            central::send_end_command(
-                central,
-                connected_verifier.address(),
-                service_uuid,
-                central_client_mode::STATE,
-            )
-            .await
+        ConnectedVerifier::CentralClientMode { address, .. } => {
+            central::send_end_command(central, address, service_uuid, central_client_mode::STATE)
+                .await
         }
-        ConnectedVerifier::PeripheralServerMode(_) => {
+        ConnectedVerifier::PeripheralServerMode { address, .. } => {
             peripheral::notify_end(
                 peripheral,
-                connected_verifier.address(),
+                address,
                 service_uuid,
                 peripheral_server_mode::STATE,
             )

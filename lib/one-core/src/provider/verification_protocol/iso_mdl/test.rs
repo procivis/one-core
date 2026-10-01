@@ -8,7 +8,9 @@ use secrecy::SecretSlice;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use super::ble::holder::{MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData};
+use super::ble::holder::{
+    ConnectedVerifier, MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
+};
 use super::ble::verifier::{IsoMdlVerifier, prepare_reader_auth};
 use super::common::{DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor};
 use super::{BleMode, IsoMdl};
@@ -148,10 +150,11 @@ async fn test_presentation_reject_ok() {
             sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
             sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
             device_request_bytes,
-            device_address: "test address".to_string(),
-            mtu: 512,
             session_transcript_bytes: vec![],
-            peripheral_server_mode: true,
+            connected_verifier: ConnectedVerifier::PeripheralServerMode {
+                address: "test address".to_string(),
+                mtu: 512,
+            },
         }),
     })
     .unwrap();
@@ -282,10 +285,11 @@ async fn test_get_presentation_definition_v2() {
             sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
             sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
             device_request_bytes,
-            device_address: "test address".to_string(),
-            mtu: 512,
             session_transcript_bytes: vec![],
-            peripheral_server_mode: true,
+            connected_verifier: ConnectedVerifier::PeripheralServerMode {
+                address: "test address".to_string(),
+                mtu: 512,
+            },
         }),
     })
     .unwrap();
