@@ -15,7 +15,6 @@ pub(crate) const SERVER_2_CLIENT: &str = "00000007-A123-48CE-896B-4C76973373E6";
 pub(crate) const IDENT: &str = "00000008-A123-48CE-896B-4C76973373E6";
 
 /// set of BLE service characteristics with settings according to ISO 18013-5, Table 12
-#[expect(unused)]
 pub(crate) fn get_characteristic_options(
     e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
 ) -> Result<Vec<CreateCharacteristicOptions>, VerificationProtocolError> {

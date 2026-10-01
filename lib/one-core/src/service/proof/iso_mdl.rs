@@ -10,7 +10,7 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::verification_protocol::iso_mdl::ble::verifier::{
-    IsoMdlVerifier, setup_verifier_session, start_client,
+    IsoMdlVerifier, handle_ble_verifier, setup_verifier_session,
 };
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, DeviceRetrievalMethod,
@@ -131,7 +131,7 @@ impl ProofService {
 
         let DeviceRetrievalMethod::BleV1(ble_options) = device_retrieval_method;
 
-        start_client(
+        handle_ble_verifier(
             ble,
             ble_options,
             verifier_session,

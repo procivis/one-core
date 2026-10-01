@@ -5,19 +5,17 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 
+use super::common::PeerInfo;
 use super::{Chunk, Command, split_into_chunks};
 use crate::error::ContextWithErrorCode;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-use crate::proto::bluetooth_low_energy::low_level::dto::{
-    ConnectionEvent, DeviceAddress, DeviceInfo,
-};
+use crate::proto::bluetooth_low_energy::low_level::dto::{ConnectionEvent, DeviceInfo};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 
 pub(super) async fn read_chunked<T: DeserializeOwned>(
     peripheral: &impl BlePeripheral,
-    device_address: &DeviceAddress,
-    service_uuid: &Uuid,
+    connection: &PeerInfo,
     client_2_server_characteristic: &str,
 ) -> Result<T, VerificationProtocolError> {
     let mut result = vec![];
@@ -25,8 +23,8 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
     loop {
         let data = peripheral
             .get_characteristic_writes(
-                device_address.clone(),
-                service_uuid.to_string(),
+                connection.address.clone(),
+                connection.service_uuid.to_string(),
                 client_2_server_characteristic.into(),
             )
             .await
@@ -49,18 +47,16 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
 pub(super) async fn write_chunked<T: Serialize>(
     message: &T,
     peripheral: &impl BlePeripheral,
-    device_address: &DeviceAddress,
-    service_uuid: &Uuid,
+    connection: &PeerInfo,
     server_2_client_characteristic: &str,
-    mtu_size: usize,
 ) -> Result<(), VerificationProtocolError> {
     let message = to_cbor(message)?;
 
-    for chunk in split_into_chunks(message, mtu_size)? {
+    for chunk in split_into_chunks(message, connection.mtu)? {
         peripheral
             .notify_characteristic_data(
-                device_address.to_owned(),
-                service_uuid.to_string(),
+                connection.address.to_owned(),
+                connection.service_uuid.to_string(),
                 server_2_client_characteristic.into(),
                 &chunk,
             )
@@ -148,14 +144,13 @@ async fn wait_for_start_command(
 
 pub(super) async fn notify_end(
     peripheral: &impl BlePeripheral,
-    device_address: &DeviceAddress,
-    service_uuid: &Uuid,
+    connection: &PeerInfo,
     state_characteristic: &str,
 ) {
     let result = peripheral
         .notify_characteristic_data(
-            device_address.clone(),
-            service_uuid.to_string(),
+            connection.address.clone(),
+            connection.service_uuid.to_string(),
             state_characteristic.into(),
             &[Command::End as _],
         )

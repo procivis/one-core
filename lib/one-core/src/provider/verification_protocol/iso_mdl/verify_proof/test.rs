@@ -211,12 +211,12 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
         });
 
     accept_proof(
-        proof,
+        &proof,
         &interaction,
         proved_credentials,
         &credential_repository,
         &proof_repository,
-        Arc::new(identifier_creator),
+        &identifier_creator,
         &ecosystem_resolver,
     )
     .await

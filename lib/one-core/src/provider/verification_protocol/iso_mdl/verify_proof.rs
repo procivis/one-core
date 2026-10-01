@@ -13,7 +13,7 @@ use crate::model::did::KeyRole;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::model::relation::Related;
+use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
@@ -274,22 +274,15 @@ fn extract_matching_requested_claim(
 
 /// proof processing on verifier's side
 pub(super) async fn accept_proof(
-    proof: Proof,
+    proof: &Proof,
     interaction: &Interaction,
     proved_credentials: Vec<ValidatedProofCredential>,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
-    identifier_creator: Arc<dyn IdentifierCreator>,
+    identifier_creator: &dyn IdentifierCreator,
     ecosystem_resolver: &dyn EcosystemResolver,
 ) -> Result<(), ServiceError> {
-    let proof_schema = proof
-        .schema
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "proof schema is None".to_string(),
-        ))?
-        .as_ref()
-        .await?;
+    let proof_schema = proof.schema.as_required_ref().await?;
     let organisation = proof_schema.organisation.as_ref().await?;
 
     let mut credential_schemas = HashMap::new();

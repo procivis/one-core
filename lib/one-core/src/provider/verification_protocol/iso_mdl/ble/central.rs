@@ -5,19 +5,19 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 
+use super::common::PeerInfo;
 use super::{Chunk, Command, split_into_chunks};
 use crate::error::ContextWithErrorCode;
 use crate::proto::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::proto::bluetooth_low_energy::low_level::dto::{
-    CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
+    CharacteristicWriteType, PeripheralDiscoveryData,
 };
 use crate::provider::verification_protocol::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::to_cbor;
 
 pub(super) async fn read_chunked<T: DeserializeOwned>(
     central: &impl BleCentral,
-    device_address: &DeviceAddress,
-    service_uuid: &Uuid,
+    connection: &PeerInfo,
     server_2_client_characteristic: &str,
 ) -> Result<T, VerificationProtocolError> {
     let mut result = vec![];
@@ -25,8 +25,8 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
     loop {
         let data = central
             .get_notifications(
-                device_address.clone(),
-                service_uuid.to_string(),
+                connection.address.clone(),
+                connection.service_uuid.to_string(),
                 server_2_client_characteristic.into(),
             )
             .await
@@ -49,18 +49,16 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
 pub(super) async fn write_chunked<T: Serialize>(
     message: &T,
     central: &impl BleCentral,
-    device_address: &DeviceAddress,
-    service_uuid: &Uuid,
+    connection: &PeerInfo,
     client_2_server_characteristic: &str,
-    mtu_size: usize,
 ) -> Result<(), VerificationProtocolError> {
     let message = to_cbor(message)?;
 
-    for chunk in split_into_chunks(message, mtu_size)? {
+    for chunk in split_into_chunks(message, connection.mtu)? {
         central
             .write_data(
-                device_address.to_owned(),
-                service_uuid.to_string(),
+                connection.address.to_owned(),
+                connection.service_uuid.to_string(),
                 client_2_server_characteristic.into(),
                 &chunk,
                 CharacteristicWriteType::WithoutResponse,
@@ -74,14 +72,13 @@ pub(super) async fn write_chunked<T: Serialize>(
 
 pub(super) async fn send_end_command(
     central: &impl BleCentral,
-    device_address: &DeviceAddress,
-    service_uuid: &Uuid,
+    connection: &PeerInfo,
     state_characteristic: &str,
 ) {
     if let Err(err) = central
         .write_data(
-            device_address.to_owned(),
-            service_uuid.to_string(),
+            connection.address.to_owned(),
+            connection.service_uuid.to_string(),
             state_characteristic.into(),
             &[Command::End as _],
             CharacteristicWriteType::WithoutResponse,

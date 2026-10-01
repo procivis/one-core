@@ -63,7 +63,7 @@ pub(crate) struct BleOptionsV1 {
     pub peripheral_server_uuid: Option<Uuid>,
 
     /// filled when central client mode supported
-    pub client_central_uuid: Option<Uuid>,
+    pub central_client_uuid: Option<Uuid>,
 
     /// optional when peripheral server mode supported
     pub peripheral_server_mac_address: Option<String>,
@@ -137,7 +137,7 @@ impl DeviceEngagement {
                     .peripheral_mac_address()
                     .as_ref()
                     .map(deserialize_mac_address),
-                client_central_uuid: ble.central_service_uuid(),
+                central_client_uuid: ble.central_service_uuid(),
             }),
         ))
     }
@@ -309,7 +309,7 @@ impl Serialize for BleOptionsV1 {
         S: Serializer,
     {
         let peripheral_server_mode_supported = self.peripheral_server_uuid.is_some();
-        let central_client_mode_supported = self.client_central_uuid.is_some();
+        let central_client_mode_supported = self.central_client_uuid.is_some();
 
         let mut data = cbor!({
             0 => peripheral_server_mode_supported,
@@ -328,10 +328,10 @@ impl Serialize for BleOptionsV1 {
             ));
         }
 
-        if let Some(client_central_uuid) = &self.client_central_uuid {
+        if let Some(central_client_uuid) = &self.central_client_uuid {
             data_ref.push((
                 11.into(),
-                ciborium::Value::Bytes(client_central_uuid.into_bytes().to_vec()),
+                ciborium::Value::Bytes(central_client_uuid.into_bytes().to_vec()),
             ));
         }
 
@@ -377,7 +377,7 @@ impl<'de> Deserialize<'de> for BleOptionsV1 {
         let mut result = Self {
             peripheral_server_uuid: None,
             peripheral_server_mac_address: None,
-            client_central_uuid: None,
+            central_client_uuid: None,
         };
 
         if peripheral_server_mode_supported {
@@ -408,14 +408,14 @@ impl<'de> Deserialize<'de> for BleOptionsV1 {
         }
 
         if central_client_mode_supported {
-            let client_central_uuid = get_cbor_map_value(&map, 11)
-                .ok_or(de::Error::custom("Missing BleOptions client_central_uuid"))?
+            let central_client_uuid = get_cbor_map_value(&map, 11)
+                .ok_or(de::Error::custom("Missing BleOptions central_client_uuid"))?
                 .to_owned()
                 .into_bytes()
-                .map_err(|_| de::Error::custom("Invalid BleOptions client_central_uuid"))?
+                .map_err(|_| de::Error::custom("Invalid BleOptions central_client_uuid"))?
                 .try_into()
-                .map_err(|_| de::Error::custom("Invalid BleOptions client_central_uuid"))?;
-            result.client_central_uuid = Some(Uuid::from_bytes(client_central_uuid));
+                .map_err(|_| de::Error::custom("Invalid BleOptions central_client_uuid"))?;
+            result.central_client_uuid = Some(Uuid::from_bytes(central_client_uuid));
         }
 
         Ok(result)
@@ -505,7 +505,7 @@ mod test {
             vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
                 peripheral_server_uuid: None,
                 peripheral_server_mac_address: None,
-                client_central_uuid: Some(uuid!("45efef74-2b2c-4837-a9a3-b0e1d05a6917")),
+                central_client_uuid: Some(uuid!("45efef74-2b2c-4837-a9a3-b0e1d05a6917")),
             })]
         );
     }
@@ -527,7 +527,7 @@ mod test {
             DeviceRetrievalMethod::BleV1(BleOptionsV1 {
                 peripheral_server_uuid: Some(uuid!("9dbd8e03-0e73-412d-9793-24552b59970a")),
                 peripheral_server_mac_address: None,
-                client_central_uuid: None
+                central_client_uuid: None
             }),
         );
     }
@@ -563,7 +563,7 @@ mod test {
             device_retrieval_methods: vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
                 peripheral_server_uuid: Some(uuid!("18c39646-2c91-43d6-b0c7-8cc86efd2573")),
                 peripheral_server_mac_address: Some("F6:AC:82:54:69:B7".to_string()),
-                client_central_uuid: None,
+                central_client_uuid: None,
             })],
         }
     }

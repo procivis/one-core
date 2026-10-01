@@ -8,6 +8,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 
 mod central;
 mod central_client_mode;
+pub(super) mod common;
 pub(crate) mod holder;
 mod peripheral;
 mod peripheral_server_mode;

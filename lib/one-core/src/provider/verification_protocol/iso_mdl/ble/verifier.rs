@@ -6,9 +6,10 @@ use coset::{HeaderBuilder, ProtectedHeader};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use super::ISO_MDL_FLOW;
-use super::central::{read_chunked, send_end_command, wait_for_connection, write_chunked};
-use super::peripheral_server_mode::{CLIENT_2_SERVER, SERVER_2_CLIENT, STATE};
+use super::common::{
+    ConnectedPeer, PeerInfo, read_session_message, send_end, send_session_message,
+};
+use super::{ISO_MDL_FLOW, central, central_client_mode, peripheral, peripheral_server_mode};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
@@ -17,12 +18,13 @@ use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
-use crate::proto::bluetooth_low_energy::low_level::dto::PeripheralDiscoveryData;
+use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
+use crate::proto::bluetooth_low_energy::low_level::dto::ServiceDescription;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::ecosystem_resolver::EcosystemResolver;
@@ -50,17 +52,16 @@ use crate::provider::verification_protocol::iso_mdl::common::{
     create_session_transcript_bytes, set_proof_to_error, to_cbor,
 };
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
-    BleOptionsV1, DeviceEngagement, Security,
+    BleOptionsV1, DeviceEngagement,
 };
-use crate::provider::verification_protocol::iso_mdl::session::{
-    SessionData, SessionEstablishment, StatusCode,
-};
+use crate::provider::verification_protocol::iso_mdl::session::{SessionData, SessionEstablishment};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
     reader_key: EmbeddedCbor<EphemeralSessionKey>,
+    e_device_key_bytes: EmbeddedCbor<EphemeralSessionKey>,
     session_transcript: SessionTranscript,
     device_request_encrypted: Vec<u8>,
     sk_device: SkDevice,
@@ -80,9 +81,8 @@ pub(crate) async fn setup_verifier_session(
     verifier: Option<&IsoMdlVerifier>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<VerifierSession, VerificationProtocolError> {
-    let e_device_key = match &device_engagement.inner().security {
-        Security::V1 { e_device_key_bytes } => e_device_key_bytes.inner(),
-    };
+    let e_device_key_bytes = device_engagement.inner().security.e_device_key_bytes();
+    let e_device_key = e_device_key_bytes.inner();
     let key_algorithm = e_device_key.get_algorithm(key_algorithm_provider)?;
     let reader_key =
         KeyAgreementKey::generate(key_algorithm.as_ref()).error_while("generating EReaderKey")?;
@@ -128,6 +128,7 @@ pub(crate) async fn setup_verifier_session(
 
     Ok(VerifierSession {
         reader_key: e_reader_key,
+        e_device_key_bytes: e_device_key_bytes.to_owned(),
         session_transcript: session_transcript_bytes.into_inner(),
         device_request_encrypted,
         sk_device,
@@ -137,7 +138,7 @@ pub(crate) async fn setup_verifier_session(
 /// Main background task on mDL verifier
 /// All from initializing connection to handling response
 #[expect(clippy::too_many_arguments)]
-pub(crate) async fn start_client(
+pub(crate) async fn handle_ble_verifier(
     ble: &BleWaiter,
     ble_options: BleOptionsV1,
     verifier_session: VerifierSession,
@@ -153,26 +154,19 @@ pub(crate) async fn start_client(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
 ) -> Result<(), VerificationProtocolError> {
-    let peripheral_server_uuid = ble_options
-        .peripheral_server_uuid
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "BLE peripheral server mode not supported".to_string(),
-        ))?
-        .to_owned();
-
     let (sender, receiver) = oneshot::channel();
 
     let schedule_result = ble
         .schedule(
             *ISO_MDL_FLOW,
-            move |_, central, _| async move {
+            move |_, central, peripheral| async move {
                 let result = verifier_flow(
                     ble_options,
                     verifier_session,
                     &proof,
                     &interaction,
                     &central,
+                    &peripheral,
                     sender,
                     credential_formatter_provider.clone(),
                     presentation_formatter_provider.clone(),
@@ -193,15 +187,14 @@ pub(crate) async fn start_client(
 
                 result
             },
-            move |central, _| async move {
-                let message = "Cancelling mDL verifier flow".to_string();
-                tracing::info!(message);
-                if let Ok(device_info) = receiver.await {
-                    send_end_command(
+            move |central, peripheral| async move {
+                tracing::info!("Cancelling mDL verifier flow");
+                if let Ok(connected_holder) = receiver.await {
+                    send_end(
+                        ProofRole::Verifier,
                         &central,
-                        &device_info.device_address,
-                        &peripheral_server_uuid,
-                        STATE,
+                        &peripheral,
+                        Some(&connected_holder),
                     )
                     .await;
                 }
@@ -222,7 +215,7 @@ pub(crate) async fn start_client(
 /// and parsing response)
 ///
 /// It's split into smaller functions to simplify error handling - depending on place of failure
-/// we may need to send End command, disconnect BLE central and set proof state to error
+/// we may need to send End command, disconnect and set proof state to error
 #[expect(clippy::too_many_arguments)]
 async fn verifier_flow(
     ble_options: BleOptionsV1,
@@ -230,7 +223,8 @@ async fn verifier_flow(
     proof: &Proof,
     interaction: &Interaction,
     central: &TrackingBleCentral,
-    sender: oneshot::Sender<PeripheralDiscoveryData>,
+    peripheral: &TrackingBlePeripheral,
+    sender: oneshot::Sender<ConnectedPeer>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -241,28 +235,25 @@ async fn verifier_flow(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
 ) -> Result<(), VerificationProtocolError> {
-    let peripheral_server_uuid = ble_options
-        .peripheral_server_uuid
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(
-            "BLE peripheral server mode not supported".to_string(),
-        ))?
-        .to_owned();
+    let connected_holder = connect_based_on_options(
+        central,
+        peripheral,
+        ble_options,
+        &verifier_session.e_device_key_bytes,
+    )
+    .await?;
 
-    let (device, mtu_size) = connect_to_server(central, &peripheral_server_uuid).await?;
-
-    if let Err(err) = sender.send(device.to_owned()) {
+    if let Err(err) = sender.send(connected_holder.to_owned()) {
         tracing::warn!("failed to send device discovery data: {err:?}");
     }
 
     let result = process_proof(
-        ble_options,
         verifier_session,
         proof,
         interaction,
         central,
-        &device,
-        mtu_size,
+        peripheral,
+        &connected_holder,
         credential_formatter_provider,
         presentation_formatter_provider,
         did_method_provider,
@@ -274,12 +265,13 @@ async fn verifier_flow(
         ecosystem_resolver,
     )
     .await;
+
     if let Err(_error) = &result {
-        send_end_command(
+        send_end(
+            ProofRole::Verifier,
             central,
-            &device.device_address,
-            &peripheral_server_uuid,
-            STATE,
+            peripheral,
+            Some(&connected_holder),
         )
         .await;
     }
@@ -289,13 +281,12 @@ async fn verifier_flow(
 
 #[expect(clippy::too_many_arguments)]
 async fn process_proof(
-    ble_options: BleOptionsV1,
     verifier_session: VerifierSession,
     proof: &Proof,
     interaction: &Interaction,
     central: &TrackingBleCentral,
-    device: &PeripheralDiscoveryData,
-    mtu_size: usize,
+    peripheral: &TrackingBlePeripheral,
+    connected_holder: &ConnectedPeer,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -306,20 +297,18 @@ async fn process_proof(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
 ) -> Result<(), VerificationProtocolError> {
-    let peripheral_server_uuid =
-        ble_options
-            .peripheral_server_uuid
-            .ok_or(VerificationProtocolError::Failed(
-                "BLE peripheral server mode not supported".to_string(),
-            ))?;
+    let session_establishment = SessionEstablishment {
+        e_reader_key: verifier_session.reader_key,
+        data: Bstr(verifier_session.device_request_encrypted),
+    };
 
-    send_session_establishment(
+    send_session_message(
+        ProofRole::Verifier,
         central,
-        device,
-        &peripheral_server_uuid,
-        mtu_size,
-        verifier_session.reader_key,
-        verifier_session.device_request_encrypted,
+        peripheral,
+        &session_establishment,
+        connected_holder,
+        false,
     )
     .await?;
 
@@ -336,23 +325,33 @@ async fn process_proof(
         .await
         .error_while("updating proof")?;
 
-    let session_data = read_response(central, device, &peripheral_server_uuid).await?;
+    let session_data: SessionData =
+        read_session_message(ProofRole::Verifier, central, peripheral, connected_holder).await?;
 
-    let received_status_termination = session_data
-        .status
-        .is_some_and(|status| status == StatusCode::SessionTermination);
-    if !received_status_termination {
-        send_end_command(
+    let should_terminate_session = session_data.status.is_some();
+    if !should_terminate_session {
+        send_end(
+            ProofRole::Verifier,
             central,
-            &device.device_address,
-            &peripheral_server_uuid,
-            STATE,
+            peripheral,
+            Some(connected_holder),
         )
         .await;
     }
-    if let Err(err) = central.disconnect(device.device_address.to_owned()).await {
-        tracing::warn!("failed to disconnect BLE central: {err}");
-    }
+
+    // terminate connection
+    match connected_holder {
+        ConnectedPeer::CentralClientMode(_) => {
+            if let Err(err) = peripheral.stop_server().await {
+                tracing::warn!(%err, "failed to stop BLE peripheral");
+            }
+        }
+        ConnectedPeer::PeripheralServerMode(PeerInfo { address, .. }) => {
+            if let Err(err) = central.disconnect(address.to_owned()).await {
+                tracing::warn!(%err, "failed to disconnect BLE central");
+            }
+        }
+    };
 
     let decrypted = verifier_session.sk_device.decrypt(
         &session_data
@@ -467,64 +466,97 @@ async fn fill_proof_claims_and_credentials(
         .error_while("validating proof")?;
 
     crate::provider::verification_protocol::iso_mdl::verify_proof::accept_proof(
-        proof.clone(),
+        proof,
         interaction,
         proved_credentials,
         &*credential_repository,
         proof_repository,
-        identifier_creator,
+        identifier_creator.as_ref(),
         &*ecosystem_resolver,
     )
     .await
     .error_while("accepting proof")?;
 
-    // todo: history log accepted
-
     Ok(())
 }
 
-async fn connect_to_server(
+async fn connect_peripheral_server_mode(
     central: &TrackingBleCentral,
     service_uuid: &Uuid,
-) -> Result<(PeripheralDiscoveryData, usize), VerificationProtocolError> {
+) -> Result<ConnectedPeer, VerificationProtocolError> {
     central
         .start_scan(Some(vec![service_uuid.to_string()]))
         .await
         .error_while("starting BLE scan")?;
 
-    wait_for_connection(central, service_uuid, SERVER_2_CLIENT, STATE).await
-}
-
-async fn send_session_establishment(
-    central: &TrackingBleCentral,
-    device: &PeripheralDiscoveryData,
-    service_uuid: &Uuid,
-    mtu_size: usize,
-    e_reader_key: EmbeddedCbor<EphemeralSessionKey>,
-    device_request_encrypted: Vec<u8>,
-) -> Result<(), VerificationProtocolError> {
-    let session_establishment = SessionEstablishment {
-        e_reader_key,
-        data: Bstr(device_request_encrypted),
-    };
-
-    write_chunked(
-        &session_establishment,
+    let (device, mtu) = central::wait_for_connection(
         central,
-        &device.device_address,
         service_uuid,
-        CLIENT_2_SERVER,
-        mtu_size,
+        peripheral_server_mode::SERVER_2_CLIENT,
+        peripheral_server_mode::STATE,
     )
-    .await
+    .await?;
+
+    Ok(ConnectedPeer::PeripheralServerMode(PeerInfo {
+        address: device.device_address,
+        mtu,
+        service_uuid: *service_uuid,
+    }))
 }
 
-async fn read_response(
-    central: &TrackingBleCentral,
-    info: &PeripheralDiscoveryData,
+async fn connect_central_client_mode(
+    peripheral: &TrackingBlePeripheral,
     service_uuid: &Uuid,
-) -> Result<SessionData, VerificationProtocolError> {
-    read_chunked(central, &info.device_address, service_uuid, SERVER_2_CLIENT).await
+    e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
+) -> Result<ConnectedPeer, VerificationProtocolError> {
+    peripheral
+        .start_advertisement(
+            None,
+            vec![ServiceDescription {
+                uuid: service_uuid.to_string(),
+                advertise: true,
+                advertised_service_data: None,
+                characteristics: central_client_mode::get_characteristic_options(
+                    e_device_key_bytes,
+                )?,
+            }],
+        )
+        .await
+        .error_while("starting BLE advertisement")?;
+
+    let device_info =
+        peripheral::wait_for_active_device(peripheral, service_uuid, central_client_mode::STATE)
+            .await?;
+    let mtu = device_info.mtu() as _;
+    Ok(ConnectedPeer::CentralClientMode(PeerInfo {
+        address: device_info.address,
+        mtu,
+        service_uuid: *service_uuid,
+    }))
+}
+
+async fn connect_based_on_options(
+    central: &TrackingBleCentral,
+    peripheral: &TrackingBlePeripheral,
+    ble_options: BleOptionsV1,
+    e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
+) -> Result<ConnectedPeer, VerificationProtocolError> {
+    // ISO 18013-5, 8.3.3.1.1.1
+    // If the mdoc indicates during device engagement that it supports both modes, the mdoc reader should select the mdoc central client mode.
+    match (
+        ble_options.central_client_uuid,
+        ble_options.peripheral_server_uuid,
+    ) {
+        (Some(central_client_uuid), _) => {
+            connect_central_client_mode(peripheral, &central_client_uuid, e_device_key_bytes).await
+        }
+        (_, Some(peripheral_server_uuid)) => {
+            connect_peripheral_server_mode(central, &peripheral_server_uuid).await
+        }
+        (None, None) => Err(VerificationProtocolError::Failed(
+            "No BLE mode advertised".to_string(),
+        )),
+    }
 }
 
 async fn proof_input_schema_to_doc_request(

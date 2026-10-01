@@ -83,7 +83,7 @@ mod test {
                 device_retrieval_methods: vec![DeviceRetrievalMethod::BleV1(BleOptionsV1 {
                     peripheral_server_uuid: Some(Uuid::new_v4()),
                     peripheral_server_mac_address: None,
-                    client_central_uuid: None,
+                    central_client_uuid: None,
                 })],
             })
             .unwrap()
