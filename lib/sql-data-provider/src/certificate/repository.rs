@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
+use autometrics::autometrics;
 use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::certificate::{
     Certificate, CertificateListQuery, CertificateRole, GetCertificateList,
@@ -55,6 +56,7 @@ impl CertificateProvider {
     }
 }
 
+#[autometrics]
 #[async_trait]
 impl CertificateRepository for CertificateProvider {
     async fn create(&self, request: Certificate) -> Result<CertificateId, DataLayerError> {

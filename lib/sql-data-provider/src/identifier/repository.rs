@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::identifier::{
@@ -37,6 +38,7 @@ impl IdentifierProvider {
     }
 }
 
+#[autometrics]
 #[async_trait]
 impl IdentifierRepository for IdentifierProvider {
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError> {

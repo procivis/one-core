@@ -1,3 +1,4 @@
+use autometrics::autometrics;
 use entity::localized_text::{Column, Entity};
 use one_core::model::localized_text::LocalizedText;
 use one_core::repository::error::DataLayerError;
@@ -13,6 +14,7 @@ use crate::localized_text::LocalizedTextProvider;
 use crate::localized_text::mapper::deduplicate_localized_texts;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
+#[autometrics]
 #[async_trait::async_trait]
 impl LocalizedTextRepository for LocalizedTextProvider {
     async fn upsert(&self, localized_text: LocalizedText) -> Result<(), DataLayerError> {

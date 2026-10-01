@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use autometrics::autometrics;
 use one_core::model::managed_instance_attestation::{
     ManagedInstanceAttestation, UpdateManagedInstanceAttestationRequest,
 };
@@ -12,6 +13,7 @@ use super::mapper::attested_key_from_model;
 use crate::entity::managed_instance_attestation;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
+#[autometrics]
 #[async_trait]
 impl ManagedInstanceAttestationRepository for ManagedInstanceAttestationProvider {
     async fn create_attestation(

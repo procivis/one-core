@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
 use one_core::error::ErrorCodeMixinExt;
@@ -19,6 +20,7 @@ use crate::instance::mapper::instance_from_model;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
+#[autometrics]
 #[async_trait]
 impl InstanceRepository for InstanceProvider {
     async fn create(&self, request: Instance) -> Result<InstanceId, DataLayerError> {

@@ -1,3 +1,4 @@
+use autometrics::autometrics;
 use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::wallet_attestation::{
     WalletAttestation, WalletAttestationList, WalletAttestationListQuery,
@@ -14,6 +15,7 @@ use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 use crate::wallet_attestation::WalletAttestationProvider;
 
+#[autometrics]
 #[async_trait::async_trait]
 impl WalletAttestationRepository for WalletAttestationProvider {
     async fn create(

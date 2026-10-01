@@ -1,3 +1,4 @@
+use autometrics::autometrics;
 use one_core::model::identifier_trust_information::IdentifierTrustInformation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
@@ -9,6 +10,7 @@ use crate::entity::identifier_trust_information;
 use crate::identifier_trust_information::IdentifierTrustInformationProvider;
 use crate::mapper::to_data_layer_error;
 
+#[autometrics]
 #[async_trait::async_trait]
 impl IdentifierTrustInformationRepository for IdentifierTrustInformationProvider {
     async fn create(

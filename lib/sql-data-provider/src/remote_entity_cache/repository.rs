@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use autometrics::autometrics;
 use futures::FutureExt;
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::proto::transaction_manager::IsolationLevel;
@@ -14,6 +15,7 @@ use crate::entity::remote_entity_cache;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 
+#[autometrics]
 #[async_trait]
 impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
     async fn create(
@@ -132,7 +134,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
                 id: (*id).into(),
             })?;
 
-        Ok(context.try_into()?)
+        context.try_into()
     }
 
     async fn get_by_key(
@@ -145,7 +147,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        Ok(context.map(|context| context.try_into()).transpose()?)
+        context.map(|context| context.try_into()).transpose()
     }
 
     async fn get_repository_size(&self, r#type: CacheType) -> Result<u32, DataLayerError> {
