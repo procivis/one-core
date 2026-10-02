@@ -2327,3 +2327,452 @@ async fn test_update_identifier_empty_request_only_bumps() {
         .await
         .unwrap();
 }
+
+fn certificate_identifier(
+    identifier_id: shared_types::IdentifierId,
+    organisation: crate::model::organisation::Organisation,
+    certificates: Vec<Certificate>,
+) -> Identifier {
+    let mut identifier = dummy_identifier();
+    identifier.id = identifier_id;
+    identifier.organisation = organisation.into();
+    identifier.data = IdentifierData::Certificate(RelatedVec::from(certificates));
+    identifier
+}
+
+fn ca_identifier(
+    identifier_id: shared_types::IdentifierId,
+    organisation: crate::model::organisation::Organisation,
+    certificates: Vec<Certificate>,
+) -> Identifier {
+    let mut identifier = dummy_identifier();
+    identifier.id = identifier_id;
+    identifier.organisation = organisation.into();
+    identifier.data = IdentifierData::CertificateAuthority(RelatedVec::from(certificates));
+    identifier
+}
+
+#[tokio::test]
+async fn test_add_certificates_happy_path() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let identifier = certificate_identifier(identifier_id, organisation.clone(), vec![]);
+    let new_cert = dummy_certificate(identifier_id);
+    let new_cert_id = new_cert.id;
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(|_, request| request.state.is_none())
+        .returning(|_, _| Ok(()));
+
+    let mut certificate_repository = MockCertificateRepository::default();
+    certificate_repository
+        .expect_create()
+        .once()
+        .returning(move |_| Ok(new_cert_id));
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    let cert_clone = new_cert.clone();
+    identifier_creator
+        .expect_prepare_certificates()
+        .once()
+        .returning(move |_, _| Ok(vec![cert_clone.clone()]));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        certificate_repository,
+        identifier_creator,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    let ids = service
+        .add_certificates(&identifier_id, vec![])
+        .await
+        .unwrap();
+
+    assert_eq!(ids, vec![new_cert_id]);
+}
+
+#[tokio::test]
+async fn test_add_certificates_reactivates_deactivated_identifier() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let mut identifier = certificate_identifier(identifier_id, organisation.clone(), vec![]);
+    identifier.state = crate::model::identifier::IdentifierState::Deactivated;
+
+    let new_cert = dummy_certificate(identifier_id);
+    let new_cert_id = new_cert.id;
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(|_, request| {
+            request.state == Some(crate::model::identifier::IdentifierState::Active)
+        })
+        .returning(|_, _| Ok(()));
+
+    let mut certificate_repository = MockCertificateRepository::default();
+    certificate_repository
+        .expect_create()
+        .once()
+        .returning(move |_| Ok(new_cert_id));
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    let cert_clone = new_cert.clone();
+    identifier_creator
+        .expect_prepare_certificates()
+        .once()
+        .returning(move |_, _| Ok(vec![cert_clone.clone()]));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        certificate_repository,
+        identifier_creator,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    service
+        .add_certificates(&identifier_id, vec![])
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_add_certificates_wrong_identifier_type() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let mut identifier = dummy_identifier();
+    identifier.id = identifier_id;
+    identifier.organisation = organisation.clone().into();
+    // dummy_identifier() defaults to a DID identifier
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    let err = service
+        .add_certificates(&identifier_id, vec![])
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0514);
+}
+
+#[tokio::test]
+async fn test_add_certificate_authorities_wrong_identifier_type() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let identifier = certificate_identifier(identifier_id, organisation.clone(), vec![]);
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    let err = service
+        .add_certificate_authorities(&identifier_id, vec![])
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0514);
+}
+
+#[tokio::test]
+async fn test_remove_certificate_happy_path() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let cert_a = dummy_certificate(identifier_id);
+    let mut cert_b = dummy_certificate(identifier_id);
+    cert_b.fingerprint = "fingerprint-b".to_string();
+    let identifier = certificate_identifier(
+        identifier_id,
+        organisation.clone(),
+        vec![cert_a.clone(), cert_b.clone()],
+    );
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(|_, request| {
+            *request == crate::model::identifier::UpdateIdentifierRequest::default()
+        })
+        .returning(|_, _| Ok(()));
+
+    let mut certificate_repository = MockCertificateRepository::default();
+    let deleted_id = cert_b.id;
+    certificate_repository
+        .expect_delete()
+        .once()
+        .withf(move |cert| cert.id == deleted_id)
+        .returning(|_| Ok(()));
+
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_enabled_ecosystems()
+        .returning(Vec::new);
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        certificate_repository,
+        ecosystem_provider,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    service
+        .remove_certificate(&identifier_id, &cert_b.id)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_remove_certificate_prunes_orphaned_trust_information() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let cert_a = dummy_certificate(identifier_id);
+    let mut cert_b = dummy_certificate(identifier_id);
+    cert_b.fingerprint = "fingerprint-b".to_string();
+    let mut identifier = certificate_identifier(
+        identifier_id,
+        organisation.clone(),
+        vec![cert_a.clone(), cert_b.clone()],
+    );
+    let trust_info_id: shared_types::IdentifierTrustInformationId = Uuid::new_v4().into();
+    let blob_id: shared_types::BlobId = Uuid::new_v4().into();
+    identifier.trust_information = RelatedVec::from(vec![
+        crate::model::identifier_trust_information::IdentifierTrustInformation {
+            id: trust_info_id,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            valid_from: None,
+            valid_to: None,
+            intended_use: None,
+            allowed_issuance_types: vec![],
+            allowed_verification_types: vec![],
+            identifier_id,
+            blob_id,
+        },
+    ]);
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .times(2)
+        .returning(move |_| Ok(returned.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut certificate_repository = MockCertificateRepository::default();
+    certificate_repository
+        .expect_delete()
+        .once()
+        .returning(|_| Ok(()));
+
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_enabled_ecosystems()
+        .returning(move || {
+            let mut ecosystem = MockEcosystem::new();
+            ecosystem
+                .expect_config_name()
+                .return_const(EcosystemId::from("EUDI"));
+            ecosystem
+                .expect_orphaned_identifier_trust_information()
+                .once()
+                .returning(move |_| Ok(vec![trust_info_id]));
+            vec![Arc::new(ecosystem) as Arc<dyn Ecosystem>]
+        });
+
+    let mut identifier_trust_information_repository =
+        MockIdentifierTrustInformationRepository::default();
+    identifier_trust_information_repository
+        .expect_delete()
+        .once()
+        .withf(move |id| *id == trust_info_id)
+        .returning(|_| Ok(()));
+
+    let mut blob_storage = MockBlobStorage::default();
+    blob_storage
+        .expect_delete_many()
+        .once()
+        .withf(move |ids| ids == [blob_id])
+        .returning(|_| Ok(()));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::default();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        certificate_repository,
+        ecosystem_provider,
+        identifier_trust_information_repository,
+        blob_storage_provider,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    service
+        .remove_certificate(&identifier_id, &cert_b.id)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_remove_last_certificate_fails() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let cert = dummy_certificate(identifier_id);
+    let identifier =
+        certificate_identifier(identifier_id, organisation.clone(), vec![cert.clone()]);
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    let err = service
+        .remove_certificate(&identifier_id, &cert.id)
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0515);
+}
+
+#[tokio::test]
+async fn test_remove_certificate_not_belonging_to_identifier() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let cert_a = dummy_certificate(identifier_id);
+    let identifier = certificate_identifier(identifier_id, organisation.clone(), vec![cert_a]);
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    let foreign_certificate_id: shared_types::CertificateId = Uuid::new_v4().into();
+    let err = service
+        .remove_certificate(&identifier_id, &foreign_certificate_id)
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0223);
+}
+
+#[tokio::test]
+async fn test_remove_certificate_already_deleted() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let cert_a = dummy_certificate(identifier_id);
+    let mut cert_b = dummy_certificate(identifier_id);
+    cert_b.deleted_at = Some(crate::clock::now_utc());
+    let identifier = certificate_identifier(
+        identifier_id,
+        organisation.clone(),
+        vec![cert_a.clone(), cert_b.clone()],
+    );
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    let err = service
+        .remove_certificate(&identifier_id, &cert_b.id)
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0223);
+}
+
+#[tokio::test]
+async fn test_remove_certificate_wrong_identifier_type() {
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let cert_a = dummy_certificate(identifier_id);
+    let cert_b = dummy_certificate(identifier_id);
+    let identifier = ca_identifier(
+        identifier_id,
+        organisation.clone(),
+        vec![cert_a.clone(), cert_b.clone()],
+    );
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .returning(move |_| Ok(returned.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    let err = service
+        .remove_certificate(&identifier_id, &cert_a.id)
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0514);
+}

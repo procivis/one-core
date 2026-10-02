@@ -20,4 +20,5 @@ pub trait IdentifierTrustInformationRepository: Send + Sync {
         &self,
         identifier_id: &IdentifierId,
     ) -> Result<(), DataLayerError>;
+    async fn delete(&self, id: &IdentifierTrustInformationId) -> Result<(), DataLayerError>;
 }

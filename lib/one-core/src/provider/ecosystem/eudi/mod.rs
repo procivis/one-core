@@ -5,7 +5,10 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::i18n::I18nString;
-use shared_types::{CredentialFormat, CredentialId, EcosystemId, OrganisationId, ProofId};
+use shared_types::{
+    CredentialFormat, CredentialId, EcosystemId, IdentifierTrustInformationId, OrganisationId,
+    ProofId,
+};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use time::Duration;
 
@@ -309,5 +312,12 @@ impl Ecosystem for EudiEcosystem {
     ) -> Result<Vec<ParsedTrustInformation>, EcosystemError> {
         self.parse_trust_information(identifier, trust_information)
             .await
+    }
+
+    async fn orphaned_identifier_trust_information(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Vec<IdentifierTrustInformationId>, EcosystemError> {
+        self.find_orphaned_trust_information(identifier).await
     }
 }

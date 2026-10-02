@@ -727,3 +727,27 @@ pub(crate) enum TrustEntityResponseRestEnum {
     Lote(TrustedEntityInformation),
     Tsl(TslServiceEntryRestDTO),
 }
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct AddCertificatesRequestRestDTO {
+    /// Certificates to add to an existing CERTIFICATE identifier. Follows the
+    /// same structure as `certificates` in `POST /api/identifier/v1`.
+    pub certificates: Vec<CreateCertificateRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct AddCertificateAuthoritiesRequestRestDTO {
+    /// Certificates to add to an existing CA identifier. Follows the same
+    /// structure as `certificateAuthorities` in `POST /api/identifier/v1`.
+    pub certificate_authorities: Vec<CreateCertificateAuthorityRequestRestDTO>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct EntityIdsResponseRestDTO {
+    pub ids: Vec<CertificateId>,
+}

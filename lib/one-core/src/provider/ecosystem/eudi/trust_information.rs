@@ -1,13 +1,17 @@
 use std::collections::HashSet;
 
+use shared_types::IdentifierTrustInformationId;
 use standardized_types::etsi_119_475::registration_certificate::Payload;
 
 use super::EudiEcosystem;
 use super::mapper::map_dcql_credentials;
+use crate::config::core_config::BlobStorageType;
 use crate::error::ErrorCode::{BR_0224, BR_0487};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::BlobType;
 use crate::model::identifier::{Identifier, IdentifierData};
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::ecosystem::model::{
     IdentifierTrustInformationType, ParsedTrustInformation, TrustInformationInput,
@@ -77,6 +81,49 @@ impl EudiEcosystem {
         Ok(result)
     }
 
+    pub(super) async fn find_orphaned_trust_information(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Vec<IdentifierTrustInformationId>, EcosystemError> {
+        let trust_information = identifier.trust_information.as_ref().await?;
+        if trust_information.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let rp_id = self.etsi_rp_id_for_identifier(identifier).await?;
+
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+        let mut orphaned = Vec::new();
+        for info in &trust_information {
+            let blob = blob_storage
+                .get(&info.blob_id)
+                .await
+                .error_while("loading trust information blob")?
+                .ok_or_else(|| {
+                    EcosystemError::MappingError(format!(
+                        "Trust information blob {} not found",
+                        info.blob_id
+                    ))
+                })?;
+            let blob_value = std::str::from_utf8(&blob.value).map_err(|e| {
+                EcosystemError::MappingError(format!("failed to parse blob value: {e}"))
+            })?;
+            let parsed: DecomposedJwt<()> =
+                Jwt::decompose_token(blob_value).error_while("parsing trust information blob")?;
+
+            let covered = matches!(
+                (&rp_id, &parsed.payload.subject),
+                (Some(rp_id), Some(sub)) if rp_id == sub
+            );
+            if !covered {
+                orphaned.push(info.id);
+            }
+        }
+        Ok(orphaned)
+    }
+
     /// The single ETSI relying party id shared by all (non-deleted) access certificates of the
     /// identifier, if any. Certificates that are not access certificates are tolerated (the
     /// identifier might carry additional, unrelated certificates).
@@ -126,7 +173,9 @@ mod test {
     use std::collections::HashMap as StdHashMap;
     use std::sync::Arc;
 
+    use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
     use serde_json::json;
+    use shared_types::BlobId;
     use similar_asserts::assert_eq;
     use standardized_types::etsi_119_475::Credential;
     use standardized_types::etsi_119_475::registration_certificate::{
@@ -139,6 +188,7 @@ mod test {
     use super::*;
     use crate::config::core_config::CoreConfig;
     use crate::error::ErrorCode;
+    use crate::model::blob::Blob;
     use crate::model::relation::RelatedVec;
     use crate::proto::credential_validity_manager::MockCredentialValidityManager;
     use crate::proto::session_provider::NoSessionProvider;
@@ -148,6 +198,7 @@ mod test {
     use crate::proto::wrp_validator::model::{
         AccessCertificateResult, RegistrationCertificateResult,
     };
+    use crate::provider::blob_storage::MockBlobStorage;
     use crate::provider::blob_storage::provider::MockBlobStorageProvider;
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
     use crate::provider::signer::registration_certificate::model::WRPRegistrationCertificatePayload;
@@ -240,6 +291,138 @@ mod test {
         let mut identifier = dummy_identifier();
         identifier.data = IdentifierData::Certificate(RelatedVec::from(certificates));
         identifier
+    }
+
+    fn fake_jwt(sub: &str) -> String {
+        let header = Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"none"}"#).unwrap();
+        let payload =
+            Base64UrlSafeNoPadding::encode_to_string(json!({ "sub": sub }).to_string()).unwrap();
+        format!("{header}.{payload}.")
+    }
+
+    fn dummy_trust_info(
+        id: IdentifierTrustInformationId,
+        identifier_id: shared_types::IdentifierId,
+        blob_id: BlobId,
+    ) -> crate::model::identifier_trust_information::IdentifierTrustInformation {
+        crate::model::identifier_trust_information::IdentifierTrustInformation {
+            id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            valid_from: None,
+            valid_to: None,
+            intended_use: None,
+            allowed_issuance_types: vec![],
+            allowed_verification_types: vec![],
+            identifier_id,
+            blob_id,
+        }
+    }
+
+    fn blob_storage_provider_returning(jwt: String) -> MockBlobStorageProvider {
+        let mut blob_storage = MockBlobStorage::default();
+        blob_storage.expect_get().returning(move |id| {
+            Ok(Some(Blob {
+                id: *id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                value: jwt.clone().into_bytes(),
+                r#type: BlobType::RegistrationCertificate,
+            }))
+        });
+        let blob_storage = Arc::new(blob_storage);
+        let mut blob_storage_provider = MockBlobStorageProvider::default();
+        blob_storage_provider
+            .expect_get_blob_storage()
+            .returning(move |_| Ok(blob_storage.clone()));
+        blob_storage_provider
+    }
+
+    fn access_certificate_validator(relying_party_id: &'static str) -> MockWRPValidator {
+        let mut wrp_validator = MockWRPValidator::new();
+        wrp_validator
+            .expect_validate_access_certificate()
+            .once()
+            .returning(move |_, _| {
+                Ok(AccessCertificateResult {
+                    trust_entity: None,
+                    relying_party_id: relying_party_id.to_string(),
+                    registry_url: None,
+                })
+            });
+        wrp_validator
+    }
+
+    #[tokio::test]
+    async fn test_find_orphaned_trust_information_returns_all_when_no_certificates() {
+        let identifier_id = Uuid::new_v4().into();
+        let mut identifier = identifier_with_certificates(vec![]);
+        let trust_info_id = Uuid::new_v4().into();
+        identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
+            trust_info_id,
+            identifier_id,
+            Uuid::new_v4().into(),
+        )]);
+
+        let ecosystem = setup(Mocks {
+            blob_storage_provider: blob_storage_provider_returning(fake_jwt("rp1")),
+            ..Default::default()
+        });
+
+        let orphaned = ecosystem
+            .find_orphaned_trust_information(&identifier)
+            .await
+            .unwrap();
+
+        assert_eq!(orphaned, vec![trust_info_id]);
+    }
+
+    #[tokio::test]
+    async fn test_find_orphaned_trust_information_keeps_matching_sub() {
+        let identifier_id = Uuid::new_v4().into();
+        let mut identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
+        let trust_info_id = Uuid::new_v4().into();
+        identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
+            trust_info_id,
+            identifier_id,
+            Uuid::new_v4().into(),
+        )]);
+
+        let ecosystem = setup(Mocks {
+            wrp_validator: access_certificate_validator("rp1"),
+            blob_storage_provider: blob_storage_provider_returning(fake_jwt("rp1")),
+        });
+
+        let orphaned = ecosystem
+            .find_orphaned_trust_information(&identifier)
+            .await
+            .unwrap();
+
+        assert!(orphaned.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_find_orphaned_trust_information_flags_mismatched_sub() {
+        let identifier_id = Uuid::new_v4().into();
+        let mut identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
+        let trust_info_id = Uuid::new_v4().into();
+        identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
+            trust_info_id,
+            identifier_id,
+            Uuid::new_v4().into(),
+        )]);
+
+        let ecosystem = setup(Mocks {
+            wrp_validator: access_certificate_validator("rp1"),
+            blob_storage_provider: blob_storage_provider_returning(fake_jwt("someone-else")),
+        });
+
+        let orphaned = ecosystem
+            .find_orphaned_trust_information(&identifier)
+            .await
+            .unwrap();
+
+        assert_eq!(orphaned, vec![trust_info_id]);
     }
 
     #[tokio::test]

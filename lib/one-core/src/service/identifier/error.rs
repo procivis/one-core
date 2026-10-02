@@ -54,6 +54,10 @@ pub enum IdentifierServiceError {
     KeyMustNotBeRemote(String),
     #[error("Key does not belong to this organisation")]
     KeyOrganisationMismatch,
+    #[error("Operation requires a CERTIFICATE or CA identifier")]
+    InvalidIdentifierTypeForCertificateOperation,
+    #[error("Identifier must keep at least one certificate")]
+    CannotRemoveLastCertificate,
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -80,6 +84,8 @@ impl ErrorCodeMixin for IdentifierServiceError {
             Self::InvalidUpdateForIdentifierType { .. } => ErrorCode::BR_0513,
             Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
             Self::KeyOrganisationMismatch => ErrorCode::BR_0285,
+            Self::InvalidIdentifierTypeForCertificateOperation => ErrorCode::BR_0514,
+            Self::CannotRemoveLastCertificate => ErrorCode::BR_0515,
             Self::Nested(nested) => nested.error_code(),
         }
     }

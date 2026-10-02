@@ -1137,6 +1137,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Requested attribute cannot be updated for this identifier type")]
     BR_0513,
+
+    #[strum(message = "Operation requires a CERTIFICATE or CA identifier")]
+    BR_0514,
+
+    #[strum(message = "Identifier must keep at least one certificate")]
+    BR_0515,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

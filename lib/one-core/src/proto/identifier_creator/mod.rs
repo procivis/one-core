@@ -126,6 +126,18 @@ pub(crate) trait IdentifierCreator: Send + Sync {
         logo: String,
         now: OffsetDateTime,
     ) -> Result<BlobId, Error>;
+
+    async fn prepare_certificates(
+        &self,
+        identifier: &Identifier,
+        requests: Vec<CreateCertificateRequestDTO>,
+    ) -> Result<Vec<Certificate>, Error>;
+
+    async fn prepare_certificate_authorities(
+        &self,
+        identifier: &Identifier,
+        requests: Vec<CreateCertificateAuthorityRequestDTO>,
+    ) -> Result<Vec<Certificate>, Error>;
 }
 
 #[derive(Debug, thiserror::Error)]

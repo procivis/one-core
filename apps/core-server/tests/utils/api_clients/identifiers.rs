@@ -1,6 +1,6 @@
 use core_server::endpoint::trust_list_publication::dto::TrustListRoleRestEnum;
 use serde_json::json;
-use shared_types::{IdentifierId, KeyId, OrganisationId};
+use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId};
 
 use super::{HttpClient, Response};
 
@@ -370,6 +370,56 @@ impl IdentifiersApi {
 
         self.client
             .post("/api/identifier/v1/resolve-trust-entries", body)
+            .await
+    }
+
+    pub async fn add_certificates(
+        &self,
+        identifier_id: &IdentifierId,
+        certificates: serde_json::Value,
+    ) -> Response {
+        self.client
+            .post(
+                &format!("/api/identifier/v1/{identifier_id}/certificate"),
+                json!({ "certificates": certificates }),
+            )
+            .await
+    }
+
+    pub async fn delete_certificate(
+        &self,
+        identifier_id: &IdentifierId,
+        certificate_id: &CertificateId,
+    ) -> Response {
+        self.client
+            .delete(&format!(
+                "/api/identifier/v1/{identifier_id}/certificate/{certificate_id}"
+            ))
+            .await
+    }
+
+    pub async fn add_certificate_authorities(
+        &self,
+        identifier_id: &IdentifierId,
+        certificate_authorities: serde_json::Value,
+    ) -> Response {
+        self.client
+            .post(
+                &format!("/api/identifier/v1/{identifier_id}/certificate-authority"),
+                json!({ "certificateAuthorities": certificate_authorities }),
+            )
+            .await
+    }
+
+    pub async fn delete_certificate_authority(
+        &self,
+        identifier_id: &IdentifierId,
+        certificate_authority_id: &CertificateId,
+    ) -> Response {
+        self.client
+            .delete(&format!(
+                "/api/identifier/v1/{identifier_id}/certificate-authority/{certificate_authority_id}"
+            ))
             .await
     }
 }

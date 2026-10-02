@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use shared_types::i18n::I18nString;
-use shared_types::{CredentialId, EcosystemId, ProofId};
+use shared_types::{CredentialId, EcosystemId, IdentifierTrustInformationId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use super::Ecosystem;
@@ -93,6 +93,13 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
     ) -> Result<Vec<ParsedTrustInformation>, EcosystemError> {
         self.disabled_error()
     }
+
+    async fn orphaned_identifier_trust_information(
+        &self,
+        _identifier: &Identifier,
+    ) -> Result<Vec<IdentifierTrustInformationId>, EcosystemError> {
+        self.disabled_error()
+    }
 }
 
 /// Checks supported operations
@@ -177,6 +184,15 @@ impl Ecosystem for CapabilityChecked {
     ) -> Result<Vec<ParsedTrustInformation>, EcosystemError> {
         self.0
             .parse_identifier_trust_information(identifier, trust_information)
+            .await
+    }
+
+    async fn orphaned_identifier_trust_information(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Vec<IdentifierTrustInformationId>, EcosystemError> {
+        self.0
+            .orphaned_identifier_trust_information(identifier)
             .await
     }
 }

@@ -1,6 +1,6 @@
 use one_core::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
-use shared_types::{BlobId, IdentifierId};
+use shared_types::{BlobId, IdentifierId, IdentifierTrustInformationId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -118,4 +118,35 @@ async fn test_get_identifier_trust_information() {
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0], trust_info);
+}
+
+#[tokio::test]
+async fn test_delete_identifier_trust_information() {
+    let setup = setup().await;
+    let id: IdentifierTrustInformationId = Uuid::new_v4().into();
+    setup
+        .provider
+        .create(IdentifierTrustInformation {
+            id,
+            identifier_id: setup.identifier_id,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            valid_from: None,
+            valid_to: None,
+            intended_use: None,
+            allowed_issuance_types: vec![],
+            allowed_verification_types: vec![],
+            blob_id: setup.blob_id,
+        })
+        .await
+        .unwrap();
+
+    setup.provider.delete(&id).await.unwrap();
+
+    let result = setup
+        .provider
+        .get_by_identifier_id(&setup.identifier_id)
+        .await
+        .unwrap();
+    assert!(result.is_empty());
 }

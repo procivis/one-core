@@ -1,9 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use futures::FutureExt;
 use itertools::Itertools;
-use shared_types::{BlobId, IdentifierId, KeyId, TrustCollectionId};
+use shared_types::{
+    BlobId, CertificateId, IdentifierId, IdentifierTrustInformationId, KeyId, TrustCollectionId,
+};
 use time::OffsetDateTime;
 use tracing::warn;
 use url::Url;
@@ -26,10 +28,12 @@ use crate::config::core_config;
 use crate::config::core_config::BlobStorageType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, UpdateBlobRequest};
+use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::identifier::{
     Identifier, IdentifierData, IdentifierFilterValue, IdentifierListIncludeEntity,
-    IdentifierListQuery, IdentifierType, SortableIdentifierColumn, UpdateIdentifierRequest,
+    IdentifierListQuery, IdentifierState, IdentifierType, SortableIdentifierColumn,
+    UpdateIdentifierRequest,
 };
 use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
@@ -42,7 +46,7 @@ use crate::model::trust_list_subscription::{
     TrustListSubscription, TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
 };
 use crate::proto::identifier_creator::{
-    CreateLocalIdentifierRequestParams, CreateLocalIdentifierRequestType, IdentifierName,
+    self, CreateLocalIdentifierRequestParams, CreateLocalIdentifierRequestType, IdentifierName,
     RemoteIdentifierOutcome, build_identifier_translations,
 };
 use crate::proto::transaction_manager::IsolationLevel;
@@ -51,11 +55,13 @@ use crate::provider::ecosystem::model::TrustInformationInput;
 use crate::provider::trust_list_subscriber::{
     Feature, TrustEntityResponse, TrustListSubscriber, TrustListSubscriberCapabilities,
 };
-use crate::repository::error::DataLayerError;
+use crate::repository::error::{DataLayerError, EntityKind};
+use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::error::ValidationError;
 use crate::service::identifier::dto::{
-    CreateRemoteIdentifierRequestDTO, ResolvedTrustEntrySourceResponseDTO,
+    CreateCertificateAuthorityRequestDTO, CreateRemoteIdentifierRequestDTO,
+    ResolvedTrustEntrySourceResponseDTO,
 };
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -696,6 +702,49 @@ impl IdentifierService {
         Ok(())
     }
 
+    async fn prune_orphaned_trust_information(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<(), IdentifierServiceError> {
+        let mut orphaned_ids: HashSet<IdentifierTrustInformationId> = HashSet::new();
+        for ecosystem in self.ecosystem_provider.enabled_ecosystems() {
+            let ids = ecosystem
+                .orphaned_identifier_trust_information(identifier)
+                .await
+                .error_while("finding orphaned trust information")?;
+            orphaned_ids.extend(ids);
+        }
+        if orphaned_ids.is_empty() {
+            return Ok(());
+        }
+
+        let trust_information = identifier.trust_information.as_ref().await?.to_owned();
+        let blob_ids: Vec<_> = trust_information
+            .iter()
+            .filter(|info| orphaned_ids.contains(&info.id))
+            .map(|info| info.blob_id)
+            .collect();
+
+        for id in &orphaned_ids {
+            self.identifier_trust_information_repository
+                .delete(id)
+                .await
+                .error_while("deleting orphaned trust information")?;
+        }
+
+        if !blob_ids.is_empty() {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)?;
+            blob_storage
+                .delete_many(&blob_ids)
+                .await
+                .error_while("deleting orphaned trust information blobs")?;
+        }
+
+        Ok(())
+    }
+
     /// Deletes an identifier
     ///
     /// # Arguments
@@ -1000,6 +1049,243 @@ impl IdentifierService {
                     trust_list_subscription.r#type.clone(),
                 )
             })
+    }
+
+    /// Adds one or more certificates to an existing local CERTIFICATE identifier.
+    pub async fn add_certificates(
+        &self,
+        id: &IdentifierId,
+        requests: Vec<CreateCertificateRequestDTO>,
+    ) -> Result<Vec<CertificateId>, IdentifierServiceError> {
+        let identifier = self.get_identifier_for_certificate_mutation(id).await?;
+
+        if !matches!(identifier.data, IdentifierData::Certificate(_)) {
+            return Err(IdentifierServiceError::InvalidIdentifierTypeForCertificateOperation);
+        }
+
+        let ids = self
+            .transaction_manager
+            .tx(async {
+                let certificates = self
+                    .identifier_creator
+                    .prepare_certificates(&identifier, requests)
+                    .await
+                    .error_while("preparing certificates")?;
+                self.persist_new_certificates(&identifier, certificates)
+                    .await
+            }
+            .boxed())
+            .await
+            .error_while("adding certificates")??;
+
+        Ok(ids)
+    }
+
+    /// Adds one or more certificates to an existing local CA identifier.
+    pub async fn add_certificate_authorities(
+        &self,
+        id: &IdentifierId,
+        requests: Vec<CreateCertificateAuthorityRequestDTO>,
+    ) -> Result<Vec<CertificateId>, IdentifierServiceError> {
+        let identifier = self.get_identifier_for_certificate_mutation(id).await?;
+
+        if !matches!(identifier.data, IdentifierData::CertificateAuthority(_)) {
+            return Err(IdentifierServiceError::InvalidIdentifierTypeForCertificateOperation);
+        }
+
+        let ids = self
+            .transaction_manager
+            .tx(async {
+                let certificates = self
+                    .identifier_creator
+                    .prepare_certificate_authorities(&identifier, requests)
+                    .await
+                    .error_while("preparing certificate authorities")?;
+                self.persist_new_certificates(&identifier, certificates)
+                    .await
+            }
+            .boxed())
+            .await
+            .error_while("adding certificate authorities")??;
+
+        Ok(ids)
+    }
+
+    /// Removes (soft-deletes) a certificate from an existing local CERTIFICATE identifier. Fails
+    /// if it would be the identifier's last remaining non-deleted certificate.
+    pub async fn remove_certificate(
+        &self,
+        identifier_id: &IdentifierId,
+        certificate_id: &CertificateId,
+    ) -> Result<(), IdentifierServiceError> {
+        let identifier = self
+            .get_identifier_for_certificate_mutation(identifier_id)
+            .await?;
+
+        if !matches!(identifier.data, IdentifierData::Certificate(_)) {
+            return Err(IdentifierServiceError::InvalidIdentifierTypeForCertificateOperation);
+        }
+
+        self.remove_certificate_internal(identifier, certificate_id)
+            .await?;
+
+        let identifier = self
+            .identifier_repository
+            .get(*identifier_id)
+            .await
+            .error_while("getting identifier")?;
+        self.prune_orphaned_trust_information(&identifier).await
+    }
+
+    /// Removes (soft-deletes) a certificate from an existing local CA identifier. Fails if it
+    /// would be the identifier's last remaining non-deleted certificate.
+    pub async fn remove_certificate_authority(
+        &self,
+        identifier_id: &IdentifierId,
+        certificate_id: &CertificateId,
+    ) -> Result<(), IdentifierServiceError> {
+        let identifier = self
+            .get_identifier_for_certificate_mutation(identifier_id)
+            .await?;
+
+        if !matches!(identifier.data, IdentifierData::CertificateAuthority(_)) {
+            return Err(IdentifierServiceError::InvalidIdentifierTypeForCertificateOperation);
+        }
+
+        self.remove_certificate_internal(identifier, certificate_id)
+            .await
+    }
+
+    async fn remove_certificate_internal(
+        &self,
+        identifier: Identifier,
+        certificate_id: &CertificateId,
+    ) -> Result<(), IdentifierServiceError> {
+        let certificates = match &identifier.data {
+            IdentifierData::Certificate(certificates)
+            | IdentifierData::CertificateAuthority(certificates) => {
+                certificates.as_ref().await?.to_owned()
+            }
+            _ => vec![],
+        };
+
+        let certificate = certificates
+            .iter()
+            .find(|certificate| {
+                &certificate.id == certificate_id && certificate.deleted_at.is_none()
+            })
+            .cloned()
+            .ok_or_else(|| -> IdentifierServiceError {
+                DataLayerError::EntityNotFound {
+                    kind: EntityKind::Certificate,
+                    id: (*certificate_id).into(),
+                }
+                .error_while("getting certificate")
+                .into()
+            })?;
+
+        let active_count = certificates
+            .iter()
+            .filter(|certificate| certificate.deleted_at.is_none())
+            .count();
+        if active_count <= 1 {
+            return Err(IdentifierServiceError::CannotRemoveLastCertificate);
+        }
+
+        let identifier_id = identifier.id;
+        self.transaction_manager
+            .tx(async {
+                self.certificate_repository
+                    .delete(&certificate)
+                    .await
+                    .error_while("deleting certificate")?;
+
+                self.identifier_repository
+                    .update(&identifier_id, UpdateIdentifierRequest::default())
+                    .await
+                    .error_while("updating identifier")?;
+
+                Ok::<_, IdentifierServiceError>(())
+            }
+            .boxed())
+            .await
+            .error_while("removing certificate")??;
+
+        Ok(())
+    }
+
+    async fn get_identifier_for_certificate_mutation(
+        &self,
+        id: &IdentifierId,
+    ) -> Result<Identifier, IdentifierServiceError> {
+        let identifier =
+            self.identifier_repository
+                .get(*id)
+                .await
+                .map_err(|error| match error {
+                    DataLayerError::EntityNotFound { .. } => IdentifierServiceError::NotFound(*id),
+                    error => error.error_while("getting identifier").into(),
+                })?;
+
+        if identifier.deleted_at.is_some() {
+            return Err(IdentifierServiceError::NotFound(*id));
+        }
+
+        throw_if_org_id_not_matching_session(
+            &identifier.organisation.id(),
+            &*self.session_provider,
+        )
+        .error_while("checking session")?;
+
+        if identifier.is_remote {
+            return Err(IdentifierServiceError::InvalidIdentifierTypeForCertificateOperation);
+        }
+
+        Ok(identifier)
+    }
+
+    async fn persist_new_certificates(
+        &self,
+        identifier: &Identifier,
+        certificates: Vec<Certificate>,
+    ) -> Result<Vec<CertificateId>, IdentifierServiceError> {
+        let mut ids = Vec::with_capacity(certificates.len());
+        let mut has_active = false;
+
+        for certificate in certificates {
+            if certificate.state == CertificateState::Active {
+                has_active = true;
+            }
+            let certificate_id = certificate.id;
+            self.certificate_repository
+                .create(certificate)
+                .await
+                .map_err(|error| -> IdentifierServiceError {
+                    match error {
+                        DataLayerError::AlreadyExists => {
+                            identifier_creator::Error::CertificateAlreadyExists
+                                .error_while("creating certificate")
+                                .into()
+                        }
+                        error => error.error_while("creating certificate").into(),
+                    }
+                })?;
+            ids.push(certificate_id);
+        }
+
+        let reactivate = identifier.state == IdentifierState::Deactivated && has_active;
+        self.identifier_repository
+            .update(
+                &identifier.id,
+                UpdateIdentifierRequest {
+                    state: reactivate.then_some(IdentifierState::Active),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating identifier")?;
+
+        Ok(ids)
     }
 }
 

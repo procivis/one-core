@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use async_trait::async_trait;
 use proc_macros::provider_mock;
 use shared_types::i18n::I18nString;
-use shared_types::{CredentialId, EcosystemId, ProofId};
+use shared_types::{CredentialId, EcosystemId, IdentifierTrustInformationId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use crate::model::credential::Credential;
@@ -77,6 +77,11 @@ pub trait Ecosystem: Provider + Send + Sync {
         identifier: &Identifier,
         trust_information: &[TrustInformationInput],
     ) -> Result<Vec<ParsedTrustInformation>, EcosystemError>;
+
+    async fn orphaned_identifier_trust_information(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Vec<IdentifierTrustInformationId>, EcosystemError>;
 }
 
 impl Display for dyn Ecosystem {

@@ -582,6 +582,70 @@ impl IdentifierCreatorProto {
         })
     }
 
+    pub(super) async fn prepare_certificates(
+        &self,
+        identifier: &Identifier,
+        requests: Vec<CreateCertificateRequestDTO>,
+    ) -> Result<Vec<Certificate>, Error> {
+        if requests.is_empty() {
+            return Err(Error::InvalidCertificateInput);
+        }
+
+        let organisation = identifier.organisation.as_ref().await?.to_owned();
+        let existing = match &identifier.data {
+            IdentifierData::Certificate(certificates) => certificates.as_ref().await?.to_owned(),
+            _ => vec![],
+        };
+
+        let mut certificates = non_deleted(existing);
+        let mut prepared = Vec::with_capacity(requests.len());
+        for request in requests {
+            let cert = self
+                .validate_and_prepare_certificate(identifier.id, organisation.clone(), request)
+                .await?;
+            validate_no_conflicts(&certificates, &cert)?;
+            certificates.push(cert.clone());
+            prepared.push(cert);
+        }
+
+        Ok(prepared)
+    }
+
+    pub(super) async fn prepare_certificate_authorities(
+        &self,
+        identifier: &Identifier,
+        requests: Vec<CreateCertificateAuthorityRequestDTO>,
+    ) -> Result<Vec<Certificate>, Error> {
+        if requests.is_empty() {
+            return Err(Error::InvalidCertificateInput);
+        }
+
+        let organisation = identifier.organisation.as_ref().await?.to_owned();
+        let existing = match &identifier.data {
+            IdentifierData::CertificateAuthority(certificates) => {
+                certificates.as_ref().await?.to_owned()
+            }
+            _ => vec![],
+        };
+
+        let mut certificates = non_deleted(existing);
+        let mut prepared = Vec::with_capacity(requests.len());
+        for request in requests {
+            let cert = self
+                .validate_and_prepare_certificate_authority(
+                    identifier.id,
+                    organisation.clone(),
+                    request,
+                )
+                .await?;
+            validate_no_conflicts(&certificates, &cert)?;
+            certificates.push(cert.clone());
+            prepared.push(cert);
+        }
+
+        Ok(prepared)
+    }
+
     fn parse_translations(
         &self,
         identifier_id: IdentifierId,
@@ -608,6 +672,13 @@ fn validate_no_conflicts(certificates: &[Certificate], cert: &Certificate) -> Re
     } else {
         Ok(())
     }
+}
+
+fn non_deleted(certificates: Vec<Certificate>) -> Vec<Certificate> {
+    certificates
+        .into_iter()
+        .filter(|certificate| certificate.deleted_at.is_none())
+        .collect()
 }
 
 fn map_already_exists_error(error: DataLayerError) -> Error {

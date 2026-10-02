@@ -3,9 +3,9 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
-use one_dto_mapper::convert_inner_of_inner;
+use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use proc_macros::endpoint;
-use shared_types::{IdentifierId, Permission};
+use shared_types::{CertificateId, IdentifierId, Permission};
 
 use super::dto::{
     CreateIdentifierRequestRestDTO, GetIdentifierListResponseRestDTO, GetIdentifierQuery,
@@ -17,7 +17,10 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
 };
-use crate::endpoint::identifier::dto::CreateRemoteIdentifierRequestRestDTO;
+use crate::endpoint::identifier::dto::{
+    AddCertificateAuthoritiesRequestRestDTO, AddCertificatesRequestRestDTO,
+    CreateRemoteIdentifierRequestRestDTO, EntityIdsResponseRestDTO,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -276,4 +279,146 @@ pub(crate) async fn resolve_trust_entries(
         state,
         "resolving trust entries for identifiers",
     )
+}
+
+#[endpoint(
+    permissions = [Permission::IdentifierEdit],
+    post,
+    path = "/api/identifier/v1/{id}/certificate",
+    request_body = AddCertificatesRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityIdsResponseRestDTO>),
+    params(
+        ("id" = IdentifierId, Path, description = "Identifier id")
+    ),
+    tag = "identifier_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Add certificates",
+    description = indoc::formatdoc! {"
+    Adds one or more certificates to an existing CERTIFICATE identifier.
+
+    If the identifier is deactivated and at least one of the added
+    certificates is active, the identifier is reactivated.
+    "},
+)]
+pub(crate) async fn post_identifier_certificates(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<IdentifierId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<AddCertificatesRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityIdsResponseRestDTO> {
+    let result = state
+        .core
+        .identifier_service
+        .add_certificates(&id, convert_inner(request.certificates))
+        .await;
+    CreatedOrErrorResponse::from_result(result, state, "adding certificates")
+}
+
+#[endpoint(
+    permissions = [Permission::IdentifierEdit],
+    delete,
+    path = "/api/identifier/v1/{identifierId}/certificate/{certificateId}",
+    responses(EmptyOrErrorResponse),
+    params(
+        ("identifierId" = IdentifierId, Path, description = "Identifier id"),
+        ("certificateId" = CertificateId, Path, description = "Certificate id")
+    ),
+    tag = "identifier_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Remove a certificate",
+    description = indoc::formatdoc! {"
+    Removes a certificate from a CERTIFICATE identifier. The identifier must
+    keep at least one certificate.
+    "},
+)]
+pub(crate) async fn delete_identifier_certificate(
+    state: State<AppState>,
+    WithRejection(Path((identifier_id, certificate_id)), _): WithRejection<
+        Path<(IdentifierId, CertificateId)>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .identifier_service
+        .remove_certificate(&identifier_id, &certificate_id)
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "removing certificate")
+}
+
+#[endpoint(
+    permissions = [Permission::IdentifierEdit],
+    post,
+    path = "/api/identifier/v1/{id}/certificate-authority",
+    request_body = AddCertificateAuthoritiesRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityIdsResponseRestDTO>),
+    params(
+        ("id" = IdentifierId, Path, description = "Identifier id")
+    ),
+    tag = "identifier_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Add certificate authorities",
+    description = indoc::formatdoc! {"
+    Adds one or more certificates to an existing CA identifier.
+
+    If the identifier is deactivated and at least one of the added
+    certificates is active, the identifier is reactivated.
+    "},
+)]
+pub(crate) async fn post_identifier_certificate_authorities(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<IdentifierId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<AddCertificateAuthoritiesRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityIdsResponseRestDTO> {
+    let result = state
+        .core
+        .identifier_service
+        .add_certificate_authorities(&id, convert_inner(request.certificate_authorities))
+        .await;
+    CreatedOrErrorResponse::from_result(result, state, "adding certificate authorities")
+}
+
+#[endpoint(
+    permissions = [Permission::IdentifierEdit],
+    delete,
+    path = "/api/identifier/v1/{identifierId}/certificate-authority/{certificateAuthorityId}",
+    responses(EmptyOrErrorResponse),
+    params(
+        ("identifierId" = IdentifierId, Path, description = "Identifier id"),
+        ("certificateAuthorityId" = CertificateId, Path, description = "Certificate id")
+    ),
+    tag = "identifier_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Remove a certificate authority",
+    description = indoc::formatdoc! {"
+    Removes a certificate from a CA identifier. The identifier must keep at
+    least one certificate.
+    "},
+)]
+pub(crate) async fn delete_identifier_certificate_authority(
+    state: State<AppState>,
+    WithRejection(Path((identifier_id, certificate_authority_id)), _): WithRejection<
+        Path<(IdentifierId, CertificateId)>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .identifier_service
+        .remove_certificate_authority(&identifier_id, &certificate_authority_id)
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "removing certificate authority")
 }

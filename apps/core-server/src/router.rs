@@ -430,6 +430,22 @@ fn get_management_endpoints(
                 post(identifier::controller::post_remote_identifier),
             )
             .route(
+                "/api/identifier/v1/{id}/certificate",
+                post(identifier::controller::post_identifier_certificates),
+            )
+            .route(
+                "/api/identifier/v1/{identifierId}/certificate/{certificateId}",
+                delete(identifier::controller::delete_identifier_certificate),
+            )
+            .route(
+                "/api/identifier/v1/{id}/certificate-authority",
+                post(identifier::controller::post_identifier_certificate_authorities),
+            )
+            .route(
+                "/api/identifier/v1/{identifierId}/certificate-authority/{certificateAuthorityId}",
+                delete(identifier::controller::delete_identifier_certificate_authority),
+            )
+            .route(
                 "/api/did-resolver/v1/{didvalue}",
                 get(did_resolver::controller::resolve_did),
             )

@@ -39,6 +39,8 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
+use crate::service::certificate::dto::CreateCertificateRequestDTO;
+use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 use crate::{CertificateValidator, KeyAlgorithmProvider};
 
 pub(crate) struct IdentifierCreatorProto {
@@ -447,6 +449,22 @@ impl IdentifierCreator for IdentifierCreatorProto {
             .await
             .error_while("saving logo blob")?;
         Ok(blob_id)
+    }
+
+    async fn prepare_certificates(
+        &self,
+        identifier: &Identifier,
+        requests: Vec<CreateCertificateRequestDTO>,
+    ) -> Result<Vec<Certificate>, Error> {
+        IdentifierCreatorProto::prepare_certificates(self, identifier, requests).await
+    }
+
+    async fn prepare_certificate_authorities(
+        &self,
+        identifier: &Identifier,
+        requests: Vec<CreateCertificateAuthorityRequestDTO>,
+    ) -> Result<Vec<Certificate>, Error> {
+        IdentifierCreatorProto::prepare_certificate_authorities(self, identifier, requests).await
     }
 }
 
