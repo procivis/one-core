@@ -74,9 +74,17 @@ impl From<Chunk> for Vec<u8> {
 
 fn split_into_chunks(
     session_message: Vec<u8>,
-    mtu_size: usize,
+    max_payload_size: usize,
 ) -> Result<Vec<Vec<u8>>, VerificationProtocolError> {
-    let mut chunks = session_message.chunks(mtu_size - 1);
+    let mut chunks = session_message.chunks(
+        // lower size by 1 (for the prepended chunk header)
+        max_payload_size - 1,
+    );
+
+    tracing::debug!(
+        "About to send {} chunks, max_payload_size: {max_payload_size}",
+        chunks.len()
+    );
 
     let last = Chunk::Last(
         chunks

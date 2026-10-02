@@ -26,7 +26,8 @@ pub(crate) enum ConnectedPeer {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct PeerInfo {
     pub address: DeviceAddress,
-    pub mtu: usize,
+    /// derived from the negotiated MTU, lowered by MTU_HEADER_OVERHEAD
+    pub max_payload_size: usize,
     pub service_uuid: Uuid,
 }
 

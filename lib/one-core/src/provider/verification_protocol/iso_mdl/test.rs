@@ -152,7 +152,7 @@ async fn test_presentation_reject_ok() {
             session_transcript_bytes: vec![],
             connected_verifier: ConnectedPeer::PeripheralServerMode(PeerInfo {
                 address: "test address".to_string(),
-                mtu: 512,
+                max_payload_size: 512,
                 service_uuid: Uuid::new_v4(),
             }),
         }),
@@ -288,7 +288,7 @@ async fn test_get_presentation_definition_v2() {
             session_transcript_bytes: vec![],
             connected_verifier: ConnectedPeer::PeripheralServerMode(PeerInfo {
                 address: "test address".to_string(),
-                mtu: 512,
+                max_payload_size: 512,
                 service_uuid: Uuid::new_v4(),
             }),
         }),

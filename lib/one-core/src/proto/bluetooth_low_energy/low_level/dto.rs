@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use super::MTU_HEADER_OVERHEAD;
+
 pub type MacAddress = String;
 pub type ServiceUUID = String;
 pub type CharacteristicUUID = String;
@@ -45,11 +47,9 @@ impl DeviceInfo {
         Self { address, mtu }
     }
 
-    pub fn mtu(&self) -> u16 {
-        // we need to send data bellow the agreed MTU since on some devices the header overhead is part of the negotiated MTU
-        const HEADER_OVERHEAD: u16 = 3;
-
-        self.mtu - HEADER_OVERHEAD
+    /// maximum payload size that can be sent in a single message
+    pub fn max_payload_size(&self) -> u16 {
+        self.mtu - MTU_HEADER_OVERHEAD
     }
 }
 

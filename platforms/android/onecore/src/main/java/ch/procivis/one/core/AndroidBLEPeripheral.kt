@@ -33,8 +33,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     }
 
     private data class Advertisement constructor(
-        val callback: AdvertiseCallback,
-        val advertiser: BluetoothLeAdvertiser
+        val callback: AdvertiseCallback, val advertiser: BluetoothLeAdvertiser
     ) {}
 
     private var mAdvertisement: Advertisement? = null
@@ -42,8 +41,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
     @SuppressLint("MissingPermission")
     override suspend fun startAdvertisement(
-        deviceName: String?,
-        services: List<ServiceDescription>
+        deviceName: String?, services: List<ServiceDescription>
     ): String? {
         return asyncCallback { promise ->
             synchronized(lock) {
@@ -54,13 +52,12 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 val adapter = getBluetoothAdapter()
                 val advertiser = setupAdvertiser(adapter, deviceName)
 
-                val advertiseDataBuilder = AdvertiseData.Builder()
-                    .setIncludeDeviceName(deviceName != null)
-                    .setIncludeTxPowerLevel(false)
-
-                val scanResultBuilder =
-                    AdvertiseData.Builder().setIncludeDeviceName(false)
+                val advertiseDataBuilder =
+                    AdvertiseData.Builder().setIncludeDeviceName(deviceName != null)
                         .setIncludeTxPowerLevel(false)
+
+                val scanResultBuilder = AdvertiseData.Builder().setIncludeDeviceName(false)
+                    .setIncludeTxPowerLevel(false)
 
                 val server = startServer()
 
@@ -73,19 +70,14 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
                 val settings = AdvertiseSettings.Builder()
                     .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-                    .setConnectable(true)
-                    .setTimeout(0)
-                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
-                    .build()
+                    .setConnectable(true).setTimeout(0)
+                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH).build()
 
                 val callback = getAdvertiseCallback(server, adapter, promise)
 
                 mAdvertisement = Advertisement(callback, advertiser)
                 advertiser.startAdvertising(
-                    settings,
-                    advertiseDataBuilder.build(),
-                    scanResultBuilder.build(),
-                    callback
+                    settings, advertiseDataBuilder.build(), scanResultBuilder.build(), callback
                 )
             }
         }
@@ -93,8 +85,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
     @SuppressLint("MissingPermission")
     private fun setupAdvertiser(
-        adapter: BluetoothAdapter,
-        deviceName: String?
+        adapter: BluetoothAdapter, deviceName: String?
     ): BluetoothLeAdvertiser {
         val advertiser = adapter.bluetoothLeAdvertiser
         if (advertiser == null) {
@@ -113,8 +104,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     private fun startServer(): BluetoothGattServer {
         mServer?.clearServices()
         val server = mServer ?: getBluetoothManager().openGattServer(
-            this.context,
-            getServerCallback()
+            this.context, getServerCallback()
         )
         if (server == null) {
             Log.w(TAG, "Unable to create GATT server");
@@ -132,8 +122,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     ): BluetoothGattService {
         val uuid = UUID.fromString(service.uuid)
         val s = BluetoothGattService(
-            uuid,
-            BluetoothGattService.SERVICE_TYPE_PRIMARY
+            uuid, BluetoothGattService.SERVICE_TYPE_PRIMARY
         )
 
         for (characteristic in service.characteristics) {
@@ -163,8 +152,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
             if (service.advertisedServiceData != null) {
                 advertiseDataBuilder.addServiceData(
-                    parcelId,
-                    service.advertisedServiceData
+                    parcelId, service.advertisedServiceData
                 )
             }
         } else if (service.advertisedServiceData != null) {
@@ -176,9 +164,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
     @SuppressLint("MissingPermission")
     private fun getAdvertiseCallback(
-        server: BluetoothGattServer,
-        adapter: BluetoothAdapter,
-        advertisePromise: Promise<String?>
+        server: BluetoothGattServer, adapter: BluetoothAdapter, advertisePromise: Promise<String?>
     ): AdvertiseCallback {
         return object : AdvertiseCallback() {
             @SuppressLint("HardwareIds")
@@ -298,26 +284,20 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
         val device: MutableMap<String, CharacteristicReadDeviceData> = mutableMapOf()
     }
 
-    private val mReads: MutableMap<CharacteristicAddress, CharacteristicReadData> =
-        HashMap()
+    private val mReads: MutableMap<CharacteristicAddress, CharacteristicReadData> = HashMap()
 
     override suspend fun setCharacteristicData(
-        service: String,
-        characteristic: String,
-        data: ByteArray
+        service: String, characteristic: String, data: ByteArray
     ) {
         return exceptionWrapper {
             synchronized(lock) {
                 val (ch, characteristicAddress) = getCharacteristic(
-                    service,
-                    characteristic
+                    service, characteristic
                 )
                 if ((ch.properties and BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
                     Log.w(TAG, "Characteristic doesn't have read property: $characteristic")
                     throw BleException.InvalidCharacteristicOperation(
-                        service,
-                        characteristic,
-                        "read"
+                        service, characteristic, "read"
                     )
                 }
 
@@ -338,22 +318,17 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     }
 
     override suspend fun waitForCharacteristicRead(
-        device: String,
-        service: String,
-        characteristic: String
+        device: String, service: String, characteristic: String
     ) {
         return asyncCallback { promise ->
             synchronized(lock) {
                 val characteristicAddress = CharacteristicAddress(
-                    UUID.fromString(service),
-                    UUID.fromString(characteristic)
+                    UUID.fromString(service), UUID.fromString(characteristic)
                 )
 
                 val readData = mReads[characteristicAddress]
                     ?: throw BleException.InvalidCharacteristicOperation(
-                        service,
-                        characteristic,
-                        "read-wait"
+                        service, characteristic, "read-wait"
                     )
 
                 readData.device[device]?.let {
@@ -385,9 +360,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
         mutableMapOf()
 
     override suspend fun getCharacteristicWrites(
-        device: String,
-        service: String,
-        characteristic: String
+        device: String, service: String, characteristic: String
     ): List<ByteArray> {
         return asyncCallback { promise ->
             synchronized(lock) {
@@ -395,16 +368,12 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 if ((ch.properties and (BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) == 0) {
                     Log.w(TAG, "Characteristic doesn't have write property: $characteristic")
                     throw BleException.InvalidCharacteristicOperation(
-                        service,
-                        characteristic,
-                        "write"
+                        service, characteristic, "write"
                     )
                 }
 
                 val deviceCharacteristicAddress = DeviceCharacteristicAddress(
-                    device,
-                    characteristicAddress.service,
-                    characteristicAddress.characteristic
+                    device, characteristicAddress.service, characteristicAddress.characteristic
                 )
 
                 mWrites[deviceCharacteristicAddress]?.let { writeData ->
@@ -434,24 +403,18 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
     @SuppressLint("MissingPermission")
     override suspend fun notifyCharacteristicData(
-        deviceAddress: String,
-        service: String,
-        characteristic: String,
-        data: ByteArray
+        deviceAddress: String, service: String, characteristic: String, data: ByteArray
     ) {
         return asyncCallback { promise ->
             synchronized(lock) {
                 val server = mServer ?: throw BleException.ServerNotRunning()
                 val (ch, characteristicAddress) = getCharacteristic(
-                    service,
-                    characteristic
+                    service, characteristic
                 )
                 if ((ch.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY) == 0) {
                     Log.w(TAG, "Characteristic doesn't have notify property: $characteristic")
                     throw BleException.InvalidCharacteristicOperation(
-                        service,
-                        characteristic,
-                        "notify"
+                        service, characteristic, "notify"
                     )
                 }
 
@@ -475,8 +438,8 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     @SuppressLint("MissingPermission")
     private fun findDevice(deviceAddress: String): BluetoothDevice {
         val manager = getBluetoothManager()
-        val device = manager.getConnectedDevices(BluetoothProfile.GATT)
-            .find { it.address == deviceAddress }
+        val device =
+            manager.getConnectedDevices(BluetoothProfile.GATT).find { it.address == deviceAddress }
         if (device == null) {
             Log.w(TAG, "Device not found: $deviceAddress")
             throw BleException.DeviceAddressNotFound(deviceAddress)
@@ -497,16 +460,12 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
             val statusCode = server.notifyCharacteristicChanged(device, characteristic, false, data)
             if (statusCode != BluetoothStatusCodes.SUCCESS) {
                 throw statusCodeException(
-                    statusCode,
-                    characteristicAddress.service,
-                    characteristicAddress.characteristic
+                    statusCode, characteristicAddress.service, characteristicAddress.characteristic
                 )
             }
         } else {
             if (!characteristic.setValue(data) || !server.notifyCharacteristicChanged(
-                    device,
-                    characteristic,
-                    false
+                    device, characteristic, false
                 )
             ) {
                 Log.w(
@@ -536,21 +495,17 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
         event: ConnectionEvent
     ) {
         val deviceAddress = when (event) {
-            is ConnectionEvent.Connected ->
-                event.deviceInfo.address
+            is ConnectionEvent.Connected -> event.deviceInfo.address
 
-            is ConnectionEvent.Disconnected ->
-                event.deviceAddress
+            is ConnectionEvent.Disconnected -> event.deviceAddress
         }
 
         // replace outdated events
         mConnections.events.removeAll {
             when (val oldEvent = it) {
-                is ConnectionEvent.Connected ->
-                    oldEvent.deviceInfo.address == deviceAddress
+                is ConnectionEvent.Connected -> oldEvent.deviceInfo.address == deviceAddress
 
-                is ConnectionEvent.Disconnected ->
-                    oldEvent.deviceAddress == deviceAddress
+                is ConnectionEvent.Disconnected -> oldEvent.deviceAddress == deviceAddress
             }
         }
 
@@ -579,14 +534,12 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     }
 
     private fun getCharacteristic(
-        serviceUuid: String,
-        characteristicUuid: String
+        serviceUuid: String, characteristicUuid: String
     ): Pair<BluetoothGattCharacteristic, CharacteristicAddress> {
         val server = mServer ?: throw BleException.ServerNotRunning()
 
         val characteristicAddress = CharacteristicAddress(
-            UUID.fromString(serviceUuid),
-            UUID.fromString(characteristicUuid)
+            UUID.fromString(serviceUuid), UUID.fromString(characteristicUuid)
         )
 
         val service =
@@ -631,38 +584,66 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
         BluetoothGattServerCallback() {
         private val TAG: String = parent.get()?.TAG.toString()
 
+        private class PreparedWriteData(val characteristicAddress: DeviceCharacteristicAddress) {
+            var data: ByteArray = byteArrayOf()
+        }
+
+        private val mPreparedWrites: MutableMap<String, PreparedWriteData> = mutableMapOf()
+
+        private fun onFinishedWrite(
+            characteristicAddress: DeviceCharacteristicAddress, value: ByteArray
+        ) {
+            Log.d(
+                TAG,
+                "onFinishedWrite, ${characteristicAddress.characteristic}, dataSize: ${value.size}"
+            )
+
+            parent.get()?.mWrites?.let { mWrites ->
+                val writeData = mWrites[characteristicAddress]
+                if (writeData == null) {
+                    val data = CharacteristicWriteData()
+                    data.data.add(value)
+                    mWrites[characteristicAddress] = data
+                } else {
+                    writeData.data.add(value)
+                    val promise = writeData.promise
+                    if (promise != null) {
+                        promise.succeed(writeData.data.toList())
+                        writeData.promise = null
+                        writeData.data.clear()
+                    }
+                }
+            }
+        }
+
         @SuppressLint("MissingPermission")
         override fun onCharacteristicWriteRequest(
-            device: BluetoothDevice, requestId: Int,
+            device: BluetoothDevice,
+            requestId: Int,
             characteristic: BluetoothGattCharacteristic,
-            preparedWrite: Boolean, responseNeeded: Boolean,
-            offset: Int, value: ByteArray
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray
         ) {
             val deviceAddress = device.address
-            Log.d(TAG, "onCharacteristicWriteRequest: " + characteristic.uuid)
+            Log.d(
+                TAG,
+                "onCharacteristicWriteRequest: ${characteristic.uuid}, requestId:$requestId responseNeeded: $responseNeeded, preparedWrite: $preparedWrite, offset: $offset, dataSize: ${value.size}"
+            )
 
             val characteristicAddress = DeviceCharacteristicAddress(
-                deviceAddress,
-                characteristic.service.uuid,
-                characteristic.uuid
+                deviceAddress, characteristic.service.uuid, characteristic.uuid
             )
 
             synchronized(lock) {
-                parent.get()?.mWrites?.let { mWrites ->
-                    val writeData = mWrites[characteristicAddress]
-                    if (writeData == null) {
-                        val data = CharacteristicWriteData()
-                        data.data.add(value)
-                        mWrites[characteristicAddress] = data
-                    } else {
-                        writeData.data.add(value)
-                        val promise = writeData.promise
-                        if (promise != null) {
-                            promise.succeed(writeData.data.toList())
-                            writeData.promise = null
-                            writeData.data.clear()
-                        }
+                if (preparedWrite) {
+                    val preparedWriteData = mPreparedWrites.getOrPut(deviceAddress) {
+                        PreparedWriteData(characteristicAddress)
                     }
+                    preparedWriteData.data += value
+                } else {
+                    onFinishedWrite(characteristicAddress, value)
                 }
 
                 if (responseNeeded) {
@@ -670,22 +651,42 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                         device,
                         requestId,
                         BluetoothGatt.GATT_SUCCESS,
-                        0,
-                        byteArrayOf()
+                        offset,
+                        if (preparedWrite) value else null
                     )
                 }
             }
         }
 
         @SuppressLint("MissingPermission")
+        override fun onExecuteWrite(device: BluetoothDevice, requestId: Int, execute: Boolean) {
+            Log.d(TAG, "onExecuteWrite, requestId:$requestId, execute: $execute")
+            val deviceAddress = device.address
+
+            synchronized(lock) {
+                mPreparedWrites[deviceAddress]?.let { preparedWrite ->
+                    if (execute) {
+                        onFinishedWrite(preparedWrite.characteristicAddress, preparedWrite.data)
+                    }
+                    mPreparedWrites.remove(deviceAddress)
+                }
+
+                parent.get()?.mServer?.sendResponse(
+                    device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null
+                )
+            }
+        }
+
+        @SuppressLint("MissingPermission")
         override fun onCharacteristicReadRequest(
-            device: BluetoothDevice, requestId: Int,
-            offset: Int, characteristic: BluetoothGattCharacteristic
+            device: BluetoothDevice,
+            requestId: Int,
+            offset: Int,
+            characteristic: BluetoothGattCharacteristic
         ) {
             val deviceAddress = device.address
             Log.d(
-                TAG,
-                "onCharacteristicReadRequest: ${characteristic.uuid}"
+                TAG, "onCharacteristicReadRequest: ${characteristic.uuid}"
             )
 
             val characteristicAddress =
@@ -695,26 +696,17 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 val readData = parent.get()?.mReads?.get(characteristicAddress)
                 if (readData == null) {
                     Log.w(
-                        TAG,
-                        "Characteristic Read data not set: ${characteristic.uuid}"
+                        TAG, "Characteristic Read data not set: ${characteristic.uuid}"
                     )
 
                     parent.get()?.mServer?.sendResponse(
-                        device,
-                        requestId,
-                        BluetoothGatt.GATT_FAILURE,
-                        0,
-                        byteArrayOf()
+                        device, requestId, BluetoothGatt.GATT_FAILURE, 0, byteArrayOf()
                     )
                     return
                 }
 
                 parent.get()?.mServer?.sendResponse(
-                    device,
-                    requestId,
-                    BluetoothGatt.GATT_SUCCESS,
-                    0,
-                    readData.data
+                    device, requestId, BluetoothGatt.GATT_SUCCESS, 0, readData.data
                 )
 
                 val deviceData = readData.device[deviceAddress]
@@ -757,9 +749,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(
-            device: BluetoothDevice,
-            status: Int,
-            newState: Int
+            device: BluetoothDevice, status: Int, newState: Int
         ) {
             super.onConnectionStateChange(device, status, newState)
             val deviceAddress = device.address
@@ -777,12 +767,9 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                     // workaround to trigger MTU negotiation from BLE peripheral
                     Log.d(TAG, "Forceful MTU negotiation: $deviceAddress")
                     device.connectGatt(
-                        parent.get()?.context,
-                        false,
-                        object : BluetoothGattCallback() {
+                        parent.get()?.context, false, object : BluetoothGattCallback() {
                             override fun onConnectionStateChange(
-                                gatt: BluetoothGatt, status: Int,
-                                newState: Int
+                                gatt: BluetoothGatt, status: Int, newState: Int
                             ) {
                                 Log.d(TAG, "Gatt connection state: $newState, status: $status")
                                 if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -792,9 +779,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                             }
 
                             override fun onMtuChanged(
-                                gatt: BluetoothGatt?,
-                                mtu: Int,
-                                status: Int
+                                gatt: BluetoothGatt?, mtu: Int, status: Int
                             ) {
                                 Log.d(TAG, "Gatt MTU CHANGED: $mtu, status: $status")
                                 if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -816,39 +801,28 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
             super.onDescriptorReadRequest(device, requestId, offset, descriptor)
             Log.d(TAG, "onDescriptorReadRequest: " + descriptor.characteristic.uuid)
             parent.get()?.mServer?.sendResponse(
-                device,
-                requestId,
-                BluetoothGatt.GATT_SUCCESS,
-                0,
-                descriptor.value
+                device, requestId, BluetoothGatt.GATT_SUCCESS, 0, descriptor.value
             )
         }
 
         @SuppressLint("MissingPermission")
         override fun onDescriptorWriteRequest(
-            device: BluetoothDevice, requestId: Int,
+            device: BluetoothDevice,
+            requestId: Int,
             descriptor: BluetoothGattDescriptor,
-            preparedWrite: Boolean, responseNeeded: Boolean,
-            offset: Int, value: ByteArray
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray
         ) {
             super.onDescriptorWriteRequest(
-                device,
-                requestId,
-                descriptor,
-                preparedWrite,
-                responseNeeded,
-                offset,
-                value
+                device, requestId, descriptor, preparedWrite, responseNeeded, offset, value
             )
             Log.d(TAG, "onDescriptorWriteRequest: " + descriptor.characteristic.uuid)
             descriptor.setValue(value)
             if (responseNeeded) {
                 parent.get()?.mServer?.sendResponse(
-                    device,
-                    requestId,
-                    BluetoothGatt.GATT_SUCCESS,
-                    0,
-                    byteArrayOf()
+                    device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null
                 )
             }
         }

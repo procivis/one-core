@@ -546,7 +546,7 @@ async fn wait_for_central_client_mode(
     service_uuid: &Uuid,
     e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
 ) -> Result<ConnectedPeer, VerificationProtocolError> {
-    let (device, mtu) = central::wait_for_connection(
+    let verifier_device = central::wait_for_connection(
         central,
         service_uuid,
         central_client_mode::SERVER_2_CLIENT,
@@ -557,7 +557,7 @@ async fn wait_for_central_client_mode(
     let expected_ident = central_client_mode::derive_ident_value(e_device_key_bytes)?;
     let actual_ident = central
         .read_data(
-            device.device_address.to_owned(),
+            verifier_device.address.to_owned(),
             service_uuid.to_string(),
             central_client_mode::IDENT.into(),
         )
@@ -570,11 +570,7 @@ async fn wait_for_central_client_mode(
         ));
     }
 
-    Ok(ConnectedPeer::CentralClientMode(PeerInfo {
-        address: device.device_address,
-        mtu,
-        service_uuid: *service_uuid,
-    }))
+    Ok(ConnectedPeer::CentralClientMode(verifier_device))
 }
 
 async fn wait_for_peripheral_server_mode(
@@ -584,10 +580,10 @@ async fn wait_for_peripheral_server_mode(
     let device_info =
         peripheral::wait_for_active_device(peripheral, service_uuid, peripheral_server_mode::STATE)
             .await?;
-    let mtu = device_info.mtu() as _;
+    let max_payload_size = device_info.max_payload_size() as _;
     Ok(ConnectedPeer::PeripheralServerMode(PeerInfo {
         address: device_info.address,
-        mtu,
+        max_payload_size,
         service_uuid: *service_uuid,
     }))
 }
@@ -599,7 +595,7 @@ async fn wait_for_connected_verifier(
     mode: BleMode,
     e_device_key_bytes: &EmbeddedCbor<EphemeralSessionKey>,
 ) -> Result<ConnectedPeer, VerificationProtocolError> {
-    match mode {
+    let connected_verifier = match mode {
         BleMode::Peripheral => wait_for_peripheral_server_mode(peripheral, service_uuid).await,
         BleMode::Central => {
             wait_for_central_client_mode(central, service_uuid, e_device_key_bytes).await
@@ -610,7 +606,10 @@ async fn wait_for_connected_verifier(
                 connection = wait_for_central_client_mode(central, service_uuid,e_device_key_bytes) => connection,
             }
         }
-    }
+    }?;
+
+    tracing::debug!("Connected to: {connected_verifier:?}");
+    Ok(connected_verifier)
 }
 
 async fn wait_to_finish_engagement(

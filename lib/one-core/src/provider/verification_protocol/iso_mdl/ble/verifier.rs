@@ -217,6 +217,7 @@ pub(crate) async fn handle_ble_verifier(
 /// It's split into smaller functions to simplify error handling - depending on place of failure
 /// we may need to send End command, disconnect and set proof state to error
 #[expect(clippy::too_many_arguments)]
+#[tracing::instrument(level = "debug", skip_all, err(level = "info"))]
 async fn verifier_flow(
     ble_options: BleOptionsV1,
     verifier_session: VerifierSession,
@@ -280,6 +281,7 @@ async fn verifier_flow(
 }
 
 #[expect(clippy::too_many_arguments)]
+#[tracing::instrument(level = "debug", skip_all, err(level = "info"))]
 async fn process_proof(
     verifier_session: VerifierSession,
     proof: &Proof,
@@ -489,7 +491,7 @@ async fn connect_peripheral_server_mode(
         .await
         .error_while("starting BLE scan")?;
 
-    let (device, mtu) = central::wait_for_connection(
+    let connected_holder = central::wait_for_connection(
         central,
         service_uuid,
         peripheral_server_mode::SERVER_2_CLIENT,
@@ -497,11 +499,7 @@ async fn connect_peripheral_server_mode(
     )
     .await?;
 
-    Ok(ConnectedPeer::PeripheralServerMode(PeerInfo {
-        address: device.device_address,
-        mtu,
-        service_uuid: *service_uuid,
-    }))
+    Ok(ConnectedPeer::PeripheralServerMode(connected_holder))
 }
 
 async fn connect_central_client_mode(
@@ -523,6 +521,7 @@ async fn connect_central_client_mode(
         .error_while("starting BLE advertisement")?;
 
     let ident_value = central_client_mode::derive_ident_value(e_device_key_bytes)?;
+    tracing::debug!("Setting Ident value: {ident_value:?}");
     peripheral
         .set_characteristic_data(
             service_uuid.to_string(),
@@ -535,14 +534,15 @@ async fn connect_central_client_mode(
     let device_info =
         peripheral::wait_for_active_device(peripheral, service_uuid, central_client_mode::STATE)
             .await?;
-    let mtu = device_info.mtu() as _;
+    let max_payload_size = device_info.max_payload_size() as _;
     Ok(ConnectedPeer::CentralClientMode(PeerInfo {
         address: device_info.address,
-        mtu,
+        max_payload_size,
         service_uuid: *service_uuid,
     }))
 }
 
+#[tracing::instrument(level = "debug", skip_all, err(level = "info"))]
 async fn connect_based_on_options(
     central: &TrackingBleCentral,
     peripheral: &TrackingBlePeripheral,
@@ -551,20 +551,28 @@ async fn connect_based_on_options(
 ) -> Result<ConnectedPeer, VerificationProtocolError> {
     // ISO 18013-5, 8.3.3.1.1.1
     // If the mdoc indicates during device engagement that it supports both modes, the mdoc reader should select the mdoc central client mode.
-    match (
+    let connected_holder = match (
         ble_options.central_client_uuid,
         ble_options.peripheral_server_uuid,
     ) {
         (Some(central_client_uuid), _) => {
-            connect_central_client_mode(peripheral, &central_client_uuid, e_device_key_bytes).await
+            tracing::debug!("Using mdoc central client mode, service: {central_client_uuid}");
+            connect_central_client_mode(peripheral, &central_client_uuid, e_device_key_bytes)
+                .await?
         }
         (_, Some(peripheral_server_uuid)) => {
-            connect_peripheral_server_mode(central, &peripheral_server_uuid).await
+            tracing::debug!("Using mdoc peripheral server mode, service: {peripheral_server_uuid}");
+            connect_peripheral_server_mode(central, &peripheral_server_uuid).await?
         }
-        (None, None) => Err(VerificationProtocolError::Failed(
-            "No BLE mode advertised".to_string(),
-        )),
-    }
+        (None, None) => {
+            return Err(VerificationProtocolError::Failed(
+                "No BLE mode advertised".to_string(),
+            ));
+        }
+    };
+
+    tracing::debug!("Connected to: {connected_holder:?}");
+    Ok(connected_holder)
 }
 
 async fn proof_input_schema_to_doc_request(

@@ -245,7 +245,7 @@ impl ProximityHolderTransport for BleHolderTransport {
                                     .map_err(VerificationProtocolError::Other)?;
 
                                 let chunks =
-                                    Chunks::from_bytes(&enc_payload[..], interaction.peer.device_info.mtu());
+                                    Chunks::from_bytes(&enc_payload[..], interaction.peer.device_info.max_payload_size());
 
                                 let payload_len = (chunks.len() as u16).to_be_bytes();
                                 send(

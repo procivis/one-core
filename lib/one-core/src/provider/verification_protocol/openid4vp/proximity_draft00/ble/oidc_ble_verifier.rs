@@ -470,7 +470,7 @@ async fn write_presentation_request(
         .context("Failed to encrypt presentation request")
         .map_err(VerificationProtocolError::Other)?;
 
-    let chunks = Chunks::from_bytes(encrypted.as_slice(), peer.device_info.mtu());
+    let chunks = Chunks::from_bytes(encrypted.as_slice(), peer.device_info.max_payload_size());
     let len = (chunks.len() as u16).to_be_bytes();
 
     send(REQUEST_SIZE_UUID, &len, peer, ble_peripheral).await?;

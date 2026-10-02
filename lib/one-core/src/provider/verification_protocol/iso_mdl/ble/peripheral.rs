@@ -18,6 +18,8 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
     connection: &PeerInfo,
     client_2_server_characteristic: &str,
 ) -> Result<T, VerificationProtocolError> {
+    tracing::debug!("Awaiting message, characteristic: {client_2_server_characteristic}");
+
     let mut result = vec![];
 
     loop {
@@ -32,6 +34,10 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
 
         for msg in data {
             let chunk: Chunk = msg.try_into()?;
+            tracing::trace!(
+                "Received chunk ({chunk:?}), characteristic: {client_2_server_characteristic}"
+            );
+
             match chunk {
                 Chunk::Next(payload) => result.extend(payload),
                 Chunk::Last(payload) => {
@@ -50,9 +56,14 @@ pub(super) async fn write_chunked<T: Serialize>(
     connection: &PeerInfo,
     server_2_client_characteristic: &str,
 ) -> Result<(), VerificationProtocolError> {
+    tracing::debug!("Notifying message, characteristic: {server_2_client_characteristic}");
     let message = to_cbor(message)?;
 
-    for chunk in split_into_chunks(message, connection.mtu)? {
+    for chunk in split_into_chunks(message, connection.max_payload_size)? {
+        tracing::trace!(
+            "Notifying chunk, length: {}, characteristic: {server_2_client_characteristic}",
+            chunk.len()
+        );
         peripheral
             .notify_characteristic_data(
                 connection.address.to_owned(),
@@ -72,6 +83,8 @@ pub(super) async fn wait_for_active_device(
     service_uuid: &Uuid,
     state_characteristic: &str,
 ) -> Result<DeviceInfo, VerificationProtocolError> {
+    tracing::debug!("Awaiting device connections {state_characteristic}");
+
     loop {
         let connected_devices = peripheral
             .get_connection_change_events()
@@ -115,6 +128,8 @@ async fn wait_for_start_command(
     service_uuid: &Uuid,
     state_characteristic: &str,
 ) -> Result<bool, VerificationProtocolError> {
+    tracing::debug!("Awaiting Start command: {state_characteristic}");
+
     let command_written = match peripheral
         .get_characteristic_writes(
             info.address.clone(),
@@ -147,6 +162,8 @@ pub(super) async fn notify_end(
     connection: &PeerInfo,
     state_characteristic: &str,
 ) {
+    tracing::debug!("Notifying End command: {state_characteristic}");
+
     let result = peripheral
         .notify_characteristic_data(
             connection.address.clone(),

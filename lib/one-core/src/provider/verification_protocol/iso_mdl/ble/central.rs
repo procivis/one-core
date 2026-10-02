@@ -8,10 +8,9 @@ use uuid::Uuid;
 use super::common::PeerInfo;
 use super::{Chunk, Command, split_into_chunks};
 use crate::error::ContextWithErrorCode;
+use crate::proto::bluetooth_low_energy::low_level::MTU_HEADER_OVERHEAD;
 use crate::proto::bluetooth_low_energy::low_level::ble_central::BleCentral;
-use crate::proto::bluetooth_low_energy::low_level::dto::{
-    CharacteristicWriteType, PeripheralDiscoveryData,
-};
+use crate::proto::bluetooth_low_energy::low_level::dto::CharacteristicWriteType;
 use crate::provider::verification_protocol::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::to_cbor;
 
@@ -20,6 +19,8 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
     connection: &PeerInfo,
     server_2_client_characteristic: &str,
 ) -> Result<T, VerificationProtocolError> {
+    tracing::debug!("Awaiting message, characteristic: {server_2_client_characteristic}");
+
     let mut result = vec![];
 
     loop {
@@ -34,6 +35,10 @@ pub(super) async fn read_chunked<T: DeserializeOwned>(
 
         for msg in data {
             let chunk: Chunk = msg.try_into()?;
+            tracing::trace!(
+                "Received chunk ({chunk:?}), characteristic: {server_2_client_characteristic}"
+            );
+
             match chunk {
                 Chunk::Next(payload) => result.extend(payload),
                 Chunk::Last(payload) => {
@@ -52,9 +57,15 @@ pub(super) async fn write_chunked<T: Serialize>(
     connection: &PeerInfo,
     client_2_server_characteristic: &str,
 ) -> Result<(), VerificationProtocolError> {
+    tracing::debug!("Writing message, characteristic: {client_2_server_characteristic}");
+
     let message = to_cbor(message)?;
 
-    for chunk in split_into_chunks(message, connection.mtu)? {
+    for chunk in split_into_chunks(message, connection.max_payload_size)? {
+        tracing::trace!(
+            "Writing chunk, length: {}, characteristic: {client_2_server_characteristic}",
+            chunk.len()
+        );
         central
             .write_data(
                 connection.address.to_owned(),
@@ -75,6 +86,8 @@ pub(super) async fn send_end_command(
     connection: &PeerInfo,
     state_characteristic: &str,
 ) {
+    tracing::debug!("Writing End command: {state_characteristic}");
+
     if let Err(err) = central
         .write_data(
             connection.address.to_owned(),
@@ -94,7 +107,9 @@ pub(super) async fn wait_for_connection(
     service_uuid: &Uuid,
     server_2_client_characteristic: &str,
     state_characteristic: &str,
-) -> Result<(PeripheralDiscoveryData, usize), VerificationProtocolError> {
+) -> Result<PeerInfo, VerificationProtocolError> {
+    tracing::debug!("Awaiting connections: {state_characteristic}");
+
     let device = central
         .get_discovered_devices()
         .await
@@ -140,5 +155,10 @@ pub(super) async fn wait_for_connection(
         .await
         .error_while("writing Start command")?;
 
-    Ok((device, mtu_size as _))
+    let max_payload_size = mtu_size - MTU_HEADER_OVERHEAD;
+    Ok(PeerInfo {
+        address: device.device_address,
+        max_payload_size: max_payload_size as _,
+        service_uuid: *service_uuid,
+    })
 }
