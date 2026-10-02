@@ -36,6 +36,7 @@ pub enum Permission {
     HolderCredentialList,
     IdentifierCreate,
     IdentifierDelete,
+    IdentifierEdit,
     IdentifierDetail,
     IdentifierList,
     InteractionIssuance,

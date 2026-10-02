@@ -1134,6 +1134,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Schema importedSourceUrl must be a valid HTTP(S) URL")]
     BR_0512,
+
+    #[strum(message = "Requested attribute cannot be updated for this identifier type")]
+    BR_0513,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

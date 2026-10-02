@@ -323,6 +323,12 @@ impl IdentifiersApi {
             .await
     }
 
+    pub async fn patch(&self, id: &IdentifierId, body: serde_json::Value) -> Response {
+        self.client
+            .patch(&format!("/api/identifier/v1/{id}"), body)
+            .await
+    }
+
     pub async fn list(
         &self,
         organisation_id: &OrganisationId,

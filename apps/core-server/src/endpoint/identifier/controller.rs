@@ -9,7 +9,7 @@ use shared_types::{IdentifierId, Permission};
 
 use super::dto::{
     CreateIdentifierRequestRestDTO, GetIdentifierListResponseRestDTO, GetIdentifierQuery,
-    GetIdentifierResponseRestDTO, ResolveTrustEntriesRequestRestDTO,
+    GetIdentifierResponseRestDTO, PatchIdentifierRequestRestDTO, ResolveTrustEntriesRequestRestDTO,
     ResolvedTrustEntriesResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
@@ -167,6 +167,51 @@ pub(crate) async fn delete_identifier(
     let result = state.core.identifier_service.delete_identifier(&id).await;
 
     EmptyOrErrorResponse::from_result(result, state, "deleting identifier")
+}
+
+#[endpoint(
+    permissions = [Permission::IdentifierEdit],
+    patch,
+    path = "/api/identifier/v1/{id}",
+    request_body = PatchIdentifierRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = IdentifierId, Path, description = "Identifier id")
+    ),
+    tag = "identifier_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Update an identifier",
+    description = indoc::formatdoc! {"
+    Updates an identifier in place.
+
+    Only local (non-remote) identifiers can be updated. Provided attributes
+    fully replace their current value; omitted attributes are left
+    unchanged. An empty `trustInformation` array removes all trust
+    information.
+    "},
+)]
+pub(crate) async fn patch_identifier(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<IdentifierId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PatchIdentifierRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = async {
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .identifier_service
+                .update_identifier(&id, request.try_into()?)
+                .await
+                .error_while("updating identifier")?,
+        )
+    }
+    .await;
+    EmptyOrErrorResponse::from_result(result, state, "updating identifier")
 }
 
 #[endpoint(

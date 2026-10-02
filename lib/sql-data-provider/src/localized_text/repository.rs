@@ -1,5 +1,6 @@
 use autometrics::autometrics;
 use entity::localized_text::{Column, Entity};
+use futures::FutureExt;
 use one_core::model::localized_text::LocalizedText;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
@@ -44,6 +45,35 @@ impl LocalizedTextRepository for LocalizedTextProvider {
             .await
             .map_err(to_data_layer_error)?;
         Ok(convert_inner(models))
+    }
+
+    async fn replace(
+        &self,
+        entity_id: &EntityId,
+        texts: Vec<LocalizedText>,
+    ) -> Result<(), DataLayerError> {
+        let entity_id = *entity_id;
+        let models: Vec<ActiveModel> = convert_inner(texts);
+        self.db
+            .tx(async move {
+                Entity::delete_many()
+                    .filter(Column::EntityId.eq(entity_id))
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
+
+                if !models.is_empty() {
+                    Entity::insert_many(models)
+                        .exec(&self.db)
+                        .await
+                        .map_err(to_update_data_layer_error)?;
+                }
+
+                Ok::<_, DataLayerError>(())
+            }
+            .boxed())
+            .await??;
+        Ok(())
     }
 }
 

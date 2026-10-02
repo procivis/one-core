@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::{EcosystemId, TrustCollectionId};
+use shared_types::i18n::I18nString;
+use shared_types::{EcosystemId, EntityId, TrustCollectionId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use uuid::Uuid;
@@ -51,7 +52,7 @@ use crate::service::identifier::dto::{
     CertificateRolesMatchMode, CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
     CreateIdentifierTrustInformationRequestDTO, CreateRemoteCertificateChainDTO,
     CreateRemoteIdentifierRequestDTO, IdentifierFilterParamsDTO, IdentifierTrustInformationType,
-    ResolveTrustEntriesRequestDTO,
+    PatchIdentifierRequestDTO, ResolveTrustEntriesRequestDTO,
 };
 use crate::service::identifier::error::IdentifierServiceError;
 use crate::service::test_utilities::{
@@ -1082,6 +1083,48 @@ async fn test_delete_identifier_cascades_to_certificates() {
     service.delete_identifier(&identifier_id).await.unwrap();
 }
 
+#[tokio::test]
+async fn test_delete_identifier_removes_logo_blob() {
+    let logo_id: shared_types::BlobId = Uuid::new_v4().into();
+    let mut identifier = dummy_identifier();
+    identifier.logo = Some(logo_id);
+    identifier.data = IdentifierData::Key(dummy_key().into());
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+    identifier_repository
+        .expect_delete()
+        .once()
+        .returning(|_| Ok(()));
+
+    let mut blob_storage = MockBlobStorage::default();
+    blob_storage
+        .expect_delete()
+        .once()
+        .withf(move |id| *id == logo_id)
+        .returning(|_| Ok(()));
+    let blob_storage: Arc<dyn crate::provider::blob_storage::BlobStorage> = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::default();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        blob_storage_provider,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service.delete_identifier(&identifier_id).await.unwrap();
+}
+
 fn dummy_public_jwk() -> PublicJwk {
     PublicJwk::Okp(PublicJwkEc {
         alg: None,
@@ -1754,4 +1797,533 @@ async fn test_create_remote_identifier_name_already_taken_returns_colliding_id()
         err,
         IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == colliding_id
     ));
+}
+
+#[tokio::test]
+async fn test_update_identifier_not_found_for_deleted() {
+    let mut identifier = dummy_identifier();
+    identifier.deleted_at = Some(get_dummy_date());
+    let identifier_id = identifier.id;
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        ..Default::default()
+    });
+
+    let err = service
+        .update_identifier(&identifier_id, PatchIdentifierRequestDTO::default())
+        .await
+        .unwrap_err();
+
+    assert!(matches!(err, IdentifierServiceError::NotFound(id) if id == identifier_id));
+}
+
+#[tokio::test]
+async fn test_update_identifier_remote_identifier_fails() {
+    let mut identifier = dummy_identifier();
+    identifier.is_remote = true;
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    let err = service
+        .update_identifier(&identifier_id, PatchIdentifierRequestDTO::default())
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0513);
+}
+
+#[tokio::test]
+async fn test_update_identifier_key_on_non_key_identifier_fails() {
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    let err = service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                key: Some(CreateIdentifierKeyRequestDTO {
+                    key_id: Uuid::new_v4().into(),
+                }),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0513);
+    assert!(matches!(
+        err,
+        IdentifierServiceError::InvalidUpdateForIdentifierType {
+            attribute: "key",
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn test_update_identifier_remote_key_fails() {
+    let mut identifier = dummy_identifier();
+    identifier.data = IdentifierData::Key(dummy_key().into());
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let remote_key = dummy_key(); // key_reference: None => is_remote() == true
+    let key_id = remote_key.id;
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+
+    let mut key_repository = MockKeyRepository::default();
+    key_repository
+        .expect_get_key()
+        .once()
+        .returning(move |_| Ok(remote_key.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        key_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    let err = service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                key: Some(CreateIdentifierKeyRequestDTO { key_id }),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0076);
+    assert!(matches!(err, IdentifierServiceError::KeyMustNotBeRemote(_)));
+}
+
+#[tokio::test]
+async fn test_update_identifier_logo_updates_existing_blob_in_place() {
+    let existing_blob_id = Uuid::new_v4().into();
+    let mut identifier = dummy_identifier();
+    identifier.logo = Some(existing_blob_id);
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(|_, request| request.logo.is_none() && request.key_id.is_none())
+        .returning(|_, _| Ok(()));
+
+    let mut blob_storage = MockBlobStorage::default();
+    blob_storage
+        .expect_update()
+        .once()
+        .withf(move |id, update| {
+            *id == existing_blob_id && update.value.as_deref() == Some(b"base64logo".as_slice())
+        })
+        .returning(|_, _| Ok(()));
+    let blob_storage: Arc<dyn crate::provider::blob_storage::BlobStorage> = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::default();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        blob_storage_provider,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                logo: Some(Some(crate::service::common_dto::BoundedB64Image(
+                    "base64logo".to_string(),
+                ))),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_identifier_logo_null_removes_blob() {
+    let existing_blob_id = Uuid::new_v4().into();
+    let mut identifier = dummy_identifier();
+    identifier.logo = Some(existing_blob_id);
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(|_, request| request.logo == Some(None))
+        .returning(|_, _| Ok(()));
+
+    let mut blob_storage = MockBlobStorage::default();
+    blob_storage
+        .expect_delete()
+        .once()
+        .withf(move |id| *id == existing_blob_id)
+        .returning(|_| Ok(()));
+    let blob_storage: Arc<dyn crate::provider::blob_storage::BlobStorage> = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::default();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        blob_storage_provider,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                logo: Some(None),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_identifier_translations_null_resets_to_default_name() {
+    let mut identifier = dummy_identifier();
+    identifier.name = "Original Name".to_string();
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut localized_text_repository = MockLocalizedTextRepository::default();
+    localized_text_repository
+        .expect_replace()
+        .once()
+        .returning(move |_, rows| {
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].lang, "en");
+            assert_eq!(rows[0].value, "Original Name");
+            assert_eq!(
+                rows[0].field,
+                crate::model::localized_text::LocalizedTextField::Name
+            );
+            Ok(())
+        });
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        localized_text_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                translations: Some(None),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_identifier_logo_creates_blob_when_missing() {
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+
+    let new_blob_id = Uuid::new_v4().into();
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_persist_identifier_logo()
+        .once()
+        .returning(move |_, _| Ok(new_blob_id));
+
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(move |_, request| {
+            request.logo == Some(Some(new_blob_id)) && request.key_id.is_none()
+        })
+        .returning(|_, _| Ok(()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        identifier_creator,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                logo: Some(Some(crate::service::common_dto::BoundedB64Image(
+                    "base64logo".to_string(),
+                ))),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_identifier_translations_replace_with_backfill() {
+    let mut identifier = dummy_identifier();
+    identifier.name = "Original Name".to_string();
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut localized_text_repository = MockLocalizedTextRepository::default();
+    localized_text_repository
+        .expect_replace()
+        .once()
+        .returning(move |entity_id, rows| {
+            let expected_entity_id: EntityId = identifier_id.into();
+            assert_eq!(*entity_id, expected_entity_id);
+            assert_eq!(rows.len(), 2);
+            assert!(rows.iter().any(|r| r.lang == "pl"
+                && r.value == "Nazwa"
+                && r.field == crate::model::localized_text::LocalizedTextField::Name));
+            assert!(rows.iter().any(|r| r.lang == "en"
+                && r.value == "Original Name"
+                && r.field == crate::model::localized_text::LocalizedTextField::Name));
+            Ok(())
+        });
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        localized_text_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                translations: Some(Some(
+                    crate::service::identifier::dto::IdentifierTranslationsDTO {
+                        name: I18nString(HashMap::from([("pl".to_string(), "Nazwa".to_string())])),
+                        logo_alt_text: None,
+                    },
+                )),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_identifier_trust_information_replace() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let mut identifier = dummy_identifier();
+    identifier.id = identifier_id;
+    identifier.organisation = dummy_organisation(Some(organisation_id)).into();
+    identifier.data =
+        IdentifierData::Certificate(RelatedVec::from(vec![dummy_certificate(identifier_id)]));
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let old_blob_id: shared_types::BlobId = Uuid::new_v4().into();
+    let mut identifier_trust_information_repository =
+        MockIdentifierTrustInformationRepository::default();
+    identifier_trust_information_repository
+        .expect_get_by_identifier_id()
+        .once()
+        .returning(move |_| {
+            Ok(vec![
+                crate::model::identifier_trust_information::IdentifierTrustInformation {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    valid_from: None,
+                    valid_to: None,
+                    intended_use: None,
+                    allowed_issuance_types: vec![],
+                    allowed_verification_types: vec![],
+                    identifier_id,
+                    blob_id: old_blob_id,
+                },
+            ])
+        });
+    identifier_trust_information_repository
+        .expect_delete_by_identifier_id()
+        .once()
+        .returning(|_| Ok(()));
+    identifier_trust_information_repository
+        .expect_create()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut blob_storage = MockBlobStorage::default();
+    blob_storage
+        .expect_delete()
+        .once()
+        .withf(move |id| *id == old_blob_id)
+        .returning(|_| Ok(()));
+    blob_storage.expect_create().once().returning(|_| Ok(()));
+    let blob_storage: Arc<dyn crate::provider::blob_storage::BlobStorage> = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::default();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .times(2)
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let mut ecosystem_provider = MockEcosystemDirectory::new();
+    ecosystem_provider
+        .expect_enabled_ecosystems()
+        .returning(|| {
+            vec![Arc::new(ecosystem_accepting_trust_information("EUDI")) as Arc<dyn Ecosystem>]
+        });
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        identifier_trust_information_repository,
+        blob_storage_provider,
+        session_provider,
+        ecosystem_provider,
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(
+            &identifier_id,
+            PatchIdentifierRequestDTO {
+                trust_information: Some(vec![CreateIdentifierTrustInformationRequestDTO {
+                    data: "dummy reg cert".to_string(),
+                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_identifier_empty_request_only_bumps() {
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+    let organisation_id = identifier.organisation.id();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(identifier.clone()));
+    identifier_repository
+        .expect_update()
+        .once()
+        .withf(|_, request| {
+            *request == crate::model::identifier::UpdateIdentifierRequest::default()
+        })
+        .returning(|_, _| Ok(()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(&identifier_id, PatchIdentifierRequestDTO::default())
+        .await
+        .unwrap();
 }

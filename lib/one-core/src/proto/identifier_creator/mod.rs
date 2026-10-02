@@ -1,5 +1,5 @@
 use shared_types::i18n::I18nString;
-use shared_types::{DidMethodId, DidValue, IdentifierId};
+use shared_types::{BlobId, DidMethodId, DidValue, IdentifierId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -23,7 +23,7 @@ mod mapper;
 #[cfg(test)]
 mod test;
 
-pub(crate) use mapper::issuer_display_to_identifier_translations;
+pub(crate) use mapper::{build_identifier_translations, issuer_display_to_identifier_translations};
 
 use crate::service::common_dto::{BoundedB64Image, KB};
 
@@ -119,6 +119,13 @@ pub(crate) trait IdentifierCreator: Send + Sync {
         params: CreateLocalIdentifierRequestParams,
         r#type: CreateLocalIdentifierRequestType,
     ) -> Result<Identifier, Error>;
+
+    /// Persists a base64-encoded logo image as a blob and returns its id.
+    async fn persist_identifier_logo(
+        &self,
+        logo: String,
+        now: OffsetDateTime,
+    ) -> Result<BlobId, Error>;
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -482,3 +482,56 @@ async fn test_create_identifier_with_trust_information_fails_without_access_cert
     assert_eq!(result.status(), 400);
     assert_eq!(result.error_code().await, "BR_0416");
 }
+
+#[tokio::test]
+async fn test_delete_identifier_removes_logo_blob() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key_id = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await
+        .id;
+    let identifier_id: IdentifierId = context
+        .api
+        .identifiers
+        .create_key_identifier_with_options(
+            "identifier-delete-logo",
+            key_id,
+            organisation.id,
+            Some(SMALL_PNG_DATA_URI),
+            None,
+        )
+        .await
+        .json_value()
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    let logo_blob_id = context
+        .db
+        .identifiers
+        .get(identifier_id)
+        .await
+        .logo
+        .unwrap();
+    assert!(context.db.blobs.get(&logo_blob_id).await.is_some());
+
+    // WHEN
+    let resp = context.api.identifiers.delete(&identifier_id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    assert!(context.db.blobs.get(&logo_blob_id).await.is_none());
+    assert!(
+        context
+            .db
+            .identifiers
+            .get(identifier_id)
+            .await
+            .logo
+            .is_none()
+    );
+}

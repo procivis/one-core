@@ -15,4 +15,9 @@ pub trait IdentifierTrustInformationRepository: Send + Sync {
         &self,
         identifier_id: &IdentifierId,
     ) -> Result<Vec<IdentifierTrustInformation>, DataLayerError>;
+    /// Hard-deletes all trust information rows belonging to `identifier_id`.
+    async fn delete_by_identifier_id(
+        &self,
+        identifier_id: &IdentifierId,
+    ) -> Result<(), DataLayerError>;
 }

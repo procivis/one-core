@@ -36,4 +36,16 @@ impl IdentifierTrustInformationRepository for IdentifierTrustInformationProvider
             .map_err(to_data_layer_error)?;
         try_convert_inner(models)
     }
+
+    async fn delete_by_identifier_id(
+        &self,
+        identifier_id: &IdentifierId,
+    ) -> Result<(), DataLayerError> {
+        identifier_trust_information::Entity::delete_many()
+            .filter(identifier_trust_information::Column::IdentifierId.eq(identifier_id))
+            .exec(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+        Ok(())
+    }
 }

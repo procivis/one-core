@@ -125,6 +125,7 @@ pub struct UpdateIdentifierRequest {
     pub state: Option<IdentifierState>,
     pub logo: Option<Option<BlobId>>,
     pub translations: Option<Vec<LocalizedText>>,
+    pub key_id: Option<KeyId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

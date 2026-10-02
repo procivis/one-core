@@ -20,8 +20,9 @@ use one_core::service::identifier::dto::{
     CreateSelfSignedCertificateAuthorityRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO, IdentifierFilterParamsDTO,
     IdentifierTranslationsDTO, IdentifierTrustInformationResponseDTO,
-    IdentifierTrustInformationType, ResolveTrustEntriesRequestDTO, ResolvedTrustEntriesResponseDTO,
-    ResolvedTrustEntryResponseDTO, ResolvedTrustEntrySourceResponseDTO,
+    IdentifierTrustInformationType, PatchIdentifierRequestDTO, ResolveTrustEntriesRequestDTO,
+    ResolvedTrustEntriesResponseDTO, ResolvedTrustEntryResponseDTO,
+    ResolvedTrustEntrySourceResponseDTO,
 };
 use one_dto_mapper::{
     From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -114,6 +115,28 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
 pub(crate) struct IdentifierTranslationsRestDTO {
     pub name: I18nString,
     pub logo_alt_text: Option<I18nString>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema, TryInto)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[try_into(T = PatchIdentifierRequestDTO, Error = ServiceError)]
+pub(crate) struct PatchIdentifierRequestRestDTO {
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub logo: Option<Option<String>>,
+
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub translations: Option<Option<IdentifierTranslationsRestDTO>>,
+
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub trust_information: Option<Vec<CreateIdentifierTrustInformationRequestRestDTO>>,
+
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub key: Option<CreateIdentifierKeyRequestRestDTO>,
 }
 
 #[options_not_nullable]

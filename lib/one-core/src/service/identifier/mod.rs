@@ -40,8 +40,6 @@ pub struct IdentifierService {
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     identifier_trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
-    // used by upcoming identifier translation editing/reading logic
-    #[expect(dead_code)]
     localized_text_repository: Arc<dyn LocalizedTextRepository>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     config: Arc<core_config::CoreConfig>,

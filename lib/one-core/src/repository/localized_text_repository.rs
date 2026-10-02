@@ -1,3 +1,5 @@
+use shared_types::EntityId;
+
 use crate::model::localized_text::LocalizedText;
 use crate::repository::error::DataLayerError;
 
@@ -9,4 +11,11 @@ pub trait LocalizedTextRepository: Send + Sync {
     /// Upserts translations by entity ID, language and field. For duplicate keys, the last value wins.
     async fn upsert_many(&self, localized_texts: Vec<LocalizedText>) -> Result<(), DataLayerError>;
     async fn get(&self, id: &shared_types::EntityId) -> Result<Vec<LocalizedText>, DataLayerError>;
+
+    /// Replaces all localized text rows for `entity_id` with `texts`, in a single transaction.
+    async fn replace(
+        &self,
+        entity_id: &EntityId,
+        texts: Vec<LocalizedText>,
+    ) -> Result<(), DataLayerError>;
 }

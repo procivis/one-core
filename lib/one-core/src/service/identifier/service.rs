@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use futures::FutureExt;
 use itertools::Itertools;
-use shared_types::{IdentifierId, TrustCollectionId};
+use shared_types::{BlobId, IdentifierId, KeyId, TrustCollectionId};
 use time::OffsetDateTime;
 use tracing::warn;
 use url::Url;
@@ -13,8 +13,8 @@ use super::IdentifierService;
 use super::dto::{
     CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
     CreateIdentifierTrustInformationRequestDTO, GetIdentifierListResponseDTO,
-    GetIdentifierResponseDTO, IdentifierFilterParamsDTO, ResolveTrustEntriesRequestDTO,
-    ResolvedTrustEntriesResponseDTO, ResolvedTrustEntryResponseDTO,
+    GetIdentifierResponseDTO, IdentifierFilterParamsDTO, PatchIdentifierRequestDTO,
+    ResolveTrustEntriesRequestDTO, ResolvedTrustEntriesResponseDTO, ResolvedTrustEntryResponseDTO,
 };
 use super::error::IdentifierServiceError;
 use super::mapper::{
@@ -25,11 +25,11 @@ use super::validator::validate_identifier_type;
 use crate::config::core_config;
 use crate::config::core_config::BlobStorageType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
-use crate::model::blob::Blob;
+use crate::model::blob::{Blob, UpdateBlobRequest};
 use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::identifier::{
     Identifier, IdentifierData, IdentifierFilterValue, IdentifierListIncludeEntity,
-    IdentifierListQuery, IdentifierType, SortableIdentifierColumn,
+    IdentifierListQuery, IdentifierType, SortableIdentifierColumn, UpdateIdentifierRequest,
 };
 use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
@@ -43,7 +43,7 @@ use crate::model::trust_list_subscription::{
 };
 use crate::proto::identifier_creator::{
     CreateLocalIdentifierRequestParams, CreateLocalIdentifierRequestType, IdentifierName,
-    RemoteIdentifierOutcome,
+    RemoteIdentifierOutcome, build_identifier_translations,
 };
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -534,6 +534,168 @@ impl IdentifierService {
         Ok(())
     }
 
+    pub async fn update_identifier(
+        &self,
+        id: &IdentifierId,
+        request: PatchIdentifierRequestDTO,
+    ) -> Result<(), IdentifierServiceError> {
+        let identifier =
+            self.identifier_repository
+                .get(*id)
+                .await
+                .map_err(|error| match error {
+                    DataLayerError::EntityNotFound { .. } => IdentifierServiceError::NotFound(*id),
+                    error => error.error_while("getting identifier").into(),
+                })?;
+
+        if identifier.deleted_at.is_some() {
+            return Err(IdentifierServiceError::NotFound(*id));
+        }
+
+        throw_if_org_id_not_matching_session(
+            &identifier.organisation.id(),
+            &*self.session_provider,
+        )
+        .error_while("checking session")?;
+
+        if identifier.is_remote {
+            return Err(IdentifierServiceError::InvalidUpdateForIdentifierType {
+                identifier_type: identifier.data.r#type(),
+                attribute: "remote",
+            });
+        }
+
+        self.transaction_manager
+            .tx_with_config(
+                async {
+                    let now = crate::clock::now_utc();
+                    let mut key_id: Option<KeyId> = None;
+                    let mut logo: Option<Option<BlobId>> = None;
+                    let mut logo_blob_to_delete: Option<BlobId> = None;
+
+                    if let Some(key_request) = request.key {
+                        if !matches!(&identifier.data, IdentifierData::Key(_)) {
+                            return Err(IdentifierServiceError::InvalidUpdateForIdentifierType {
+                                identifier_type: identifier.data.r#type(),
+                                attribute: "key",
+                            });
+                        }
+                        let key = self
+                            .key_repository
+                            .get_key(&key_request.key_id)
+                            .await
+                            .error_while("getting key")?;
+                        if key.is_remote() {
+                            return Err(IdentifierServiceError::KeyMustNotBeRemote(key.name));
+                        }
+                        if key.organisation.id() != identifier.organisation.id() {
+                            return Err(IdentifierServiceError::KeyOrganisationMismatch);
+                        }
+                        key_id = Some(key.id);
+                    }
+
+                    match (request.logo, identifier.logo) {
+                        (None, _) | (Some(None), None) => {}
+                        (Some(None), Some(existing_logo_id)) => {
+                            logo = Some(None);
+                            logo_blob_to_delete = Some(existing_logo_id);
+                        }
+                        (Some(Some(new_logo)), Some(existing_logo_id)) => {
+                            self.blob_storage_provider
+                                .get_blob_storage(BlobStorageType::Db)?
+                                .update(
+                                    &existing_logo_id,
+                                    UpdateBlobRequest {
+                                        value: Some(new_logo.0.into_bytes()),
+                                    },
+                                )
+                                .await
+                                .error_while("updating identifier logo blob")?;
+                        }
+                        (Some(Some(new_logo)), None) => {
+                            let blob_id = self
+                                .identifier_creator
+                                .persist_identifier_logo(new_logo.0, now)
+                                .await
+                                .error_while("persisting identifier logo")?;
+                            logo = Some(Some(blob_id));
+                        }
+                    }
+
+                    if let Some(translations) = request.translations {
+                        let rows = build_identifier_translations(
+                            identifier.id,
+                            &identifier.name,
+                            translations.map(Into::into),
+                            now,
+                            &self.config.global_settings.default_language,
+                        );
+                        self.localized_text_repository
+                            .replace(&identifier.id.into(), rows)
+                            .await
+                            .error_while("replacing identifier translations")?;
+                    }
+
+                    if let Some(trust_information) = request.trust_information {
+                        let old_trust_information = self
+                            .identifier_trust_information_repository
+                            .get_by_identifier_id(&identifier.id)
+                            .await
+                            .error_while("getting existing trust information")?;
+
+                        self.identifier_trust_information_repository
+                            .delete_by_identifier_id(&identifier.id)
+                            .await
+                            .error_while("deleting existing trust information")?;
+
+                        if !old_trust_information.is_empty() {
+                            let blob_storage = self
+                                .blob_storage_provider
+                                .get_blob_storage(BlobStorageType::Db)?;
+                            for old in &old_trust_information {
+                                blob_storage
+                                    .delete(&old.blob_id)
+                                    .await
+                                    .error_while("deleting old trust information blob")?;
+                            }
+                        }
+
+                        self.create_trust_information(trust_information, &identifier, now)
+                            .await?;
+                    }
+
+                    self.identifier_repository
+                        .update(
+                            id,
+                            UpdateIdentifierRequest {
+                                key_id,
+                                logo,
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("updating identifier")?;
+
+                    if let Some(logo_id) = logo_blob_to_delete {
+                        self.blob_storage_provider
+                            .get_blob_storage(BlobStorageType::Db)?
+                            .delete(&logo_id)
+                            .await
+                            .error_while("deleting identifier logo blob")?;
+                    }
+
+                    Ok::<_, IdentifierServiceError>(())
+                }
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await
+            .error_while("updating identifier")??;
+
+        Ok(())
+    }
+
     /// Deletes an identifier
     ///
     /// # Arguments
@@ -589,6 +751,14 @@ impl IdentifierService {
                         DataLayerError::RecordNotUpdated => IdentifierServiceError::NotFound(*id),
                         e => e.error_while("deleting identifier").into(),
                     })?;
+
+                if let Some(logo_id) = identifier.logo {
+                    self.blob_storage_provider
+                        .get_blob_storage(BlobStorageType::Db)?
+                        .delete(&logo_id)
+                        .await
+                        .error_while("deleting identifier logo blob")?;
+                }
 
                 Ok::<_, IdentifierServiceError>(())
             })

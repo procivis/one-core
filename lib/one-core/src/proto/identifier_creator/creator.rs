@@ -90,28 +90,6 @@ impl IdentifierCreatorProto {
             tx_manager,
         }
     }
-
-    pub(super) async fn persist_logo(
-        &self,
-        logo: String,
-        now: OffsetDateTime,
-    ) -> Result<BlobId, Error> {
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)?;
-        let blob_id = Uuid::new_v4().into();
-        blob_storage
-            .create(Blob {
-                id: blob_id,
-                created_date: now,
-                last_modified: now,
-                value: logo.into_bytes(),
-                r#type: BlobType::IdentifierLogo,
-            })
-            .await
-            .error_while("saving logo blob")?;
-        Ok(blob_id)
-    }
 }
 
 #[async_trait::async_trait]
@@ -215,7 +193,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                     if let Some(logo) = logo
                         && identifier.logo.is_none()
                     {
-                        let logo_id = self.persist_logo(logo, now).await?;
+                        let logo_id = self.persist_identifier_logo(logo, now).await?;
                         update.logo = Some(Some(logo_id));
                     }
 
@@ -447,6 +425,28 @@ impl IdentifierCreator for IdentifierCreatorProto {
             )
             .await
             .error_while("creating local identifier")??)
+    }
+
+    async fn persist_identifier_logo(
+        &self,
+        logo: String,
+        now: OffsetDateTime,
+    ) -> Result<BlobId, Error> {
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+        let blob_id = Uuid::new_v4().into();
+        blob_storage
+            .create(Blob {
+                id: blob_id,
+                created_date: now,
+                last_modified: now,
+                value: logo.into_bytes(),
+                r#type: BlobType::IdentifierLogo,
+            })
+            .await
+            .error_while("saving logo blob")?;
+        Ok(blob_id)
     }
 }
 

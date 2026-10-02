@@ -84,6 +84,69 @@ async fn test_upsert_many_get_localized_text_success() {
     );
 }
 
+#[tokio::test]
+async fn test_replace_removes_old_rows_and_inserts_new_ones() {
+    let TestSetup { provider } = setup().await;
+
+    let localized_text = dummy_text();
+    let mut logo_alt_text = localized_text.clone();
+    logo_alt_text.field = LocalizedTextField::LogoAltText;
+    provider
+        .upsert_many(vec![localized_text.clone(), logo_alt_text.clone()])
+        .await
+        .unwrap();
+
+    let mut replacement = localized_text.clone();
+    replacement.lang = "de".to_string();
+    replacement.value = "hallo welt".to_string();
+    provider
+        .replace(&localized_text.entity_id, vec![replacement.clone()])
+        .await
+        .unwrap();
+
+    let result = provider.get(&localized_text.entity_id).await.unwrap();
+    assert_eq!(result.len(), 1);
+    assert!(eq_excluding_timestamps(&replacement, &result[0]));
+}
+
+#[tokio::test]
+async fn test_replace_with_empty_vec_removes_all_rows() {
+    let TestSetup { provider } = setup().await;
+
+    let localized_text = dummy_text();
+    provider.upsert(localized_text.clone()).await.unwrap();
+
+    provider
+        .replace(&localized_text.entity_id, vec![])
+        .await
+        .unwrap();
+
+    let result = provider.get(&localized_text.entity_id).await.unwrap();
+    assert!(result.is_empty());
+}
+
+#[tokio::test]
+async fn test_replace_does_not_affect_other_entities() {
+    let TestSetup { provider } = setup().await;
+
+    let localized_text = dummy_text();
+    let mut other_entity_text = dummy_text();
+    other_entity_text.entity_id = Uuid::new_v4().into();
+    provider
+        .upsert_many(vec![localized_text.clone(), other_entity_text.clone()])
+        .await
+        .unwrap();
+
+    provider
+        .replace(&localized_text.entity_id, vec![])
+        .await
+        .unwrap();
+
+    let result = provider.get(&other_entity_text.entity_id).await.unwrap();
+    assert_eq!(result.len(), 1);
+    assert!(eq_excluding_timestamps(&other_entity_text, &result[0]));
+}
+
 fn dummy_text() -> LocalizedText {
     LocalizedText {
         entity_id: Uuid::new_v4().into(),

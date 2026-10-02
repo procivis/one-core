@@ -202,6 +202,14 @@ pub enum CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType {
     Uri,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct PatchIdentifierRequestDTO {
+    pub logo: Option<Option<IdentifierLogo>>,
+    pub translations: Option<Option<IdentifierTranslationsDTO>>,
+    pub trust_information: Option<Vec<CreateIdentifierTrustInformationRequestDTO>>,
+    pub key: Option<CreateIdentifierKeyRequestDTO>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ResolveTrustEntriesRequestDTO {
     pub identifiers: Vec<IdentifierId>,

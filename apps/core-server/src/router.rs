@@ -422,7 +422,8 @@ fn get_management_endpoints(
             .route(
                 "/api/identifier/v1/{id}",
                 get(identifier::controller::get_identifier)
-                    .delete(identifier::controller::delete_identifier),
+                    .delete(identifier::controller::delete_identifier)
+                    .patch(identifier::controller::patch_identifier),
             )
             .route(
                 "/api/identifier/v1/remote",

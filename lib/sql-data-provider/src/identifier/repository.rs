@@ -106,6 +106,10 @@ impl IdentifierRepository for IdentifierProvider {
                 .map(|state| Set(state.into()))
                 .unwrap_or_default(),
             logo: request.logo.map(Set).unwrap_or_default(),
+            key_id: request
+                .key_id
+                .map(|key_id| Set(Some(key_id)))
+                .unwrap_or_default(),
             ..Default::default()
         };
 
@@ -135,6 +139,7 @@ impl IdentifierRepository for IdentifierProvider {
             id: Unchanged(*id),
             last_modified: Set(now),
             deleted_at: Set(Some(now)),
+            logo: Set(None),
             ..Default::default()
         };
 

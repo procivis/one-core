@@ -5,6 +5,7 @@ use shared_types::{
 use crate::config::core_config::IdentifierType;
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
 use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::identifier::IdentifierType as IdentifierDataType;
 
 #[derive(thiserror::Error, Debug)]
 pub enum IdentifierServiceError {
@@ -43,6 +44,17 @@ pub enum IdentifierServiceError {
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
+
+    #[error("Attribute `{attribute}` cannot be updated for identifier type `{identifier_type}`")]
+    InvalidUpdateForIdentifierType {
+        identifier_type: IdentifierDataType,
+        attribute: &'static str,
+    },
+    #[error("Key must not be remote: `{0}`")]
+    KeyMustNotBeRemote(String),
+    #[error("Key does not belong to this organisation")]
+    KeyOrganisationMismatch,
+
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -65,6 +77,9 @@ impl ErrorCodeMixin for IdentifierServiceError {
             Self::InvalidEcosystemQuery(_) => ErrorCode::BR_0479,
             Self::MissingLogoBlob(_) => ErrorCode::BR_0484,
             Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::InvalidUpdateForIdentifierType { .. } => ErrorCode::BR_0513,
+            Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
+            Self::KeyOrganisationMismatch => ErrorCode::BR_0285,
             Self::Nested(nested) => nested.error_code(),
         }
     }

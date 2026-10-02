@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::creator::IdentifierCreatorProto;
-use super::{CreateLocalIdentifierRequestParams, Error, IdentifierTranslations};
+use super::{CreateLocalIdentifierRequestParams, Error, IdentifierCreator, IdentifierTranslations};
 use crate::config::core_config::SignerType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateState};
@@ -44,7 +44,7 @@ impl IdentifierCreatorProto {
             .create_did_without_identifier(request, params.organisation.clone(), now)
             .await?;
         let logo_id = if let Some(logo) = params.logo {
-            Some(self.persist_logo(logo.0, now).await?)
+            Some(self.persist_identifier_logo(logo.0, now).await?)
         } else {
             None
         };
@@ -89,7 +89,7 @@ impl IdentifierCreatorProto {
         }
         let now = params.now;
         let logo_id = if let Some(logo) = params.logo {
-            Some(self.persist_logo(logo.0, now).await?)
+            Some(self.persist_identifier_logo(logo.0, now).await?)
         } else {
             None
         };
@@ -136,7 +136,7 @@ impl IdentifierCreatorProto {
         }
         let now = params.now;
         let logo_id = if let Some(logo) = params.logo {
-            Some(self.persist_logo(logo.0, now).await?)
+            Some(self.persist_identifier_logo(logo.0, now).await?)
         } else {
             None
         };
@@ -196,7 +196,7 @@ impl IdentifierCreatorProto {
         }
         let now = params.now;
         let logo_id = if let Some(logo) = params.logo {
-            Some(self.persist_logo(logo.0, now).await?)
+            Some(self.persist_identifier_logo(logo.0, now).await?)
         } else {
             None
         };

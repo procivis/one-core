@@ -90,20 +90,44 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
     ) -> Result<(), DataLayerError> {
         self.inner.update(id, request.clone()).await?;
 
-        if let Some(state) = request.state {
-            let identifier = self.inner.get(*id).await?;
+        let has_other_changes = request.name.is_some()
+            || request.logo.is_some()
+            || request.translations.is_some()
+            || request.key_id.is_some();
 
-            self.create_history(
-                identifier.id,
-                identifier.name,
-                if state == IdentifierState::Deactivated {
-                    HistoryAction::Deactivated
-                } else {
-                    HistoryAction::Reactivated
-                },
-                identifier.organisation.id(),
-            )
-            .await;
+        let identifier = self.inner.get(*id).await?;
+        match request.state {
+            Some(state) => {
+                if has_other_changes {
+                    self.create_history(
+                        identifier.id,
+                        identifier.name.clone(),
+                        HistoryAction::Updated,
+                        identifier.organisation.id(),
+                    )
+                    .await;
+                }
+                self.create_history(
+                    identifier.id,
+                    identifier.name,
+                    if state == IdentifierState::Deactivated {
+                        HistoryAction::Deactivated
+                    } else {
+                        HistoryAction::Reactivated
+                    },
+                    identifier.organisation.id(),
+                )
+                .await;
+            }
+            None => {
+                self.create_history(
+                    identifier.id,
+                    identifier.name,
+                    HistoryAction::Updated,
+                    identifier.organisation.id(),
+                )
+                .await;
+            }
         }
 
         Ok(())
