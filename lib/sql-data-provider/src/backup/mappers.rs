@@ -57,7 +57,7 @@ pub(super) fn credential_from_unexportable_model(
 
     let formats = credential_schema_formats(value.credential_schema_id, db.clone());
 
-    Ok(Credential {
+    Ok(Credential::Generic {
         common: CredentialCommon {
             ecosystem: None,
             id: value.id,

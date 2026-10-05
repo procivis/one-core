@@ -53,10 +53,10 @@ async fn test_issuance_refresh_without_refresh_token_returns_not_supported() {
     assert_eq!(credential_ids.len(), 2);
     for id in credential_ids {
         let credential = context.db.credentials.get(&id.parse()).await;
-        assert_eq!(credential.r#type, CredentialType::Single);
-        assert_eq!(credential.common.state, CredentialStateEnum::Accepted);
+        assert_eq!(credential.r#type(), CredentialType::Single);
+        assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
         assert_eq!(
-            credential.common.interaction.as_ref().unwrap().id(),
+            credential.common().interaction.as_ref().unwrap().id(),
             interaction_id
         );
     }
@@ -74,11 +74,11 @@ async fn test_issuance_refresh_without_refresh_token_returns_not_supported() {
     assert_eq!(response.json_value().await["code"], "BR_0452");
     for id in credential_ids {
         let credential = context.db.credentials.get(&id.parse()).await;
-        assert_eq!(credential.common.state, CredentialStateEnum::Accepted);
+        assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
         let history = context
             .db
             .histories
-            .get_by_entity_id(&credential.common.id.into())
+            .get_by_entity_id(&credential.common().id.into())
             .await;
         assert!(
             history
@@ -335,9 +335,9 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         assert_eq!(ids.len(), 2);
         for id in ids {
             let credential = context.db.credentials.get(&id.parse()).await;
-            assert_eq!(credential.r#type, CredentialType::Single);
-            assert!(credential.common.expires_at.is_none());
-            assert!(credential.parent.is_none());
+            assert_eq!(credential.r#type(), CredentialType::Single);
+            assert!(credential.common().expires_at.is_none());
+            assert!(credential.parent().is_none());
         }
         let response = context
             .api
@@ -355,8 +355,8 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
 
     // Each configuration's policy belongs to its concrete items, including after refresh.
     let parent = context.db.credentials.get(&first_parent).await;
-    assert_eq!(parent.r#type, CredentialType::BatchParent);
-    assert_eq!(parent.embedded_disclosure_policy, None);
+    assert_eq!(parent.r#type(), CredentialType::BatchParent);
+    assert!(parent.embedded_disclosure_policy().is_none());
     let stored = context.db.interactions.get(&interaction.id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(stored.data.as_ref().unwrap()).unwrap();
     assert_eq!(data["batch_size"], json!(offer.batch_size));
@@ -373,7 +373,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     let mut policy_counts = [0, 0];
     let mut initial_payload_claim_ids = std::collections::HashSet::new();
     for item in &items {
-        let claims = item.claims.as_ref().await.unwrap();
+        let claims = item.claims().as_ref().await.unwrap();
         initial_payload_claim_ids.insert(
             claims
                 .iter()
@@ -382,14 +382,14 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
                 .id,
         );
         if let Some(expires) = offer.fixed_identifier_expiry {
-            assert_eq!(item.common.expires_at.is_some(), expires);
+            assert_eq!(item.common().expires_at.is_some(), expires);
             assert_eq!(
-                item.holder_identifier.as_ref().unwrap().id(),
+                item.holder_identifier().as_ref().unwrap().id(),
                 holder_identifier.id
             );
         }
         let policy: serde_json::Value =
-            serde_json::from_str(item.embedded_disclosure_policy.as_ref().unwrap()).unwrap();
+            serde_json::from_str(item.embedded_disclosure_policy().as_ref().unwrap()).unwrap();
         let index = ["policy-0", "policy-1"]
             .into_iter()
             .position(|id| policy["id"] == id)
@@ -462,24 +462,24 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     let mut refreshed_policy_counts = [0, 0];
     for id in ids {
         let item = context.db.credentials.get(&id.parse()).await;
-        assert_eq!(CredentialType::BatchItem, item.r#type);
-        assert_eq!(first_parent, item.parent.as_ref().unwrap().id());
+        assert_eq!(CredentialType::BatchItem, item.r#type());
+        assert_eq!(first_parent, item.parent().as_ref().unwrap().id());
         if offer.fixed_identifier_expiry.is_some() {
             assert_eq!(
-                item.holder_identifier.as_ref().unwrap().id(),
+                item.holder_identifier().as_ref().unwrap().id(),
                 holder_identifier.id
             );
-            assert_eq!(item.key.as_ref().unwrap().id(), holder_key.id);
+            assert_eq!(item.key().as_ref().unwrap().id(), holder_key.id);
         }
         let policy: serde_json::Value =
-            serde_json::from_str(item.embedded_disclosure_policy.as_ref().unwrap()).unwrap();
+            serde_json::from_str(item.embedded_disclosure_policy().as_ref().unwrap()).unwrap();
         let index = ["policy-0", "policy-1"]
             .into_iter()
             .position(|id| policy["id"] == id)
             .expect("Unexpected policy ID");
         assert_eq!(policy["policy"], "none");
         refreshed_policy_counts[index] += 1;
-        let claims = item.claims.as_ref().await.unwrap();
+        let claims = item.claims().as_ref().await.unwrap();
         assert!(!claims.is_empty());
 
         let payload = claims.iter().find(|claim| claim.path == "string").unwrap();
@@ -507,23 +507,23 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             .iter()
             .filter(|item| {
                 serde_json::from_str::<serde_json::Value>(
-                    item.embedded_disclosure_policy.as_ref().unwrap(),
+                    item.embedded_disclosure_policy().as_ref().unwrap(),
                 )
                 .unwrap()["id"]
                     == "policy-1"
             })
-            .map(|item| item.common.id)
+            .map(|item| item.common().id)
             .collect::<std::collections::HashSet<_>>();
         let original_ids = items
             .iter()
             .filter(|item| {
                 serde_json::from_str::<serde_json::Value>(
-                    item.embedded_disclosure_policy.as_ref().unwrap(),
+                    item.embedded_disclosure_policy().as_ref().unwrap(),
                 )
                 .unwrap()["id"]
                     == "policy-1"
             })
-            .map(|item| item.common.id)
+            .map(|item| item.common().id)
             .collect::<std::collections::HashSet<_>>();
         assert_eq!(refused_ids, original_ids);
     }

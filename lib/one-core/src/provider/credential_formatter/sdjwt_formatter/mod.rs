@@ -401,7 +401,7 @@ impl CredentialFormatter for SDJWTFormatter {
             organisation.to_owned(),
         )?;
 
-        Ok(Credential {
+        Ok(Credential::Generic {
             common: CredentialCommon {
                 expires_at: parsed_credential.payload.expires_at,
                 ecosystem: None,

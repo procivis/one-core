@@ -108,7 +108,7 @@ pub(crate) fn throw_if_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), OpenIDIssuanceError> {
-    let current_state = &credential.common.state;
+    let current_state = &credential.common().state;
     if *current_state != state {
         return Err(OpenIDIssuanceError::InvalidCredentialState {
             state: current_state.to_owned(),
@@ -277,7 +277,7 @@ pub(super) async fn validate_batch_consistency(
 async fn single_schema_format(
     credential: &Credential,
 ) -> Result<CredentialSchemaFormat, IssuanceProtocolError> {
-    let schema = credential.common.schema.as_ref().await?;
+    let schema = credential.common().schema.as_ref().await?;
     let schema_format = schema.formats.as_ref().await?;
     if schema_format.len() > 1 {
         return Err(IssuanceProtocolError::Failed(
@@ -303,7 +303,7 @@ struct ClaimWithType {
 async fn sorted_claim_entries(
     credential: &Credential,
 ) -> Result<Vec<ClaimWithType>, IssuanceProtocolError> {
-    let claims = credential.claims.as_ref().await?;
+    let claims = credential.claims().as_ref().await?;
     let mut claims_with_types = vec![];
     for claim in claims.iter() {
         let claim_schema = claim.schema.as_ref().await?;
@@ -332,7 +332,7 @@ async fn comparable_issuer(
     credential: &Credential,
 ) -> Result<ComparableIssuer, IssuanceProtocolError> {
     let issuer = credential
-        .issuer_identifier
+        .issuer_identifier()
         .as_ref()
         .ok_or(IssuanceProtocolError::Failed(
             "missing parsed credential issuer".to_string(),
@@ -348,7 +348,7 @@ async fn comparable_issuer(
             // Compare via `issuer_certificate`, which holds the exact leaf certificate that signed this credential.
             let certificate =
                 credential
-                    .issuer_certificate
+                    .issuer_certificate()
                     .as_ref()
                     .ok_or(IssuanceProtocolError::Failed(
                         "missing parsed credential issuer certificate".to_string(),

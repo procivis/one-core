@@ -122,7 +122,7 @@ async fn validate_proof(
         proof_claims.extend(
             proved_credential
                 .credential
-                .claims
+                .claims()
                 .as_ref()
                 .await
                 .map_err(|e| OpenID4VCError::Other(e.to_string()))?

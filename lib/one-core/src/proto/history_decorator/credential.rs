@@ -54,12 +54,12 @@ impl CredentialHistoryDecorator {
         action: HistoryAction,
         error_info: Option<HistoryErrorMetadata>,
     ) {
-        let credential_schema = match credential.common.schema.as_ref().await {
+        let credential_schema = match credential.common().schema.as_ref().await {
             Ok(schema) => schema,
             Err(err) => {
                 tracing::warn!(
                     "failed inserting {action:?} history event for credential: {}: {err}",
-                    credential.common.id
+                    credential.common().id
                 );
                 return;
             }
@@ -72,7 +72,7 @@ impl CredentialHistoryDecorator {
             name: credential_schema.name.to_owned(),
             source: HistorySource::Core,
             target: target_from_credential(credential),
-            entity_id: Some(credential.common.id.into()),
+            entity_id: Some(credential.common().id.into()),
             entity_type: HistoryEntityType::Credential,
             metadata: error_info.map(HistoryMetadata::ErrorMetadata),
             metadata_blob_id: None,
@@ -89,7 +89,7 @@ impl CredentialHistoryDecorator {
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialHistoryDecorator {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let id = request.common.id;
+        let id = request.common().id;
         self.create_credentials(vec![request]).await?;
         Ok(id)
     }
@@ -102,8 +102,8 @@ impl CredentialRepository for CredentialHistoryDecorator {
         // Creation preserves state, role and schema; history does not need to reload
         // every stored credential or inspect its canonical claim IDs.
         for credential in requests {
-            if credential.role == CredentialRole::Holder
-                && credential.common.state == CredentialStateEnum::Accepted
+            if credential.role() == CredentialRole::Holder
+                && credential.common().state == CredentialStateEnum::Accepted
             {
                 for action in [HistoryAction::Issued, HistoryAction::Accepted] {
                     self.create_history_entry_for_credential(&credential, action, None)
@@ -112,7 +112,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
             } else {
                 self.create_history_entry_for_credential(
                     &credential,
-                    action_from_state(credential.common.state),
+                    action_from_state(credential.common().state),
                     None,
                 )
                 .await;
@@ -135,27 +135,27 @@ impl CredentialRepository for CredentialHistoryDecorator {
 
         // issuer, changing interaction while pending -> repeated sharing
         if let Some(interaction_id) = update.interaction
-            && stored.common.state == CredentialStateEnum::Pending
-            && stored.role == CredentialRole::Issuer
+            && stored.common().state == CredentialStateEnum::Pending
+            && stored.role() == CredentialRole::Issuer
             && update.state.is_none()
-            && Some(interaction_id) != stored.common.interaction.map(|i| i.id())
+            && Some(interaction_id) != stored.common().interaction.as_ref().map(|i| i.id())
         {
             self.create_history_entry(credential_id, HistoryAction::Shared, None)
                 .await;
         }
 
         if let Some(new_state) = update.state {
-            if stored.common.state != new_state {
+            if stored.common().state != new_state {
                 self.create_history_entry(credential_id, action_from_state(new_state), error_info)
                     .await;
             }
 
-            if let Some(additional_event) = match (stored.common.state, new_state) {
+            if let Some(additional_event) = match (stored.common().state, new_state) {
                 (
                     CredentialStateEnum::Created | CredentialStateEnum::InteractionExpired,
                     CredentialStateEnum::Pending,
                 ) => {
-                    if stored.role == CredentialRole::Issuer {
+                    if stored.role() == CredentialRole::Issuer {
                         Some(HistoryAction::Shared)
                     } else {
                         None
@@ -224,13 +224,13 @@ impl CredentialRepository for CredentialHistoryDecorator {
 }
 
 fn target_from_credential(credential: &Credential) -> Option<String> {
-    match credential.role {
+    match credential.role() {
         CredentialRole::Holder => credential
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .map(|identifier| identifier.id().to_string()),
         CredentialRole::Issuer => credential
-            .holder_identifier
+            .holder_identifier()
             .as_ref()
             .map(|identifier| identifier.id().to_string()),
         CredentialRole::Verifier => None,
@@ -261,7 +261,6 @@ mod test {
 
     use super::*;
     use crate::error::ErrorCode;
-    use crate::model::credential::CredentialCommon;
     use crate::proto::session_provider::NoSessionProvider;
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::history_repository::MockHistoryRepository;
@@ -270,7 +269,7 @@ mod test {
     #[tokio::test]
     async fn error_context_is_consumed_by_history_decorator() {
         let credential = dummy_credential();
-        let credential_id = credential.common.id;
+        let credential_id = credential.common().id;
         let error_info = HistoryErrorMetadata {
             error_code: ErrorCode::BR_0062,
             message: "Credential signing failed".to_string(),
@@ -300,12 +299,10 @@ mod test {
             .once()
             .in_sequence(&mut sequence)
             .return_once(move |_| {
-                Ok(Credential {
-                    common: CredentialCommon {
-                        state: CredentialStateEnum::Error,
-                        ..credential.common
-                    },
-                    ..credential
+                Ok({
+                    let mut updated_credential = credential;
+                    updated_credential.common_mut().state = CredentialStateEnum::Error;
+                    updated_credential
                 })
             });
 

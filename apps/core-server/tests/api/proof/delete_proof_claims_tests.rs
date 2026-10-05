@@ -135,15 +135,15 @@ async fn test_delete_proof_claims_success() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.common.id,
-            credential.claims.as_ref().await.unwrap().to_owned(),
+            credential.common().id,
+            credential.claims().as_ref().await.unwrap().to_owned(),
         )
         .await;
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
+    let credential = context.db.credentials.get(&credential.common().id).await;
     assert!(
         !credential
-            .claims
+            .claims()
             .as_ref()
             .await
             .unwrap()
@@ -172,10 +172,10 @@ async fn test_delete_proof_claims_success() {
 
     assert_eq!(proof.claims.as_ref().await.unwrap().len(), 0);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
+    let credential = context.db.credentials.get(&credential.common().id).await;
     assert!(
         credential
-            .claims
+            .claims()
             .as_ref()
             .await
             .unwrap()

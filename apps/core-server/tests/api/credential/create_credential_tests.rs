@@ -61,13 +61,13 @@ async fn test_create_credential_success() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialStateEnum::Created, credential.common.state);
+    assert_eq!(CredentialStateEnum::Created, credential.common().state);
     assert_eq!(
         2,
-        credential.claims.as_ref().await.unwrap().to_owned().len()
+        credential.claims().as_ref().await.unwrap().to_owned().len()
     );
-    assert_eq!("OPENID4VCI_FINAL1", credential.common.protocol);
-    assert_eq!(credential.common.profile, None);
+    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
+    assert_eq!(credential.common().profile, None);
 }
 
 #[tokio::test]
@@ -118,7 +118,7 @@ async fn test_create_credential_sets_expires_at_from_schema() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     // Compare at the database timestamp's millisecond precision.
     let expires_at = credential
-        .common
+        .common()
         .expires_at
         .unwrap()
         .truncate_to_millisecond();
@@ -170,7 +170,7 @@ async fn test_create_credential_no_schema_expiration_no_expiry_in_credential() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.common.expires_at, None);
+    assert_eq!(credential.common().expires_at, None);
 }
 
 #[tokio::test]
@@ -290,7 +290,7 @@ async fn test_create_credential_with_array_success() {
         .credentials
         .get(&CredentialId::from(credential_id.parse::<Uuid>().unwrap()))
         .await;
-    assert_eq!(credential.claims.as_ref().await.unwrap().len(), 15);
+    assert_eq!(credential.claims().as_ref().await.unwrap().len(), 15);
     let expected_claim_paths = [
         "namespace",
         "namespace/root_field",
@@ -311,7 +311,7 @@ async fn test_create_credential_with_array_success() {
     for expected_path in expected_claim_paths {
         assert!(
             credential
-                .claims
+                .claims()
                 .as_ref()
                 .await
                 .unwrap()
@@ -420,12 +420,12 @@ async fn test_create_credential_success_with_nested_claims() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialStateEnum::Created, credential.common.state);
+    assert_eq!(CredentialStateEnum::Created, credential.common().state);
     assert_eq!(
         5,
-        credential.claims.as_ref().await.unwrap().to_owned().len()
+        credential.claims().as_ref().await.unwrap().to_owned().len()
     );
-    assert_eq!("OPENID4VCI_FINAL1", credential.common.protocol);
+    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
 }
 
 #[tokio::test]
@@ -527,7 +527,7 @@ async fn test_create_credential_with_issuer_key() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.key.unwrap().id(), key3.id);
+    assert_eq!(credential.key().as_ref().unwrap().id(), key3.id);
 }
 
 #[tokio::test]
@@ -713,8 +713,11 @@ async fn test_create_credential_with_certificate_identifier() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.issuer_certificate.unwrap().id(), certificate.id);
-    assert_eq!(credential.key.unwrap().id(), key.id);
+    assert_eq!(
+        credential.issuer_certificate().as_ref().unwrap().id(),
+        certificate.id
+    );
+    assert_eq!(credential.key().as_ref().unwrap().id(), key.id);
 }
 
 #[tokio::test]
@@ -807,8 +810,11 @@ async fn test_create_credential_with_certificate_selection() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.issuer_certificate.unwrap().id(), certificate.id);
-    assert_eq!(credential.key.unwrap().id(), key.id);
+    assert_eq!(
+        credential.issuer_certificate().as_ref().unwrap().id(),
+        certificate.id
+    );
+    assert_eq!(credential.key().as_ref().unwrap().id(), key.id);
 }
 
 #[tokio::test]
@@ -990,12 +996,12 @@ async fn test_create_credential_with_big_picture_success() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialStateEnum::Created, credential.common.state);
+    assert_eq!(CredentialStateEnum::Created, credential.common().state);
     assert_eq!(
         1,
-        credential.claims.as_ref().await.unwrap().to_owned().len()
+        credential.claims().as_ref().await.unwrap().to_owned().len()
     );
-    assert_eq!("OPENID4VCI_FINAL1", credential.common.protocol);
+    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
 }
 
 #[tokio::test]
@@ -1433,15 +1439,15 @@ async fn test_create_credential_success_with_profile() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialStateEnum::Created, credential.common.state);
+    assert_eq!(CredentialStateEnum::Created, credential.common().state);
     assert_eq!(
         2,
-        credential.claims.as_ref().await.unwrap().to_owned().len()
+        credential.claims().as_ref().await.unwrap().to_owned().len()
     );
-    assert_eq!("OPENID4VCI_FINAL1", credential.common.protocol);
+    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
 
     // Verify the profile is correctly stored
-    assert_eq!(credential.common.profile.as_ref().unwrap(), test_profile);
+    assert_eq!(credential.common().profile.as_ref().unwrap(), test_profile);
 }
 
 #[tokio::test]
@@ -1490,7 +1496,7 @@ async fn test_create_credential_success_with_webhook_url() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.webhook_url.unwrap(), webhook_url);
+    assert_eq!(credential.webhook_url().as_deref().unwrap(), webhook_url);
 }
 
 #[tokio::test]
@@ -1556,8 +1562,8 @@ async fn test_create_credential_success_with_multiformat_schema() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.r#type, CredentialType::BatchParent);
-    assert!(credential.format.is_none());
+    assert_eq!(credential.r#type(), CredentialType::BatchParent);
+    assert!(credential.format().is_none());
 }
 
 #[tokio::test]
@@ -1615,7 +1621,14 @@ async fn test_create_credential_success_with_format_selection() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(
-        credential.format.unwrap().as_ref().await.unwrap().format,
+        credential
+            .format()
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .format,
         format
     );
 }

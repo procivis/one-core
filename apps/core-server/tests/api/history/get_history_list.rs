@@ -144,7 +144,7 @@ async fn test_get_history_list_schema_joins_credentials() {
                 &organisation,
                 TestingHistoryParams {
                     action: Some(HistoryAction::Issued),
-                    entity_id: Some(credential.common.id.into()),
+                    entity_id: Some(credential.common().id.into()),
                     entity_type: Some(HistoryEntityType::Credential),
                     ..Default::default()
                 },
@@ -684,7 +684,7 @@ async fn test_get_history_search_by_credential_schema_name() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Issued),
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 entity_type: Some(HistoryEntityType::Credential),
                 ..Default::default()
             },
@@ -777,7 +777,7 @@ async fn test_get_history_search_defaults_to_all() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Issued),
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 entity_type: Some(HistoryEntityType::Credential),
                 ..Default::default()
             },

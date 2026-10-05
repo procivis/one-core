@@ -115,13 +115,13 @@ async fn test_revoke_check_failed_if_not_holder_role() {
     let issuer_revocation_check_response = context
         .api
         .credentials
-        .revocation_check(issuer_credential.common.id, None)
+        .revocation_check(issuer_credential.common().id, None)
         .await;
 
     let verifier_revocation_check_response = context
         .api
         .credentials
-        .revocation_check(verifier_credential.common.id, None)
+        .revocation_check(verifier_credential.common().id, None)
         .await;
 
     assert_eq!(issuer_revocation_check_response.status(), 400);
@@ -164,13 +164,13 @@ async fn test_revoke_check_failed_if_only_offered() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("OFFERED", resp[0]["status"]);
     assert_eq!(false, resp[0]["success"]);
 }
@@ -188,14 +188,14 @@ async fn test_revoke_check_success_bitstring_status_list() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("ACCEPTED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
@@ -218,14 +218,14 @@ async fn test_revoke_check_uses_the_format_of_the_credential() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("ACCEPTED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
 }
@@ -248,7 +248,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
@@ -270,7 +270,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     let statuslist_credential_entry = context
@@ -287,7 +287,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     context
         .api
         .credentials
-        .revocation_check(credential.common.id, Some(true))
+        .revocation_check(credential.common().id, Some(true))
         .await;
 
     let statuslist_credential_entry2 = context
@@ -605,14 +605,14 @@ async fn test_revoke_check_mdoc_update() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("ACCEPTED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
@@ -620,7 +620,7 @@ async fn test_revoke_check_mdoc_update() {
     let updated_credentials = context
         .db
         .blobs
-        .get(&credential.credential_blob_id.unwrap())
+        .get(&credential.credential_blob_id().unwrap())
         .await
         .unwrap();
     assert_eq!(
@@ -752,21 +752,21 @@ async fn test_revoke_check_mdoc_update_invalid() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("SUSPENDED", resp[0]["status"]);
     assert!(resp[0]["reason"].is_null());
 
     let updated_credentials = context
         .db
         .blobs
-        .get(&credential.credential_blob_id.unwrap())
+        .get(&credential.credential_blob_id().unwrap())
         .await
         .unwrap();
     assert_eq!(
@@ -898,14 +898,14 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         let resp = context
             .api
             .credentials
-            .revocation_check(credential.common.id, Some(true))
+            .revocation_check(credential.common().id, Some(true))
             .await;
 
         // THEN
         assert_eq!(resp.status(), 200);
         let resp = resp.json_value().await;
 
-        resp[0]["credentialId"].assert_eq(&credential.common.id);
+        resp[0]["credentialId"].assert_eq(&credential.common().id);
         assert_eq!("ACCEPTED", resp[0]["status"]);
         assert_eq!(true, resp[0]["success"]);
         assert!(resp[0]["reason"].is_null());
@@ -913,7 +913,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         let updated_credentials = context
             .db
             .blobs
-            .get(&credential.credential_blob_id.unwrap())
+            .get(&credential.credential_blob_id().unwrap())
             .await
             .unwrap();
         assert_eq!(
@@ -1045,22 +1045,23 @@ async fn test_revoke_check_token_update() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("ACCEPTED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
-    let updated_credentials = context.db.credentials.get(&credential.common.id).await;
+    let updated_credentials = context.db.credentials.get(&credential.common().id).await;
     let interaction = updated_credentials
-        .common
+        .common()
         .interaction
+        .as_ref()
         .unwrap()
         .as_ref()
         .await
@@ -1195,14 +1196,14 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("EXPIRED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
@@ -1210,16 +1211,16 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let updated_credentials_blob = context
         .db
         .blobs
-        .get(&credential.credential_blob_id.unwrap())
+        .get(&credential.credential_blob_id().unwrap())
         .await
         .unwrap();
     assert_eq!(
         updated_credentials_blob.value,
         expired_credential.as_ref().as_bytes().to_vec()
     );
-    let updated_credentials = context.db.credentials.get(&credential.common.id).await;
+    let updated_credentials = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
-        updated_credentials.common.state,
+        updated_credentials.common().state,
         CredentialStateEnum::Expired
     );
 }
@@ -1330,21 +1331,21 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("ACCEPTED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
-    let updated_credentials = context.db.credentials.get(&credential.common.id).await;
+    let updated_credentials = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
-        updated_credentials.common.state,
+        updated_credentials.common().state,
         CredentialStateEnum::Accepted,
     );
 }
@@ -1476,21 +1477,21 @@ async fn test_suspended_to_valid_mdoc() {
     let history_previous = context
         .db
         .histories
-        .get_by_entity_id(&credential.common.id.into())
+        .get_by_entity_id(&credential.common().id.into())
         .await;
 
     // WHEN
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("ACCEPTED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
@@ -1498,22 +1499,22 @@ async fn test_suspended_to_valid_mdoc() {
     let updated_credentials_blob = context
         .db
         .blobs
-        .get(&credential.credential_blob_id.unwrap())
+        .get(&credential.credential_blob_id().unwrap())
         .await
         .unwrap();
     assert_eq!(
         updated_credentials_blob.value,
         valid_credential.as_ref().as_bytes().to_vec()
     );
-    let updated_credentials = context.db.credentials.get(&credential.common.id).await;
+    let updated_credentials = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
-        updated_credentials.common.state,
+        updated_credentials.common().state,
         CredentialStateEnum::Accepted,
     );
     let history = context
         .db
         .histories
-        .get_by_entity_id(&credential.common.id.into())
+        .get_by_entity_id(&credential.common().id.into())
         .await;
     // unsuspend added two new history entries
     assert_eq!(history.values.len(), history_previous.values.len() + 2);
@@ -1648,14 +1649,14 @@ async fn test_suspended_to_suspended_update_failed() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("SUSPENDED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
@@ -1663,16 +1664,16 @@ async fn test_suspended_to_suspended_update_failed() {
     let updated_credentials_blob = context
         .db
         .blobs
-        .get(&credential.credential_blob_id.unwrap())
+        .get(&credential.credential_blob_id().unwrap())
         .await
         .unwrap();
     assert_eq!(
         updated_credentials_blob.value,
         expired_credential.as_ref().as_bytes().to_vec()
     );
-    let updated_credentials = context.db.credentials.get(&credential.common.id).await;
+    let updated_credentials = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
-        updated_credentials.common.state,
+        updated_credentials.common().state,
         CredentialStateEnum::Suspended,
     );
 }
@@ -1750,7 +1751,7 @@ async fn test_revoke_check_failed_deleted_credential() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
@@ -1795,21 +1796,21 @@ async fn test_revoke_check_expires_single_credential() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, None)
+        .revocation_check(credential.common().id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp[0]["credentialId"].assert_eq(&credential.common.id);
+    resp[0]["credentialId"].assert_eq(&credential.common().id);
     assert_eq!("EXPIRED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
-    let updated_credential = context.db.credentials.get(&credential.common.id).await;
+    let updated_credential = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
-        updated_credential.common.state,
+        updated_credential.common().state,
         CredentialStateEnum::Expired
     );
 
@@ -1817,7 +1818,7 @@ async fn test_revoke_check_expires_single_credential() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.common.id, Some(true))
+        .revocation_check(credential.common().id, Some(true))
         .await;
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
@@ -1892,7 +1893,7 @@ async fn test_revoke_check_batch_parent_stays_accepted_when_item_expires_but_ref
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(one_core::clock::now_utc() - time::Duration::days(1)),
                 interaction: Some(interaction.clone()),
@@ -1937,7 +1938,7 @@ async fn test_revoke_check_batch_parent_stays_accepted_when_item_expires_but_ref
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction.clone()),
@@ -1950,7 +1951,7 @@ async fn test_revoke_check_batch_parent_stays_accepted_when_item_expires_but_ref
     let resp = context
         .api
         .credentials
-        .revocation_check(parent_credential.common.id, None)
+        .revocation_check(parent_credential.common().id, None)
         .await;
 
     // THEN - parent stays ACCEPTED (batch is still renewable), the item is individually EXPIRED
@@ -1962,17 +1963,17 @@ async fn test_revoke_check_batch_parent_stays_accepted_when_item_expires_but_ref
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Accepted);
-    let updated_expired_item = context.db.credentials.get(&expired_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Accepted);
+    let updated_expired_item = context.db.credentials.get(&expired_item.common().id).await;
     assert_eq!(
-        updated_expired_item.common.state,
+        updated_expired_item.common().state,
         CredentialStateEnum::Expired
     );
-    let updated_active_item = context.db.credentials.get(&active_item.common.id).await;
+    let updated_active_item = context.db.credentials.get(&active_item.common().id).await;
     assert_eq!(
-        updated_active_item.common.state,
+        updated_active_item.common().state,
         CredentialStateEnum::Accepted
     );
 }
@@ -2047,7 +2048,7 @@ async fn test_revoke_check_batch_parent_expires_when_all_items_and_refresh_token
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(one_core::clock::now_utc() - time::Duration::days(1)),
                 interaction: Some(interaction.clone()),
@@ -2060,7 +2061,7 @@ async fn test_revoke_check_batch_parent_expires_when_all_items_and_refresh_token
     let resp = context
         .api
         .credentials
-        .revocation_check(parent_credential.common.id, None)
+        .revocation_check(parent_credential.common().id, None)
         .await;
 
     // THEN - the parent becomes EXPIRED
@@ -2072,12 +2073,12 @@ async fn test_revoke_check_batch_parent_expires_when_all_items_and_refresh_token
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Expired);
-    let updated_expired_item = context.db.credentials.get(&expired_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Expired);
+    let updated_expired_item = context.db.credentials.get(&expired_item.common().id).await;
     assert_eq!(
-        updated_expired_item.common.state,
+        updated_expired_item.common().state,
         CredentialStateEnum::Expired
     );
 }
@@ -2177,7 +2178,7 @@ async fn test_revoke_check_batch_parent_expires_when_refresh_token_expired_even_
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction.clone()),
@@ -2190,7 +2191,7 @@ async fn test_revoke_check_batch_parent_expires_when_refresh_token_expired_even_
     let resp = context
         .api
         .credentials
-        .revocation_check(parent_credential.common.id, None)
+        .revocation_check(parent_credential.common().id, None)
         .await;
 
     // THEN - the parent becomes EXPIRED anyway (it can no longer be renewed)
@@ -2202,12 +2203,12 @@ async fn test_revoke_check_batch_parent_expires_when_refresh_token_expired_even_
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Expired);
-    let updated_active_item = context.db.credentials.get(&active_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Expired);
+    let updated_active_item = context.db.credentials.get(&active_item.common().id).await;
     assert_eq!(
-        updated_active_item.common.state,
+        updated_active_item.common().state,
         CredentialStateEnum::Accepted
     );
 }
@@ -2308,7 +2309,7 @@ async fn test_revoke_check_batch_parent_expires_when_own_expires_at_passed() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction.clone()),
@@ -2322,7 +2323,7 @@ async fn test_revoke_check_batch_parent_expires_when_own_expires_at_passed() {
     let resp = context
         .api
         .credentials
-        .revocation_check(parent_credential.common.id, None)
+        .revocation_check(parent_credential.common().id, None)
         .await;
 
     // THEN - the parent becomes EXPIRED
@@ -2334,12 +2335,12 @@ async fn test_revoke_check_batch_parent_expires_when_own_expires_at_passed() {
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Expired);
-    let updated_valid_item = context.db.credentials.get(&valid_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Expired);
+    let updated_valid_item = context.db.credentials.get(&valid_item.common().id).await;
     assert_eq!(
-        updated_valid_item.common.state,
+        updated_valid_item.common().state,
         CredentialStateEnum::Accepted
     );
 }

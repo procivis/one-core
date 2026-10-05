@@ -16,7 +16,7 @@ pub(super) async fn validate_credentials_match_session_organisation(
     session_provider: &dyn SessionProvider,
 ) -> Result<(), HolderServiceError> {
     for cred in credentials {
-        let schema = cred.common.schema.as_ref().await?;
+        let schema = cred.common().schema.as_ref().await?;
         throw_if_org_id_not_matching_session(schema.organisation.id_ref(), session_provider)
             .error_while("checking session")?;
     }

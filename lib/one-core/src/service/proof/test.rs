@@ -529,7 +529,7 @@ async fn test_get_proof_with_array_holder() {
     .await
     .unwrap();
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -592,7 +592,7 @@ async fn test_get_proof_with_array_holder() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
+    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -775,7 +775,7 @@ async fn test_get_proof_with_array_in_object_holder() {
     .await
     .unwrap();
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -847,7 +847,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
+    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1035,7 +1035,7 @@ async fn test_get_proof_with_object_array_holder() {
     .await
     .unwrap();
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1116,7 +1116,7 @@ async fn test_get_proof_with_object_array_holder() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
+    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1299,7 +1299,7 @@ async fn test_get_proof_with_array() {
     .await
     .unwrap();
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1362,7 +1362,7 @@ async fn test_get_proof_with_array() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
+    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1555,7 +1555,7 @@ async fn test_get_proof_with_array_in_object() {
     .await
     .unwrap();
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1627,7 +1627,7 @@ async fn test_get_proof_with_array_in_object() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
+    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1826,7 +1826,7 @@ async fn test_get_proof_with_object_array() {
     .await
     .unwrap();
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1907,7 +1907,7 @@ async fn test_get_proof_with_object_array() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims.as_ref().await.unwrap().to_owned();
+    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
         ecosystem: None,

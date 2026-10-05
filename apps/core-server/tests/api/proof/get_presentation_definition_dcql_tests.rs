@@ -100,7 +100,7 @@ async fn test_get_presentation_definition_dcql_simple() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
     let claims = body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"]
         .as_array()
         .unwrap();
@@ -222,7 +222,7 @@ async fn test_get_presentation_definition_dcql_nesting() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
     assert!(
@@ -339,7 +339,7 @@ async fn test_get_presentation_definition_dcql_nested_with_mandatory_disclosure_
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
 
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
@@ -465,7 +465,7 @@ async fn test_get_presentation_definition_dcql_nested_required_with_mandatory_di
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
 
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
@@ -605,7 +605,7 @@ async fn test_get_presentation_definition_dcql_nested_with_array_query() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
 
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
@@ -745,7 +745,7 @@ async fn test_get_presentation_definition_dcql_array_all_query() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
 
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
@@ -880,7 +880,7 @@ async fn test_get_presentation_definition_dcql_array_all_mandatory_query() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
 
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
@@ -1005,7 +1005,7 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
 
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
@@ -1294,7 +1294,7 @@ async fn test_get_presentation_definition_dcql_claim_sets() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
     let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
     let flat = flatten_claims(claims);
     assert!(
@@ -1424,20 +1424,20 @@ async fn test_get_presentation_definition_dcql_claim_sets_disjoint_credentials()
         .iter()
         .map(|c| c["id"].as_str().unwrap().to_string())
         .collect();
-    assert!(ids.contains(&credential1.common.id.to_string()));
-    assert!(ids.contains(&credential2.common.id.to_string()));
+    assert!(ids.contains(&credential1.common().id.to_string()));
+    assert!(ids.contains(&credential2.common().id.to_string()));
     assert_eq!(ids.len(), 2);
 
     let cred1 = applicable
         .iter()
-        .find(|c| c["id"].as_str() == Some(&credential1.common.id.to_string()))
+        .find(|c| c["id"].as_str() == Some(&credential1.common().id.to_string()))
         .unwrap();
     let flat1 = flatten_claims(&cred1["claims"]);
     assert!(flat1.iter().any(|(p, _)| p == "first"));
 
     let cred2 = applicable
         .iter()
-        .find(|c| c["id"].as_str() == Some(&credential2.common.id.to_string()))
+        .find(|c| c["id"].as_str() == Some(&credential2.common().id.to_string()))
         .unwrap();
     let flat2 = flatten_claims(&cred2["claims"]);
     assert!(flat2.iter().any(|(p, _)| p == "second"));
@@ -1601,12 +1601,12 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
         .iter()
         .map(|c| c["id"].as_str().unwrap().to_string())
         .collect();
-    assert!(ids.contains(&credential1.common.id.to_string()));
-    assert!(!ids.contains(&credential2.common.id.to_string()));
+    assert!(ids.contains(&credential1.common().id.to_string()));
+    assert!(!ids.contains(&credential2.common().id.to_string()));
 
     let cred1 = applicable
         .iter()
-        .find(|c| c["id"].as_str() == Some(&credential1.common.id.to_string()))
+        .find(|c| c["id"].as_str() == Some(&credential1.common().id.to_string()))
         .unwrap();
     let flat = flatten_claims(&cred1["claims"]);
     // metadata claims used for matching are not surfaced in `claims`
@@ -1813,8 +1813,8 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
         .map(|c| c["id"].as_str().unwrap().to_string())
         .collect();
     assert_eq!(ids.len(), 2);
-    assert!(ids.contains(&credential1.common.id.to_string()));
-    assert!(ids.contains(&credential2.common.id.to_string()));
+    assert!(ids.contains(&credential1.common().id.to_string()));
+    assert!(ids.contains(&credential2.common().id.to_string()));
 
     for cred in applicable {
         let flat = flatten_claims(&cred["claims"]);
@@ -2047,7 +2047,7 @@ async fn test_get_presentation_definition_dcql_no_claims() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
 
     let credential_sets = json!([{
         "options": [["test_id"]],
@@ -2199,14 +2199,14 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
         .map(|c| c["id"].as_str().unwrap().to_string())
         .collect();
     assert_eq!(ids.len(), 2);
-    assert!(ids.contains(&credential1.common.id.to_string()));
-    assert!(ids.contains(&credential2.common.id.to_string()));
+    assert!(ids.contains(&credential1.common().id.to_string()));
+    assert!(ids.contains(&credential2.common().id.to_string()));
 
     // credential1 (no SD): all schema claims are present and all are required, even though only
     // "firstName" was requested.
     let cred1 = applicable
         .iter()
-        .find(|c| c["id"].as_str() == Some(&credential1.common.id.to_string()))
+        .find(|c| c["id"].as_str() == Some(&credential1.common().id.to_string()))
         .unwrap();
     let flat1 = flatten_claims(&cred1["claims"]);
     assert!(
@@ -2223,7 +2223,7 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
     // credential2 (BBS+ SD): only the requested "firstName" claim is selected.
     let cred2 = applicable
         .iter()
-        .find(|c| c["id"].as_str() == Some(&credential2.common.id.to_string()))
+        .find(|c| c["id"].as_str() == Some(&credential2.common().id.to_string()))
         .unwrap();
     let flat2 = flatten_claims(&cred2["claims"]);
     assert!(flat2.iter().any(|(p, _)| p == "firstName"));
@@ -2358,7 +2358,7 @@ async fn test_get_presentation_definition_dcql_value_match() {
         .as_array()
         .unwrap();
     assert_eq!(applicable.len(), 1);
-    applicable[0]["id"].assert_eq(&credential1.common.id);
+    applicable[0]["id"].assert_eq(&credential1.common().id);
 
     let flat = flatten_claims(&applicable[0]["claims"]);
     assert!(
@@ -2464,7 +2464,7 @@ async fn test_get_presentation_definition_dcql_using_multiple_flag() {
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["multiple"].assert_eq(&true);
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential1.common.id);
+        .assert_eq(&credential1.common().id);
 
     let flat =
         flatten_claims(&body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"]);
@@ -2670,7 +2670,7 @@ mod trusted_authorities {
         assert_eq!(resp.status(), 200);
         let body = resp.json_value().await;
         body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-            .assert_eq(&credential.common.id);
+            .assert_eq(&credential.common().id);
 
         let flat = flatten_claims(
             &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"],
@@ -2784,7 +2784,7 @@ mod trusted_authorities {
         assert_eq!(resp.status(), 200);
         let body = resp.json_value().await;
         body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-            .assert_eq(&credential.common.id);
+            .assert_eq(&credential.common().id);
 
         let flat = flatten_claims(
             &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"],

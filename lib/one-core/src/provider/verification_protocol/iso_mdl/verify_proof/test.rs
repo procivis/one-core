@@ -175,17 +175,17 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
         .expect_create_credential()
         .times(2)
         .returning(move |credential| {
-            assert_eq!(credential.role, CredentialRole::Verifier);
-            assert_eq!(credential.common.protocol, "ISO_MDL");
+            assert_eq!(credential.role(), CredentialRole::Verifier);
+            assert_eq!(credential.common().protocol, "ISO_MDL");
             assert_eq!(
-                credential.issuer_identifier.as_ref().unwrap().id(),
+                credential.issuer_identifier().as_ref().unwrap().id(),
                 issuer_identifier_id
             );
             assert_eq!(
-                credential.holder_identifier.as_ref().unwrap().id(),
+                credential.holder_identifier().as_ref().unwrap().id(),
                 holder_identifier_id
             );
-            Ok(credential.common.id)
+            Ok(credential.common().id)
         });
 
     let mut proof_repository = MockProofRepository::new();
@@ -227,7 +227,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
     for claim in claims {
         let credential = claim.credential.as_ref().await.unwrap();
         assert_eq!(
-            credential.holder_identifier.as_ref().unwrap().id(),
+            credential.holder_identifier().as_ref().unwrap().id(),
             holder_identifier_id
         );
     }

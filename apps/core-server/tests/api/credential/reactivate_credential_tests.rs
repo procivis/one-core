@@ -43,7 +43,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, credential.common.id, 0)
+        .create_credential_entry(revocation_list.id, credential.common().id, 0)
         .await;
 
     context
@@ -60,15 +60,15 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
     let resp = context
         .api
         .credentials
-        .reactivate(&credential.common.id)
+        .reactivate(&credential.common().id)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
+    let credential = context.db.credentials.get(&credential.common().id).await;
 
-    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.common().state);
 
     let revocation_list_entry = context
         .db
@@ -107,7 +107,7 @@ async fn test_reactivate_credential_fails_when_expired() {
     let resp = context
         .api
         .credentials
-        .reactivate(&credential.common.id)
+        .reactivate(&credential.common().id)
         .await;
 
     // THEN - same error as reactivating a REVOKED credential (invalid state transition)
@@ -115,6 +115,6 @@ async fn test_reactivate_credential_fails_when_expired() {
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0366");
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expired, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.common().state);
 }

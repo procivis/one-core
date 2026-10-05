@@ -46,51 +46,56 @@ pub(crate) async fn credential_from_proved(
         .await
         .error_while("creating remote holder identifier")?;
 
-    Ok(Credential {
+    let Credential::Generic {
+        common,
+        role,
+        claims,
+        key,
+        suspend_end_date,
+        credential_blob_id,
+        wallet_key_attestation_blob_id,
+        wallet_instance_attestation_blob_id,
+        format,
+        ..
+    } = proved_credential.credential;
+
+    Ok(Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
-            ecosystem: proved_credential.credential.common.ecosystem,
-            id: proved_credential.credential.common.id,
-            created_date: proved_credential.credential.common.created_date,
-            issuance_date: proved_credential.credential.common.issuance_date,
-            last_modified: proved_credential.credential.common.last_modified,
-            deleted_at: proved_credential.credential.common.deleted_at,
-            protocol: proved_credential.credential.common.protocol,
-            redirect_uri: proved_credential.credential.common.redirect_uri,
-            state: proved_credential.credential.common.state,
+            ecosystem: common.ecosystem,
+            id: common.id,
+            created_date: common.created_date,
+            issuance_date: common.issuance_date,
+            last_modified: common.last_modified,
+            deleted_at: common.deleted_at,
+            protocol: common.protocol,
+            redirect_uri: common.redirect_uri,
+            state: common.state,
             schema: from_provider_schema(
-                proved_credential
-                    .credential
-                    .common
-                    .schema
-                    .as_ref()
-                    .await?
-                    .to_owned(),
+                common.schema.as_ref().await?.to_owned(),
                 organisation.to_owned(),
             )
             .into(),
             interaction: None,
-            profile: proved_credential.credential.common.profile,
+            profile: common.profile,
         },
         consumed_at: None,
-        role: proved_credential.credential.role,
+        role,
         r#type: CredentialType::Single,
-        claims: proved_credential.credential.claims,
+        claims,
         issuer_identifier: Some(issuer_identifier.into()),
         issuer_certificate,
         holder_identifier: Some(holder_identifier.into()),
-        key: proved_credential.credential.key,
-        suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
-        credential_blob_id: proved_credential.credential.credential_blob_id,
-        wallet_key_attestation_blob_id: proved_credential.credential.wallet_key_attestation_blob_id,
-        wallet_instance_attestation_blob_id: proved_credential
-            .credential
-            .wallet_instance_attestation_blob_id,
+        key,
+        suspend_end_date: convert_inner(suspend_end_date),
+        credential_blob_id,
+        wallet_key_attestation_blob_id,
+        wallet_instance_attestation_blob_id,
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
-        format: proved_credential.credential.format,
+        format,
     })
 }
 

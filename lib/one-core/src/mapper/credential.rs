@@ -17,14 +17,16 @@ use crate::repository::credential_repository::CredentialRepository;
 pub(crate) async fn stored_credential_claims(
     credential: &Credential,
 ) -> Result<Vec<Claim>, NestedError> {
-    if credential.r#type != CredentialType::BatchItem || credential.role == CredentialRole::Holder {
-        return Ok(credential.claims.as_ref().await?.to_owned());
+    if credential.r#type() != CredentialType::BatchItem
+        || credential.role() == CredentialRole::Holder
+    {
+        return Ok(credential.claims().as_ref().await?.to_owned());
     }
     Ok(credential
-        .parent
+        .parent()
         .as_required_ref()
         .await?
-        .claims
+        .claims()
         .as_ref()
         .await?
         .to_owned())
@@ -35,7 +37,8 @@ pub(crate) async fn detail_claims(
     credential: &Credential,
     repository: &dyn CredentialRepository,
 ) -> Result<Vec<Claim>, NestedError> {
-    if credential.role == CredentialRole::Holder && credential.r#type == CredentialType::BatchParent
+    if credential.role() == CredentialRole::Holder
+        && credential.r#type() == CredentialType::BatchParent
     {
         holder_batch_parent_claims(credential, repository).await
     } else {
@@ -51,7 +54,7 @@ async fn holder_batch_parent_claims(
         .get_credential_list(ListQuery {
             include_count: false,
             filtering: Some(
-                CredentialFilterValue::ParentCredential(credential.common.id).condition()
+                CredentialFilterValue::ParentCredential(credential.common().id).condition()
                     & CredentialFilterValue::Deleted(false),
             ),
             sorting: Some(ListSorting {
@@ -67,7 +70,7 @@ async fn holder_batch_parent_claims(
         .await
         .error_while("loading newest batch item")?;
     if let Some(item) = items.values.first() {
-        return Ok(item.claims.as_ref().await?.to_owned());
+        return Ok(item.claims().as_ref().await?.to_owned());
     }
     Ok(vec![])
 }
@@ -84,41 +87,43 @@ mod test {
     #[tokio::test]
     async fn holder_items_use_only_own_claims_while_issuer_items_inherit() {
         let parent = dummy_credential();
-        let parent_claim_id = parent.claims.as_ref().await.unwrap()[0].id;
-        let mut item = Credential {
-            role: CredentialRole::Holder,
-            r#type: CredentialType::BatchItem,
-            parent: Some(parent.into()),
-            ..dummy_credential()
+        let parent_claim_id = parent.claims().as_ref().await.unwrap()[0].id;
+        let mut item = {
+            let mut updated_credential = dummy_credential();
+            *updated_credential.role_mut() = CredentialRole::Holder;
+            *updated_credential.type_mut() = CredentialType::BatchItem;
+            *updated_credential.parent_mut() = Some(parent.into());
+            updated_credential
         };
-        item.claims.as_mut().await.unwrap()[0].selectively_disclosable = true;
+        item.claims_mut().as_mut().await.unwrap()[0].selectively_disclosable = true;
         let own = stored_credential_claims(&item).await.unwrap();
-        assert_eq!(own[0].id, item.claims.as_ref().await.unwrap()[0].id);
+        assert_eq!(own[0].id, item.claims().as_ref().await.unwrap()[0].id);
         assert!(own[0].selectively_disclosable);
         assert_ne!(own[0].id, parent_claim_id);
 
-        item.role = CredentialRole::Issuer;
+        *item.role_mut() = CredentialRole::Issuer;
         assert_eq!(
             stored_credential_claims(&item).await.unwrap()[0].id,
             parent_claim_id
         );
-        item.role = CredentialRole::Holder;
-        item.claims = Default::default();
+        *item.role_mut() = CredentialRole::Holder;
+        *item.claims_mut() = Default::default();
         assert!(stored_credential_claims(&item).await.unwrap().is_empty());
     }
 
     #[tokio::test]
     async fn parent_details_use_only_newest_item_claims() {
         for (has_item, has_item_claims) in [(true, true), (true, false), (false, false)] {
-            let mut parent = Credential {
-                role: CredentialRole::Holder,
-                r#type: CredentialType::BatchParent,
-                ..dummy_credential()
+            let mut parent = {
+                let mut updated_credential = dummy_credential();
+                *updated_credential.role_mut() = CredentialRole::Holder;
+                *updated_credential.type_mut() = CredentialType::BatchParent;
+                updated_credential
             };
             let mut item = dummy_credential();
-            let item_claim_id = item.claims.as_ref().await.unwrap()[0].id;
+            let item_claim_id = item.claims().as_ref().await.unwrap()[0].id;
             if !has_item_claims {
-                item.claims = Default::default();
+                *item.claims_mut() = Default::default();
             }
             let mut repository = MockCredentialRepository::new();
             repository
@@ -141,7 +146,7 @@ mod test {
             } else {
                 assert!(claims.is_empty());
             }
-            parent.claims = Default::default();
+            *parent.claims_mut() = Default::default();
             assert_eq!(
                 detail_claims(&parent, &repository)
                     .await

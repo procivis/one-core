@@ -562,7 +562,7 @@ async fn test_get_presentation_definition_v2() {
         },
     ];
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,

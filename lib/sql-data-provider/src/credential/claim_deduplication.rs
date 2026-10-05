@@ -63,13 +63,13 @@ pub(super) async fn reuse_batch_claims(
 ) -> Result<Vec<claim::Model>, DataLayerError> {
     let new_ids: HashSet<_> = credentials
         .iter()
-        .map(|item| item.credential.common.id)
+        .map(|item| item.credential.common().id)
         .collect();
     let mut known_claim_ids: HashSet<_> = stored.keys().copied().collect();
     let mut new_claims = Vec::new();
     let mut groups: HashMap<_, Vec<_>> = HashMap::new();
     for item in credentials {
-        if let Some(parent) = &item.credential.parent {
+        if let Some(parent) = &item.credential.parent() {
             groups.entry(parent.id()).or_default().push(item);
         } else {
             for claim in &item.claims {

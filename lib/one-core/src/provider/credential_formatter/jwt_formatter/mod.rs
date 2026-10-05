@@ -468,7 +468,7 @@ impl CredentialFormatter for JWTFormatter {
             })
             .transpose()?;
 
-        Ok(Credential {
+        Ok(Credential::Generic {
             common: CredentialCommon {
                 expires_at: jwt.payload.expires_at,
                 ecosystem: None,

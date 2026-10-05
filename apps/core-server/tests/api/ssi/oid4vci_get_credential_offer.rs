@@ -55,7 +55,7 @@ async fn test_get_credential_offer_success_jwt() {
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.common.id)
+        .get_credential_offer(credential_schema.id, credential.common().id)
         .await;
 
     // THEN
@@ -134,7 +134,7 @@ async fn test_get_credential_offer_success_with_tx_code() {
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.common.id)
+        .get_credential_offer(credential_schema.id, credential.common().id)
         .await;
 
     // THEN
@@ -210,7 +210,7 @@ async fn test_get_credential_offer_success_certificate_identifier() {
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.common.id)
+        .get_credential_offer(credential_schema.id, credential.common().id)
         .await;
 
     // THEN
@@ -285,7 +285,7 @@ async fn test_get_credential_offer_success_mdoc() {
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.common.id)
+        .get_credential_offer(credential_schema.id, credential.common().id)
         .await;
 
     // THEN
@@ -385,7 +385,7 @@ async fn test_get_credential_offer_multi_format_offers_selected_formats() {
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.common.id)
+        .get_credential_offer(credential_schema.id, credential.common().id)
         .await;
 
     // THEN
@@ -403,7 +403,7 @@ async fn test_get_credential_offer_multi_format_offers_all_formats_without_selec
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.common.id)
+        .get_credential_offer(credential_schema.id, credential.common().id)
         .await;
 
     // THEN
@@ -480,7 +480,7 @@ async fn test_get_credential_offer_not_found_batch_item() {
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.common.id)
+        .get_credential_offer(credential_schema.id, credential.common().id)
         .await;
 
     // THEN

@@ -825,13 +825,13 @@ async fn test_parse_credential() {
         .await
         .unwrap();
 
-    assert_eq!(credential.role, CredentialRole::Holder);
+    assert_eq!(credential.role(), CredentialRole::Holder);
     assert_eq!(
-        credential.common.issuance_date.unwrap(),
+        credential.common().issuance_date.unwrap(),
         datetime!(2025-10-17 03:36:49 UTC)
     );
     assert_eq!(
-        credential.common.expires_at.unwrap(),
+        credential.common().expires_at.unwrap(),
         datetime!(2027-10-17 03:36:49 UTC)
     );
 
@@ -840,7 +840,7 @@ async fn test_parse_credential() {
             data: IdentifierData::Did(issuer_did),
             ..
         } = credential
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .unwrap()
             .as_ref()
@@ -854,7 +854,7 @@ async fn test_parse_credential() {
     );
 
     let holder_identifier = credential
-        .holder_identifier
+        .holder_identifier()
         .as_ref()
         .unwrap()
         .as_ref()
@@ -866,7 +866,7 @@ async fn test_parse_credential() {
         "did:key:zDnaeokW7xJYWFLNk5yA8W9LVVq7Ee2tYTQwMK2dJyC4e3rCr"
     );
 
-    let schema = credential.common.schema.as_ref().await.unwrap();
+    let schema = credential.common().schema.as_ref().await.unwrap();
     assert_eq!(schema.allow_revocation, true);
     assert_eq!(schema.name, "7543Nested");
     assert_eq!(
@@ -874,7 +874,7 @@ async fn test_parse_credential() {
         "https://core.dev.procivis-one.com/ssi/schema/v1/b79b7b5b-20f9-434b-b247-b0d19cc151da"
     );
 
-    let claims = credential.claims.as_ref().await.unwrap();
+    let claims = credential.claims().as_ref().await.unwrap();
     assert_eq!(claims.len(), 15);
 
     let mut metadata_paths: HashSet<&str> = HashSet::new();

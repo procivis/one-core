@@ -107,7 +107,7 @@ pub(crate) fn extracted_credential_to_model(
     }
 
     Ok(ProvedCredential {
-        credential: Credential {
+        credential: Credential::Generic {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,

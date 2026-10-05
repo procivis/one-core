@@ -10,7 +10,6 @@ use uuid::Uuid;
 use super::*;
 use crate::clock::now_utc;
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
-use crate::model::credential::{Credential, CredentialCommon};
 use crate::model::credential_schema::WalletAttestation;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionEcosystems, InteractionType};
@@ -705,14 +704,9 @@ async fn test_an_invitation_does_not_store_an_ecosystem() {
 fn submission_artifact(index: usize) -> ProtocolArtifact<'static> {
     ProtocolArtifact::VerifierSubmission {
         credential: Cow::Owned({
-            let base_credential = dummy_credential();
-            Credential {
-                common: CredentialCommon {
-                    id: submitted_credential(index),
-                    ..base_credential.common
-                },
-                ..base_credential
-            }
+            let mut updated_credential = dummy_credential();
+            updated_credential.common_mut().id = submitted_credential(index);
+            updated_credential
         }),
         issuer_details: Cow::Owned(submission_issuer(index)),
         proof_id: submitted_proof(),
@@ -1265,9 +1259,10 @@ async fn test_a_failed_submission_records_only_on_the_proof() {
 #[tokio::test]
 async fn test_an_issued_batch_item_records_on_its_batch() {
     let batch = dummy_credential();
-    let item = Credential {
-        parent: Some(batch.to_owned().into()),
-        ..dummy_credential()
+    let item = {
+        let mut updated_credential = dummy_credential();
+        *updated_credential.parent_mut() = Some(batch.to_owned().into());
+        updated_credential
     };
     let (interaction_id, interaction_repository, _) = interaction_under_test(
         organisation(&["EUDI"], false),
@@ -1294,7 +1289,7 @@ async fn test_an_issued_batch_item_records_on_its_batch() {
     .unwrap();
 
     assert_eq!(
-        vec![(batch.common.id.into(), outcomes(&[("EUDI", Ok(()))]))],
+        vec![(batch.common().id.into(), outcomes(&[("EUDI", Ok(()))]))],
         recorded_on(&written)
     );
 }

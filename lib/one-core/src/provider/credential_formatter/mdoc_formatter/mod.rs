@@ -679,7 +679,7 @@ impl CredentialFormatter for MdocFormatter {
             organisation,
         )?;
 
-        Ok(Credential {
+        Ok(Credential::Generic {
             common: CredentialCommon {
                 expires_at: Some(mso.validity_info.valid_until.into()),
                 ecosystem: None,

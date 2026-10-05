@@ -29,7 +29,7 @@ async fn test_share_credential_success() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.share(&credential.common.id).await;
+    let resp = context.api.credentials.share(&credential.common().id).await;
 
     // THEN
     assert_eq!(resp.status(), 201);
@@ -41,8 +41,8 @@ async fn test_share_credential_success() {
 
     assert!(resp.get("transactionCode").is_none());
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Pending, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Pending, credential.common().state);
 }
 
 #[tokio::test]
@@ -70,7 +70,7 @@ async fn test_share_credential_failed_deleted_credential() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.share(&credential.common.id).await;
+    let resp = context.api.credentials.share(&credential.common().id).await;
 
     // THEN
     assert_eq!(resp.status(), 404);
@@ -98,7 +98,7 @@ async fn test_share_credential_fails_when_expired() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.share(&credential.common.id).await;
+    let resp = context.api.credentials.share(&credential.common().id).await;
 
     // THEN - same error as sharing an already REVOKED credential (invalid state)
     assert_eq!(resp.status(), 400);
@@ -139,7 +139,7 @@ async fn test_share_credential_with_tx_code() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.share(&credential.common.id).await;
+    let resp = context.api.credentials.share(&credential.common().id).await;
 
     // THEN
     assert_eq!(resp.status(), 201);
@@ -153,6 +153,6 @@ async fn test_share_credential_with_tx_code() {
     let tx_code: String = resp["transactionCode"].parse();
     assert_eq!(tx_code.len(), 4);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Pending, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Pending, credential.common().state);
 }

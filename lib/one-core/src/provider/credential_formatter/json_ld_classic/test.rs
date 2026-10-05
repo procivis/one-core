@@ -310,10 +310,10 @@ async fn test_parse_credential() {
         .await
         .unwrap();
 
-    assert_eq!(credential.role, CredentialRole::Holder);
-    assert!(credential.common.issuance_date.is_none());
+    assert_eq!(credential.role(), CredentialRole::Holder);
+    assert!(credential.common().issuance_date.is_none());
     assert_eq!(
-        credential.common.expires_at.unwrap(),
+        credential.common().expires_at.unwrap(),
         datetime!(2028-02-19 09:18:33.007487222 UTC)
     );
 
@@ -322,7 +322,7 @@ async fn test_parse_credential() {
             data: IdentifierData::Did(issuer_did),
             ..
         } = credential
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .unwrap()
             .as_ref()
@@ -336,7 +336,7 @@ async fn test_parse_credential() {
     );
 
     let holder_identifier = credential
-        .holder_identifier
+        .holder_identifier()
         .as_ref()
         .unwrap()
         .as_ref()
@@ -348,7 +348,7 @@ async fn test_parse_credential() {
         "did:key:zDnaeQtSJWkb9qaCu3imWNh6HZqVdcDESDNGnZjMqFZykv3m5"
     );
 
-    let schema = credential.common.schema.as_ref().await.unwrap();
+    let schema = credential.common().schema.as_ref().await.unwrap();
     assert_eq!(schema.allow_revocation, true);
     assert_eq!(schema.name, "8761JsonLd");
     assert_eq!(
@@ -356,7 +356,7 @@ async fn test_parse_credential() {
         format!("{base_url}/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647")
     );
 
-    let claims = credential.claims.as_ref().await.unwrap();
+    let claims = credential.claims().as_ref().await.unwrap();
     assert_eq!(claims.len(), 4);
 
     let mut metadata_paths: HashSet<&str> = HashSet::new();

@@ -13,7 +13,7 @@ impl EudiEcosystem {
         &self,
         credential: &Credential,
     ) -> Result<(), EcosystemError> {
-        let Some(issuer_identifier) = &credential.issuer_identifier else {
+        let Some(issuer_identifier) = &credential.issuer_identifier() else {
             return Err(EcosystemError::MissingIdentifier);
         };
         let issuer_identifier = issuer_identifier.as_ref().await?;
@@ -22,11 +22,11 @@ impl EudiEcosystem {
             return Err(EcosystemError::InvalidIdentifier(issuer_identifier.id));
         }
 
-        let Some(_issuer_certificate) = &credential.issuer_certificate else {
+        let Some(_issuer_certificate) = &credential.issuer_certificate() else {
             return Err(EcosystemError::MissingIdentifier);
         };
 
-        let credential_schema = credential.common.schema.as_ref().await?;
+        let credential_schema = credential.common().schema.as_ref().await?;
         let (schema_format, format_type) =
             credential_schema_to_schema_format(&credential_schema, &self.config).await?;
         if !ALLOWED_FORMAT_TYPES.contains(&format_type) {

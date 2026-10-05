@@ -146,7 +146,7 @@ async fn setup_empty() -> TestSetup {
         identifier_id,
         credential_schema_id,
         proof_id: proof_id.into(),
-        credential_id: credential.common.id.into(),
+        credential_id: credential.common().id.into(),
         proof_schema_id,
     }
 }
@@ -286,7 +286,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     insert_history(
         &db,
         HistoryAction::Issued.into(),
-        credential.common.id.into(),
+        credential.common().id.into(),
         HistoryEntityType::Credential.into(),
         organisation.id,
         credential_schema_name.to_string(),
@@ -320,7 +320,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     let claims = vec![(
         Uuid::new_v4().into(),
         new_claim_schemas[0].id,
-        credential.common.id,
+        credential.common().id,
         Some(claim_value.as_bytes().to_vec()),
         new_claim_schemas[0].key.to_string(),
         false,
@@ -363,7 +363,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     )
     .await
     .unwrap();
-    let proof_claim = vec![(proof_id, credential.common.id, claims[0].0)];
+    let proof_claim = vec![(proof_id, credential.common().id, claims[0].0)];
     insert_many_proof_claim_to_database(&db, proof_claim.as_slice())
         .await
         .unwrap();
@@ -389,7 +389,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         did_value,
         claim_schema_name,
         claim_value,
-        credential_id: credential.common.id,
+        credential_id: credential.common().id,
         proof_schema_id,
     }
 }
@@ -601,7 +601,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         insert_history(
             &db,
             HistoryAction::Issued.into(),
-            credential.common.id.into(),
+            credential.common().id.into(),
             HistoryEntityType::Credential.into(),
             organisation.id,
             organisation.id.to_string(),
@@ -1128,7 +1128,7 @@ async fn test_history_org_stats_ignore_irrelevant() {
         &db,
         HistoryEntityType::Credential,
         HistoryAction::Issued,
-        Some(holder_cred.common.id.into()),
+        Some(holder_cred.common().id.into()),
         org_id,
         now,
     )
@@ -1612,7 +1612,7 @@ async fn test_issuer_org_history_stats_dummy_data() {
         &db,
         HistoryEntityType::Credential,
         HistoryAction::Revoked,
-        Some(credential2.common.id.into()),
+        Some(credential2.common().id.into()),
         org_id,
         now - Duration::hours(30),
     )
@@ -1631,7 +1631,7 @@ async fn test_issuer_org_history_stats_dummy_data() {
             &db,
             HistoryEntityType::Credential,
             HistoryAction::Suspended,
-            Some(credential2.common.id.into()),
+            Some(credential2.common().id.into()),
             org_id,
             now,
         )
@@ -1641,7 +1641,7 @@ async fn test_issuer_org_history_stats_dummy_data() {
         &db,
         HistoryEntityType::Credential,
         HistoryAction::Reactivated,
-        Some(credential2.common.id.into()),
+        Some(credential2.common().id.into()),
         org_id,
         now,
     )

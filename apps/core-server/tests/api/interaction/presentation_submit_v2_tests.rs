@@ -50,7 +50,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.common.id, &[], &[])
+        .presentation_submit_v2(interaction.id, credential.common().id, &[], &[])
         .await;
 
     // THEN
@@ -116,7 +116,7 @@ async fn test_presentation_submit_endpoint_user_selection_unknown_claim() {
         .interactions
         .presentation_submit_v2(
             interaction.id,
-            credential.common.id,
+            credential.common().id,
             &["unknown_claim"],
             &[],
         )
@@ -140,7 +140,7 @@ async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
         .interactions
         .presentation_submit_v2(
             interaction.id,
-            credential.common.id,
+            credential.common().id,
             &["duplicate", "duplicate"],
             &[],
         )
@@ -178,7 +178,7 @@ async fn check_batch_presentation(submitted_type: CredentialType) {
     let selected_id = selected_batch_item(&context, proof.id).await;
 
     let submitted_id = match submitted_type {
-        CredentialType::BatchParent => credential.common.id,
+        CredentialType::BatchParent => credential.common().id,
         CredentialType::BatchItem => selected_id,
         CredentialType::Single => unreachable!(),
     };
@@ -237,12 +237,12 @@ async fn check_batch_presentation(submitted_type: CredentialType) {
         &verifier_identifier.id.to_string()
     );
 
-    let items = batch_items(&context, credential.common.id).await;
+    let items = batch_items(&context, credential.common().id).await;
     // Only one item consumed
-    assert!(items.iter().any(|c| c.consumed_at.is_some()));
-    assert!(items.iter().any(|c| c.consumed_at.is_none()));
-    let consumed = items.iter().find(|c| c.consumed_at.is_some()).unwrap();
-    assert_eq!(consumed.common.id, selected_id);
+    assert!(items.iter().any(|c| c.consumed_at().is_some()));
+    assert!(items.iter().any(|c| c.consumed_at().is_none()));
+    let consumed = items.iter().find(|c| c.consumed_at().is_some()).unwrap();
+    assert_eq!(consumed.common().id, selected_id);
     assert!(
         proof
             .claims
@@ -250,7 +250,7 @@ async fn check_batch_presentation(submitted_type: CredentialType) {
             .await
             .unwrap()
             .iter()
-            .all(|claim| claim.credential.id() == consumed.common.id)
+            .all(|claim| claim.credential.id() == consumed.common().id)
     );
     assert!(
         proof
@@ -318,7 +318,7 @@ async fn check_mixed_format_batch_submission(submitted_type: CredentialType) {
     );
     assert_eq!(
         applicable[0]["parentId"],
-        batch.parent.common.id.to_string()
+        batch.parent.common().id.to_string()
     );
     assert_eq!(applicable[0]["type"], "BATCH_ITEM");
     assert_eq!(applicable[0]["format"], "JWT");
@@ -333,7 +333,7 @@ async fn check_mixed_format_batch_submission(submitted_type: CredentialType) {
 
     let (submitted_id, presented_id, remaining_id) = match submitted_type {
         CredentialType::BatchParent => (
-            batch.parent.common.id,
+            batch.parent.common().id,
             batch.earliest_expiring_jwt_item,
             batch.later_expiring_jwt_item,
         ),
@@ -354,11 +354,11 @@ async fn check_mixed_format_batch_submission(submitted_type: CredentialType) {
         .presentation_submit_v2(interaction.id, submitted_id, &[], &[])
         .await;
     assert_eq!(response.status(), 204);
-    let items = batch_items(&context, batch.parent.common.id).await;
+    let items = batch_items(&context, batch.parent.common().id).await;
     let consumed_ids: Vec<_> = items
         .into_iter()
-        .filter(|item| item.consumed_at.is_some())
-        .map(|item| item.common.id)
+        .filter(|item| item.consumed_at().is_some())
+        .map(|item| item.common().id)
         .collect();
     assert_eq!(consumed_ids, vec![presented_id]);
     let (_, _, _, _, next_proof) = setup_submittable_presentation_dcql(
@@ -384,7 +384,8 @@ async fn mixed_format_batch_parent_rejection() {
             .credentials
             .get(&batch.bbs_item)
             .await
-            .format
+            .format()
+            .as_ref()
             .unwrap()
             .id();
         // Consumed JWT items imply exhaustion; consumed BBS items never match this request.
@@ -416,7 +417,7 @@ async fn mixed_format_batch_parent_rejection() {
         let response = context
             .api
             .interactions
-            .presentation_submit_v2(interaction.id, batch.parent.common.id, &[], &[])
+            .presentation_submit_v2(interaction.id, batch.parent.common().id, &[], &[])
             .await;
         assert_eq!(response.status(), 400);
         assert_eq!(response.error_code().await, error_code);
@@ -426,7 +427,7 @@ async fn mixed_format_batch_parent_rejection() {
                 .credentials
                 .get(&batch.bbs_item)
                 .await
-                .consumed_at
+                .consumed_at()
                 .is_none()
         );
     }
@@ -483,15 +484,15 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
         .await;
     let selected_id = selected_batch_item(&context, proof.id).await;
     let second_id = if distinct_items {
-        batch_items(&context, parent.common.id)
+        batch_items(&context, parent.common().id)
             .await
             .into_iter()
-            .find(|item| item.common.id != selected_id)
+            .find(|item| item.common().id != selected_id)
             .unwrap()
-            .common
+            .common()
             .id
     } else {
-        parent.common.id
+        parent.common().id
     };
     let response = context
         .api
@@ -508,12 +509,12 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
         )
         .await;
     assert_eq!(response.status(), 204);
-    let items = batch_items(&context, parent.common.id).await;
+    let items = batch_items(&context, parent.common().id).await;
     assert_eq!(items.len(), 2);
     assert_eq!(
         items
             .iter()
-            .filter(|item| item.consumed_at.is_some())
+            .filter(|item| item.consumed_at().is_some())
             .count(),
         if distinct_items { 2 } else { 1 }
     );
@@ -524,7 +525,7 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
         let credential = entry.credential.as_ref().await.unwrap();
         assert!(
             credential
-                .claims
+                .claims()
                 .as_ref()
                 .await
                 .unwrap()
@@ -577,7 +578,7 @@ impl BatchPresentation {
             setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(parent))
                 .await;
         let selected_id = selected_batch_item(&context, proof.id).await;
-        let items = batch_items(&context, parent.common.id).await;
+        let items = batch_items(&context, parent.common().id).await;
         assert_eq!(items.len(), num_items);
         Self {
             context,
@@ -620,8 +621,8 @@ impl BatchPresentation {
     async fn assert_unconsumed(&self) {
         // Load by saved IDs so deleted items are checked as well.
         for item in &self.items {
-            let stored = self.context.db.credentials.get(&item.common.id).await;
-            assert!(stored.consumed_at.is_none());
+            let stored = self.context.db.credentials.get(&item.common().id).await;
+            assert!(stored.consumed_at().is_none());
         }
     }
 }
@@ -674,11 +675,11 @@ async fn setup_mixed_format_batch(
     let [earliest_expiring_jwt, later_expiring_jwt]: [Credential; 2] = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(parent.common.id).condition())
+        .list(CredentialFilterValue::ParentCredential(parent.common().id).condition())
         .await
         .try_into()
         .unwrap();
-    let schema = parent.common.schema.as_ref().await.unwrap();
+    let schema = parent.common().schema.as_ref().await.unwrap();
     // BBS sorts before JWT in the schema, so using the first schema format would be wrong.
     let mut bbs_format = schema.formats.as_ref().await.unwrap()[0].clone();
     bbs_format.id = Uuid::new_v4().into();
@@ -707,7 +708,7 @@ async fn setup_mixed_format_batch(
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent.common.id),
+                parent_id: Some(parent.common().id),
                 format: Some(bbs_format),
                 ..Default::default()
             },
@@ -717,9 +718,9 @@ async fn setup_mixed_format_batch(
     // the oldest matching item would choose the wrong JWT item.
     let expiry = now_utc() + time::Duration::days(1);
     for (id, seconds) in [
-        (bbs.common.id, -1),
-        (earliest_expiring_jwt.common.id, 0),
-        (later_expiring_jwt.common.id, 1),
+        (bbs.common().id, -1),
+        (earliest_expiring_jwt.common().id, 0),
+        (later_expiring_jwt.common().id, 1),
     ] {
         context
             .db
@@ -729,7 +730,7 @@ async fn setup_mixed_format_batch(
                     .table(Alias::new("credential"))
                     .value(
                         Alias::new("created_date"),
-                        parent.common.created_date - time::Duration::seconds(seconds),
+                        parent.common().created_date - time::Duration::seconds(seconds),
                     )
                     .value(
                         Alias::new("expires_at"),
@@ -748,17 +749,17 @@ async fn setup_mixed_format_batch(
             Query::update()
                 .table(Alias::new("credential"))
                 .value(Alias::new("format"), Option::<String>::None)
-                .and_where(Expr::col(Alias::new("id")).eq(parent.common.id.to_string())),
+                .and_where(Expr::col(Alias::new("id")).eq(parent.common().id.to_string())),
         )
         .await
         .unwrap();
-    let parent = context.db.credentials.get(&parent.common.id).await;
-    assert!(parent.format.is_none());
+    let parent = context.db.credentials.get(&parent.common().id).await;
+    assert!(parent.format().is_none());
     MixedFormatBatch {
         parent,
-        earliest_expiring_jwt_item: earliest_expiring_jwt.common.id,
-        later_expiring_jwt_item: later_expiring_jwt.common.id,
-        bbs_item: bbs.common.id,
+        earliest_expiring_jwt_item: earliest_expiring_jwt.common().id,
+        later_expiring_jwt_item: later_expiring_jwt.common().id,
+        bbs_item: bbs.common().id,
     }
 }
 
@@ -922,7 +923,7 @@ async fn setup_submittable_presentation_dcql(
     };
 
     let jwt_schema_id = {
-        let schema = credential.common.schema.as_ref().await.unwrap();
+        let schema = credential.common().schema.as_ref().await.unwrap();
         let formats = schema.formats.as_ref().await.unwrap();
         formats
             .iter()
@@ -1310,7 +1311,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
           "interactionId": interaction.id,
           "submission": {
             "query_0": {
-              "credentialId": credential.common.id
+              "credentialId": credential.common().id
             }
           }
         }))
@@ -1414,7 +1415,7 @@ async fn batch_item_submission_rejects_item_after_batch_deletion() {
         .context
         .api
         .credentials
-        .delete(&batch.parent.common.id)
+        .delete(&batch.parent.common().id)
         .await;
     assert_eq!(response.status(), 204);
     for credential in std::iter::once(&batch.parent).chain(&batch.items) {
@@ -1422,9 +1423,9 @@ async fn batch_item_submission_rejects_item_after_batch_deletion() {
             .context
             .db
             .credentials
-            .get(&credential.common.id)
+            .get(&credential.common().id)
             .await;
-        assert!(stored.common.deleted_at.is_some());
+        assert!(stored.common().deleted_at.is_some());
     }
     let definition = batch
         .context
@@ -1439,7 +1440,7 @@ async fn batch_item_submission_rejects_item_after_batch_deletion() {
     );
 
     batch.assert_rejected(batch.selected_id).await;
-    batch.assert_rejected(batch.parent.common.id).await;
+    batch.assert_rejected(batch.parent.common().id).await;
     batch.assert_unconsumed().await;
 }
 
@@ -1464,13 +1465,13 @@ async fn batch_parent_submission_uses_next_available_item() {
         .context
         .api
         .interactions
-        .presentation_submit_v2(batch.interaction.id, batch.parent.common.id, &[], &[])
+        .presentation_submit_v2(batch.interaction.id, batch.parent.common().id, &[], &[])
         .await;
     assert_eq!(response.status(), 204);
-    for item in batch_items(&batch.context, batch.parent.common.id).await {
+    for item in batch_items(&batch.context, batch.parent.common().id).await {
         assert_eq!(
-            item.consumed_at.is_some(),
-            [batch.selected_id, next_id].contains(&item.common.id)
+            item.consumed_at().is_some(),
+            [batch.selected_id, next_id].contains(&item.common().id)
         );
     }
     assert_eq!(
@@ -1491,7 +1492,7 @@ async fn batch_parent_submission_rejects_exhausted_batch() {
     // Concrete IDs retain their existing invalid-submission error.
     batch.assert_rejected(batch.selected_id).await;
     batch
-        .assert_rejected_with_code(batch.parent.common.id, "BR_0443")
+        .assert_rejected_with_code(batch.parent.common().id, "BR_0443")
         .await;
 }
 
@@ -1504,16 +1505,16 @@ async fn batch_submission_with_nonmatching_claims_is_invalid() {
         .get_claim_repository();
     for item in &batch.items {
         claims
-            .delete_claims_for_credential(item.common.id)
+            .delete_claims_for_credential(item.common().id)
             .await
             .unwrap();
     }
     let sibling = batch
         .items
         .iter()
-        .find(|item| item.common.id != batch.selected_id)
+        .find(|item| item.common().id != batch.selected_id)
         .unwrap();
-    batch.assert_rejected(sibling.common.id).await;
+    batch.assert_rejected(sibling.common().id).await;
     batch.assert_unconsumed().await;
     batch
         .update_selected(UpdateCredentialRequest {
@@ -1521,5 +1522,5 @@ async fn batch_submission_with_nonmatching_claims_is_invalid() {
             ..Default::default()
         })
         .await;
-    batch.assert_rejected(batch.parent.common.id).await;
+    batch.assert_rejected(batch.parent.common().id).await;
 }

@@ -815,7 +815,7 @@ pub async fn create_credential(
         .first()
         .cloned();
 
-    let credential = Credential {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: params.expires_at,
             ecosystem: params.ecosystem,

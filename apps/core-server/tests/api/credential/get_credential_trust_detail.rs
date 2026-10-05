@@ -71,7 +71,7 @@ async fn test_get_credential_trust_detail_reports_ecosystem_errors_with_a_200() 
         .create(
             &organisation,
             TestingHistoryParams {
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 action: Some(HistoryAction::EcosystemsResolved),
                 metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes)),
                 ..Default::default()
@@ -83,7 +83,7 @@ async fn test_get_credential_trust_detail_reports_ecosystem_errors_with_a_200() 
     let resp = context
         .api
         .credentials
-        .get_trust_detail(&credential.common.id)
+        .get_trust_detail(&credential.common().id)
         .await;
 
     // THEN an untrusted issuer is an answer, not a failed request
@@ -151,7 +151,7 @@ async fn test_get_credential_trust_detail_success() {
         .create(
             &organisation,
             TestingHistoryParams {
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 action: Some(HistoryAction::WrpAcReceived),
                 metadata_blob_id: Some(ac_blob.id),
                 ..Default::default()
@@ -165,7 +165,7 @@ async fn test_get_credential_trust_detail_success() {
         .create(
             &organisation,
             TestingHistoryParams {
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 action: Some(HistoryAction::WrpRcReceived),
                 metadata_blob_id: Some(rc_blob.id),
                 ..Default::default()
@@ -187,7 +187,7 @@ async fn test_get_credential_trust_detail_success() {
         .create(
             &organisation,
             TestingHistoryParams {
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 action: Some(HistoryAction::EcosystemsResolved),
                 metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes)),
                 ..Default::default()
@@ -199,7 +199,7 @@ async fn test_get_credential_trust_detail_success() {
     let resp = context
         .api
         .credentials
-        .get_trust_detail(&credential.common.id)
+        .get_trust_detail(&credential.common().id)
         .await;
 
     // THEN

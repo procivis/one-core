@@ -249,7 +249,7 @@ impl CredentialService {
             formats,
             &self.config,
         )?;
-        credential.common.interaction = convert_inner(interaction);
+        credential.common_mut().interaction = convert_inner(interaction);
 
         if let Some(ecosystem) = &ecosystem {
             let ecosystem = self.ecosystem_provider.get(ecosystem)?;
@@ -284,15 +284,15 @@ impl CredentialService {
             .await
             .error_while("getting credential")?;
 
-        let schema = credential.common.schema.as_ref().await?;
+        let schema = credential.common().schema.as_ref().await?;
         throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
-        if credential.r#type == CredentialType::BatchItem {
-            return Err(CredentialServiceError::InvalidType(credential.r#type));
+        if credential.r#type() == CredentialType::BatchItem {
+            return Err(CredentialServiceError::InvalidType(credential.r#type()));
         }
 
-        let is_issuer = credential.role == CredentialRole::Issuer;
+        let is_issuer = credential.role() == CredentialRole::Issuer;
         if is_issuer && schema.allow_revocation {
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
@@ -355,7 +355,7 @@ impl CredentialService {
             .await
             .error_while("checking session")?;
 
-        if credential.common.deleted_at.is_some() {
+        if credential.common().deleted_at.is_some() {
             return Err(CredentialServiceError::NotFound(*credential_id));
         }
 
@@ -404,8 +404,8 @@ impl CredentialService {
         &self,
         credential: &Credential,
     ) -> Result<CredentialAttestationBlobs, CredentialServiceError> {
-        if credential.wallet_instance_attestation_blob_id.is_none()
-            && credential.wallet_key_attestation_blob_id.is_none()
+        if credential.wallet_instance_attestation_blob_id().is_none()
+            && credential.wallet_key_attestation_blob_id().is_none()
         {
             return Ok(CredentialAttestationBlobs::default());
         }
@@ -414,20 +414,20 @@ impl CredentialService {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
 
-        let wallet_instance_attestation_blob = match &credential.wallet_instance_attestation_blob_id
-        {
-            Some(blob_id) => Some(
-                db_blob_storage
-                    .get(blob_id)
-                    .await
-                    .error_while("getting WIA blob")?
-                    .ok_or(CredentialServiceError::MappingError(
-                        "wallet instance attestation blob is None".to_string(),
-                    ))?,
-            ),
-            None => None,
-        };
-        let wallet_key_attestation_blob = match &credential.wallet_key_attestation_blob_id {
+        let wallet_instance_attestation_blob =
+            match &credential.wallet_instance_attestation_blob_id() {
+                Some(blob_id) => Some(
+                    db_blob_storage
+                        .get(blob_id)
+                        .await
+                        .error_while("getting WIA blob")?
+                        .ok_or(CredentialServiceError::MappingError(
+                            "wallet instance attestation blob is None".to_string(),
+                        ))?,
+                ),
+                None => None,
+            };
+        let wallet_key_attestation_blob = match &credential.wallet_key_attestation_blob_id() {
             Some(blob_id) => Some(
                 db_blob_storage
                     .get(blob_id)
@@ -597,11 +597,11 @@ impl CredentialService {
     ) -> Result<ShareCredentialResponseDTO, CredentialServiceError> {
         let credential = self.get_credential_with_state(credential_id).await?;
 
-        if credential.common.deleted_at.is_some() {
+        if credential.common().deleted_at.is_some() {
             return Err(CredentialServiceError::NotFound(*credential_id));
         }
         let credential_schema = credential
-            .common
+            .common()
             .schema
             .as_ref()
             .await
@@ -612,22 +612,22 @@ impl CredentialService {
         )
         .error_while("checking session")?;
 
-        if credential.r#type == CredentialType::BatchItem {
-            return Err(CredentialServiceError::InvalidType(credential.r#type));
+        if credential.r#type() == CredentialType::BatchItem {
+            return Err(CredentialServiceError::InvalidType(credential.r#type()));
         }
 
         if !matches!(
-            credential.common.state,
+            credential.common().state,
             CredentialStateEnum::Created
                 | CredentialStateEnum::Pending
                 | CredentialStateEnum::InteractionExpired
         ) {
             return Err(CredentialServiceError::InvalidState(
-                credential.common.state,
+                credential.common().state,
             ));
         }
 
-        let Some(issuer_identifier) = credential.issuer_identifier.as_ref() else {
+        let Some(issuer_identifier) = credential.issuer_identifier().as_ref() else {
             return Err(CredentialServiceError::MappingError(
                 "Missing issuer identifier".to_string(),
             ));
@@ -638,7 +638,7 @@ impl CredentialService {
             ));
         }
 
-        let credential_exchange = &credential.common.protocol;
+        let credential_exchange = &credential.common().protocol;
         let exchange = self.protocol_provider.get_protocol(credential_exchange)?;
 
         let ShareResponse {
@@ -659,7 +659,7 @@ impl CredentialService {
             credential_schema.organisation.to_owned(),
             InteractionType::Issuance,
             expires_at,
-            credential.common.ecosystem,
+            credential.common().ecosystem.clone(),
         )
         .await
         .error_while("adding interaction")?;
@@ -667,7 +667,7 @@ impl CredentialService {
             .update_credential(
                 *credential_id,
                 UpdateCredentialRequest {
-                    state: (credential.common.state != CredentialStateEnum::Pending)
+                    state: (credential.common().state != CredentialStateEnum::Pending)
                         .then_some(CredentialStateEnum::Pending),
                     interaction: Some(interaction_id),
                     ..Default::default()
@@ -677,7 +677,7 @@ impl CredentialService {
             .error_while("updating credential")?;
         clear_previous_interaction(
             &*self.interaction_repository,
-            credential.common.interaction.id_opt_ref(),
+            credential.common().interaction.id_opt_ref(),
         )
         .await
         .error_while("clearing interaction")?;
@@ -701,11 +701,11 @@ impl CredentialService {
         throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)
             .await
             .error_while("checking session")?;
-        if credential.r#type == CredentialType::BatchItem {
-            return Err(CredentialServiceError::InvalidType(credential.r#type));
+        if credential.r#type() == CredentialType::BatchItem {
+            return Err(CredentialServiceError::InvalidType(credential.r#type()));
         }
-        if credential.role != CredentialRole::Holder {
-            return Err(CredentialServiceError::InvalidRole(credential.role));
+        if credential.role() != CredentialRole::Holder {
+            return Err(CredentialServiceError::InvalidRole(credential.role()));
         }
 
         let history_id = credential.ecosystem_history_id();
@@ -718,14 +718,14 @@ impl CredentialService {
             ..Default::default()
         };
 
-        if let Some(ecosystem_id) = credential.common.ecosystem {
-            let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;
+        if let Some(ecosystem_id) = &credential.common().ecosystem {
+            let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
             let issuer = ecosystem
                 .issuer_trust_details(&history_id)
                 .await
                 .error_while("getting ecosystem trust detail")?;
 
-            result.ecosystem = Some(ecosystem_id);
+            result.ecosystem = Some(ecosystem_id.clone());
             result.issuer = Some(issuer.info.into());
         }
 

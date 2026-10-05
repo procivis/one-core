@@ -115,7 +115,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             claim_schema_repository,
         }),
         db,
-        credential_id: credential.common.id,
+        credential_id: credential.common().id,
         claim_schemas: claim_schema_ids
             .into_iter()
             .map(|id| ClaimSchema {
@@ -247,7 +247,7 @@ async fn test_delete_claims_for_credentials() {
     )
     .await
     .unwrap()
-    .common
+    .common()
     .id;
 
     repository

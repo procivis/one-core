@@ -3,7 +3,6 @@ use standardized_types::openid4vci::{
 };
 use standardized_types::openid4vp::dcql::{ClaimPath, PathSegment};
 
-use crate::model::credential::CredentialCommon;
 mod schema_matching;
 #[cfg(test)]
 mod test;
@@ -95,7 +94,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction_data.issuer_display.as_deref(),
                 )
                 .await?;
-            credential.embedded_disclosure_policy = disclosure_policy.clone();
+            *credential.embedded_disclosure_policy_mut() = disclosure_policy.clone();
             credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -143,9 +142,10 @@ impl OpenID4VCIFinal1_0 {
         credential: &mut Credential,
         parent_id: CredentialId,
     ) {
-        credential.r#type = CredentialType::BatchItem;
-        credential.parent = Some(Related::new(parent_id, self.credential_repository.clone()));
-        credential.common.interaction = None;
+        *credential.type_mut() = CredentialType::BatchItem;
+        *credential.parent_mut() =
+            Some(Related::new(parent_id, self.credential_repository.clone()));
+        credential.common_mut().interaction = None;
     }
 
     async fn update_credential_schema(
@@ -155,15 +155,15 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
-        let parsed_format = credential.format.as_required_ref().await?.to_owned();
+        let parsed_format = credential.format().as_required_ref().await?.to_owned();
         let issuer_claim_metadata = if let Some(metadata) = &configuration.credential_metadata {
-            let schema = credential.common.schema.as_ref().await?;
+            let schema = credential.common().schema.as_ref().await?;
             map_issuer_claim_metadata(&schema, metadata, &parsed_format).await?
         } else {
             vec![]
         };
         self.enrich_credential_schema(
-            credential.common.schema.as_mut().await?.as_mut(),
+            credential.common_mut().schema.as_mut().await?.as_mut(),
             interaction_data,
             configuration,
             organisation,
@@ -171,7 +171,7 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        let parsed_schema = credential.common.schema.as_ref().await?.to_owned();
+        let parsed_schema = credential.common().schema.as_ref().await?.to_owned();
         // Validate issuer requirements before import without storing them on the schema.
         ensure_required_claims(&parsed_schema, credential, &issuer_claim_metadata).await?;
         let CredentialSchemaResolution {
@@ -215,7 +215,7 @@ impl OpenID4VCIFinal1_0 {
         // Schema matching can replace the parsed schema with an existing one. Apply the issuer
         // metadata again after alignment so changed translations target the persisted schema and
         // claim IDs.
-        let current_format = credential.format.as_required_ref().await?.to_owned();
+        let current_format = credential.format().as_required_ref().await?.to_owned();
         let issuer_claim_metadata = if let Some(metadata) = metadata {
             map_issuer_claim_metadata(schema, metadata, &current_format).await?
         } else {
@@ -230,7 +230,7 @@ impl OpenID4VCIFinal1_0 {
         .await?;
         // A reused schema may require claims that the parsed schema did not.
         ensure_required_claims(schema, credential, &issuer_claim_metadata).await?;
-        credential.common.schema = schema.clone().into();
+        credential.common_mut().schema = schema.clone().into();
 
         if !alignment.new_claim_schemas.is_empty()
             || new_format.is_some()
@@ -298,8 +298,13 @@ impl OpenID4VCIFinal1_0 {
                     "Missing issued credential".to_string(),
                 ))?;
 
-        let schema = credential.common.schema.as_ref().await?;
-        let credential_format = credential.format.as_required_ref().await?.format.to_owned();
+        let schema = credential.common().schema.as_ref().await?;
+        let credential_format = credential
+            .format()
+            .as_required_ref()
+            .await?
+            .format
+            .to_owned();
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&credential_format)?;
@@ -314,7 +319,7 @@ impl OpenID4VCIFinal1_0 {
             .get_blob_storage(BlobStorageType::Db)?;
 
         let blob_id = credential
-            .credential_blob_id
+            .credential_blob_id()
             .ok_or(IssuanceProtocolError::Failed(
                 "Missing credential blob id".to_string(),
             ))?;
@@ -346,12 +351,12 @@ impl OpenID4VCIFinal1_0 {
             .get_credential(parent_id)
             .await
             .error_while("getting batch parent")?;
-        if batch_parent.r#type != CredentialType::BatchParent {
+        if batch_parent.r#type() != CredentialType::BatchParent {
             return Err(IssuanceProtocolError::RefreshNotSupported(
-                batch_parent.r#type,
+                batch_parent.r#type(),
             ));
         }
-        let mut schema = batch_parent.common.schema.as_ref().await?.to_owned();
+        let mut schema = batch_parent.common().schema.as_ref().await?.to_owned();
 
         let format_type = map_from_oidc_format_to_core_detailed(
             &configuration.format,
@@ -387,7 +392,7 @@ impl OpenID4VCIFinal1_0 {
                     None,
                 )
                 .await?;
-            credential.embedded_disclosure_policy = disclosure_policy.clone();
+            *credential.embedded_disclosure_policy_mut() = disclosure_policy.clone();
             batch_credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -432,7 +437,7 @@ impl OpenID4VCIFinal1_0 {
                             mut credential,
                             serialized,
                         } = batch_credential;
-                        self.change_to_batch_item(&mut credential, batch_parent.common.id);
+                        self.change_to_batch_item(&mut credential, batch_parent.common().id);
                         let credential_blob_id = if let Some(token) = serialized {
                             let blob = Blob::new(token.as_ref(), BlobType::Credential);
                             let blob_id = blob.id;
@@ -444,14 +449,9 @@ impl OpenID4VCIFinal1_0 {
                         } else {
                             None
                         };
-                        result.push(Credential {
-                            common: CredentialCommon {
-                                state: CredentialStateEnum::Accepted,
-                                ..credential.common
-                            },
-                            credential_blob_id,
-                            ..credential
-                        });
+                        credential.common_mut().state = CredentialStateEnum::Accepted;
+                        *credential.credential_blob_id_mut() = credential_blob_id;
+                        result.push(credential);
                     }
                     self.credential_repository
                         .create_credentials(result.clone())
@@ -476,7 +476,7 @@ impl OpenID4VCIFinal1_0 {
         for (parent_id, item) in refreshed
             .iter()
             .flat_map(|response| &response.credentials)
-            .filter_map(|item| item.parent.as_ref().map(|parent| (parent.id(), item)))
+            .filter_map(|item| item.parent().as_ref().map(|parent| (parent.id(), item)))
             .unique_by(|(parent_id, _)| *parent_id)
         {
             self.history_repository
@@ -484,7 +484,7 @@ impl OpenID4VCIFinal1_0 {
                     id: Uuid::new_v4().into(),
                     created_date: now_utc(),
                     action: HistoryAction::Refreshed,
-                    name: item.common.schema.as_ref().await?.name.to_owned(),
+                    name: item.common().schema.as_ref().await?.name.to_owned(),
                     source: HistorySource::Core,
                     entity_id: Some(parent_id.into()),
                     entity_type: HistoryEntityType::Credential,
@@ -520,10 +520,10 @@ impl OpenID4VCIFinal1_0 {
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 
-        validate_issuance_time(&credential.common.issuance_date, formatter.get_leeway())
+        validate_issuance_time(&credential.common().issuance_date, formatter.get_leeway())
             .error_while("validating issuance time")?;
 
-        let issuer_identifier = match credential.issuer_identifier.as_ref() {
+        let issuer_identifier = match credential.issuer_identifier().as_ref() {
             None => None,
             Some(identifier) => Some(identifier.as_ref().await?.to_owned()),
         };
@@ -616,12 +616,12 @@ impl OpenID4VCIFinal1_0 {
             None
         };
 
-        credential.issuer_identifier = Some(issuer_identifier.into());
-        credential.issuer_certificate = issuer_certificate.map(Into::into);
-        credential.common.redirect_uri = redirect_uri.cloned();
-        credential.common.state = CredentialStateEnum::Accepted;
-        credential.common.protocol = self.config_id.to_owned();
-        credential.common.interaction = Some(interaction.to_owned().into());
+        *credential.issuer_identifier_mut() = Some(issuer_identifier.into());
+        *credential.issuer_certificate_mut() = issuer_certificate.map(Into::into);
+        credential.common_mut().redirect_uri = redirect_uri.cloned();
+        credential.common_mut().state = CredentialStateEnum::Accepted;
+        credential.common_mut().protocol = self.config_id.to_owned();
+        credential.common_mut().interaction = Some(interaction.to_owned().into());
         attach_matching_holder_binding(&mut credential, holder_bindings).await?;
         Ok(credential)
     }
@@ -943,7 +943,7 @@ async fn attach_matching_holder_binding(
 ) -> Result<(), IssuanceProtocolError> {
     let parsed_identifier =
         credential
-            .holder_identifier
+            .holder_identifier_mut()
             .take()
             .ok_or(IssuanceProtocolError::Failed(
                 "No parsed holder identifier".to_string(),
@@ -965,8 +965,8 @@ async fn attach_matching_holder_binding(
     };
 
     let matching_holder_binding = holder_bindings.swap_remove(position);
-    credential.holder_identifier = Some(matching_holder_binding.identifier.into());
-    credential.key = Some(matching_holder_binding.key.into());
+    *credential.holder_identifier_mut() = Some(matching_holder_binding.identifier.into());
+    *credential.key_mut() = Some(matching_holder_binding.key.into());
 
     Ok(())
 }

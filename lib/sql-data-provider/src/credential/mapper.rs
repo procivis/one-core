@@ -311,49 +311,49 @@ pub(super) fn request_to_active_model(
     organisation_id: OrganisationId,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
-        id: Set(request.common.id),
-        credential_schema_id: Set(request.common.schema.id()),
+        id: Set(request.common().id),
+        credential_schema_id: Set(request.common().schema.id()),
         organisation_id: Set(organisation_id),
-        created_date: Set(request.common.created_date),
-        last_modified: Set(request.common.last_modified),
-        issuance_date: Set(request.common.issuance_date),
-        expires_at: Set(request.common.expires_at),
-        deleted_at: Set(request.common.deleted_at),
-        consumed_at: Set(request.consumed_at),
-        protocol: Set(request.common.protocol.to_owned()),
-        redirect_uri: Set(request.common.redirect_uri.to_owned()),
+        created_date: Set(request.common().created_date),
+        last_modified: Set(request.common().last_modified),
+        issuance_date: Set(request.common().issuance_date),
+        expires_at: Set(request.common().expires_at),
+        deleted_at: Set(request.common().deleted_at),
+        consumed_at: Set(request.consumed_at()),
+        protocol: Set(request.common().protocol.to_owned()),
+        redirect_uri: Set(request.common().redirect_uri.to_owned()),
         issuer_identifier_id: Set(request
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .map(|identifier| identifier.id())),
         issuer_certificate_id: Set(request
-            .issuer_certificate
+            .issuer_certificate()
             .as_ref()
             .map(|certificate| certificate.id())),
         holder_identifier_id: Set(request
-            .holder_identifier
+            .holder_identifier()
             .as_ref()
             .map(|identifier| identifier.id())),
         interaction_id: Set(request
-            .common
+            .common()
             .interaction
             .as_ref()
             .map(|interaction| interaction.id())),
-        key_id: Set(request.key.as_ref().map(|key| key.id())),
-        role: Set(request.role.to_owned().into()),
-        state: Set(request.common.state.into()),
-        suspend_end_date: Set(request.suspend_end_date),
-        profile: Set(request.common.profile.clone()),
-        parent_id: Set(request.parent.as_ref().map(|m| m.id())),
-        credential_blob_id: Set(request.credential_blob_id),
-        wallet_key_attestation_blob_id: Set(request.wallet_key_attestation_blob_id),
-        wallet_instance_attestation_blob_id: Set(request.wallet_instance_attestation_blob_id),
-        webhook_url: Set(request.webhook_url.to_owned()),
-        embedded_disclosure_policy: Set(request.embedded_disclosure_policy.clone()),
-        subscriber_information: Set(request.subscriber_information.clone()),
-        ecosystem: Set(request.common.ecosystem.clone()),
-        r#type: Set(request.r#type.into()),
-        format: Set(request.format.as_ref().map(|format| format.id())),
+        key_id: Set(request.key().as_ref().map(|key| key.id())),
+        role: Set(request.role().to_owned().into()),
+        state: Set(request.common().state.into()),
+        suspend_end_date: Set(request.suspend_end_date()),
+        profile: Set(request.common().profile.clone()),
+        parent_id: Set(request.parent().as_ref().map(|m| m.id())),
+        credential_blob_id: Set(request.credential_blob_id()),
+        wallet_key_attestation_blob_id: Set(request.wallet_key_attestation_blob_id()),
+        wallet_instance_attestation_blob_id: Set(request.wallet_instance_attestation_blob_id()),
+        webhook_url: Set(request.webhook_url().to_owned()),
+        embedded_disclosure_policy: Set(request.embedded_disclosure_policy().clone()),
+        subscriber_information: Set(request.subscriber_information().clone()),
+        ecosystem: Set(request.common().ecosystem.clone()),
+        r#type: Set(request.r#type().into()),
+        format: Set(request.format().as_ref().map(|format| format.id())),
     }
 }
 

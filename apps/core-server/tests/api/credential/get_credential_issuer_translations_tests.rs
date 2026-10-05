@@ -70,7 +70,7 @@ async fn test_get_credential_holder_role_returns_issuer_translations_and_logo() 
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.common.id).await;
+    let resp = context.api.credentials.get(&credential.common().id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -122,7 +122,7 @@ async fn test_get_credential_issuer_role_omits_issuer_translations_and_logo() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.common.id).await;
+    let resp = context.api.credentials.get(&credential.common().id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);

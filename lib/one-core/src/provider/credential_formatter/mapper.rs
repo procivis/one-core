@@ -135,14 +135,14 @@ pub(crate) async fn unsigned_credential(
     match format_type {
         FormatType::Mdoc => Ok(UnsignedCredential::Mdoc(MdocCredential {
             doctype: ecosystem_schema_id,
-            valid_until: credential.common.expires_at,
+            valid_until: credential.common().expires_at,
             credential_status,
             claims,
         })),
         FormatType::SdJwtVc => Ok(UnsignedCredential::SdJwtVc(SdJwtVcCredential {
             vct: ecosystem_schema_id,
             issuer: issuer_url_for_credential(credential, core_base_url).await?,
-            valid_until: credential.common.expires_at,
+            valid_until: credential.common().expires_at,
             credential_status,
             claims,
         })),
@@ -181,13 +181,13 @@ pub(crate) async fn unsigned_credential(
             // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
             if format_type == FormatType::JsonLdBbsPlus {
                 vcdm.id = Some(
-                    Urn::from_uuid(credential.common.id.into())
+                    Urn::from_uuid(credential.common().id.into())
                         .to_string()
                         .parse()?,
                 );
             }
             vcdm.credential_status = credential_status;
-            vcdm.valid_until = credential.common.expires_at;
+            vcdm.valid_until = credential.common().expires_at;
             Ok(UnsignedCredential::Vcdm(vcdm))
         }
     }
@@ -200,7 +200,7 @@ async fn credential_claims(
     credential_schema_format: &CredentialSchemaFormat,
     datatype_config: &DatatypeConfig,
 ) -> Result<IssuedClaims, FormatterError> {
-    let stored_claims = credential.claims.as_ref().await?;
+    let stored_claims = credential.claims().as_ref().await?;
     let mappings = credential_schema_format.claim_mappings.as_ref().await?;
     let mappings: HashMap<_, _> = mappings
         .iter()
@@ -404,7 +404,7 @@ async fn issuer_url_for_credential(
     credential: &Credential,
     core_base_url: &str,
 ) -> Result<Url, FormatterError> {
-    let issuer_identifier = match credential.issuer_identifier.as_ref() {
+    let issuer_identifier = match credential.issuer_identifier().as_ref() {
         Some(identifier) => Some(identifier.as_ref().await?.to_owned()),
         None => None,
     };
@@ -426,8 +426,8 @@ async fn issuer_url_for_credential(
 
     Ok(format!(
         "{core_base_url}/ssi/openid4vci/{}/{issuer_identifier_id}/{}",
-        credential.common.protocol,
-        credential.common.schema.id()
+        credential.common().protocol,
+        credential.common().schema.id()
     )
     .parse()?)
 }

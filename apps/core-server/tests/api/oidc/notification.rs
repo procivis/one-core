@@ -46,8 +46,8 @@ async fn test_post_notification_credential_accepted() {
 
     assert_eq!(204, resp.status());
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Accepted);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
 }
 
 #[rstest::rstest]
@@ -82,9 +82,9 @@ async fn test_post_notification_credential_failure(
 
     assert_eq!(204, resp.status());
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Error);
-    assert_error_history(&context, credential.common.id, expected_message).await;
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Error);
+    assert_error_history(&context, credential.common().id, expected_message).await;
 
     // Retrying the same notification must not create duplicate error events.
     let resp = context
@@ -97,7 +97,7 @@ async fn test_post_notification_credential_failure(
         )
         .await;
     assert_eq!(204, resp.status());
-    assert_error_history(&context, credential.common.id, expected_message).await;
+    assert_error_history(&context, credential.common().id, expected_message).await;
 }
 
 async fn assert_error_history(context: &TestContext, credential_id: CredentialId, message: &str) {
@@ -133,8 +133,8 @@ async fn test_post_notification_credential_deleted() {
 
     assert_eq!(204, resp.status());
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Rejected);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Rejected);
 }
 
 struct MultiFormatBatch {
@@ -242,7 +242,7 @@ async fn setup_multi_format_batch(issued_formats: &[&str]) -> MultiFormatBatch {
                 "OPENID4VCI_FINAL1",
                 TestingCredentialParams {
                     r#type: Some(CredentialType::BatchItem),
-                    parent_id: Some(parent.common.id),
+                    parent_id: Some(parent.common().id),
                     format: Some(format_by_name(format)),
                     ..Default::default()
                 },
@@ -267,13 +267,13 @@ async fn batch_item_states(
     for item in context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(parent.common.id).condition())
+        .list(CredentialFilterValue::ParentCredential(parent.common().id).condition())
         .await
     {
         states
-            .entry(item.format.as_ref().unwrap().id())
+            .entry(item.format().as_ref().unwrap().id())
             .or_default()
-            .push(item.common.state);
+            .push(item.common().state);
     }
     states
 }
@@ -305,8 +305,8 @@ async fn test_post_notification_for_one_format_keeps_other_format(
     let states = batch_item_states(&context, &parent).await;
     assert_eq!(states[&sd_jwt_vc_format.id], [expected_state]);
     assert_eq!(states[&mdoc_format.id], [CredentialStateEnum::Accepted]);
-    let parent = context.db.credentials.get(&parent.common.id).await;
-    assert_eq!(parent.common.state, CredentialStateEnum::Accepted);
+    let parent = context.db.credentials.get(&parent.common().id).await;
+    assert_eq!(parent.common().state, CredentialStateEnum::Accepted);
 
     // Report the outcome for the remaining format, then retry it.
     for _ in 0..2 {
@@ -320,24 +320,24 @@ async fn test_post_notification_for_one_format_keeps_other_format(
 
     let states = batch_item_states(&context, &parent).await;
     assert_eq!(states[&mdoc_format.id], [expected_state]);
-    let parent = context.db.credentials.get(&parent.common.id).await;
-    assert_eq!(parent.common.state, expected_state);
+    let parent = context.db.credentials.get(&parent.common().id).await;
+    assert_eq!(parent.common().state, expected_state);
     if event == NotificationEvent::CredentialFailure {
         assert_error_history(
             &context,
-            parent.common.id,
+            parent.common().id,
             "Wallet reported credential_failure",
         )
         .await;
         let items = context
             .db
             .credentials
-            .list(CredentialFilterValue::ParentCredential(parent.common.id).condition())
+            .list(CredentialFilterValue::ParentCredential(parent.common().id).condition())
             .await;
         for item in items {
             assert_error_history(
                 &context,
-                item.common.id,
+                item.common().id,
                 "Wallet reported credential_failure",
             )
             .await;
@@ -387,12 +387,12 @@ async fn test_post_notification_rejects_format_without_items(
             [CredentialStateEnum::Accepted]
         );
     }
-    let parent = context.db.credentials.get(&parent.common.id).await;
-    assert_eq!(parent.common.state, CredentialStateEnum::Accepted);
+    let parent = context.db.credentials.get(&parent.common().id).await;
+    assert_eq!(parent.common().state, CredentialStateEnum::Accepted);
     let history = context
         .db
         .histories
-        .get_by_entity_id(&parent.common.id.into())
+        .get_by_entity_id(&parent.common().id.into())
         .await;
     assert!(history.values.is_empty());
 }
@@ -572,7 +572,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, credential.common.id, 0)
+        .create_credential_entry(revocation_list.id, credential.common().id, 0)
         .await;
 
     (context, credential, credential_schema)

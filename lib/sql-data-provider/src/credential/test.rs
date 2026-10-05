@@ -239,7 +239,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
     .unwrap();
 
     TestSetupWithCredential {
-        credential_id: credential.common.id,
+        credential_id: credential.common().id,
         credential_schema,
         db,
         identifier,
@@ -341,7 +341,7 @@ async fn test_create_credential_success() {
     ];
 
     let result = provider
-        .create_credential(Credential {
+        .create_credential(Credential::Generic {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -403,7 +403,7 @@ async fn test_create_credential_empty_claims() {
 
     let credential_id = Uuid::new_v4().into();
     let result = provider
-        .create_credential(Credential {
+        .create_credential(Credential::Generic {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -476,7 +476,7 @@ async fn test_create_credential_already_exists() {
     }];
 
     let result = provider
-        .create_credential(Credential {
+        .create_credential(Credential::Generic {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -551,10 +551,10 @@ async fn test_delete_credential_success() {
         .unwrap();
 
     let credential = provider
-        .get_credential(&credential.common.id)
+        .get_credential(&credential.common().id)
         .await
         .unwrap();
-    assert!(credential.common.deleted_at.is_some());
+    assert!(credential.common().deleted_at.is_some());
 }
 
 #[tokio::test]
@@ -606,7 +606,7 @@ async fn test_get_credential_list_success() {
     )
     .await
     .unwrap()
-    .common
+    .common()
     .id;
 
     let counts = crate::test_utilities::track_count_queries(&mut db);
@@ -641,7 +641,7 @@ async fn test_get_credential_list_success() {
         let forbidden_credential = credentials
             .values
             .iter()
-            .find(|credential| credential.common.id == forbidden_uuid);
+            .find(|credential| credential.common().id == forbidden_uuid);
         assert!(forbidden_credential.is_none());
         assert_eq!(
             counts.load(std::sync::atomic::Ordering::Relaxed),
@@ -663,17 +663,12 @@ async fn test_get_credential_list_formats_or_batch_parent() {
         .id;
     let provider = credential_repository(db, None);
     let parent = {
-        let base_credential = provider.get_credential(&credential_id).await.unwrap();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                ..base_credential.common
-            },
-            r#type: CredentialType::BatchParent,
-            format: None,
-            claims: Default::default(),
-            ..base_credential
-        }
+        let mut updated_credential = provider.get_credential(&credential_id).await.unwrap();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        *updated_credential.type_mut() = CredentialType::BatchParent;
+        *updated_credential.format_mut() = None;
+        *updated_credential.claims_mut() = Default::default();
+        updated_credential
     };
     provider.create_credential(parent.clone()).await.unwrap();
     provider
@@ -705,8 +700,8 @@ async fn test_get_credential_list_formats_or_batch_parent() {
         result
             .values
             .into_iter()
-            .map(|credential| credential.common.id),
-        [credential_id, parent.common.id],
+            .map(|credential| credential.common().id),
+        [credential_id, parent.common().id],
     );
 }
 
@@ -1082,7 +1077,7 @@ async fn test_get_credential_success() {
     )
     .await
     .unwrap()
-    .common
+    .common()
     .id;
 
     let claim_schema1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].to_owned();
@@ -1153,13 +1148,13 @@ async fn test_get_credential_success() {
 
     assert!(credential.is_ok());
     let credential = credential.unwrap();
-    assert_eq!(credential_id, credential.common.id);
+    assert_eq!(credential_id, credential.common().id);
     assert_eq!(
         credential_schema,
-        *credential.common.schema.as_ref().await.unwrap()
+        *credential.common().schema.as_ref().await.unwrap()
     );
-    assert!(credential.common.interaction.is_none());
-    let credential_claims = credential.claims.as_ref().await.unwrap();
+    assert!(credential.common().interaction.is_none());
+    let credential_claims = credential.claims().as_ref().await.unwrap();
     assert_eq!(credential_claims.len(), 2);
 
     // claims must be ordered in the same way as in the credential_schema
@@ -1209,7 +1204,7 @@ async fn test_update_credential_success() {
     )
     .await
     .unwrap()
-    .common
+    .common()
     .id;
 
     let provider = credential_repository(db.clone(), None);
@@ -1217,11 +1212,11 @@ async fn test_update_credential_success() {
     let credential_before_update = provider.get_credential(&credential_id).await;
     assert!(credential_before_update.is_ok());
     let credential_before_update = credential_before_update.unwrap();
-    assert_eq!(credential_id, credential_before_update.common.id);
+    assert_eq!(credential_id, credential_before_update.common().id);
 
     assert_eq!(
         blob_id,
-        credential_before_update.credential_blob_id.unwrap()
+        credential_before_update.credential_blob_id().unwrap()
     );
 
     let organisation_id = test_utilities::insert_organisation_to_database(&db, None)
@@ -1255,13 +1250,21 @@ async fn test_update_credential_success() {
     let credential_after_update = provider.get_credential(&credential_id).await;
     assert!(credential_after_update.is_ok());
     let credential_after_update = credential_after_update.unwrap();
-    assert_eq!(blob_id, credential_after_update.credential_blob_id.unwrap());
     assert_eq!(
-        interaction_id,
-        credential_after_update.common.interaction.unwrap().id()
+        blob_id,
+        credential_after_update.credential_blob_id().unwrap()
     );
     assert_eq!(
-        credential_after_update.common.state,
+        interaction_id,
+        credential_after_update
+            .common()
+            .interaction
+            .as_ref()
+            .unwrap()
+            .id()
+    );
+    assert_eq!(
+        credential_after_update.common().state,
         CredentialStateEnum::Pending
     );
 }
@@ -1306,36 +1309,36 @@ async fn test_delete_credential_blobs_success() {
     let provider = credential_repository(db, None);
 
     let credential = provider
-        .get_credential(&credential.common.id)
+        .get_credential(&credential.common().id)
         .await
         .unwrap();
-    assert!(credential.credential_blob_id.is_some());
+    assert!(credential.credential_blob_id().is_some());
 
     let credential_two = provider
-        .get_credential(&credential_two.common.id)
+        .get_credential(&credential_two.common().id)
         .await
         .unwrap();
-    assert!(credential_two.credential_blob_id.is_some());
+    assert!(credential_two.credential_blob_id().is_some());
 
     provider
         .delete_credential_blobs(HashSet::from([
-            credential.common.id,
-            credential_two.common.id,
+            credential.common().id,
+            credential_two.common().id,
         ]))
         .await
         .unwrap();
 
     let credential = provider
-        .get_credential(&credential.common.id)
+        .get_credential(&credential.common().id)
         .await
         .unwrap();
-    assert!(credential.credential_blob_id.is_none());
+    assert!(credential.credential_blob_id().is_none());
 
     let credential_two = provider
-        .get_credential(&credential_two.common.id)
+        .get_credential(&credential_two.common().id)
         .await
         .unwrap();
-    assert!(credential_two.credential_blob_id.is_none());
+    assert!(credential_two.credential_blob_id().is_none());
 }
 
 #[tokio::test]
@@ -1365,8 +1368,8 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     )
     .await
     .unwrap();
-    let mut template = provider.get_credential(&single.common.id).await.unwrap();
-    template.claims = Default::default();
+    let mut template = provider.get_credential(&single.common().id).await.unwrap();
+    *template.claims_mut() = Default::default();
     let jwt_format = credential_schema_format_from_model(
         credential_schema_format::Entity::find()
             .one(&db)
@@ -1388,16 +1391,11 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
         .unwrap();
 
     let new_parent = || {
-        let base_credential = template.clone();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                ..base_credential.common
-            },
-            r#type: CredentialType::BatchParent,
-            format: None,
-            ..base_credential
-        }
+        let mut updated_credential = template.clone();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        *updated_credential.type_mut() = CredentialType::BatchParent;
+        *updated_credential.format_mut() = None;
+        updated_credential
     };
     let first_parent = new_parent();
     let second_parent = new_parent();
@@ -1406,104 +1404,66 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     }
     let expiry = now_utc() + Duration::days(1);
     let new_item = |parent: &Credential, format: &CredentialSchemaFormat, seconds| {
-        let base_credential = template.clone();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                // Creation order deliberately disagrees with expiry order.
-                created_date: get_dummy_date() - Duration::seconds(seconds),
-                expires_at: Some(expiry + Duration::seconds(seconds)),
-                ..base_credential.common
-            },
-            r#type: CredentialType::BatchItem,
-            parent: Some(parent.clone().into()),
-            format: Some(format.clone().into()),
-            ..base_credential
-        }
+        let mut updated_credential = template.clone();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        // Creation order deliberately disagrees with expiry order.
+        updated_credential.common_mut().created_date =
+            get_dummy_date() - Duration::seconds(seconds);
+        updated_credential.common_mut().expires_at = Some(expiry + Duration::seconds(seconds));
+        *updated_credential.type_mut() = CredentialType::BatchItem;
+        *updated_credential.parent_mut() = Some(parent.clone().into());
+        *updated_credential.format_mut() = Some(format.clone().into());
+        updated_credential
     };
 
     // Suspended items with an earlier expiry must not hide an accepted item.
     let suspended_jwt = {
-        let base_credential = new_item(&first_parent, &jwt_format, 0);
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Suspended,
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = new_item(&first_parent, &jwt_format, 0);
+        updated_credential.common_mut().state = CredentialStateEnum::Suspended;
+        updated_credential
     };
     // An already consumed item is unavailable even though its state is Accepted.
-    let consumed_jwt = Credential {
-        consumed_at: Some(get_dummy_date()),
-        ..new_item(&first_parent, &jwt_format, 1)
+    let consumed_jwt = {
+        let mut updated_credential = new_item(&first_parent, &jwt_format, 1);
+        *updated_credential.consumed_at_mut() = Some(get_dummy_date());
+        updated_credential
     };
     // Deleted items must likewise be skipped even if they expire earlier.
     let deleted_jwt = {
-        let base_credential = new_item(&first_parent, &jwt_format, 2);
-        Credential {
-            common: CredentialCommon {
-                deleted_at: Some(get_dummy_date()),
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = new_item(&first_parent, &jwt_format, 2);
+        updated_credential.common_mut().deleted_at = Some(get_dummy_date());
+        updated_credential
     };
     // The earliest eligible expiry wins, with descending ID breaking ties.
     let earliest_expiring_jwt = {
-        let base_credential = new_item(&first_parent, &jwt_format, 3);
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::from_u128(2).into(),
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = new_item(&first_parent, &jwt_format, 3);
+        updated_credential.common_mut().id = Uuid::from_u128(2).into();
+        updated_credential
     };
     let tied_jwt = {
-        let base_credential = new_item(&first_parent, &jwt_format, 3);
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::from_u128(1).into(),
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = new_item(&first_parent, &jwt_format, 3);
+        updated_credential.common_mut().id = Uuid::from_u128(1).into();
+        updated_credential
     };
     let later_expiring_jwt = new_item(&first_parent, &jwt_format, 4);
     // An item without an expiry must not take precedence over expiring items.
     let non_expiring_jwt = {
-        let base_credential = new_item(&first_parent, &jwt_format, 5);
-        Credential {
-            common: CredentialCommon {
-                expires_at: None,
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = new_item(&first_parent, &jwt_format, 5);
+        updated_credential.common_mut().expires_at = None;
+        updated_credential
     };
     // The same parent has an independent MDOC group. When all expiries are absent,
     // descending ID still selects exactly one item.
     let selected_mdoc = {
-        let base_credential = new_item(&first_parent, &mdoc_format, 5);
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::from_u128(4).into(),
-                expires_at: None,
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = new_item(&first_parent, &mdoc_format, 5);
+        updated_credential.common_mut().id = Uuid::from_u128(4).into();
+        updated_credential.common_mut().expires_at = None;
+        updated_credential
     };
     let other_mdoc = {
-        let base_credential = selected_mdoc.clone();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::from_u128(3).into(),
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = selected_mdoc.clone();
+        updated_credential.common_mut().id = Uuid::from_u128(3).into();
+        updated_credential
     };
     // The same format has an independent group under a different parent.
     let second_parent_jwt = new_item(&second_parent, &jwt_format, 6);
@@ -1538,12 +1498,12 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
         result
             .values
             .into_iter()
-            .map(|credential| credential.common.id),
+            .map(|credential| credential.common().id),
         [
-            single.common.id,
-            earliest_expiring_jwt.common.id,
-            selected_mdoc.common.id,
-            second_parent_jwt.common.id,
+            single.common().id,
+            earliest_expiring_jwt.common().id,
+            selected_mdoc.common().id,
+            second_parent_jwt.common().id,
         ],
     );
 }

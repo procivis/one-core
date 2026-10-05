@@ -78,7 +78,7 @@ pub(crate) async fn throw_if_credential_schema_not_in_session_org(
     credential: &Credential,
     session_provider: &dyn SessionProvider,
 ) -> Result<(), ServiceError> {
-    let schema = credential.common.schema.as_ref().await?;
+    let schema = credential.common().schema.as_ref().await?;
     throw_if_org_id_not_matching_session(schema.organisation.id_ref(), session_provider)
 }
 
@@ -86,7 +86,7 @@ pub(crate) fn throw_if_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), ServiceError> {
-    let current_state = credential.common.state;
+    let current_state = credential.common().state;
     if current_state != state {
         return Err(BusinessLogicError::InvalidCredentialState {
             state: current_state.to_owned(),

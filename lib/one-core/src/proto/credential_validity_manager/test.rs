@@ -106,15 +106,10 @@ async fn test_check_revocation_non_revocable() {
 
     let credential_blob_id = Uuid::new_v4().into();
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            credential_blob_id: Some(credential_blob_id),
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.credential_blob_id_mut() = Some(credential_blob_id);
+        updated_credential
     };
     credential_repository.expect_get_credential().returning({
         let credential = credential.clone();
@@ -144,11 +139,11 @@ async fn test_check_revocation_non_revocable() {
     });
 
     let result = validity_manager
-        .check_holder_credential_validity(credential.common.id, false)
+        .check_holder_credential_validity(credential.common().id, false)
         .await
         .unwrap();
 
-    assert_eq!(result.credential_id, credential.common.id);
+    assert_eq!(result.credential_id, credential.common().id);
     assert!(result.success);
     assert_eq!(result.status, CredentialStateEnum::Accepted);
 }
@@ -158,15 +153,10 @@ async fn test_check_revocation_already_revoked() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Revoked,
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Revoked;
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
 
     {
@@ -183,11 +173,11 @@ async fn test_check_revocation_already_revoked() {
     });
 
     let result = validity_manager
-        .check_holder_credential_validity(credential.common.id, false)
+        .check_holder_credential_validity(credential.common().id, false)
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.credential_id, credential.common.id);
+    assert_eq!(result.credential_id, credential.common().id);
     assert!(result.success);
     assert_eq!(result.status, CredentialStateEnum::Revoked);
 }
@@ -246,16 +236,11 @@ async fn test_check_revocation_becoming_revoked() {
 
     let credential_blob_id = Uuid::new_v4().into();
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            credential_blob_id: Some(credential_blob_id),
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.suspend_end_date_mut() = None;
+        *updated_credential.credential_blob_id_mut() = Some(credential_blob_id);
+        updated_credential
     };
     credential_repository.expect_get_credential().returning({
         let credential = credential.clone();
@@ -297,11 +282,11 @@ async fn test_check_revocation_becoming_revoked() {
     });
 
     let result = validity_manager
-        .check_holder_credential_validity(credential.common.id, false)
+        .check_holder_credential_validity(credential.common().id, false)
         .await
         .unwrap();
 
-    assert_eq!(result.credential_id, credential.common.id);
+    assert_eq!(result.credential_id, credential.common().id);
     assert!(result.success);
     assert_eq!(result.status, CredentialStateEnum::Revoked);
 }
@@ -362,15 +347,10 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
     let parent_credential_id = Uuid::new_v4().into();
     let item_credential_id: CredentialId = Uuid::new_v4().into();
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
     credential_repository
         .expect_get_credential()
@@ -378,8 +358,8 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = parent_credential_id;
-            credential.r#type = CredentialType::BatchParent;
+            credential.common_mut().id = parent_credential_id;
+            *credential.type_mut() = CredentialType::BatchParent;
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -388,9 +368,9 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -398,9 +378,9 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
         .once()
         .return_once({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -494,29 +474,24 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
     .unwrap();
 
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                interaction: Some(
-                    crate::model::interaction::Interaction {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        data: Some(interaction_data),
-                        organisation: dummy_organisation(None).into(),
-                        interaction_type: crate::model::interaction::InteractionType::Issuance,
-                        expires_at: None,
-                        ecosystem: None,
-                        ecosystem_data: Default::default(),
-                    }
-                    .into(),
-                ),
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        updated_credential.common_mut().interaction = Some(
+            crate::model::interaction::Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: Some(interaction_data),
+                organisation: dummy_organisation(None).into(),
+                interaction_type: crate::model::interaction::InteractionType::Issuance,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            }
+            .into(),
+        );
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
     credential_repository
         .expect_get_credential()
@@ -524,8 +499,8 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = parent_credential_id;
-            credential.r#type = CredentialType::BatchParent;
+            credential.common_mut().id = parent_credential_id;
+            *credential.type_mut() = CredentialType::BatchParent;
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -534,11 +509,11 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             // the item is itself individually expired
-            credential.common.expires_at = Some(crate::clock::now_utc() - Duration::days(1));
+            credential.common_mut().expires_at = Some(crate::clock::now_utc() - Duration::days(1));
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -546,9 +521,9 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
         .once()
         .return_once({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -678,29 +653,24 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
     .unwrap();
 
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                interaction: Some(
-                    crate::model::interaction::Interaction {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        data: Some(interaction_data),
-                        organisation: dummy_organisation(None).into(),
-                        interaction_type: crate::model::interaction::InteractionType::Issuance,
-                        expires_at: None,
-                        ecosystem: None,
-                        ecosystem_data: Default::default(),
-                    }
-                    .into(),
-                ),
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        updated_credential.common_mut().interaction = Some(
+            crate::model::interaction::Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: Some(interaction_data),
+                organisation: dummy_organisation(None).into(),
+                interaction_type: crate::model::interaction::InteractionType::Issuance,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            }
+            .into(),
+        );
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
     credential_repository
         .expect_get_credential()
@@ -708,8 +678,8 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = parent_credential_id;
-            credential.r#type = CredentialType::BatchParent;
+            credential.common_mut().id = parent_credential_id;
+            *credential.type_mut() = CredentialType::BatchParent;
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -718,9 +688,9 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -728,9 +698,9 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
         .once()
         .return_once({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -855,29 +825,24 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
     .unwrap();
 
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                interaction: Some(
-                    crate::model::interaction::Interaction {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        data: Some(interaction_data),
-                        organisation: dummy_organisation(None).into(),
-                        interaction_type: crate::model::interaction::InteractionType::Issuance,
-                        expires_at: None,
-                        ecosystem: None,
-                        ecosystem_data: Default::default(),
-                    }
-                    .into(),
-                ),
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        updated_credential.common_mut().interaction = Some(
+            crate::model::interaction::Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: Some(interaction_data),
+                organisation: dummy_organisation(None).into(),
+                interaction_type: crate::model::interaction::InteractionType::Issuance,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            }
+            .into(),
+        );
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
     credential_repository
         .expect_get_credential()
@@ -885,8 +850,8 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = parent_credential_id;
-            credential.r#type = CredentialType::BatchParent;
+            credential.common_mut().id = parent_credential_id;
+            *credential.type_mut() = CredentialType::BatchParent;
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -895,9 +860,9 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -905,9 +870,9 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
         .once()
         .return_once({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -1035,31 +1000,27 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
     .unwrap();
 
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                // the parent's own business expiry is also still in the future
-                expires_at: Some(crate::clock::now_utc() + Duration::days(30)),
-                interaction: Some(
-                    crate::model::interaction::Interaction {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        data: Some(interaction_data),
-                        organisation: dummy_organisation(None).into(),
-                        interaction_type: crate::model::interaction::InteractionType::Issuance,
-                        expires_at: None,
-                        ecosystem: None,
-                        ecosystem_data: Default::default(),
-                    }
-                    .into(),
-                ),
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        // the parent's own business expiry is also still in the future
+        updated_credential.common_mut().expires_at =
+            Some(crate::clock::now_utc() + Duration::days(30));
+        updated_credential.common_mut().interaction = Some(
+            crate::model::interaction::Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                data: Some(interaction_data),
+                organisation: dummy_organisation(None).into(),
+                interaction_type: crate::model::interaction::InteractionType::Issuance,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            }
+            .into(),
+        );
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
     credential_repository
         .expect_get_credential()
@@ -1067,8 +1028,8 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = parent_credential_id;
-            credential.r#type = CredentialType::BatchParent;
+            credential.common_mut().id = parent_credential_id;
+            *credential.type_mut() = CredentialType::BatchParent;
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -1077,9 +1038,9 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
         .once()
         .returning({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -1087,9 +1048,9 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
         .once()
         .return_once({
             let mut credential = credential.clone();
-            credential.common.id = item_credential_id;
-            credential.r#type = CredentialType::BatchItem;
-            credential.credential_blob_id = Some(credential_blob_id);
+            credential.common_mut().id = item_credential_id;
+            *credential.type_mut() = CredentialType::BatchItem;
+            *credential.credential_blob_id_mut() = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -1189,40 +1150,20 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
     let parent_credential_id = Uuid::new_v4().into();
     let item_credential_id = Uuid::new_v4().into();
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
 
-    let item_credential = Credential {
-        r#type: CredentialType::BatchItem,
-        credential_blob_id: Some(credential_blob_id),
-        parent: Some(
-            {
-                let base_credential = credential.clone();
-                Credential {
-                    common: CredentialCommon {
-                        id: parent_credential_id,
-                        ..base_credential.common
-                    },
-                    r#type: CredentialType::BatchParent,
-                    ..base_credential
-                }
-            }
-            .into(),
-        ),
-        common: CredentialCommon {
-            id: item_credential_id,
-            ..credential.common
-        },
-        ..credential
-    };
+    let mut parent_credential = credential.clone();
+    parent_credential.common_mut().id = parent_credential_id;
+    *parent_credential.type_mut() = CredentialType::BatchParent;
+    let mut item_credential = credential;
+    *item_credential.type_mut() = CredentialType::BatchItem;
+    *item_credential.credential_blob_id_mut() = Some(credential_blob_id);
+    *item_credential.parent_mut() = Some(parent_credential.into());
+    item_credential.common_mut().id = item_credential_id;
 
     let mut seq = Sequence::new();
     credential_repository
@@ -1254,7 +1195,7 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
         .once()
         .return_once({
             let mut item_credential = item_credential.clone();
-            item_credential.common.state = CredentialStateEnum::Revoked;
+            item_credential.common_mut().state = CredentialStateEnum::Revoked;
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![item_credential],
@@ -1314,29 +1255,31 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
 
 #[tokio::test]
 async fn test_check_revocation_invalid_role() {
-    let credential_issuer_role = Credential {
-        role: CredentialRole::Issuer,
-        ..generic_credential()
+    let credential_issuer_role = {
+        let mut updated_credential = generic_credential();
+        *updated_credential.role_mut() = CredentialRole::Issuer;
+        updated_credential
     };
 
-    let credential_verifier_role = Credential {
-        role: CredentialRole::Verifier,
-        ..generic_credential()
+    let credential_verifier_role = {
+        let mut updated_credential = generic_credential();
+        *updated_credential.role_mut() = CredentialRole::Verifier;
+        updated_credential
     };
 
-    let issuer_credential_id = credential_issuer_role.common.id;
-    let verifier_credential_id = credential_verifier_role.common.id;
+    let issuer_credential_id = credential_issuer_role.common().id;
+    let verifier_credential_id = credential_verifier_role.common().id;
 
     let mut credential_repository = MockCredentialRepository::default();
 
     credential_repository
         .expect_get_credential()
-        .with(eq(credential_issuer_role.common.id))
+        .with(eq(credential_issuer_role.common().id))
         .returning(move |_| Ok(credential_issuer_role.clone()));
 
     credential_repository
         .expect_get_credential()
-        .with(eq(credential_verifier_role.common.id))
+        .with(eq(credential_verifier_role.common().id))
         .returning(move |_| Ok(credential_verifier_role.clone()));
 
     let validity_manager = setup_validity_manager(Repositories {
@@ -1385,11 +1328,11 @@ async fn test_check_revocation_invalid_state() {
     });
 
     let result = validity_manager
-        .check_holder_credential_validity(credential.common.id, false)
+        .check_holder_credential_validity(credential.common().id, false)
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.credential_id, credential.common.id);
+    assert_eq!(result.credential_id, credential.common().id);
     assert!(!result.success);
     assert_eq!(result.status, CredentialStateEnum::Created);
 }
@@ -1397,15 +1340,15 @@ async fn test_check_revocation_invalid_state() {
 #[tokio::test]
 async fn test_revoke_credential_success_with_accepted_credential() {
     let mut credential = generic_credential();
-    credential.role = CredentialRole::Issuer;
-    credential.common.state = CredentialStateEnum::Accepted;
+    *credential.role_mut() = CredentialRole::Issuer;
+    credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let mut credential_repository = MockCredentialRepository::default();
     let clone = credential.clone();
     credential_repository
         .expect_get_credential()
         .once()
-        .with(eq(clone.common.id))
+        .with(eq(clone.common().id))
         .returning(move |_| Ok(clone.clone()));
 
     let mut revocation_method = MockRevocationMethod::default();
@@ -1455,7 +1398,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     });
 
     validity_manager
-        .change_credential_state(&credential.common.id, ChangeCredentialState::Revoked)
+        .change_credential_state(&credential.common().id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 }
@@ -1463,8 +1406,8 @@ async fn test_revoke_credential_success_with_accepted_credential() {
 #[tokio::test]
 async fn test_revoke_credential_success_with_suspended_credential() {
     let mut credential = generic_credential();
-    credential.role = CredentialRole::Issuer;
-    credential.common.state = CredentialStateEnum::Suspended;
+    *credential.role_mut() = CredentialRole::Issuer;
+    credential.common_mut().state = CredentialStateEnum::Suspended;
 
     let mut credential_repository = MockCredentialRepository::default();
 
@@ -1490,7 +1433,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     credential_repository
         .expect_get_credential()
         .once()
-        .with(eq(clone.common.id))
+        .with(eq(clone.common().id))
         .returning(move |_| Ok(clone.clone()));
 
     let mut formatter = MockCredentialFormatter::default();
@@ -1522,7 +1465,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     });
 
     validity_manager
-        .change_credential_state(&credential.common.id, ChangeCredentialState::Revoked)
+        .change_credential_state(&credential.common().id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 }
@@ -1530,8 +1473,8 @@ async fn test_revoke_credential_success_with_suspended_credential() {
 #[tokio::test]
 async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
     let mut credential = generic_credential();
-    credential.role = CredentialRole::Issuer;
-    credential.common.state = CredentialStateEnum::Revoked;
+    *credential.role_mut() = CredentialRole::Issuer;
+    credential.common_mut().state = CredentialStateEnum::Revoked;
 
     let mut credential_repository = MockCredentialRepository::default();
     {
@@ -1539,7 +1482,7 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.common.id))
+            .with(eq(clone.common().id))
             .returning(move |_| Ok(clone.clone()));
     }
     let validity_manager = setup_validity_manager(Repositories {
@@ -1550,7 +1493,7 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
 
     let result = validity_manager
         .change_credential_state(
-            &credential.common.id,
+            &credential.common().id,
             ChangeCredentialState::Suspended {
                 suspend_end_date: None,
             },
@@ -1569,8 +1512,8 @@ async fn test_suspend_credential_success() {
     let now = crate::clock::now_utc();
 
     let mut credential = generic_credential();
-    credential.role = CredentialRole::Issuer;
-    credential.common.state = CredentialStateEnum::Accepted;
+    *credential.role_mut() = CredentialRole::Issuer;
+    credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let suspend_end_date = now.add(Duration::days(1));
 
@@ -1580,7 +1523,7 @@ async fn test_suspend_credential_success() {
         credential_repository
             .expect_get_credential()
             .once()
-            .with(eq(clone.common.id))
+            .with(eq(clone.common().id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -1637,7 +1580,7 @@ async fn test_suspend_credential_success() {
 
     validity_manager
         .change_credential_state(
-            &credential.common.id,
+            &credential.common().id,
             ChangeCredentialState::Suspended {
                 suspend_end_date: Some(suspend_end_date),
             },
@@ -1649,8 +1592,8 @@ async fn test_suspend_credential_success() {
 #[tokio::test]
 async fn test_reactivate_credential_success() {
     let mut credential = generic_credential();
-    credential.role = CredentialRole::Issuer;
-    credential.common.state = CredentialStateEnum::Suspended;
+    *credential.role_mut() = CredentialRole::Issuer;
+    credential.common_mut().state = CredentialStateEnum::Suspended;
 
     let mut credential_repository = MockCredentialRepository::default();
     let cred_clone = credential.clone();
@@ -1707,7 +1650,7 @@ async fn test_reactivate_credential_success() {
     });
 
     validity_manager
-        .change_credential_state(&credential.common.id, ChangeCredentialState::Accepted)
+        .change_credential_state(&credential.common().id, ChangeCredentialState::Accepted)
         .await
         .unwrap();
 }
@@ -1715,15 +1658,15 @@ async fn test_reactivate_credential_success() {
 #[tokio::test]
 async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential() {
     let mut credential = generic_credential();
-    credential.role = CredentialRole::Issuer;
-    credential.common.state = CredentialStateEnum::Revoked;
+    *credential.role_mut() = CredentialRole::Issuer;
+    credential.common_mut().state = CredentialStateEnum::Revoked;
 
     let mut credential_repository = MockCredentialRepository::default();
     let clone = credential.clone();
     credential_repository
         .expect_get_credential()
         .times(1)
-        .with(eq(clone.common.id))
+        .with(eq(clone.common().id))
         .returning(move |_| Ok(clone.clone()));
 
     let validity_manager = setup_validity_manager(Repositories {
@@ -1733,7 +1676,7 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
     });
 
     let result = validity_manager
-        .change_credential_state(&credential.common.id, ChangeCredentialState::Accepted)
+        .change_credential_state(&credential.common().id, ChangeCredentialState::Accepted)
         .await
         .unwrap_err();
 
@@ -1746,15 +1689,15 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
 #[tokio::test]
 async fn test_revoke_credential_invalid_role() {
     let mut credential = generic_credential();
-    credential.role = CredentialRole::Holder;
-    credential.common.state = CredentialStateEnum::Accepted;
+    *credential.role_mut() = CredentialRole::Holder;
+    credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let mut credential_repository = MockCredentialRepository::default();
     let clone = credential.clone();
     credential_repository
         .expect_get_credential()
         .times(1)
-        .with(eq(clone.common.id))
+        .with(eq(clone.common().id))
         .returning(move |_| Ok(clone.clone()));
 
     let validity_manager = setup_validity_manager(Repositories {
@@ -1764,7 +1707,7 @@ async fn test_revoke_credential_invalid_role() {
     });
 
     let result = validity_manager
-        .change_credential_state(&credential.common.id, ChangeCredentialState::Revoked)
+        .change_credential_state(&credential.common().id, ChangeCredentialState::Revoked)
         .await
         .unwrap_err();
 
@@ -1774,15 +1717,15 @@ async fn test_revoke_credential_invalid_role() {
 #[tokio::test]
 async fn test_revoke_credential_batch_parent() {
     let mut parent_credential = generic_credential();
-    parent_credential.role = CredentialRole::Issuer;
-    parent_credential.common.state = CredentialStateEnum::Accepted;
-    parent_credential.r#type = CredentialType::BatchParent;
+    *parent_credential.role_mut() = CredentialRole::Issuer;
+    parent_credential.common_mut().state = CredentialStateEnum::Accepted;
+    *parent_credential.type_mut() = CredentialType::BatchParent;
 
     let mut child_credential = generic_credential();
-    child_credential.role = CredentialRole::Issuer;
-    child_credential.common.state = CredentialStateEnum::Accepted;
-    child_credential.r#type = CredentialType::BatchItem;
-    child_credential.parent = Some(parent_credential.clone().into());
+    *child_credential.role_mut() = CredentialRole::Issuer;
+    child_credential.common_mut().state = CredentialStateEnum::Accepted;
+    *child_credential.type_mut() = CredentialType::BatchItem;
+    *child_credential.parent_mut() = Some(parent_credential.clone().into());
 
     let mut credential_repository = MockCredentialRepository::default();
     {
@@ -1790,11 +1733,11 @@ async fn test_revoke_credential_batch_parent() {
         credential_repository
             .expect_get_credential()
             .once()
-            .with(eq(parent_credential.common.id))
+            .with(eq(parent_credential.common().id))
             .returning(move |_| Ok(clone.clone()));
 
         let clone = child_credential.clone();
-        let _parent_credential_id = parent_credential.common.id;
+        let _parent_credential_id = parent_credential.common().id;
         credential_repository
             .expect_get_credential_list()
             .once()
@@ -1813,7 +1756,7 @@ async fn test_revoke_credential_batch_parent() {
         credential_repository
             .expect_update_credential()
             .once()
-            .with(eq(parent_credential.common.id), always())
+            .with(eq(parent_credential.common().id), always())
             .returning(move |_, request| {
                 assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
                 Ok(())
@@ -1821,7 +1764,7 @@ async fn test_revoke_credential_batch_parent() {
         credential_repository
             .expect_update_credential()
             .once()
-            .with(eq(child_credential.common.id), always())
+            .with(eq(child_credential.common().id), always())
             .returning(move |_, request| {
                 assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
                 Ok(())
@@ -1834,9 +1777,9 @@ async fn test_revoke_credential_batch_parent() {
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once({
-            let child_credential_id = child_credential.common.id;
+            let child_credential_id = child_credential.common().id;
             move |credential, _| {
-                assert_eq!(credential.common.id, child_credential_id);
+                assert_eq!(credential.common().id, child_credential_id);
                 Ok(())
             }
         });
@@ -1870,7 +1813,10 @@ async fn test_revoke_credential_batch_parent() {
     });
 
     validity_manager
-        .change_credential_state(&parent_credential.common.id, ChangeCredentialState::Revoked)
+        .change_credential_state(
+            &parent_credential.common().id,
+            ChangeCredentialState::Revoked,
+        )
         .await
         .unwrap();
 }
@@ -1878,22 +1824,22 @@ async fn test_revoke_credential_batch_parent() {
 #[tokio::test]
 async fn test_revoke_credential_batch_item() {
     let mut parent_credential = generic_credential();
-    parent_credential.role = CredentialRole::Issuer;
-    parent_credential.common.state = CredentialStateEnum::Accepted;
-    parent_credential.r#type = CredentialType::BatchParent;
+    *parent_credential.role_mut() = CredentialRole::Issuer;
+    parent_credential.common_mut().state = CredentialStateEnum::Accepted;
+    *parent_credential.type_mut() = CredentialType::BatchParent;
 
     let mut child_credential = generic_credential();
-    child_credential.role = CredentialRole::Issuer;
-    child_credential.common.state = CredentialStateEnum::Accepted;
-    child_credential.r#type = CredentialType::BatchItem;
-    child_credential.parent = Some(parent_credential.clone().into());
+    *child_credential.role_mut() = CredentialRole::Issuer;
+    child_credential.common_mut().state = CredentialStateEnum::Accepted;
+    *child_credential.type_mut() = CredentialType::BatchItem;
+    *child_credential.parent_mut() = Some(parent_credential.clone().into());
 
     let mut credential_repository = MockCredentialRepository::default();
 
     credential_repository
         .expect_get_credential()
         .once()
-        .with(eq(child_credential.common.id))
+        .with(eq(child_credential.common().id))
         .returning({
             let clone = child_credential.clone();
             move |_| Ok(clone.clone())
@@ -1903,7 +1849,7 @@ async fn test_revoke_credential_batch_item() {
     credential_repository
         .expect_update_credential()
         .once()
-        .with(eq(child_credential.common.id), always())
+        .with(eq(child_credential.common().id), always())
         .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
             Ok(())
@@ -1914,16 +1860,11 @@ async fn test_revoke_credential_batch_item() {
         .expect_get_credential_list()
         .once()
         .returning({
-            let _parent_credential_id = parent_credential.common.id;
+            let _parent_credential_id = parent_credential.common().id;
             let child_credential = {
-                let base_credential = child_credential.clone();
-                Credential {
-                    common: CredentialCommon {
-                        state: CredentialStateEnum::Revoked,
-                        ..base_credential.common
-                    },
-                    ..base_credential
-                }
+                let mut updated_credential = child_credential.clone();
+                updated_credential.common_mut().state = CredentialStateEnum::Revoked;
+                updated_credential
             };
             move |query| {
                 assert!(query.filtering.unwrap().contains(&|fv| matches!(
@@ -1942,7 +1883,7 @@ async fn test_revoke_credential_batch_item() {
     credential_repository
         .expect_update_credential()
         .once()
-        .with(eq(parent_credential.common.id), always())
+        .with(eq(parent_credential.common().id), always())
         .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
             Ok(())
@@ -1955,9 +1896,9 @@ async fn test_revoke_credential_batch_item() {
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once({
-            let child_credential_id = child_credential.common.id;
+            let child_credential_id = child_credential.common().id;
             move |credential, _| {
-                assert_eq!(credential.common.id, child_credential_id);
+                assert_eq!(credential.common().id, child_credential_id);
                 Ok(())
             }
         });
@@ -1991,7 +1932,10 @@ async fn test_revoke_credential_batch_item() {
     });
 
     validity_manager
-        .change_credential_state(&child_credential.common.id, ChangeCredentialState::Revoked)
+        .change_credential_state(
+            &child_credential.common().id,
+            ChangeCredentialState::Revoked,
+        )
         .await
         .unwrap();
 }
@@ -2010,23 +1954,24 @@ async fn test_reactivate_credential_batch_item_with_expired_parent() {
 /// items and must be left alone - it must neither fail the mapping nor get overwritten.
 async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialStateEnum) {
     let mut parent_credential = generic_credential();
-    parent_credential.role = CredentialRole::Issuer;
-    parent_credential.common.state = parent_state;
-    parent_credential.r#type = CredentialType::BatchParent;
+    *parent_credential.role_mut() = CredentialRole::Issuer;
+    parent_credential.common_mut().state = parent_state;
+    *parent_credential.type_mut() = CredentialType::BatchParent;
 
     let mut child_credential = generic_credential();
-    child_credential.role = CredentialRole::Issuer;
-    child_credential.common.state = CredentialStateEnum::Suspended;
-    child_credential.suspend_end_date = Some(crate::clock::now_utc().sub(Duration::hours(1)));
-    child_credential.r#type = CredentialType::BatchItem;
-    child_credential.parent = Some(parent_credential.clone().into());
+    *child_credential.role_mut() = CredentialRole::Issuer;
+    child_credential.common_mut().state = CredentialStateEnum::Suspended;
+    *child_credential.suspend_end_date_mut() =
+        Some(crate::clock::now_utc().sub(Duration::hours(1)));
+    *child_credential.type_mut() = CredentialType::BatchItem;
+    *child_credential.parent_mut() = Some(parent_credential.clone().into());
 
     let mut credential_repository = MockCredentialRepository::default();
 
     credential_repository
         .expect_get_credential()
         .once()
-        .with(eq(child_credential.common.id))
+        .with(eq(child_credential.common().id))
         .returning({
             let clone = child_credential.clone();
             move |_| Ok(clone.clone())
@@ -2037,7 +1982,7 @@ async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialS
     credential_repository
         .expect_update_credential()
         .once()
-        .with(eq(child_credential.common.id), always())
+        .with(eq(child_credential.common().id), always())
         .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Accepted, request.state.unwrap());
             Ok(())
@@ -2049,9 +1994,9 @@ async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialS
         .once()
         .with(always(), eq(RevocationState::Valid))
         .return_once({
-            let child_credential_id = child_credential.common.id;
+            let child_credential_id = child_credential.common().id;
             move |credential, _| {
-                assert_eq!(credential.common.id, child_credential_id);
+                assert_eq!(credential.common().id, child_credential_id);
                 Ok(())
             }
         });
@@ -2085,7 +2030,10 @@ async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialS
     });
 
     validity_manager
-        .change_credential_state(&child_credential.common.id, ChangeCredentialState::Accepted)
+        .change_credential_state(
+            &child_credential.common().id,
+            ChangeCredentialState::Accepted,
+        )
         .await
         .unwrap();
 }
@@ -2093,14 +2041,14 @@ async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialS
 #[tokio::test]
 async fn test_suspend_multiformat_credential_one_format_unsupported() {
     let mut base_credential = generic_credential();
-    base_credential.role = CredentialRole::Issuer;
-    base_credential.common.state = CredentialStateEnum::Accepted;
+    *base_credential.role_mut() = CredentialRole::Issuer;
+    base_credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let sdjwtvc_format = CredentialSchemaFormat {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        credential_schema_id: base_credential.common.schema.id(),
+        credential_schema_id: base_credential.common().schema.id(),
         format: "SD_JWT_VC".into(),
         ecosystem_schema_id: "sdjwtvc".to_owned(),
         claim_mappings: Default::default(),
@@ -2109,13 +2057,13 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        credential_schema_id: base_credential.common.schema.id(),
+        credential_schema_id: base_credential.common().schema.id(),
         format: "MDOC".into(),
         ecosystem_schema_id: "mdoc".to_owned(),
         claim_mappings: Default::default(),
     };
     base_credential
-        .common
+        .common_mut()
         .schema
         .as_mut()
         .await
@@ -2123,24 +2071,24 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         .formats = vec![sdjwtvc_format.clone(), mdoc_format.clone()].into();
 
     let mut parent_credential = base_credential.clone();
-    parent_credential.r#type = CredentialType::BatchParent;
+    *parent_credential.type_mut() = CredentialType::BatchParent;
 
     let mut sdjwtvc_credential = base_credential.clone();
-    sdjwtvc_credential.r#type = CredentialType::BatchItem;
-    sdjwtvc_credential.parent = Some(parent_credential.clone().into());
-    sdjwtvc_credential.format = Some(sdjwtvc_format.clone().into());
+    *sdjwtvc_credential.type_mut() = CredentialType::BatchItem;
+    *sdjwtvc_credential.parent_mut() = Some(parent_credential.clone().into());
+    *sdjwtvc_credential.format_mut() = Some(sdjwtvc_format.clone().into());
 
     let mut mdoc_credential = base_credential.clone();
-    mdoc_credential.r#type = CredentialType::BatchItem;
-    mdoc_credential.parent = Some(parent_credential.clone().into());
-    mdoc_credential.format = Some(mdoc_format.clone().into());
+    *mdoc_credential.type_mut() = CredentialType::BatchItem;
+    *mdoc_credential.parent_mut() = Some(parent_credential.clone().into());
+    *mdoc_credential.format_mut() = Some(mdoc_format.clone().into());
 
     let mut credential_repository = MockCredentialRepository::default();
 
     credential_repository
         .expect_get_credential()
         .once()
-        .with(eq(parent_credential.common.id))
+        .with(eq(parent_credential.common().id))
         .returning({
             let clone = parent_credential.clone();
             move |_| Ok(clone.clone())
@@ -2150,7 +2098,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         .expect_get_credential_list()
         .once()
         .returning({
-            let _parent_credential_id = parent_credential.common.id;
+            let _parent_credential_id = parent_credential.common().id;
             let values = vec![sdjwtvc_credential.clone(), mdoc_credential.clone()];
             move |query| {
                 assert!(query.filtering.unwrap().contains(&|fv| matches!(
@@ -2168,7 +2116,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
     credential_repository
         .expect_update_credential()
         .once()
-        .with(eq(parent_credential.common.id), always())
+        .with(eq(parent_credential.common().id), always())
         .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
             Ok(())
@@ -2176,7 +2124,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
     credential_repository
         .expect_update_credential()
         .once()
-        .with(eq(sdjwtvc_credential.common.id), always())
+        .with(eq(sdjwtvc_credential.common().id), always())
         .returning(move |_, request| {
             assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
             Ok(())
@@ -2195,9 +2143,9 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
             }),
         )
         .return_once({
-            let credential_id = sdjwtvc_credential.common.id;
+            let credential_id = sdjwtvc_credential.common().id;
             move |credential, _| {
-                assert_eq!(credential.common.id, credential_id);
+                assert_eq!(credential.common().id, credential_id);
                 Ok(())
             }
         });
@@ -2216,9 +2164,9 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
             }),
         )
         .return_once({
-            let credential_id = mdoc_credential.common.id;
+            let credential_id = mdoc_credential.common().id;
             move |credential, _| {
-                assert_eq!(credential.common.id, credential_id);
+                assert_eq!(credential.common().id, credential_id);
                 Err(RevocationError::OperationNotSupported("test".to_string()))
             }
         });
@@ -2270,7 +2218,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
 
     validity_manager
         .change_credential_state(
-            &parent_credential.common.id,
+            &parent_credential.common().id,
             ChangeCredentialState::Suspended {
                 suspend_end_date: None,
             },
@@ -2282,14 +2230,14 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
 #[tokio::test]
 async fn test_suspend_multiformat_credential_all_formats_unsupported() {
     let mut base_credential = generic_credential();
-    base_credential.role = CredentialRole::Issuer;
-    base_credential.common.state = CredentialStateEnum::Accepted;
+    *base_credential.role_mut() = CredentialRole::Issuer;
+    base_credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let sdjwtvc_format = CredentialSchemaFormat {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        credential_schema_id: base_credential.common.schema.id(),
+        credential_schema_id: base_credential.common().schema.id(),
         format: "SD_JWT_VC".into(),
         ecosystem_schema_id: "sdjwtvc".to_owned(),
         claim_mappings: Default::default(),
@@ -2298,13 +2246,13 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        credential_schema_id: base_credential.common.schema.id(),
+        credential_schema_id: base_credential.common().schema.id(),
         format: "MDOC".into(),
         ecosystem_schema_id: "mdoc".to_owned(),
         claim_mappings: Default::default(),
     };
     base_credential
-        .common
+        .common_mut()
         .schema
         .as_mut()
         .await
@@ -2312,23 +2260,23 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
         .formats = vec![sdjwtvc_format.clone(), mdoc_format.clone()].into();
 
     let mut parent_credential = base_credential.clone();
-    parent_credential.r#type = CredentialType::BatchParent;
+    *parent_credential.type_mut() = CredentialType::BatchParent;
 
     let mut sdjwtvc_credential = base_credential.clone();
-    sdjwtvc_credential.r#type = CredentialType::BatchItem;
-    sdjwtvc_credential.parent = Some(parent_credential.clone().into());
-    sdjwtvc_credential.format = Some(sdjwtvc_format.clone().into());
+    *sdjwtvc_credential.type_mut() = CredentialType::BatchItem;
+    *sdjwtvc_credential.parent_mut() = Some(parent_credential.clone().into());
+    *sdjwtvc_credential.format_mut() = Some(sdjwtvc_format.clone().into());
 
     let mut mdoc_credential = base_credential.clone();
-    mdoc_credential.r#type = CredentialType::BatchItem;
-    mdoc_credential.parent = Some(parent_credential.clone().into());
-    mdoc_credential.format = Some(mdoc_format.clone().into());
+    *mdoc_credential.type_mut() = CredentialType::BatchItem;
+    *mdoc_credential.parent_mut() = Some(parent_credential.clone().into());
+    *mdoc_credential.format_mut() = Some(mdoc_format.clone().into());
 
     let mut credential_repository = MockCredentialRepository::default();
     credential_repository
         .expect_get_credential()
         .once()
-        .with(eq(parent_credential.common.id))
+        .with(eq(parent_credential.common().id))
         .returning({
             let clone = parent_credential.clone();
             move |_| Ok(clone.clone())
@@ -2338,7 +2286,7 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
         .expect_get_credential_list()
         .once()
         .returning({
-            let _parent_credential_id = parent_credential.common.id;
+            let _parent_credential_id = parent_credential.common().id;
             let values = vec![sdjwtvc_credential.clone(), mdoc_credential.clone()];
             move |query| {
                 assert!(query.filtering.unwrap().contains(&|fv| matches!(
@@ -2397,7 +2345,7 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
 
     let result = validity_manager
         .change_credential_state(
-            &parent_credential.common.id,
+            &parent_credential.common().id,
             ChangeCredentialState::Suspended {
                 suspend_end_date: None,
             },
@@ -2412,9 +2360,10 @@ async fn test_credential_ops_session_org_mismatch() {
     credential_repository
         .expect_get_credential()
         .returning(|_| {
-            Ok(Credential {
-                role: CredentialRole::Issuer,
-                ..generic_credential()
+            Ok({
+                let mut updated_credential = generic_credential();
+                *updated_credential.role_mut() = CredentialRole::Issuer;
+                updated_credential
             })
         });
     let validity_manager = setup_validity_manager(Repositories {
@@ -2492,7 +2441,7 @@ fn generic_credential() -> Credential {
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     };
-    Credential {
+    Credential::Generic {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
@@ -2737,32 +2686,22 @@ fn issuer_batch(
     item_states: &[CredentialStateEnum],
 ) -> (Credential, Vec<Credential>) {
     let parent = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: parent_state,
-                ..base_credential.common
-            },
-            role: CredentialRole::Issuer,
-            r#type: CredentialType::BatchParent,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = parent_state;
+        *updated_credential.role_mut() = CredentialRole::Issuer;
+        *updated_credential.type_mut() = CredentialType::BatchParent;
+        updated_credential
     };
 
     let items = item_states
         .iter()
         .map(|state| {
-            let base_credential = generic_credential();
-            Credential {
-                common: CredentialCommon {
-                    state: *state,
-                    ..base_credential.common
-                },
-                role: CredentialRole::Issuer,
-                r#type: CredentialType::BatchItem,
-                parent: Some(parent.clone().into()),
-                ..base_credential
-            }
+            let mut updated_credential = generic_credential();
+            updated_credential.common_mut().state = *state;
+            *updated_credential.role_mut() = CredentialRole::Issuer;
+            *updated_credential.type_mut() = CredentialType::BatchItem;
+            *updated_credential.parent_mut() = Some(parent.clone().into());
+            updated_credential
         })
         .collect();
 
@@ -2779,7 +2718,7 @@ fn batch_repository(
 
     credential_repository
         .expect_get_credential()
-        .with(eq(parent.common.id))
+        .with(eq(parent.common().id))
         .returning({
             let parent = parent.clone();
             move |_| Ok(parent.clone())
@@ -2789,7 +2728,7 @@ fn batch_repository(
         .expect_get_credential_list()
         .returning({
             let items = items.to_vec();
-            let parent_id = parent.common.id;
+            let parent_id = parent.common().id;
             move |query| {
                 assert!(
                     query
@@ -2819,7 +2758,7 @@ fn single_credential_repository(
 
     credential_repository
         .expect_get_credential()
-        .with(eq(credential.common.id))
+        .with(eq(credential.common().id))
         .returning({
             let credential = credential.clone();
             move |_| Ok(credential.clone())
@@ -2868,7 +2807,7 @@ fn recording_revocation_method_provider(marked: MarkedStates) -> MockRevocationM
     revocation_method
         .expect_mark_credential_as()
         .returning(move |credential, state| {
-            marked.push((credential.common.id, state));
+            marked.push((credential.common().id, state));
             Ok(())
         });
 
@@ -2908,18 +2847,18 @@ async fn test_revoke_expiring_batch_parent() {
     );
 
     validity_manager
-        .change_credential_state(&parent.common.id, ChangeCredentialState::Revoked)
+        .change_credential_state(&parent.common().id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 
     assert_eq!(
-        vec![(items[0].common.id, RevocationState::Revoked)],
+        vec![(items[0].common().id, RevocationState::Revoked)],
         marked.take()
     );
     assert_eq!(
         vec![
-            (items[0].common.id, CredentialStateEnum::Revoked, None),
-            (parent.common.id, CredentialStateEnum::Revoked, None),
+            (items[0].common().id, CredentialStateEnum::Revoked, None),
+            (parent.common().id, CredentialStateEnum::Revoked, None),
         ],
         updates.take()
     );
@@ -2937,7 +2876,7 @@ async fn test_suspend_batch_parent_with_already_suspended_item() {
         ],
     );
     let previous_end_date = crate::clock::now_utc().add(Duration::days(1));
-    items[1].suspend_end_date = Some(previous_end_date);
+    *items[1].suspend_end_date_mut() = Some(previous_end_date);
 
     let new_end_date = crate::clock::now_utc().add(Duration::days(7));
     let updates = StateUpdates::default();
@@ -2949,7 +2888,7 @@ async fn test_suspend_batch_parent_with_already_suspended_item() {
 
     validity_manager
         .change_credential_state(
-            &parent.common.id,
+            &parent.common().id,
             ChangeCredentialState::Suspended {
                 suspend_end_date: Some(new_end_date),
             },
@@ -2962,25 +2901,25 @@ async fn test_suspend_batch_parent_with_already_suspended_item() {
     };
     assert_eq!(
         vec![
-            (items[0].common.id, suspended),
-            (items[1].common.id, suspended)
+            (items[0].common().id, suspended),
+            (items[1].common().id, suspended)
         ],
         marked.take()
     );
     assert_eq!(
         vec![
             (
-                items[0].common.id,
+                items[0].common().id,
                 CredentialStateEnum::Suspended,
                 Some(new_end_date)
             ),
             (
-                items[1].common.id,
+                items[1].common().id,
                 CredentialStateEnum::Suspended,
                 Some(new_end_date)
             ),
             (
-                parent.common.id,
+                parent.common().id,
                 CredentialStateEnum::Suspended,
                 Some(new_end_date)
             ),
@@ -3010,7 +2949,7 @@ async fn test_suspend_batch_parent_skips_items_that_cannot_follow() {
 
     validity_manager
         .change_credential_state(
-            &parent.common.id,
+            &parent.common().id,
             ChangeCredentialState::Suspended {
                 suspend_end_date: None,
             },
@@ -3020,7 +2959,7 @@ async fn test_suspend_batch_parent_skips_items_that_cannot_follow() {
 
     assert_eq!(
         vec![(
-            items[0].common.id,
+            items[0].common().id,
             RevocationState::Suspended {
                 suspend_end_date: None
             }
@@ -3029,8 +2968,8 @@ async fn test_suspend_batch_parent_skips_items_that_cannot_follow() {
     );
     assert_eq!(
         vec![
-            (items[0].common.id, CredentialStateEnum::Suspended, None),
-            (parent.common.id, CredentialStateEnum::Suspended, None),
+            (items[0].common().id, CredentialStateEnum::Suspended, None),
+            (parent.common().id, CredentialStateEnum::Suspended, None),
         ],
         updates.take()
     );
@@ -3053,7 +2992,7 @@ async fn test_suspend_batch_parent_with_only_terminal_items() {
 
     validity_manager
         .change_credential_state(
-            &parent.common.id,
+            &parent.common().id,
             ChangeCredentialState::Suspended {
                 suspend_end_date: None,
             },
@@ -3063,7 +3002,7 @@ async fn test_suspend_batch_parent_with_only_terminal_items() {
 
     assert!(marked.take().is_empty());
     assert_eq!(
-        vec![(parent.common.id, CredentialStateEnum::Suspended, None)],
+        vec![(parent.common().id, CredentialStateEnum::Suspended, None)],
         updates.take()
     );
 }
@@ -3072,16 +3011,11 @@ async fn test_suspend_batch_parent_with_only_terminal_items() {
 async fn test_flagging_a_batch_parent_as_expiring_leaves_items_untouched() {
     // no revocation list can express `Expiring`, so it is a flag on the parent alone
     let parent = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            role: CredentialRole::Issuer,
-            r#type: CredentialType::BatchParent,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.role_mut() = CredentialRole::Issuer;
+        *updated_credential.type_mut() = CredentialType::BatchParent;
+        updated_credential
     };
     let updates = StateUpdates::default();
     let marked = MarkedStates::default();
@@ -3091,13 +3025,13 @@ async fn test_flagging_a_batch_parent_as_expiring_leaves_items_untouched() {
     );
 
     validity_manager
-        .change_credential_state(&parent.common.id, ChangeCredentialState::Expiring)
+        .change_credential_state(&parent.common().id, ChangeCredentialState::Expiring)
         .await
         .unwrap();
 
     assert!(marked.take().is_empty());
     assert_eq!(
-        vec![(parent.common.id, CredentialStateEnum::Expiring, None)],
+        vec![(parent.common().id, CredentialStateEnum::Expiring, None)],
         updates.take()
     );
 }
@@ -3106,16 +3040,11 @@ async fn test_flagging_a_batch_parent_as_expiring_leaves_items_untouched() {
 async fn test_clearing_the_expiring_flag_leaves_items_untouched() {
     // the items were never marked when the flag was raised, so there is nothing to restore
     let parent = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Expiring,
-                ..base_credential.common
-            },
-            role: CredentialRole::Issuer,
-            r#type: CredentialType::BatchParent,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Expiring;
+        *updated_credential.role_mut() = CredentialRole::Issuer;
+        *updated_credential.type_mut() = CredentialType::BatchParent;
+        updated_credential
     };
     let updates = StateUpdates::default();
     let marked = MarkedStates::default();
@@ -3125,13 +3054,13 @@ async fn test_clearing_the_expiring_flag_leaves_items_untouched() {
     );
 
     validity_manager
-        .change_credential_state(&parent.common.id, ChangeCredentialState::Accepted)
+        .change_credential_state(&parent.common().id, ChangeCredentialState::Accepted)
         .await
         .unwrap();
 
     assert!(marked.take().is_empty());
     assert_eq!(
-        vec![(parent.common.id, CredentialStateEnum::Accepted, None)],
+        vec![(parent.common().id, CredentialStateEnum::Accepted, None)],
         updates.take()
     );
 }
@@ -3139,15 +3068,10 @@ async fn test_clearing_the_expiring_flag_leaves_items_untouched() {
 #[tokio::test]
 async fn test_reapplying_the_current_state_is_a_noop() {
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Revoked,
-                ..base_credential.common
-            },
-            role: CredentialRole::Issuer,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Revoked;
+        *updated_credential.role_mut() = CredentialRole::Issuer;
+        updated_credential
     };
     let updates = StateUpdates::default();
     let marked = MarkedStates::default();
@@ -3157,7 +3081,7 @@ async fn test_reapplying_the_current_state_is_a_noop() {
     );
 
     validity_manager
-        .change_credential_state(&credential.common.id, ChangeCredentialState::Revoked)
+        .change_credential_state(&credential.common().id, ChangeCredentialState::Revoked)
         .await
         .unwrap();
 
@@ -3168,15 +3092,10 @@ async fn test_reapplying_the_current_state_is_a_noop() {
 #[tokio::test]
 async fn test_expiring_is_not_supported_for_single_credentials() {
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            role: CredentialRole::Issuer,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.role_mut() = CredentialRole::Issuer;
+        updated_credential
     };
     let updates = StateUpdates::default();
     let validity_manager = batch_validity_manager(
@@ -3185,7 +3104,7 @@ async fn test_expiring_is_not_supported_for_single_credentials() {
     );
 
     let error = validity_manager
-        .change_credential_state(&credential.common.id, ChangeCredentialState::Expiring)
+        .change_credential_state(&credential.common().id, ChangeCredentialState::Expiring)
         .await
         .unwrap_err();
 

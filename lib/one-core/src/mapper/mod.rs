@@ -206,7 +206,7 @@ pub(crate) fn extracted_credential_to_model(
         _ => None,
     };
 
-    Ok(Credential {
+    Ok(Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -629,7 +629,7 @@ mod tests {
         )
         .unwrap();
 
-        let claims = credential.claims.as_ref().await.unwrap();
+        let claims = credential.claims().as_ref().await.unwrap();
         assert_eq!(claims.len(), 1);
         assert!(
             claims
@@ -637,6 +637,6 @@ mod tests {
                 .any(|claim| claim.schema.id() == element_claim_schema.id
                     && claim.value == Some("Test".to_string()))
         );
-        assert_eq!(credential.common.issuance_date, Some(issuance_date));
+        assert_eq!(credential.common().issuance_date, Some(issuance_date));
     }
 }

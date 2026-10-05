@@ -140,7 +140,7 @@ impl RevocationMethod for BitstringStatusList {
         credential: &Credential,
     ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
         let issuer_identifier = credential
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer identifier is None".to_string(),
@@ -148,11 +148,11 @@ impl RevocationMethod for BitstringStatusList {
             .as_ref()
             .await?;
 
-        let credential_schema = credential.common.schema.as_ref().await?;
+        let credential_schema = credential.common().schema.as_ref().await?;
 
         let mut revocation_infos = vec![
             self.create_credential_entry(
-                credential.common.id,
+                credential.common().id,
                 &issuer_identifier,
                 RevocationListPurpose::Revocation,
             )
@@ -162,7 +162,7 @@ impl RevocationMethod for BitstringStatusList {
         if credential_schema.allow_suspension {
             revocation_infos.push(
                 self.create_credential_entry(
-                    credential.common.id,
+                    credential.common().id,
                     &issuer_identifier,
                     RevocationListPurpose::Suspension,
                 )
@@ -179,7 +179,7 @@ impl RevocationMethod for BitstringStatusList {
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         let issuer_identifier = credential
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer identifier is None".to_string(),
@@ -197,20 +197,20 @@ impl RevocationMethod for BitstringStatusList {
             .revocation_list_repository
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier.id,
-                credential.issuer_certificate.as_ref().map(|c| c.id()),
+                credential.issuer_certificate().as_ref().map(|c| c.id()),
                 purpose,
                 &self.config_id,
             )
             .await
             .error_while("getting revocation list")?
             .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
-                credential.common.id,
+                credential.common().id,
                 issuer_identifier.id,
             ))?;
 
         self.revocation_list_repository
             .update_entry(
-                UpdateRevocationListEntryId::Credential(credential.common.id),
+                UpdateRevocationListEntryId::Credential(credential.common().id),
                 UpdateRevocationListEntryRequest {
                     state: Some(new_state.into()),
                 },

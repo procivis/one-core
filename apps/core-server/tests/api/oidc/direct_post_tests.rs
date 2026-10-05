@@ -210,7 +210,7 @@ async fn test_direct_post_one_credential(
                 .as_ref()
                 .await
                 .unwrap()
-                .common
+                .common()
                 .issuance_date
                 .is_some()
         );
@@ -384,7 +384,7 @@ async fn test_direct_post_with_profile_verification() {
                 .as_ref()
                 .await
                 .unwrap()
-                .common
+                .common()
                 .profile
                 .as_deref(),
             Some(profile)
@@ -739,7 +739,7 @@ async fn test_direct_post_multiformat_query_with_optional_and_required_inputs(
             .unwrap();
         assert_eq!(main_claim.claim.value.as_deref(), Some("Alice"));
         let stored = main_claim.credential.as_ref().await.unwrap();
-        assert_eq!(stored.format.as_ref().unwrap().id(), jwt_format.id);
+        assert_eq!(stored.format().as_ref().unwrap().id(), jwt_format.id);
     }
 }
 

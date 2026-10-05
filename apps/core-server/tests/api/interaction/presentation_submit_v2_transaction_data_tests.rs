@@ -392,7 +392,7 @@ async fn test_presentation_submit_v2_transaction_data_auto_assignment() {
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.common.id, &[], &[])
+        .presentation_submit_v2(interaction.id, credential.common().id, &[], &[])
         .await;
 
     // THEN
@@ -423,7 +423,7 @@ async fn test_presentation_submit_v2_transaction_data_manual_assignment() {
         .interactions
         .presentation_submit_v2(
             interaction.id,
-            credential.common.id,
+            credential.common().id,
             &[],
             &transaction_data_ids,
         )
@@ -450,7 +450,7 @@ async fn test_presentation_submit_v2_two_transaction_data_pinned_to_one_credenti
         .interactions
         .presentation_submit_v2(
             interaction.id,
-            credential.common.id,
+            credential.common().id,
             &[],
             &transaction_data_ids,
         )
@@ -477,7 +477,7 @@ async fn test_presentation_submit_v2_two_transaction_data_auto_assignment_fails_
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.common.id, &[], &[])
+        .presentation_submit_v2(interaction.id, credential.common().id, &[], &[])
         .await;
 
     // THEN

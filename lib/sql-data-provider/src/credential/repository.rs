@@ -40,7 +40,7 @@ impl CredentialProvider {
         issuer: impl AsyncModelLoader<Identifier> + 'static,
         format: impl AsyncModelLoader<CredentialSchemaFormat> + 'static,
     ) -> Credential {
-        Credential {
+        Credential::Generic {
             common: CredentialCommon {
                 id: credential.id,
                 created_date: credential.created_date,
@@ -284,7 +284,7 @@ fn with_credential_list_query(
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let id = request.common.id;
+        let id = request.common().id;
         self.create_credentials(vec![request]).await?;
         Ok(id)
     }
@@ -296,7 +296,7 @@ impl CredentialRepository for CredentialProvider {
         if requests.is_empty() {
             return Ok(vec![]);
         }
-        let ids = requests.iter().map(|request| request.common.id).collect();
+        let ids = requests.iter().map(|request| request.common().id).collect();
         let credentials = prepare_credentials(requests).await?;
         self.db
             .tx_with_config(
@@ -310,7 +310,7 @@ impl CredentialRepository for CredentialProvider {
     }
 
     async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
-        let ids: Vec<_> = credentials.iter().map(|c| c.common.id).collect();
+        let ids: Vec<_> = credentials.iter().map(|c| c.common().id).collect();
         credential::Entity::update_many()
             .filter(credential::Column::Id.is_in(ids))
             .set(credential::ActiveModel {

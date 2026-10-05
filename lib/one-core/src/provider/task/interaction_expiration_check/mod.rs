@@ -62,7 +62,7 @@ impl Task for InteractionExpirationCheckProvider {
                 .error_while("getting credential")?;
 
             let target = target_from_credential(&credential);
-            let schema = credential.common.schema.as_ref().await?.to_owned();
+            let schema = credential.common().schema.as_ref().await?.to_owned();
 
             self.history_repository
                 .create_history(History {
@@ -142,13 +142,13 @@ impl Task for InteractionExpirationCheckProvider {
 }
 
 fn target_from_credential(credential: &Credential) -> Option<String> {
-    match credential.role {
+    match credential.role() {
         CredentialRole::Holder => credential
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .map(|identifier| identifier.id().to_string()),
         CredentialRole::Issuer => credential
-            .holder_identifier
+            .holder_identifier()
             .as_ref()
             .map(|identifier| identifier.id().to_string()),
         CredentialRole::Verifier => None,

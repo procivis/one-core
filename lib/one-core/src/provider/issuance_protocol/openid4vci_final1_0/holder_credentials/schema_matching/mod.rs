@@ -246,9 +246,9 @@ pub(super) async fn missing_required_claims(
     credential: &Credential,
     mandatory_claim_ids: &[ClaimSchemaId],
 ) -> Result<Vec<String>, IssuanceProtocolError> {
-    let format = credential.format.as_required_ref().await?;
+    let format = credential.format().as_required_ref().await?;
     let credential_mappings = format.claim_mappings.as_ref().await?;
-    let claims = credential.claims.as_ref().await?;
+    let claims = credential.claims().as_ref().await?;
     let format_schema_ids = credential_mappings
         .iter()
         .map(|mapping| mapping.claim_schema_id)
@@ -527,17 +527,23 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     default_language: &str,
     format_id: Option<shared_types::CredentialSchemaFormatId>,
 ) -> Result<AlignmentUpdate, IssuanceProtocolError> {
-    let mut claims = credential.claims.as_mut().await?;
+    let Credential::Generic {
+        claims,
+        common,
+        format,
+        ..
+    } = credential;
+    let mut claims = claims.as_mut().await?;
     claims.sort_by_key(|c| c.path.clone());
 
     let mut parsed_claim_schemas = {
-        let parsed_schema = credential.common.schema.as_ref().await?;
+        let parsed_schema = common.schema.as_ref().await?;
         parsed_schema.claim_schemas.as_ref().await?.to_owned()
     };
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
     let (parsed_format, parsed_mappings) = {
-        let parsed_format = credential.format.as_required_ref().await?;
+        let parsed_format = format.as_required_ref().await?;
         let mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
         (parsed_format.format.clone(), mappings)
     };
@@ -652,8 +658,8 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
         stored_claim_schemas.extend(new_claim_schemas.clone());
     }
 
-    credential.format = Some(stored_format.into());
-    credential.common.schema = stored_schema.clone().into();
+    *format = Some(stored_format.into());
+    common.schema = stored_schema.clone().into();
     Ok(AlignmentUpdate {
         new_claim_schemas,
         new_mappings,

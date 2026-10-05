@@ -95,15 +95,10 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         .returning(move |_| Ok(revocation_method.clone()));
 
     let credential = {
-        let base_credential = generic_credential();
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            ..base_credential
-        }
+        let mut updated_credential = generic_credential();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.suspend_end_date_mut() = None;
+        updated_credential
     };
 
     let credential_clone = credential.clone();
@@ -257,7 +252,7 @@ fn generic_credential() -> Credential {
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     };
-    Credential {
+    Credential::Generic {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,

@@ -308,7 +308,7 @@ async fn test_patch_credential_state_suspended_with_bitstring_status_list_succes
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, credential.common.id, 0)
+        .create_credential_entry(revocation_list.id, credential.common().id, 0)
         .await;
 
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
@@ -319,7 +319,7 @@ async fn test_patch_credential_state_suspended_with_bitstring_status_list_succes
         .api
         .credentials
         .patch_state(
-            &credential.common.id,
+            &credential.common().id,
             json!({"state": "SUSPENDED", "suspendEndDate": suspend_end_date_str}),
             None,
         )
@@ -328,15 +328,15 @@ async fn test_patch_credential_state_suspended_with_bitstring_status_list_succes
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
+    let credential = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
         CredentialStateEnum::Suspended,
-        credential.common.state.clone()
+        credential.common().state.clone()
     );
-    assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
+    assert_eq!(suspend_end_date, credential.suspend_end_date().unwrap());
     assert_history_count(
         &context,
-        &credential.common.id.into(),
+        &credential.common().id.into(),
         HistoryAction::Suspended,
         1,
     )
@@ -388,7 +388,7 @@ async fn test_patch_credential_state_suspended_fails_when_not_allowed() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "SUSPENDED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "SUSPENDED"}), None)
         .await;
 
     // THEN
@@ -422,7 +422,7 @@ async fn test_patch_credential_state_suspended_fails_when_expired() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "SUSPENDED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "SUSPENDED"}), None)
         .await;
 
     // THEN - invalid state transition
@@ -430,8 +430,8 @@ async fn test_patch_credential_state_suspended_fails_when_expired() {
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0366");
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expired, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.common().state);
 }
 
 // ---------------------------------------------------------------------------
@@ -475,7 +475,7 @@ async fn test_patch_credential_state_accepted_with_bitstring_status_list_success
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, credential.common.id, 0)
+        .create_credential_entry(revocation_list.id, credential.common().id, 0)
         .await;
 
     context
@@ -492,14 +492,14 @@ async fn test_patch_credential_state_accepted_with_bitstring_status_list_success
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "ACCEPTED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "ACCEPTED"}), None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Accepted, credential.common().state);
 
     let revocation_list_entry = context
         .db
@@ -538,7 +538,7 @@ async fn test_patch_credential_state_accepted_fails_when_expired() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "ACCEPTED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "ACCEPTED"}), None)
         .await;
 
     // THEN - same error as reactivating a REVOKED credential (invalid state transition)
@@ -546,8 +546,8 @@ async fn test_patch_credential_state_accepted_fails_when_expired() {
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0366");
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expired, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.common().state);
 }
 
 // ---------------------------------------------------------------------------
@@ -581,17 +581,17 @@ async fn test_patch_credential_state_revoked_with_bitstring_status_list_success(
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "REVOKED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "REVOKED"}), None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Revoked, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Revoked, credential.common().state);
     assert_history_count(
         &context,
-        &credential.common.id.into(),
+        &credential.common().id.into(),
         HistoryAction::Revoked,
         1,
     )
@@ -629,7 +629,7 @@ async fn test_patch_credential_state_revoked_with_webhook() {
     let webhook = context
         .server_mock
         .webhook(json!({
-            "credentialId": credential.common.id,
+            "credentialId": credential.common().id,
             "status": "REVOKED"
         }))
         .await;
@@ -638,7 +638,7 @@ async fn test_patch_credential_state_revoked_with_webhook() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "REVOKED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "REVOKED"}), None)
         .await;
 
     // THEN
@@ -674,7 +674,7 @@ async fn test_patch_credential_state_revoked_fails_when_expired() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "REVOKED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "REVOKED"}), None)
         .await;
 
     // THEN - same error as revoking an already REVOKED credential (invalid state transition)
@@ -682,8 +682,8 @@ async fn test_patch_credential_state_revoked_fails_when_expired() {
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0366");
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expired, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.common().state);
 }
 
 // ---------------------------------------------------------------------------
@@ -721,7 +721,7 @@ async fn test_patch_credential_state_fails_credential_deleted() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "REVOKED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "REVOKED"}), None)
         .await;
 
     // THEN
@@ -763,17 +763,17 @@ async fn test_patch_credential_state_expiring_from_accepted_success() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "EXPIRING"}), None)
+        .patch_state(&credential.common().id, json!({"state": "EXPIRING"}), None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expiring, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.common().state);
     assert_history_count(
         &context,
-        &credential.common.id.into(),
+        &credential.common().id.into(),
         HistoryAction::Expiring,
         1,
     )
@@ -808,14 +808,14 @@ async fn test_patch_credential_state_expiring_from_suspended_success() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "EXPIRING"}), None)
+        .patch_state(&credential.common().id, json!({"state": "EXPIRING"}), None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expiring, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.common().state);
 }
 
 #[tokio::test]
@@ -848,14 +848,14 @@ async fn test_patch_credential_state_accepted_from_expiring_success() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "ACCEPTED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "ACCEPTED"}), None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Accepted, credential.common().state);
 }
 
 #[tokio::test]
@@ -883,7 +883,7 @@ async fn test_patch_credential_state_expiring_fails_from_revoked() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "EXPIRING"}), None)
+        .patch_state(&credential.common().id, json!({"state": "EXPIRING"}), None)
         .await;
 
     // THEN
@@ -891,8 +891,8 @@ async fn test_patch_credential_state_expiring_fails_from_revoked() {
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0366");
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Revoked, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Revoked, credential.common().state);
 }
 
 #[tokio::test]
@@ -929,7 +929,7 @@ async fn test_patch_credential_state_revoke_from_expiring_success() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent.common.id),
+                parent_id: Some(parent.common().id),
                 ..Default::default()
             },
         )
@@ -940,7 +940,7 @@ async fn test_patch_credential_state_revoke_from_expiring_success() {
     let resp = context
         .api
         .credentials
-        .patch_state(&parent.common.id, json!({"state": "REVOKED"}), None)
+        .patch_state(&parent.common().id, json!({"state": "REVOKED"}), None)
         .await;
 
     // THEN
@@ -950,9 +950,9 @@ async fn test_patch_credential_state_revoke_from_expiring_success() {
         context
             .db
             .credentials
-            .get(&parent.common.id)
+            .get(&parent.common().id)
             .await
-            .common
+            .common()
             .state
     );
     assert_eq!(
@@ -960,9 +960,9 @@ async fn test_patch_credential_state_revoke_from_expiring_success() {
         context
             .db
             .credentials
-            .get(&item.common.id)
+            .get(&item.common().id)
             .await
-            .common
+            .common()
             .state
     );
 }
@@ -1001,7 +1001,7 @@ async fn test_patch_credential_state_suspend_from_expiring_success() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent.common.id),
+                parent_id: Some(parent.common().id),
                 ..Default::default()
             },
         )
@@ -1021,14 +1021,14 @@ async fn test_patch_credential_state_suspend_from_expiring_success() {
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, item.common.id, 0)
+        .create_credential_entry(revocation_list.id, item.common().id, 0)
         .await;
 
     // WHEN
     let resp = context
         .api
         .credentials
-        .patch_state(&parent.common.id, json!({"state": "SUSPENDED"}), None)
+        .patch_state(&parent.common().id, json!({"state": "SUSPENDED"}), None)
         .await;
 
     // THEN
@@ -1038,9 +1038,9 @@ async fn test_patch_credential_state_suspend_from_expiring_success() {
         context
             .db
             .credentials
-            .get(&parent.common.id)
+            .get(&parent.common().id)
             .await
-            .common
+            .common()
             .state
     );
     assert_eq!(
@@ -1048,9 +1048,9 @@ async fn test_patch_credential_state_suspend_from_expiring_success() {
         context
             .db
             .credentials
-            .get(&item.common.id)
+            .get(&item.common().id)
             .await
-            .common
+            .common()
             .state
     );
 }
@@ -1090,7 +1090,7 @@ async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent.common.id),
+                parent_id: Some(parent.common().id),
                 ..Default::default()
             },
         )
@@ -1105,7 +1105,7 @@ async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent.common.id),
+                parent_id: Some(parent.common().id),
                 suspend_end_date: Some(
                     OffsetDateTime::parse("2023-06-09T14:19:57.000Z", &Rfc3339).unwrap(),
                 ),
@@ -1128,12 +1128,12 @@ async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, accepted_item.common.id, 0)
+        .create_credential_entry(revocation_list.id, accepted_item.common().id, 0)
         .await;
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, suspended_item.common.id, 1)
+        .create_credential_entry(revocation_list.id, suspended_item.common().id, 1)
         .await;
 
     let new_end_date_str = "2024-06-09T14:19:57.000Z";
@@ -1144,7 +1144,7 @@ async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended
         .api
         .credentials
         .patch_state(
-            &parent.common.id,
+            &parent.common().id,
             json!({"state": "SUSPENDED", "suspendEndDate": new_end_date_str}),
             None,
         )
@@ -1153,13 +1153,13 @@ async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended
     // THEN
     assert_eq!(resp.status(), 204);
     for credential_id in [
-        parent.common.id,
-        accepted_item.common.id,
-        suspended_item.common.id,
+        parent.common().id,
+        accepted_item.common().id,
+        suspended_item.common().id,
     ] {
         let credential = context.db.credentials.get(&credential_id).await;
-        assert_eq!(CredentialStateEnum::Suspended, credential.common.state);
-        assert_eq!(Some(new_end_date), credential.suspend_end_date);
+        assert_eq!(CredentialStateEnum::Suspended, credential.common().state);
+        assert_eq!(Some(new_end_date), credential.suspend_end_date());
     }
 }
 
@@ -1188,17 +1188,17 @@ async fn test_patch_credential_state_reapplying_the_current_state_is_a_noop() {
     let resp = context
         .api
         .credentials
-        .patch_state(&credential.common.id, json!({"state": "ACCEPTED"}), None)
+        .patch_state(&credential.common().id, json!({"state": "ACCEPTED"}), None)
         .await;
 
     // THEN the call succeeds without moving the credential or recording anything
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Accepted, credential.common().state);
     assert_history_count(
         &context,
-        &credential.common.id.into(),
+        &credential.common().id.into(),
         HistoryAction::Accepted,
         0,
     )

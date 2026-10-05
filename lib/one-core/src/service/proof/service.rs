@@ -806,7 +806,7 @@ impl ProofService {
             .error_while("getting credentials")?
             .values
             .into_iter()
-            .filter_map(|c| c.credential_blob_id)
+            .filter_map(|c| c.credential_blob_id())
             .collect::<Vec<_>>();
 
         blob_storage

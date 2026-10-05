@@ -22,29 +22,33 @@ use crate::model::relation::{Related, RelatedVec};
 
 #[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
-pub struct Credential {
-    #[model(nested)]
-    pub common: CredentialCommon,
-    pub consumed_at: Option<OffsetDateTime>,
-    pub role: CredentialRole,
-    pub r#type: CredentialType,
-    pub suspend_end_date: Option<OffsetDateTime>,
-    pub credential_blob_id: Option<BlobId>,
-    pub wallet_key_attestation_blob_id: Option<BlobId>,
-    pub wallet_instance_attestation_blob_id: Option<BlobId>,
-    pub webhook_url: Option<String>,
-    /// Holder configuration policy, stored on singles and batch items, not batch parents.
-    pub embedded_disclosure_policy: Option<String>,
-    pub subscriber_information: Option<String>,
+pub enum Credential {
+    /// TODO ONE-11429: Temporary shim until the credential model has been fully refactored into
+    /// role and type specific variants.
+    Generic {
+        #[model(nested)]
+        common: CredentialCommon,
+        consumed_at: Option<OffsetDateTime>,
+        role: CredentialRole,
+        r#type: CredentialType,
+        suspend_end_date: Option<OffsetDateTime>,
+        credential_blob_id: Option<BlobId>,
+        wallet_key_attestation_blob_id: Option<BlobId>,
+        wallet_instance_attestation_blob_id: Option<BlobId>,
+        webhook_url: Option<String>,
+        /// Holder configuration policy, stored on singles and batch items, not batch parents.
+        embedded_disclosure_policy: Option<String>,
+        subscriber_information: Option<String>,
 
-    // Relations:
-    pub claims: RelatedVec<Claim>,
-    pub issuer_identifier: Option<Related<Identifier>>,
-    pub issuer_certificate: Option<Related<Certificate>>,
-    pub holder_identifier: Option<Related<Identifier>>,
-    pub format: Option<Related<CredentialSchemaFormat>>,
-    pub key: Option<Related<Key>>,
-    pub parent: Option<Related<Credential>>,
+        // Relations:
+        claims: RelatedVec<Claim>,
+        issuer_identifier: Option<Related<Identifier>>,
+        issuer_certificate: Option<Related<Certificate>>,
+        holder_identifier: Option<Related<Identifier>>,
+        format: Option<Related<CredentialSchemaFormat>>,
+        key: Option<Related<Key>>,
+        parent: Option<Related<Credential>>,
+    },
 }
 
 #[derive(Clone, Debug, Model)]
@@ -82,25 +86,278 @@ pub enum CredentialStateEnum {
 }
 
 impl Credential {
+    pub fn common(&self) -> &CredentialCommon {
+        match self {
+            Self::Generic { common, .. } => common,
+        }
+    }
+
+    pub fn common_mut(&mut self) -> &mut CredentialCommon {
+        match self {
+            Self::Generic { common, .. } => common,
+        }
+    }
+
+    pub fn consumed_at(&self) -> Option<OffsetDateTime> {
+        match self {
+            Self::Generic { consumed_at, .. } => *consumed_at,
+        }
+    }
+
+    pub fn consumed_at_mut(&mut self) -> &mut Option<OffsetDateTime> {
+        match self {
+            Self::Generic { consumed_at, .. } => consumed_at,
+        }
+    }
+
+    pub fn role(&self) -> CredentialRole {
+        match self {
+            Self::Generic { role, .. } => *role,
+        }
+    }
+
+    pub fn role_mut(&mut self) -> &mut CredentialRole {
+        match self {
+            Self::Generic { role, .. } => role,
+        }
+    }
+
+    pub fn r#type(&self) -> CredentialType {
+        match self {
+            Self::Generic { r#type, .. } => *r#type,
+        }
+    }
+
+    pub fn type_mut(&mut self) -> &mut CredentialType {
+        match self {
+            Self::Generic { r#type, .. } => r#type,
+        }
+    }
+
+    pub fn suspend_end_date(&self) -> Option<OffsetDateTime> {
+        match self {
+            Self::Generic {
+                suspend_end_date, ..
+            } => *suspend_end_date,
+        }
+    }
+
+    pub fn suspend_end_date_mut(&mut self) -> &mut Option<OffsetDateTime> {
+        match self {
+            Self::Generic {
+                suspend_end_date, ..
+            } => suspend_end_date,
+        }
+    }
+
+    pub fn credential_blob_id(&self) -> Option<BlobId> {
+        match self {
+            Self::Generic {
+                credential_blob_id, ..
+            } => *credential_blob_id,
+        }
+    }
+
+    pub fn credential_blob_id_mut(&mut self) -> &mut Option<BlobId> {
+        match self {
+            Self::Generic {
+                credential_blob_id, ..
+            } => credential_blob_id,
+        }
+    }
+
+    pub fn wallet_key_attestation_blob_id(&self) -> Option<BlobId> {
+        match self {
+            Self::Generic {
+                wallet_key_attestation_blob_id,
+                ..
+            } => *wallet_key_attestation_blob_id,
+        }
+    }
+
+    pub fn wallet_key_attestation_blob_id_mut(&mut self) -> &mut Option<BlobId> {
+        match self {
+            Self::Generic {
+                wallet_key_attestation_blob_id,
+                ..
+            } => wallet_key_attestation_blob_id,
+        }
+    }
+
+    pub fn wallet_instance_attestation_blob_id(&self) -> Option<BlobId> {
+        match self {
+            Self::Generic {
+                wallet_instance_attestation_blob_id,
+                ..
+            } => *wallet_instance_attestation_blob_id,
+        }
+    }
+
+    pub fn wallet_instance_attestation_blob_id_mut(&mut self) -> &mut Option<BlobId> {
+        match self {
+            Self::Generic {
+                wallet_instance_attestation_blob_id,
+                ..
+            } => wallet_instance_attestation_blob_id,
+        }
+    }
+
+    pub fn webhook_url(&self) -> &Option<String> {
+        match self {
+            Self::Generic { webhook_url, .. } => webhook_url,
+        }
+    }
+
+    pub fn webhook_url_mut(&mut self) -> &mut Option<String> {
+        match self {
+            Self::Generic { webhook_url, .. } => webhook_url,
+        }
+    }
+
+    pub fn embedded_disclosure_policy(&self) -> &Option<String> {
+        match self {
+            Self::Generic {
+                embedded_disclosure_policy,
+                ..
+            } => embedded_disclosure_policy,
+        }
+    }
+
+    pub fn embedded_disclosure_policy_mut(&mut self) -> &mut Option<String> {
+        match self {
+            Self::Generic {
+                embedded_disclosure_policy,
+                ..
+            } => embedded_disclosure_policy,
+        }
+    }
+
+    pub fn subscriber_information(&self) -> &Option<String> {
+        match self {
+            Self::Generic {
+                subscriber_information,
+                ..
+            } => subscriber_information,
+        }
+    }
+
+    pub fn claims(&self) -> &RelatedVec<Claim> {
+        match self {
+            Self::Generic { claims, .. } => claims,
+        }
+    }
+
+    pub fn claims_mut(&mut self) -> &mut RelatedVec<Claim> {
+        match self {
+            Self::Generic { claims, .. } => claims,
+        }
+    }
+
+    pub fn issuer_identifier(&self) -> &Option<Related<Identifier>> {
+        match self {
+            Self::Generic {
+                issuer_identifier, ..
+            } => issuer_identifier,
+        }
+    }
+
+    pub fn issuer_identifier_mut(&mut self) -> &mut Option<Related<Identifier>> {
+        match self {
+            Self::Generic {
+                issuer_identifier, ..
+            } => issuer_identifier,
+        }
+    }
+
+    pub fn issuer_certificate(&self) -> &Option<Related<Certificate>> {
+        match self {
+            Self::Generic {
+                issuer_certificate, ..
+            } => issuer_certificate,
+        }
+    }
+
+    pub fn issuer_certificate_mut(&mut self) -> &mut Option<Related<Certificate>> {
+        match self {
+            Self::Generic {
+                issuer_certificate, ..
+            } => issuer_certificate,
+        }
+    }
+
+    pub fn holder_identifier(&self) -> &Option<Related<Identifier>> {
+        match self {
+            Self::Generic {
+                holder_identifier, ..
+            } => holder_identifier,
+        }
+    }
+
+    pub fn holder_identifier_mut(&mut self) -> &mut Option<Related<Identifier>> {
+        match self {
+            Self::Generic {
+                holder_identifier, ..
+            } => holder_identifier,
+        }
+    }
+
+    pub fn format(&self) -> &Option<Related<CredentialSchemaFormat>> {
+        match self {
+            Self::Generic { format, .. } => format,
+        }
+    }
+
+    pub fn format_mut(&mut self) -> &mut Option<Related<CredentialSchemaFormat>> {
+        match self {
+            Self::Generic { format, .. } => format,
+        }
+    }
+
+    pub fn key(&self) -> &Option<Related<Key>> {
+        match self {
+            Self::Generic { key, .. } => key,
+        }
+    }
+
+    pub fn key_mut(&mut self) -> &mut Option<Related<Key>> {
+        match self {
+            Self::Generic { key, .. } => key,
+        }
+    }
+
+    pub fn parent(&self) -> &Option<Related<Credential>> {
+        match self {
+            Self::Generic { parent, .. } => parent,
+        }
+    }
+
+    pub fn parent_mut(&mut self) -> &mut Option<Related<Credential>> {
+        match self {
+            Self::Generic { parent, .. } => parent,
+        }
+    }
+
     /// The credential that holds the relevant ecosystem history events.
     /// Points to the batch parent for credentials of type [CredentialType::BatchItem]
     pub(crate) fn ecosystem_history_id(&self) -> CredentialId {
-        self.parent
+        self.parent()
             .as_ref()
             .map(|parent| parent.id())
-            .unwrap_or(self.common.id)
+            .unwrap_or(self.common().id)
     }
 
     pub(crate) fn is_available_for_presentation(&self, now: OffsetDateTime) -> bool {
-        if self.common.deleted_at.is_some() || self.common.state != CredentialStateEnum::Accepted {
+        if self.common().deleted_at.is_some()
+            || self.common().state != CredentialStateEnum::Accepted
+        {
             return false;
         }
-        match self.r#type {
+        match self.r#type() {
             CredentialType::Single => true,
             CredentialType::BatchParent => false,
             CredentialType::BatchItem => {
-                self.consumed_at.is_none()
-                    && self.common.expires_at.is_none_or(|expiry| expiry > now)
+                self.consumed_at().is_none()
+                    && self.common().expires_at.is_none_or(|expiry| expiry > now)
             }
         }
     }
@@ -108,10 +365,10 @@ impl Credential {
     /// Returns the concrete credential's format. Batch parents return `None`, even if
     /// they retain a legacy format in storage; use their items' formats instead.
     pub async fn credential_format(&self) -> Result<Option<CredentialFormat>, NestedError> {
-        if self.r#type == CredentialType::BatchParent {
+        if self.r#type() == CredentialType::BatchParent {
             return Ok(None);
         }
-        match &self.format {
+        match &self.format() {
             Some(format) => Ok(Some(format.as_ref().await?.format.to_owned())),
             None => Ok(None),
         }

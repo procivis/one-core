@@ -194,7 +194,7 @@ fn should_create_batch_parent(
         && response
             .main_credential
             .credential
-            .common
+            .common()
             .expires_at
             .is_some()
         && (has_refresh_token
@@ -299,7 +299,7 @@ impl OpenID4VCIFinal1_0 {
                     .error_while("getting credential")?;
 
                 let can_be_updated_at =
-                    credential.common.last_modified + self.mso_minimum_refresh_time(format)?;
+                    credential.common().last_modified + self.mso_minimum_refresh_time(format)?;
 
                 if can_be_updated_at > now_utc() {
                     return Err(IssuanceProtocolError::RefreshTooSoon);
@@ -934,7 +934,7 @@ impl OpenID4VCIFinal1_0 {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
 
-        let credential_blob_id = match credential.credential_blob_id {
+        let credential_blob_id = match credential.credential_blob_id() {
             None => {
                 let blob = Blob::new(token.as_ref(), BlobType::Credential);
                 db_blob_storage
@@ -1025,14 +1025,14 @@ impl OpenID4VCIFinal1_0 {
             stored.credential_id = result
                 .as_ref()
                 .ok()
-                .map(|response| response.main_credential.credential.common.id);
+                .map(|response| response.main_credential.credential.common().id);
             stored.credential_schema_format_id = result.as_ref().ok().and_then(|response| {
                 response
                     .batch_items
                     .first()
                     .unwrap_or(&response.main_credential)
                     .credential
-                    .format
+                    .format()
                     .as_ref()
                     .map(Related::id)
             });
@@ -1074,14 +1074,14 @@ impl OpenID4VCIFinal1_0 {
         updated: Option<&Credential>,
     ) -> Result<Vec<RefreshConfiguration>, IssuanceProtocolError> {
         if let Some(credential) = updated {
-            if credential.common.state == CredentialStateEnum::Rejected {
+            if credential.common().state == CredentialStateEnum::Rejected {
                 return Err(IssuanceProtocolError::RefreshNotPossible);
             }
             let main_id = credential
-                .parent
+                .parent()
                 .as_ref()
-                .map_or(credential.common.id, Related::id);
-            let format_id = credential.format.as_required_ref().await?.id;
+                .map_or(credential.common().id, Related::id);
+            let format_id = credential.format().as_required_ref().await?.id;
             let mut configuration = data
                 .configurations_for_credential(main_id)
                 .filter(|configuration| {
@@ -1113,13 +1113,13 @@ impl OpenID4VCIFinal1_0 {
         let mut unsupported_fixed_binding = false;
         for configuration in &data.credential_configurations {
             let Some(parent) = credentials.iter().find(|credential| {
-                credential.r#type == CredentialType::BatchParent
-                    && credential.common.deleted_at.is_none()
-                    && credential.common.state != CredentialStateEnum::Rejected
+                credential.r#type() == CredentialType::BatchParent
+                    && credential.common().deleted_at.is_none()
+                    && credential.common().state != CredentialStateEnum::Rejected
                     && configuration
                         .credential_id
                         .map_or(data.credential_configurations.len() == 1, |id| {
-                            id == credential.common.id
+                            id == credential.common().id
                         })
             }) else {
                 // Failed/skipped configurations have no stored credential. A legacy association
@@ -1128,7 +1128,7 @@ impl OpenID4VCIFinal1_0 {
             };
             if self
                 .batch_format_is_rejected(
-                    parent.common.id,
+                    parent.common().id,
                     configuration.credential_schema_format_id,
                 )
                 .await?
@@ -1136,7 +1136,7 @@ impl OpenID4VCIFinal1_0 {
                 continue;
             }
             let mut configuration = configuration.clone();
-            configuration.credential_id = Some(parent.common.id);
+            configuration.credential_id = Some(parent.common().id);
             // Binding and expiry belong to concrete items, not their format-agnostic parent.
             // Include consumed and expired items: they still determine how to renew the batch.
             let items = self
@@ -1148,7 +1148,7 @@ impl OpenID4VCIFinal1_0 {
                         page_size: 1,
                     }),
                     filtering: Some(
-                        CredentialFilterValue::ParentCredential(parent.common.id).condition()
+                        CredentialFilterValue::ParentCredential(parent.common().id).condition()
                             & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
                             & CredentialFilterValue::Deleted(false)
                             & configuration
@@ -1162,15 +1162,15 @@ impl OpenID4VCIFinal1_0 {
             let Some(item) = items.values.first() else {
                 continue;
             };
-            let fixed_binding = match &item.holder_identifier {
+            let fixed_binding = match &item.holder_identifier() {
                 Some(identifier) => !identifier.as_ref().await?.autogenerated,
                 None => false,
             };
-            if fixed_binding && item.common.expires_at.is_none() {
+            if fixed_binding && item.common().expires_at.is_none() {
                 unsupported_fixed_binding = true;
                 continue;
             }
-            configuration.credential_schema_format_id = item.format.as_ref().map(Related::id);
+            configuration.credential_schema_format_id = item.format().as_ref().map(Related::id);
             configurations.push(RefreshConfiguration {
                 configuration,
                 holder_binding: if fixed_binding {
@@ -1192,7 +1192,7 @@ impl OpenID4VCIFinal1_0 {
         credential: &Credential,
     ) -> Result<HolderBindingInput, IssuanceProtocolError> {
         let identifier = credential
-            .holder_identifier
+            .holder_identifier()
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
                 "Missing holder_identifier".to_string(),
@@ -1201,7 +1201,7 @@ impl OpenID4VCIFinal1_0 {
             .await?
             .to_owned();
         let key = credential
-            .key
+            .key()
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
             .as_ref()
@@ -1235,7 +1235,7 @@ impl OpenID4VCIFinal1_0 {
         Ok(!items.is_empty()
             && items
                 .iter()
-                .all(|item| item.common.state == CredentialStateEnum::Rejected))
+                .all(|item| item.common().state == CredentialStateEnum::Rejected))
     }
 
     async fn get_batch_schema_format(
@@ -1246,7 +1246,7 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<CredentialSchemaFormat, IssuanceProtocolError> {
         let format = if let Some(format_id) = configuration.credential_schema_format_id {
             parent
-                .common
+                .common()
                 .schema
                 .as_ref()
                 .await?
@@ -1268,7 +1268,7 @@ impl OpenID4VCIFinal1_0 {
                 .credential_repository
                 .get_credential_list(ListQuery {
                     filtering: Some(
-                        CredentialFilterValue::ParentCredential(parent.common.id).condition()
+                        CredentialFilterValue::ParentCredential(parent.common().id).condition()
                             & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
                             & CredentialFilterValue::Deleted(false),
                     ),
@@ -1278,7 +1278,7 @@ impl OpenID4VCIFinal1_0 {
                 .error_while("getting legacy batch items")?;
             let mut formats = vec![];
             for item in items.values {
-                let format = item.format.as_required_ref().await?;
+                let format = item.format().as_required_ref().await?;
                 if self
                     .config
                     .format
@@ -1358,14 +1358,14 @@ impl OpenID4VCIFinal1_0 {
                 if stored.credential_id.is_none() {
                     stored.credential_id = Some(
                         credential
-                            .parent
+                            .parent()
                             .as_ref()
-                            .map_or(credential.common.id, Related::id),
+                            .map_or(credential.common().id, Related::id),
                     );
                     interaction_data_changed = true;
                 }
                 if stored.credential_schema_format_id.is_none()
-                    && let Some(format) = &credential.format
+                    && let Some(format) = &credential.format()
                 {
                     stored.credential_schema_format_id = Some(format.id());
                     interaction_data_changed = true;
@@ -1473,7 +1473,7 @@ impl OpenID4VCIFinal1_0 {
             ) {
                 let parent = response.main_credential.batch_parent(has_refresh_token);
                 let mut item = std::mem::replace(&mut response.main_credential, parent);
-                let parent_id = response.main_credential.credential.common.id;
+                let parent_id = response.main_credential.credential.common().id;
                 self.change_to_batch_item(&mut item.credential, parent_id);
                 for batch_item in &mut response.batch_items {
                     self.change_to_batch_item(&mut batch_item.credential, parent_id);
@@ -2204,7 +2204,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 std::iter::once(&response.main_credential.credential)
                     .chain(response.batch_items.iter().map(|item| &item.credential))
             })
-            .filter_map(|credential| credential.holder_identifier.as_ref())
+            .filter_map(|credential| credential.holder_identifier().as_ref())
             .map(|identifier| identifier.id())
             .collect();
         if let Err(delete_error) = self
@@ -2257,13 +2257,14 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         credential: Credential,
     ) -> Result<(), IssuanceProtocolError> {
-        let (main_credential, rejected_format) = if credential.r#type == CredentialType::BatchItem {
-            let parent = credential.parent.as_required_ref().await?;
-            let format_id = credential.format.id_opt().ok_or_else(|| {
+        let (main_credential, rejected_format) = if credential.r#type() == CredentialType::BatchItem
+        {
+            let parent = credential.parent().as_required_ref().await?;
+            let format_id = credential.format().id_opt().ok_or_else(|| {
                 IssuanceProtocolError::Failed("Missing CredentialSchemaFormat".to_string())
             })?;
             if !self
-                .batch_format_is_rejected(parent.common.id, Some(format_id))
+                .batch_format_is_rejected(parent.common().id, Some(format_id))
                 .await?
             {
                 // Only a single item of a batch with others of the same format has been rejected.
@@ -2275,7 +2276,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             (credential, None)
         };
         let interaction = main_credential
-            .common
+            .common()
             .interaction
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
@@ -2297,7 +2298,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             }
         };
         let notifications: Vec<_> = interaction_data
-            .configurations_for_credential(main_credential.common.id)
+            .configurations_for_credential(main_credential.common().id)
             .filter(|configuration| {
                 rejected_format.is_none_or(|format_id| {
                     configuration.credential_schema_format_id == Some(format_id)
@@ -2359,9 +2360,9 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        let credential_schema = credential.common.schema.as_ref().await?;
+        let credential_schema = credential.common().schema.as_ref().await?;
 
-        let formats = if let Some(previous_interaction) = &credential.common.interaction {
+        let formats = if let Some(previous_interaction) = &credential.common().interaction {
             let previous_interaction = previous_interaction.as_ref().await?;
             let previous_data: OpenID4VCIIssuerInteractionDataDTO =
                 deserialize_interaction_data(previous_interaction.data.as_ref())?;
@@ -2382,7 +2383,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let interaction_id: InteractionId = Uuid::new_v4().into();
         let mut query = if self.params.credential_offer_by_value {
             let identifier_id = credential
-                .issuer_identifier
+                .issuer_identifier()
                 .as_ref()
                 .ok_or(IssuanceProtocolError::Failed(
                     "issuer_identifier missing".to_string(),
@@ -2391,7 +2392,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
             let offer = create_credential_offer(
                 protocol_base_url,
-                &credential.common.protocol,
+                &credential.common().protocol,
                 &interaction_id.to_string(),
                 &credential_schema,
                 &offered_formats,
@@ -2454,24 +2455,24 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .await
             .error_while("getting credential")?;
 
-        if credential.r#type == CredentialType::BatchItem {
+        if credential.r#type() == CredentialType::BatchItem {
             // backfill claims for batch items, as these are only stored on the parent
             let parent = credential
-                .parent
+                .parent()
                 .as_ref()
                 .ok_or(IssuanceProtocolError::Failed(format!(
                     "batch item {} is missing parent id",
-                    credential.common.id
+                    credential.common().id
                 )))?;
             // materialized on purpose: cloning the relation would alias the parent's claims
-            let parent_claims = parent.as_ref().await?.claims.as_ref().await?.to_owned();
-            credential.claims = parent_claims.into();
+            let parent_claims = parent.as_ref().await?.claims().as_ref().await?.to_owned();
+            *credential.claims_mut() = parent_claims.into();
         }
 
-        credential.holder_identifier = Some(holder_identifier.clone().into());
+        *credential.holder_identifier_mut() = Some(holder_identifier.clone().into());
 
-        let credential_schema = credential.common.schema.as_ref().await?.to_owned();
-        let credential_state = credential.common.state;
+        let credential_schema = credential.common().schema.as_ref().await?.to_owned();
+        let credential_state = credential.common().state;
 
         let formats = credential_schema.formats.as_ref().await?;
         let format = formats
@@ -2518,14 +2519,14 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         };
 
         let key = credential
-            .key
+            .key()
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
             .as_ref()
             .await?;
 
         let issuer_identifier = credential
-            .issuer_identifier
+            .issuer_identifier()
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
                 "missing issuer identifier".to_string(),
@@ -2544,7 +2545,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
         let holder_identifier_id = holder_identifier.id;
-        let issuer_certificate = match credential.issuer_certificate.as_ref() {
+        let issuer_certificate = match credential.issuer_certificate().as_ref() {
             Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
             None => first_certificate(&issuer_identifier)
                 .await
@@ -2858,7 +2859,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .iter()
             .flatten()
             .flat_map(|response| &response.credentials)
-            .filter_map(|credential| credential.holder_identifier.as_ref())
+            .filter_map(|credential| credential.holder_identifier().as_ref())
             .map(|identifier| identifier.id())
             .collect();
         self.delete_unused_autogenerated_bindings(&autogenerated_bindings, used_identifiers)

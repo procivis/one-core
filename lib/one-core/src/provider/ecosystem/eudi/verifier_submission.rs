@@ -16,12 +16,12 @@ impl EudiEcosystem {
         issuer_details: &IdentifierDetails,
         organisation_id: OrganisationId,
     ) -> Result<(), EcosystemError> {
-        let schema_format = credential.format.as_required_ref().await?;
+        let schema_format = credential.format().as_required_ref().await?;
         let format = &schema_format.format;
         let formatter = self.formatter_provider.get_credential_formatter(format)?;
 
         let namespaced = formatter_requires_namespaces(formatter.as_ref());
-        let claims = credential.claims.as_ref().await?;
+        let claims = credential.claims().as_ref().await?;
         let category = credential_category(&claims, namespaced);
 
         let IdentifierDetails::Certificate(issuer_certificate) = issuer_details else {
@@ -71,15 +71,21 @@ mod test {
     #[tokio::test]
     async fn uses_concrete_format_from_multiformat_schema() {
         let mut credential = dummy_credential();
-        let mut schema = credential.common.schema.as_ref().await.unwrap().to_owned();
+        let mut schema = credential
+            .common()
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned();
         let first = schema.formats.as_ref().await.unwrap()[0].clone();
         let mut selected = first.clone();
         selected.id = Uuid::new_v4().into();
         selected.format = "MDOC".into();
         selected.ecosystem_schema_id = "mdoc-pid".into();
         schema.formats = vec![first, selected.clone()].into();
-        credential.common.schema = schema.into();
-        credential.format = Some(selected.clone().into());
+        credential.common_mut().schema = schema.into();
+        *credential.format_mut() = Some(selected.clone().into());
 
         let mut formatter = MockCredentialFormatter::new();
         formatter

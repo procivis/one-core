@@ -688,19 +688,19 @@ async fn test_fetch_unexportable_credentials_local() {
     );
 
     assert_eq_unordered(
-        unexportable.credentials.iter().map(|item| item.common.id),
+        unexportable.credentials.iter().map(|item| item.common().id),
         unexportable_credentials_setup.unexportable_ids,
     );
 
     // ONE-8026: claims must contain claim schemas
-    unexportable.credentials[0].claims.as_ref().await.unwrap()[0]
+    unexportable.credentials[0].claims().as_ref().await.unwrap()[0]
         .schema
         .as_ref()
         .await
         .expect("claim schema present");
 
     let schema = unexportable.credentials[0]
-        .common
+        .common()
         .schema
         .as_ref()
         .await
@@ -854,12 +854,12 @@ async fn test_fetch_unexportable_credentials_dump() {
         unexportable_credentials_setup.unexportable_ids.len()
     );
     assert_eq_unordered(
-        unexportable.credentials.iter().map(|item| item.common.id),
+        unexportable.credentials.iter().map(|item| item.common().id),
         unexportable_credentials_setup.unexportable_ids,
     );
 
     let schema = unexportable.credentials[0]
-        .common
+        .common()
         .schema
         .as_ref()
         .await
@@ -1204,9 +1204,9 @@ async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
     let parent = backup
         .credentials
         .iter()
-        .find(|credential| credential.common.id == parent_id)
+        .find(|credential| credential.common().id == parent_id)
         .unwrap();
-    let claims = parent.claims.as_ref().await.unwrap();
+    let claims = parent.claims().as_ref().await.unwrap();
     assert_eq!(claims.len(), 1);
     assert_eq!(claims[0].schema.as_ref().await.unwrap().key, "name");
 }

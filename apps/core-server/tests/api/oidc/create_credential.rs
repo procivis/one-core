@@ -298,9 +298,9 @@ async fn test_post_issuer_credential_fails_when_credential_expired() {
 
     // no *issuance* happened, but the expiry check itself eagerly transitions the stale
     // credential to `Expired` as a side effect of being caught by the check
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expired, credential.common.state);
-    assert!(credential.common.issuance_date.is_none());
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.common().state);
+    assert!(credential.common().issuance_date.is_none());
 }
 
 #[tokio::test]
@@ -371,7 +371,7 @@ async fn test_post_issuer_credential_fails_when_credential_expiring() {
         .db
         .credentials
         .update(
-            credential.common.id,
+            credential.common().id,
             UpdateCredentialRequest {
                 state: Some(CredentialStateEnum::Expiring),
                 ..Default::default()
@@ -409,8 +409,8 @@ async fn test_post_issuer_credential_fails_when_credential_expiring() {
         "expected error_description to carry the BR code, got: {resp}"
     );
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expiring, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expiring, credential.common().state);
 }
 
 #[tokio::test]
@@ -447,7 +447,7 @@ async fn test_post_issuer_credential_sets_expires_at_from_schema() {
     let credential = context.db.credentials.get(&credential_id).await;
     // Compare at the database timestamp's millisecond precision.
     let expires_at = credential
-        .common
+        .common()
         .expires_at
         .unwrap()
         .truncate_to_millisecond();
@@ -536,8 +536,8 @@ async fn test_post_issuer_credential_embeds_expires_at_in_formatted_credential()
     assert_eq!(200, resp.status());
     let resp_body = resp.json_value().await;
 
-    let updated_credential = context.db.credentials.get(&credential.common.id).await;
-    let expires_at = updated_credential.common.expires_at.unwrap();
+    let updated_credential = context.db.credentials.get(&credential.common().id).await;
+    let expires_at = updated_credential.common().expires_at.unwrap();
 
     let response_jwt = resp_body["credentials"][0]["credential"]
         .as_str()
@@ -547,7 +547,7 @@ async fn test_post_issuer_credential_embeds_expires_at_in_formatted_credential()
     let blob = context
         .db
         .blobs
-        .get(&updated_credential.credential_blob_id.unwrap())
+        .get(&updated_credential.credential_blob_id().unwrap())
         .await
         .unwrap();
     let stored_jwt = String::from_utf8(blob.value).unwrap();
@@ -660,8 +660,8 @@ async fn test_post_issuer_credential_no_schema_expiration_means_no_expiry() {
     assert_eq!(200, resp.status());
     let resp_body = resp.json_value().await;
 
-    let updated_credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(updated_credential.common.expires_at, None);
+    let updated_credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(updated_credential.common().expires_at, None);
 
     // the serialized credential must not carry an `exp` claim, nor an embedded
     // `expirationDate`, when the schema has no configured expiration
@@ -1215,10 +1215,10 @@ async fn test_post_issuer_credential_with(
         let credential_history = context
             .db
             .histories
-            .get_by_entity_id(&credential.common.id.into())
+            .get_by_entity_id(&credential.common().id.into())
             .await;
-        let credential = context.db.credentials.get(&credential.common.id).await;
-        assert!(credential.common.issuance_date.is_some());
+        let credential = context.db.credentials.get(&credential.common().id).await;
+        assert!(credential.common().issuance_date.is_some());
         assert_eq!(
             credential_history
                 .values
@@ -1228,11 +1228,16 @@ async fn test_post_issuer_credential_with(
                 .target
                 .as_ref()
                 .unwrap(),
-            &credential.holder_identifier.unwrap().id().to_string()
+            &credential
+                .holder_identifier()
+                .as_ref()
+                .unwrap()
+                .id()
+                .to_string()
         );
     }
 
-    (context, credential.common.id)
+    (context, credential.common().id)
 }
 
 struct MultiFormatIssuerSetup {
@@ -1330,7 +1335,7 @@ async fn multi_format_issuer_setup_with_expiration(
         context: setup.context,
         interaction_id: setup.interaction_id,
         credential_schema,
-        credential_id: credential.common.id,
+        credential_id: credential.common().id,
     }
 }
 
@@ -1429,13 +1434,13 @@ async fn check_multi_format_credential_expiry(
         .await;
     assert_eq!(items.len(), 3);
     for item in items {
-        let format = item.format.as_ref().unwrap().as_ref().await.unwrap();
+        let format = item.format().as_ref().unwrap().as_ref().await.unwrap();
         if batch_size.is_none() || expiration.is_some_and(|expiry| expiry <= Duration::days(10)) {
-            assert_eq!(item.common.expires_at, parent.common.expires_at);
+            assert_eq!(item.common().expires_at, parent.common().expires_at);
         } else {
-            assert!(item.common.expires_at.is_some());
-            if let Some(parent_expiry) = parent.common.expires_at {
-                assert!(item.common.expires_at.unwrap() < parent_expiry);
+            assert!(item.common().expires_at.is_some());
+            if let Some(parent_expiry) = parent.common().expires_at {
+                assert!(item.common().expires_at.unwrap() < parent_expiry);
             }
         }
 
@@ -1443,7 +1448,7 @@ async fn check_multi_format_credential_expiry(
         let stored = context
             .db
             .blobs
-            .get(&item.credential_blob_id.unwrap())
+            .get(&item.credential_blob_id().unwrap())
             .await
             .unwrap();
         assert_eq!(std::str::from_utf8(&stored.value).unwrap(), token);
@@ -1453,9 +1458,11 @@ async fn check_multi_format_credential_expiry(
         .unwrap();
         assert_eq!(
             payload["exp"].as_i64(),
-            item.common.expires_at.map(|expiry| expiry.unix_timestamp())
+            item.common()
+                .expires_at
+                .map(|expiry| expiry.unix_timestamp())
         );
-        if item.common.expires_at.is_none() {
+        if item.common().expires_at.is_none() {
             assert!(payload.get("exp").is_none());
             if let Some(vc) = payload.get("vc") {
                 assert!(vc.get("expirationDate").is_none());
@@ -1485,7 +1492,7 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
     assert_ne!(jwt_notification_id, sd_jwt_vc_notification_id);
 
     let credential = context.db.credentials.get(&credential_id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Accepted);
+    assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
 
     let batch_items = context
         .db
@@ -1495,10 +1502,10 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
     assert_eq!(2, batch_items.len());
     let mut issued_formats: Vec<String> = vec![];
     for item in &batch_items {
-        assert_eq!(item.common.state, CredentialStateEnum::Accepted);
-        assert!(item.credential_blob_id.is_some());
+        assert_eq!(item.common().state, CredentialStateEnum::Accepted);
+        assert!(item.credential_blob_id().is_some());
         issued_formats.push(
-            item.format
+            item.format()
                 .as_ref()
                 .unwrap()
                 .as_ref()
@@ -1553,7 +1560,7 @@ async fn test_post_issuer_credential_multi_format_fails_for_format_not_offered()
     // THEN
     assert_eq!(400, resp.status());
     let credential = context.db.credentials.get(&credential_id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Offered);
+    assert_eq!(credential.common().state, CredentialStateEnum::Offered);
 }
 
 #[tokio::test]
@@ -1875,7 +1882,7 @@ async fn test_post_issuer_credential_jwt_vc_v2_mapped_claimed() {
     let serialized_credential_blob = context
         .db
         .blobs
-        .get(credential.credential_blob_id.as_ref().unwrap())
+        .get(credential.credential_blob_id().as_ref().unwrap())
         .await
         .unwrap();
     let parsed_credential = Jwt::<serde_json::Value>::decompose_token(
@@ -2102,7 +2109,7 @@ async fn test_post_issuer_credential_encrypted_request_and_response() {
             .is_some_and(|credential| !credential.is_empty())
     );
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert!(credential.common.issuance_date.is_some());
-    assert!(credential.holder_identifier.is_some());
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert!(credential.common().issuance_date.is_some());
+    assert!(credential.holder_identifier().is_some());
 }

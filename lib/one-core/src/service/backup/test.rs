@@ -62,7 +62,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
         claim_mappings: Default::default(),
     };
     UnexportableEntities {
-        credentials: vec![Credential {
+        credentials: vec![Credential::Generic {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,

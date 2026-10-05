@@ -47,7 +47,7 @@ impl CredentialsDB {
             .values;
         let mut result = vec![];
         for cred in creds {
-            result.push(self.get(&cred.common.id).await);
+            result.push(self.get(&cred.common().id).await);
         }
         result
     }
@@ -173,7 +173,7 @@ impl CredentialsDB {
             .first()
             .cloned();
 
-        Credential {
+        Credential::Generic {
             common: CredentialCommon {
                 expires_at: params.expires_at,
                 ecosystem: params.ecosystem,
@@ -245,18 +245,18 @@ impl CredentialsDB {
                 params,
             )
             .await;
-        credential.r#type = CredentialType::BatchParent;
-        let holder_claims = if credential.role == CredentialRole::Holder {
-            let claims = credential.claims.as_ref().await.unwrap().to_owned();
-            credential.claims = Default::default();
+        *credential.type_mut() = CredentialType::BatchParent;
+        let holder_claims = if credential.role() == CredentialRole::Holder {
+            let claims = credential.claims().as_ref().await.unwrap().to_owned();
+            *credential.claims_mut() = Default::default();
             Some(claims)
         } else {
             None
         };
-        let embedded_disclosure_policy = if credential.role == CredentialRole::Holder {
-            credential.embedded_disclosure_policy.take()
+        let embedded_disclosure_policy = if credential.role() == CredentialRole::Holder {
+            credential.embedded_disclosure_policy_mut().take()
         } else {
-            credential.embedded_disclosure_policy.clone()
+            credential.embedded_disclosure_policy().clone()
         };
 
         let id = self
@@ -265,21 +265,16 @@ impl CredentialsDB {
             .await
             .unwrap();
         let batch_item_template = {
-            let base_credential = credential.clone();
-            Credential {
-                common: CredentialCommon {
-                    interaction: None,
-                    ..base_credential.common
-                },
-                claims: Default::default(),
-                r#type: CredentialType::BatchItem,
-                embedded_disclosure_policy,
-                webhook_url: None,
-                parent: Some(Related::new(id, self.repository.clone())),
-                key,
-                holder_identifier,
-                ..base_credential
-            }
+            let mut updated_credential = credential.clone();
+            updated_credential.common_mut().interaction = None;
+            *updated_credential.claims_mut() = Default::default();
+            *updated_credential.type_mut() = CredentialType::BatchItem;
+            *updated_credential.embedded_disclosure_policy_mut() = embedded_disclosure_policy;
+            *updated_credential.webhook_url_mut() = None;
+            *updated_credential.parent_mut() = Some(Related::new(id, self.repository.clone()));
+            *updated_credential.key_mut() = key;
+            *updated_credential.holder_identifier_mut() = holder_identifier;
+            updated_credential
         };
         for _ in 0..num_items {
             let credential_blob_id = if let Some(blob_storage) = blob_storage {
@@ -309,16 +304,11 @@ impl CredentialsDB {
                 })
                 .unwrap_or_default();
             let batch_item_credential = {
-                let base_credential = batch_item_template.clone();
-                Credential {
-                    common: CredentialCommon {
-                        id: item_id,
-                        ..base_credential.common
-                    },
-                    claims: claims.into(),
-                    credential_blob_id,
-                    ..base_credential
-                }
+                let mut updated_credential = batch_item_template.clone();
+                updated_credential.common_mut().id = item_id;
+                *updated_credential.claims_mut() = claims.into();
+                *updated_credential.credential_blob_id_mut() = credential_blob_id;
+                updated_credential
             };
             self.repository
                 .create_credential(batch_item_credential.to_owned())

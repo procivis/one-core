@@ -120,7 +120,7 @@ async fn test_run_task_lifecycle_check_reactivates_suspended() {
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, credential.common.id, 0)
+        .create_credential_entry(revocation_list.id, credential.common().id, 0)
         .await;
 
     // WHEN
@@ -138,12 +138,12 @@ async fn test_run_task_lifecycle_check_reactivates_suspended() {
     assert_eq!(credentials.len(), 1);
     assert_eq!(
         credentials.first().unwrap().as_str().unwrap(),
-        credential.common.id.to_string()
+        credential.common().id.to_string()
     );
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Accepted);
-    assert_eq!(credential.suspend_end_date, None);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
+    assert_eq!(credential.suspend_end_date(), None);
 }
 
 /// A batch parent can be flagged `Expiring` while its items stay `Suspended` - `Expiring` has no
@@ -185,7 +185,7 @@ async fn test_run_task_lifecycle_check_reactivates_suspended_batch_item_of_expir
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 suspend_end_date: Some(a_while_ago),
                 ..Default::default()
             },
@@ -208,7 +208,7 @@ async fn test_run_task_lifecycle_check_reactivates_suspended_batch_item_of_expir
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, item_credential.common.id, 0)
+        .create_credential_entry(revocation_list.id, item_credential.common().id, 0)
         .await;
 
     // WHEN
@@ -226,22 +226,29 @@ async fn test_run_task_lifecycle_check_reactivates_suspended_batch_item_of_expir
     assert_eq!(credentials.len(), 1);
     assert_eq!(
         credentials.first().unwrap().as_str().unwrap(),
-        item_credential.common.id.to_string()
+        item_credential.common().id.to_string()
     );
 
-    let item_credential = context.db.credentials.get(&item_credential.common.id).await;
-    assert_eq!(item_credential.common.state, CredentialStateEnum::Accepted);
-    assert_eq!(item_credential.suspend_end_date, None);
+    let item_credential = context
+        .db
+        .credentials
+        .get(&item_credential.common().id)
+        .await;
+    assert_eq!(
+        item_credential.common().state,
+        CredentialStateEnum::Accepted
+    );
+    assert_eq!(item_credential.suspend_end_date(), None);
 
     // the parent's `Expiring` flag is preserved - only an explicit transition back to `ACCEPTED`
     // clears it
     let parent_credential = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
     assert_eq!(
-        parent_credential.common.state,
+        parent_credential.common().state,
         CredentialStateEnum::Expiring
     );
 }
@@ -303,21 +310,27 @@ async fn test_run_task_lifecycle_check_expires_single_credential_both_roles() {
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&issuer_credential.common.id.to_string()));
-    assert!(expired_ids.contains(&holder_credential.common.id.to_string()));
+    assert!(expired_ids.contains(&issuer_credential.common().id.to_string()));
+    assert!(expired_ids.contains(&holder_credential.common().id.to_string()));
 
     let issuer_credential = context
         .db
         .credentials
-        .get(&issuer_credential.common.id)
+        .get(&issuer_credential.common().id)
         .await;
-    assert_eq!(issuer_credential.common.state, CredentialStateEnum::Expired);
+    assert_eq!(
+        issuer_credential.common().state,
+        CredentialStateEnum::Expired
+    );
     let holder_credential = context
         .db
         .credentials
-        .get(&holder_credential.common.id)
+        .get(&holder_credential.common().id)
         .await;
-    assert_eq!(holder_credential.common.state, CredentialStateEnum::Expired);
+    assert_eq!(
+        holder_credential.common().state,
+        CredentialStateEnum::Expired
+    );
 }
 
 /// Non-terminal states beyond `Accepted`/`Suspended` (e.g. `Offered`, still awaiting the holder's
@@ -362,15 +375,15 @@ async fn test_run_task_lifecycle_check_expires_non_accepted_non_terminal_credent
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&offered_credential.common.id.to_string()));
+    assert!(expired_ids.contains(&offered_credential.common().id.to_string()));
 
     let offered_credential = context
         .db
         .credentials
-        .get(&offered_credential.common.id)
+        .get(&offered_credential.common().id)
         .await;
     assert_eq!(
-        offered_credential.common.state,
+        offered_credential.common().state,
         CredentialStateEnum::Expired
     );
 }
@@ -418,15 +431,15 @@ async fn test_run_task_lifecycle_check_expires_suspended_credential() {
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&suspended_credential.common.id.to_string()));
+    assert!(expired_ids.contains(&suspended_credential.common().id.to_string()));
 
     let suspended_credential = context
         .db
         .credentials
-        .get(&suspended_credential.common.id)
+        .get(&suspended_credential.common().id)
         .await;
     assert_eq!(
-        suspended_credential.common.state,
+        suspended_credential.common().state,
         CredentialStateEnum::Expired
     );
 }
@@ -495,7 +508,7 @@ async fn test_run_task_lifecycle_check_expires_expiring_credential() {
 
     let updated_credential = context.db.credentials.get(&expired_credential_id).await;
     assert_eq!(
-        updated_credential.common.state,
+        updated_credential.common().state,
         CredentialStateEnum::Expired
     );
 }
@@ -542,15 +555,15 @@ async fn test_run_task_lifecycle_check_does_not_expire_terminal_state_credential
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(!expired_ids.contains(&revoked_credential.common.id.to_string()));
+    assert!(!expired_ids.contains(&revoked_credential.common().id.to_string()));
 
     let revoked_credential = context
         .db
         .credentials
-        .get(&revoked_credential.common.id)
+        .get(&revoked_credential.common().id)
         .await;
     assert_eq!(
-        revoked_credential.common.state,
+        revoked_credential.common().state,
         CredentialStateEnum::Revoked
     );
 }
@@ -602,10 +615,10 @@ async fn test_run_task_lifecycle_check_expires_mdoc() {
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&credential.common.id.to_string()));
+    assert!(expired_ids.contains(&credential.common().id.to_string()));
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Expired);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Expired);
 }
 
 /// A batch parent's own items no longer decide its fate: as long as its own `expires_at` is in
@@ -680,7 +693,7 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_refresh_tok
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(a_while_ago),
                 interaction: Some(interaction.clone()),
@@ -699,7 +712,7 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_refresh_tok
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(a_while_ago),
                 interaction: Some(interaction.clone()),
@@ -721,16 +734,16 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_refresh_tok
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&expired_item.common.id.to_string()));
-    assert!(expired_ids.contains(&other_item.common.id.to_string()));
-    assert!(!expired_ids.contains(&parent_credential.common.id.to_string()));
+    assert!(expired_ids.contains(&expired_item.common().id.to_string()));
+    assert!(expired_ids.contains(&other_item.common().id.to_string()));
+    assert!(!expired_ids.contains(&parent_credential.common().id.to_string()));
 
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Accepted);
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Accepted);
 }
 
 /// The parent's own business-level `expires_at` is authoritative once every item has also
@@ -803,7 +816,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_own_expires_at_
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(a_while_ago),
                 interaction: Some(interaction.clone()),
@@ -825,18 +838,18 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_own_expires_at_
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&parent_credential.common.id.to_string()));
-    assert!(expired_ids.contains(&expired_item.common.id.to_string()));
+    assert!(expired_ids.contains(&parent_credential.common().id.to_string()));
+    assert!(expired_ids.contains(&expired_item.common().id.to_string()));
 
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Expired);
-    let updated_expired_item = context.db.credentials.get(&expired_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Expired);
+    let updated_expired_item = context.db.credentials.get(&expired_item.common().id).await;
     assert_eq!(
-        updated_expired_item.common.state,
+        updated_expired_item.common().state,
         CredentialStateEnum::Expired
     );
 }
@@ -915,14 +928,14 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_with_no_items() {
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&parent_credential.common.id.to_string()));
+    assert!(expired_ids.contains(&parent_credential.common().id.to_string()));
 
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Expired);
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Expired);
 }
 
 /// The shared refresh token can expire the parent sooner than its own `expires_at`, as long as
@@ -998,7 +1011,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_refresh_token_e
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(a_while_ago),
                 interaction: Some(interaction.clone()),
@@ -1020,18 +1033,18 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_refresh_token_e
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&parent_credential.common.id.to_string()));
-    assert!(expired_ids.contains(&expired_item.common.id.to_string()));
+    assert!(expired_ids.contains(&parent_credential.common().id.to_string()));
+    assert!(expired_ids.contains(&expired_item.common().id.to_string()));
 
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Expired);
-    let updated_expired_item = context.db.credentials.get(&expired_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Expired);
+    let updated_expired_item = context.db.credentials.get(&expired_item.common().id).await;
     assert_eq!(
-        updated_expired_item.common.state,
+        updated_expired_item.common().state,
         CredentialStateEnum::Expired
     );
 }
@@ -1106,7 +1119,7 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_not_all_ite
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(a_while_ago),
                 interaction: Some(interaction.clone()),
@@ -1125,7 +1138,7 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_not_all_ite
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 interaction: Some(interaction.clone()),
                 ..Default::default()
@@ -1146,19 +1159,19 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_not_all_ite
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&expired_item.common.id.to_string()));
-    assert!(!expired_ids.contains(&parent_credential.common.id.to_string()));
-    assert!(!expired_ids.contains(&valid_item.common.id.to_string()));
+    assert!(expired_ids.contains(&expired_item.common().id.to_string()));
+    assert!(!expired_ids.contains(&parent_credential.common().id.to_string()));
+    assert!(!expired_ids.contains(&valid_item.common().id.to_string()));
 
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Accepted);
-    let updated_valid_item = context.db.credentials.get(&valid_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Accepted);
+    let updated_valid_item = context.db.credentials.get(&valid_item.common().id).await;
     assert_eq!(
-        updated_valid_item.common.state,
+        updated_valid_item.common().state,
         CredentialStateEnum::Accepted
     );
 }
@@ -1235,7 +1248,7 @@ async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attribu
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_a.common.id),
+                parent_id: Some(parent_a.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(a_while_ago),
                 interaction: Some(expiring_interaction.clone()),
@@ -1293,7 +1306,7 @@ async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attribu
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_b.common.id),
+                parent_id: Some(parent_b.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(far_in_the_future),
                 interaction: Some(valid_interaction.clone()),
@@ -1314,24 +1327,30 @@ async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attribu
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&parent_a.common.id.to_string()));
-    assert!(expired_ids.contains(&parent_a_item.common.id.to_string()));
-    assert!(!expired_ids.contains(&parent_b.common.id.to_string()));
-    assert!(!expired_ids.contains(&parent_b_item.common.id.to_string()));
+    assert!(expired_ids.contains(&parent_a.common().id.to_string()));
+    assert!(expired_ids.contains(&parent_a_item.common().id.to_string()));
+    assert!(!expired_ids.contains(&parent_b.common().id.to_string()));
+    assert!(!expired_ids.contains(&parent_b_item.common().id.to_string()));
 
-    let updated_parent_a = context.db.credentials.get(&parent_a.common.id).await;
-    assert_eq!(updated_parent_a.common.state, CredentialStateEnum::Expired);
-    let updated_parent_a_item = context.db.credentials.get(&parent_a_item.common.id).await;
+    let updated_parent_a = context.db.credentials.get(&parent_a.common().id).await;
     assert_eq!(
-        updated_parent_a_item.common.state,
+        updated_parent_a.common().state,
+        CredentialStateEnum::Expired
+    );
+    let updated_parent_a_item = context.db.credentials.get(&parent_a_item.common().id).await;
+    assert_eq!(
+        updated_parent_a_item.common().state,
         CredentialStateEnum::Expired
     );
 
-    let updated_parent_b = context.db.credentials.get(&parent_b.common.id).await;
-    assert_eq!(updated_parent_b.common.state, CredentialStateEnum::Accepted);
-    let updated_parent_b_item = context.db.credentials.get(&parent_b_item.common.id).await;
+    let updated_parent_b = context.db.credentials.get(&parent_b.common().id).await;
     assert_eq!(
-        updated_parent_b_item.common.state,
+        updated_parent_b.common().state,
+        CredentialStateEnum::Accepted
+    );
+    let updated_parent_b_item = context.db.credentials.get(&parent_b_item.common().id).await;
+    assert_eq!(
+        updated_parent_b_item.common().state,
         CredentialStateEnum::Accepted
     );
 }
@@ -1408,7 +1427,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_item_revoked_no
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 interaction: Some(interaction.clone()),
                 ..Default::default()
@@ -1426,7 +1445,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_item_revoked_no
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
-                parent_id: Some(parent_credential.common.id),
+                parent_id: Some(parent_credential.common().id),
                 role: Some(CredentialRole::Holder),
                 expires_at: Some(a_while_ago),
                 interaction: Some(interaction.clone()),
@@ -1447,25 +1466,25 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_item_revoked_no
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
-    assert!(expired_ids.contains(&parent_credential.common.id.to_string()));
-    assert!(expired_ids.contains(&expired_item.common.id.to_string()));
-    assert!(!expired_ids.contains(&revoked_item.common.id.to_string()));
+    assert!(expired_ids.contains(&parent_credential.common().id.to_string()));
+    assert!(expired_ids.contains(&expired_item.common().id.to_string()));
+    assert!(!expired_ids.contains(&revoked_item.common().id.to_string()));
 
     let updated_parent = context
         .db
         .credentials
-        .get(&parent_credential.common.id)
+        .get(&parent_credential.common().id)
         .await;
-    assert_eq!(updated_parent.common.state, CredentialStateEnum::Expired);
-    let updated_expired_item = context.db.credentials.get(&expired_item.common.id).await;
+    assert_eq!(updated_parent.common().state, CredentialStateEnum::Expired);
+    let updated_expired_item = context.db.credentials.get(&expired_item.common().id).await;
     assert_eq!(
-        updated_expired_item.common.state,
+        updated_expired_item.common().state,
         CredentialStateEnum::Expired
     );
     // untouched - still `Revoked`, not overwritten with `Expired`
-    let updated_revoked_item = context.db.credentials.get(&revoked_item.common.id).await;
+    let updated_revoked_item = context.db.credentials.get(&revoked_item.common().id).await;
     assert_eq!(
-        updated_revoked_item.common.state,
+        updated_revoked_item.common().state,
         CredentialStateEnum::Revoked
     );
 }
@@ -1696,8 +1715,8 @@ async fn test_run_retain_proof_check_with_update() {
         .proofs
         .set_proof_claims(
             &proof_1.id,
-            credential_1.common.id,
-            credential_1.claims.as_ref().await.unwrap().to_owned(),
+            credential_1.common().id,
+            credential_1.claims().as_ref().await.unwrap().to_owned(),
         )
         .await;
 
@@ -1706,15 +1725,15 @@ async fn test_run_retain_proof_check_with_update() {
         .proofs
         .set_proof_claims(
             &proof_2.id,
-            credential_2.common.id,
-            credential_2.claims.as_ref().await.unwrap().to_owned(),
+            credential_2.common().id,
+            credential_2.claims().as_ref().await.unwrap().to_owned(),
         )
         .await;
 
-    let credential_1 = context.db.credentials.get(&credential_1.common.id).await;
+    let credential_1 = context.db.credentials.get(&credential_1.common().id).await;
     assert!(
         !credential_1
-            .claims
+            .claims()
             .as_ref()
             .await
             .unwrap()
@@ -1722,10 +1741,10 @@ async fn test_run_retain_proof_check_with_update() {
             .is_empty()
     );
 
-    let credential_2 = context.db.credentials.get(&credential_2.common.id).await;
+    let credential_2 = context.db.credentials.get(&credential_2.common().id).await;
     assert!(
         !credential_2
-            .claims
+            .claims()
             .as_ref()
             .await
             .unwrap()
@@ -1742,10 +1761,10 @@ async fn test_run_retain_proof_check_with_update() {
     let proof = context.db.proofs.get(&proof_1.id).await;
     assert!(proof.claims.as_ref().await.unwrap().is_empty());
 
-    let credential = context.db.credentials.get(&credential_1.common.id).await;
+    let credential = context.db.credentials.get(&credential_1.common().id).await;
     assert!(
         credential
-            .claims
+            .claims()
             .as_ref()
             .await
             .unwrap()
@@ -1762,10 +1781,10 @@ async fn test_run_retain_proof_check_with_update() {
     let proof = context.db.proofs.get(&proof_2.id).await;
     assert!(!proof.claims.as_ref().await.unwrap().is_empty());
 
-    let credential = context.db.credentials.get(&credential_2.common.id).await;
+    let credential = context.db.credentials.get(&credential_2.common().id).await;
     assert!(
         !credential
-            .claims
+            .claims()
             .as_ref()
             .await
             .unwrap()
@@ -2058,7 +2077,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
     let history_previous = context
         .db
         .histories
-        .get_by_entity_id(&credential.common.id.into())
+        .get_by_entity_id(&credential.common().id.into())
         .await;
 
     let non_existing_organisation_id = Uuid::new_v4();
@@ -2079,7 +2098,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
     let history = context
         .db
         .histories
-        .get_by_entity_id(&credential.common.id.into())
+        .get_by_entity_id(&credential.common().id.into())
         .await;
     // no new history entry should be added
     assert_eq!(history.values.len(), history_previous.values.len());
@@ -2247,7 +2266,7 @@ async fn test_run_interaction_expiration_check_with_update() {
 
     let updated_credentials = resp["updatedCredentials"].as_array().unwrap();
     assert_eq!(updated_credentials.len(), 1);
-    assert_eq!(updated_credentials[0], credential.common.id.to_string());
+    assert_eq!(updated_credentials[0], credential.common().id.to_string());
 
     let updated_proofs = resp["updatedProofs"].as_array().unwrap();
     assert_eq!(updated_proofs.len(), 1);
@@ -2256,7 +2275,7 @@ async fn test_run_interaction_expiration_check_with_update() {
     let credential_history = context
         .db
         .histories
-        .get_by_entity_id(&credential.common.id.into())
+        .get_by_entity_id(&credential.common().id.into())
         .await;
     assert_eq!(credential_history.total_items, 1);
     assert_eq!(

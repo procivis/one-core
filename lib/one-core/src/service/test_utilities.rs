@@ -298,7 +298,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     };
-    Credential {
+    Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,

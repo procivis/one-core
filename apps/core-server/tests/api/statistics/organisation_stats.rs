@@ -185,7 +185,7 @@ async fn dummy_history_data(
             org,
             TestingHistoryParams {
                 action: Some(HistoryAction::Issued),
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 entity_type: Some(HistoryEntityType::Credential),
                 created_date: Some(now - Duration::hours(25)),
                 ..Default::default()
@@ -199,7 +199,7 @@ async fn dummy_history_data(
             org,
             TestingHistoryParams {
                 action: Some(HistoryAction::Suspended),
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 entity_type: Some(HistoryEntityType::Credential),
                 created_date: Some(now),
                 ..Default::default()

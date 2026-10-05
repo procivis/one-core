@@ -275,7 +275,7 @@ async fn add_test_entities(
             org,
             TestingHistoryParams {
                 action: Some(HistoryAction::Issued),
-                entity_id: Some(credential.common.id.into()),
+                entity_id: Some(credential.common().id.into()),
                 entity_type: Some(HistoryEntityType::Credential),
                 created_date: Some(now - Duration::hours(30)),
                 ..Default::default()

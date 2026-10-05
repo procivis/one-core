@@ -469,13 +469,13 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
     resp["error"].assert_eq(&"invalid_grant".to_string());
 
     // invalid tx_code means the issuance failed
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Error);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Error);
 
     let history = context
         .db
         .histories
-        .get_by_entity_id(&credential.common.id.into())
+        .get_by_entity_id(&credential.common().id.into())
         .await;
     let errors: Vec<_> = history
         .values
@@ -618,7 +618,7 @@ async fn test_oidc_issuer_create_token_fails_when_credential_is_expiring() {
         .db
         .credentials
         .update(
-            credential.common.id,
+            credential.common().id,
             UpdateCredentialRequest {
                 state: Some(CredentialStateEnum::Expiring),
                 ..Default::default()
@@ -650,6 +650,6 @@ async fn test_oidc_issuer_create_token_fails_when_credential_is_expiring() {
         "expected error_description to carry the BR code, got: {resp}"
     );
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(credential.common.state, CredentialStateEnum::Expiring);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Expiring);
 }

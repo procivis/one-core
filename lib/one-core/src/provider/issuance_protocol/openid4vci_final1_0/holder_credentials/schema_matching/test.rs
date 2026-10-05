@@ -813,7 +813,7 @@ async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key(
     assert_eq!(alignment.new_mappings.len(), 1);
     assert_eq!(alignment.new_mappings[0].technical_key, "serialized-claim");
     assert_eq!(
-        parsed_credential.claims.as_ref().await.unwrap()[0].path,
+        parsed_credential.claims().as_ref().await.unwrap()[0].path,
         new_key
     );
 }
@@ -1243,7 +1243,7 @@ async fn matches_existing_schema() {
 
     assert!(alignment.new_claim_schemas.is_empty());
     assert!(alignment.new_mappings.is_empty());
-    let claims = credential.claims.as_ref().await.unwrap();
+    let claims = credential.claims().as_ref().await.unwrap();
     assert_eq!(claims[0].schema.as_ref().await.unwrap().id, stored_cs_id);
     assert_eq!(claims[0].path, "addr/city");
 }
@@ -1301,7 +1301,7 @@ async fn remaps_nested_and_array_claim_paths() {
 
     assert!(alignment.new_claim_schemas.is_empty());
     assert!(alignment.new_mappings.is_empty());
-    let claims = credential.claims.as_ref().await.unwrap();
+    let claims = credential.claims().as_ref().await.unwrap();
     // claims keep their (original-path) sort order; only the path strings are rewritten
     assert_eq!(claims[0].path, "addr");
     assert_eq!(claims[0].schema.as_ref().await.unwrap().id, stored_root_id);
@@ -1455,7 +1455,7 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
         alignment.new_mappings[0].technical_key,
         "serialized-new-value"
     );
-    let claims = credential.claims.as_ref().await.unwrap();
+    let claims = credential.claims().as_ref().await.unwrap();
     assert_eq!(claims[0].path, "stored-parent");
     assert_eq!(claims[1].path, new_key);
 }
@@ -1479,7 +1479,7 @@ async fn errors_when_parsed_format_missing() {
     );
 
     let mut credential = credential(parsed_schema, vec![]).await;
-    credential.format = None;
+    *credential.format_mut() = None;
 
     let result =
         align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
@@ -1620,7 +1620,7 @@ async fn remaps_new_nested_and_array_claim_paths() {
         "root_mapped/nested2"
     );
     assert_eq!(alignment.new_mappings[0].namespace, None);
-    let claims = credential.claims.as_ref().await.unwrap();
+    let claims = credential.claims().as_ref().await.unwrap();
     assert_eq!(claims.len(), 5);
     assert_eq!(claims[0].path, "root");
     assert_eq!(claims[1].path, "root/nested2");
@@ -1809,7 +1809,7 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         let formats = parsed_schema.formats.as_ref().await.unwrap();
         formats.first().unwrap().clone()
     };
-    Credential {
+    Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1897,7 +1897,7 @@ async fn relinks_claims_of_new_root_array_claim_schema() {
             .unwrap();
 
     assert_eq!(alignment.new_claim_schemas.len(), 2);
-    let claims = credential.claims.as_ref().await.unwrap();
+    let claims = credential.claims().as_ref().await.unwrap();
     let paths: Vec<_> = claims.iter().map(|c| c.path.as_str()).collect();
     assert_eq!(
         paths,

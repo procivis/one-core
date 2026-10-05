@@ -10,7 +10,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::GetListResponse;
 use crate::model::credential::{
-    Credential, CredentialCommon, CredentialStateEnum, CredentialType, GetCredentialList,
+    Credential, CredentialStateEnum, CredentialType, GetCredentialList,
 };
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
@@ -185,17 +185,12 @@ fn blob_storage_provider(blobs: Vec<Blob>) -> MockBlobStorageProvider {
 
 fn accepted_pid(wua_blob_id: Option<BlobId>, wia_blob_id: Option<BlobId>) -> Credential {
     {
-        let base_credential = dummy_credential();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                state: CredentialStateEnum::Accepted,
-                ..base_credential.common
-            },
-            wallet_key_attestation_blob_id: wua_blob_id,
-            wallet_instance_attestation_blob_id: wia_blob_id,
-            ..base_credential
-        }
+        let mut updated_credential = dummy_credential();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        *updated_credential.wallet_key_attestation_blob_id_mut() = wua_blob_id;
+        *updated_credential.wallet_instance_attestation_blob_id_mut() = wia_blob_id;
+        updated_credential
     }
 }
 
@@ -204,24 +199,20 @@ fn batch_item(
     wua_blob_id: Option<BlobId>,
     wia_blob_id: Option<BlobId>,
 ) -> Credential {
-    Credential {
-        r#type: CredentialType::BatchItem,
-        parent: Some(parent.clone().into()),
-        ..accepted_pid(wua_blob_id, wia_blob_id)
+    {
+        let mut updated_credential = accepted_pid(wua_blob_id, wia_blob_id);
+        *updated_credential.type_mut() = CredentialType::BatchItem;
+        *updated_credential.parent_mut() = Some(parent.clone().into());
+        updated_credential
     }
 }
 
 fn batch_parent() -> Credential {
     {
-        let base_credential = dummy_credential();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                ..base_credential.common
-            },
-            r#type: CredentialType::BatchParent,
-            ..base_credential
-        }
+        let mut updated_credential = dummy_credential();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        *updated_credential.type_mut() = CredentialType::BatchParent;
+        updated_credential
     }
 }
 
@@ -306,7 +297,7 @@ async fn test_credential_with_valid_attestations_is_not_revoked() {
 async fn test_revoked_wallet_unit_attestation_revokes_the_pid() {
     let wua_blob_id: BlobId = Uuid::new_v4().into();
     let credential = accepted_pid(Some(wua_blob_id), None);
-    let credential_id = credential.common.id;
+    let credential_id = credential.common().id;
 
     let credential_repository = credential_repository_serving(vec![vec![credential]]);
 
@@ -337,7 +328,7 @@ async fn test_revoked_wallet_unit_attestation_revokes_the_pid() {
 async fn test_revoked_wallet_instance_attestation_revokes_the_pid() {
     let wia_blob_id: BlobId = Uuid::new_v4().into();
     let credential = accepted_pid(None, Some(wia_blob_id));
-    let credential_id = credential.common.id;
+    let credential_id = credential.common().id;
 
     let credential_repository = credential_repository_serving(vec![vec![credential]]);
 
@@ -370,7 +361,7 @@ async fn test_revoked_wallet_instance_attestation_revokes_the_pid() {
 #[tokio::test]
 async fn test_revoked_wia_revokes_the_whole_batch_once() {
     let parent = batch_parent();
-    let parent_id = parent.common.id;
+    let parent_id = parent.common().id;
 
     // the WIA is copied from the parent onto every item, so both items carry the same one
     let wia_blob_id: BlobId = Uuid::new_v4().into();
@@ -412,21 +403,16 @@ async fn test_revoked_wia_revokes_the_whole_batch_once() {
 #[tokio::test]
 async fn test_revoked_wua_revokes_only_the_batch_item() {
     let parent = {
-        let base_credential = dummy_credential();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = dummy_credential();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential
     };
 
     // every item of a batch has its own WUA
     let revoked_wua_blob_id: BlobId = Uuid::new_v4().into();
     let active_wua_blob_id: BlobId = Uuid::new_v4().into();
     let revoked_item = batch_item(&parent, Some(revoked_wua_blob_id), None);
-    let revoked_item_id = revoked_item.common.id;
+    let revoked_item_id = revoked_item.common().id;
     let items = vec![
         revoked_item,
         batch_item(&parent, Some(active_wua_blob_id), None),
@@ -470,7 +456,7 @@ async fn test_revoked_wia_skips_the_wua_check() {
     let wua_blob_id: BlobId = Uuid::new_v4().into();
     let wia_blob_id: BlobId = Uuid::new_v4().into();
     let credential = accepted_pid(Some(wua_blob_id), Some(wia_blob_id));
-    let credential_id = credential.common.id;
+    let credential_id = credential.common().id;
 
     let credential_repository = credential_repository_serving(vec![vec![credential]]);
 
@@ -553,7 +539,7 @@ async fn test_all_pages_are_checked() {
     let wua_blob_id: BlobId = Uuid::new_v4().into();
     let first_page = accepted_pid(Some(wua_blob_id), None);
     let second_page = accepted_pid(Some(wua_blob_id), None);
-    let second_page_id = second_page.common.id;
+    let second_page_id = second_page.common().id;
 
     let credential_repository =
         credential_repository_serving(vec![vec![first_page], vec![second_page]]);
@@ -591,7 +577,7 @@ async fn test_all_pages_are_checked() {
 async fn test_pid_that_cannot_be_revoked_is_reported() {
     let wua_blob_id: BlobId = Uuid::new_v4().into();
     let credential = accepted_pid(Some(wua_blob_id), None);
-    let credential_id = credential.common.id;
+    let credential_id = credential.common().id;
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
     wallet_unit_proto
@@ -631,7 +617,7 @@ async fn test_pid_that_cannot_be_revoked_is_reported() {
 #[tokio::test]
 async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
     let parent = batch_parent();
-    let parent_id = parent.common.id;
+    let parent_id = parent.common().id;
 
     let wia_blob_id: BlobId = Uuid::new_v4().into();
     let items = vec![batch_item(&parent, None, Some(wia_blob_id))];
@@ -685,7 +671,7 @@ async fn test_batch_item_that_cannot_be_revoked_is_not_flagged_expiring() {
 
     let wua_blob_id: BlobId = Uuid::new_v4().into();
     let item = batch_item(&parent, Some(wua_blob_id), None);
-    let item_id = item.common.id;
+    let item_id = item.common().id;
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
     wallet_unit_proto

@@ -479,12 +479,12 @@ impl SSIHolderService {
                 ),
             });
         }
-        let consumed_item = (presented_credential.r#type == CredentialType::BatchItem)
-            .then_some(presented_credential.common.id);
-        let blob_id = presented_credential.credential_blob_id.ok_or_else(|| {
+        let consumed_item = (presented_credential.r#type() == CredentialType::BatchItem)
+            .then_some(presented_credential.common().id);
+        let blob_id = presented_credential.credential_blob_id().ok_or_else(|| {
             HolderServiceError::MappingError(format!(
                 "Missing blob id on credential `{}`",
-                presented_credential.common.id
+                presented_credential.common().id
             ))
         })?;
         let credential_blob = blob_storage
@@ -500,12 +500,12 @@ impl SSIHolderService {
             .into();
 
         // Presented credential is always a single credential or a batch item.
-        presented_credential.claims =
+        *presented_credential.claims_mut() =
             crate::mapper::credential::stored_credential_claims(&presented_credential)
                 .await?
                 .into();
         let credential_format = presented_credential
-            .format
+            .format()
             .as_required_ref()
             .await?
             .to_owned();
@@ -543,7 +543,7 @@ impl SSIHolderService {
         };
 
         let claims = presented_credential
-            .claims
+            .claims()
             .as_ref()
             .await?
             .iter()

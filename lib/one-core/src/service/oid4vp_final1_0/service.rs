@@ -378,7 +378,7 @@ impl OID4VPFinal1_0Service {
                 .iter_mut()
                 .zip(ecosystems.per_credential)
             {
-                proved_credential.credential.common.ecosystem = ecosystem;
+                proved_credential.credential.common_mut().ecosystem = ecosystem;
             }
 
             Ok((proof_result, ecosystems.ecosystem, response))

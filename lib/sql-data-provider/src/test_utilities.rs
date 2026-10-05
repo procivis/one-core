@@ -145,7 +145,7 @@ pub async fn insert_credential(
     .insert(db)
     .await?;
 
-    Ok(Credential {
+    Ok(Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,

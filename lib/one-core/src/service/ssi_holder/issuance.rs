@@ -25,8 +25,7 @@ use crate::config::core_config::{BlobStorageType, FormatType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
-    Credential, CredentialCommon, CredentialFilterValue, CredentialStateEnum, CredentialType,
-    UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
@@ -233,9 +232,13 @@ impl SSIHolderService {
 
         let mut issued = result.issued;
         for (issuer_response, ecosystem) in issued.iter_mut().zip(ecosystems.per_credential) {
-            issuer_response.main_credential.credential.common.ecosystem = ecosystem.to_owned();
+            issuer_response
+                .main_credential
+                .credential
+                .common_mut()
+                .ecosystem = ecosystem.to_owned();
             for item in &mut issuer_response.batch_items {
-                item.credential.common.ecosystem = ecosystem.to_owned();
+                item.credential.common_mut().ecosystem = ecosystem.to_owned();
             }
         }
 
@@ -244,7 +247,7 @@ impl SSIHolderService {
         let mut credential_ids = vec![];
         let mut credentials = vec![];
         for issuer_response in issued {
-            credential_ids.push(issuer_response.main_credential.credential.common.id);
+            credential_ids.push(issuer_response.main_credential.credential.common().id);
             // the batch parent must exist before the batch items are created
             credentials.push(issuer_response.main_credential);
             credentials.extend(issuer_response.batch_items);
@@ -308,7 +311,7 @@ impl SSIHolderService {
         let mut configuration_parents = HashMap::new();
         for mut response in issued {
             let credential = &response.main_credential.credential;
-            if credential.r#type != CredentialType::BatchParent {
+            if credential.r#type() != CredentialType::BatchParent {
                 groups.push(response);
                 continue;
             }
@@ -319,15 +322,15 @@ impl SSIHolderService {
                 continue;
             };
             let mut claims = vec![];
-            for claim in item.credential.claims.as_ref().await?.iter() {
+            for claim in item.credential.claims().as_ref().await?.iter() {
                 if !claim.schema.as_ref().await?.metadata {
                     claims.push((claim.path.clone(), claim.value.clone()));
                 }
             }
             claims.sort_unstable();
             let key = (
-                credential.common.schema.id(),
-                credential.common.ecosystem.clone(),
+                credential.common().schema.id(),
+                credential.common().ecosystem.clone(),
                 claims,
             );
             let Some(group) = batch_groups
@@ -338,10 +341,10 @@ impl SSIHolderService {
                 groups.push(response);
                 continue;
             };
-            let parent_id = group.main_credential.credential.common.id;
+            let parent_id = group.main_credential.credential.common().id;
             configuration_parents.insert(response.credential_configuration_id, parent_id);
             for item in &mut response.batch_items {
-                item.credential.parent =
+                *item.credential.parent_mut() =
                     Some(Related::new(parent_id, self.credential_repository.clone()));
             }
             group.batch_items.append(&mut response.batch_items);
@@ -419,7 +422,7 @@ impl SSIHolderService {
         db_blob_storage: &dyn BlobStorage,
     ) -> Result<Credential, HolderServiceError> {
         let CredentialWithBlob {
-            credential,
+            mut credential,
             serialized,
         } = credential;
 
@@ -435,14 +438,9 @@ impl SSIHolderService {
             None
         };
 
-        Ok(Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Accepted,
-                ..credential.common
-            },
-            credential_blob_id,
-            ..credential
-        })
+        credential.common_mut().state = CredentialStateEnum::Accepted;
+        *credential.credential_blob_id_mut() = credential_blob_id;
+        Ok(credential)
     }
 
     pub async fn refresh_credentials(
@@ -485,7 +483,7 @@ impl SSIHolderService {
         let credential_ids: Vec<_> = refreshed
             .iter()
             .flat_map(|response| &response.credentials)
-            .map(|credential| credential.common.id)
+            .map(|credential| credential.common().id)
             .collect();
 
         if interaction.ecosystem.is_some() {
@@ -501,13 +499,13 @@ impl SSIHolderService {
 
                 let batch_item = self
                     .credential_repository
-                    .get_credential(&batch_item.common.id)
+                    .get_credential(&batch_item.common().id)
                     .await
                     .error_while("getting batch credential")?;
                 let blob = db_blob_storage
                     .get(
                         &batch_item
-                            .credential_blob_id
+                            .credential_blob_id()
                             .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?,
                     )
                     .await
@@ -554,10 +552,10 @@ impl SSIHolderService {
             let parent_ids: Vec<_> = credentials
                 .iter()
                 .filter(|credential| {
-                    credential.r#type == CredentialType::BatchParent
-                        && !ids.contains(&credential.common.id)
+                    credential.r#type() == CredentialType::BatchParent
+                        && !ids.contains(&credential.common().id)
                 })
-                .map(|credential| credential.common.id)
+                .map(|credential| credential.common().id)
                 .collect();
             if !parent_ids.is_empty() {
                 credentials.extend(
@@ -582,7 +580,7 @@ impl SSIHolderService {
             .filter(|credential| {
                 credential_ids
                     .as_ref()
-                    .is_none_or(|ids| ids.contains(&credential.common.id))
+                    .is_none_or(|ids| ids.contains(&credential.common().id))
             })
             .collect();
 
@@ -602,7 +600,7 @@ impl SSIHolderService {
 
                 let protocol = self
                     .issuance_protocol_provider
-                    .get_protocol(&credential.common.protocol)?;
+                    .get_protocol(&credential.common().protocol)?;
 
                 if !protocol
                     .get_capabilities()
@@ -646,7 +644,7 @@ impl SSIHolderService {
                 .error_while("updating credential")?;
         }
 
-        let credential_id = credential.common.id;
+        let credential_id = credential.common().id;
         if let Err(error) = protocol.holder_reject_credential(credential).await {
             tracing::warn!(
                 "Failed to notify the issuer about rejected credential {credential_id}: {error}"
@@ -661,13 +659,13 @@ impl SSIHolderService {
         &self,
         credential: &Credential,
     ) -> Result<Vec<CredentialId>, HolderServiceError> {
-        let batch_items = match credential.r#type {
+        let batch_items = match credential.r#type() {
             CredentialType::BatchParent => {
                 self.credential_repository
                     .get_credential_list(ListQuery {
                         include_count: false,
                         filtering: Some(
-                            CredentialFilterValue::ParentCredential(credential.common.id)
+                            CredentialFilterValue::ParentCredential(credential.common().id)
                                 .condition(),
                         ),
                         ..Default::default()
@@ -678,8 +676,8 @@ impl SSIHolderService {
             }
             _ => vec![],
         };
-        Ok(std::iter::once(credential.common.id)
-            .chain(batch_items.into_iter().map(|item| item.common.id))
+        Ok(std::iter::once(credential.common().id)
+            .chain(batch_items.into_iter().map(|item| item.common().id))
             .collect())
     }
 

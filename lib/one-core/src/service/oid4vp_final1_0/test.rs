@@ -418,7 +418,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
         .expect_validate_submission()
         .returning(|_, _, _, _| {
             let mut credential = dummy_credential();
-            credential.common.schema = dummy_credential_schema_with_format("JWT").into();
+            credential.common_mut().schema = dummy_credential_schema_with_format("JWT").into();
             Ok((
                 ValidatedProofResult {
                     proved_credentials: vec![ProvedCredential {

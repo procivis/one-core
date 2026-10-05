@@ -255,8 +255,8 @@ pub(crate) async fn presented_paths_to_disclosed_keys(
     presented_paths: &[String],
     credential: &Credential,
 ) -> Result<Vec<String>, ServiceError> {
-    let claims = credential.claims.as_ref().await?;
-    let format = credential.format.as_required_ref().await?;
+    let claims = credential.claims().as_ref().await?;
+    let format = credential.format().as_required_ref().await?;
     let mappings = format.claim_mappings.as_ref().await?;
     let mappings_by_schema_id: HashMap<_, _> = mappings
         .into_iter()

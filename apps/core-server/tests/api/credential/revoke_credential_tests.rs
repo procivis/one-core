@@ -78,16 +78,20 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
     context.db.revocation_lists.create(identifier, None).await;
 
     // WHEN
-    let resp = context.api.credentials.revoke(&credential.common.id).await;
+    let resp = context
+        .api
+        .credentials
+        .revoke(&credential.common().id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Revoked, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Revoked, credential.common().state);
     assert_history_count(
         &context,
-        &credential.common.id.into(),
+        &credential.common().id.into(),
         HistoryAction::Revoked,
         1,
     )
@@ -162,13 +166,17 @@ async fn test_revoke_credential_with_webhook() {
     let webhook = context
         .server_mock
         .webhook(json!({
-            "credentialId": credential.common.id,
+            "credentialId": credential.common().id,
             "status": "REVOKED"
         }))
         .await;
 
     // WHEN
-    let resp = context.api.credentials.revoke(&credential.common.id).await;
+    let resp = context
+        .api
+        .credentials
+        .revoke(&credential.common().id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
@@ -284,7 +292,11 @@ async fn test_revoke_credential_deleted() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.revoke(&credential.common.id).await;
+    let resp = context
+        .api
+        .credentials
+        .revoke(&credential.common().id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 404);
@@ -350,15 +362,19 @@ async fn test_revoke_credential_fails_when_expired() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.revoke(&credential.common.id).await;
+    let resp = context
+        .api
+        .credentials
+        .revoke(&credential.common().id)
+        .await;
 
     // THEN - same error as revoking an already REVOKED credential (invalid state transition)
     assert_eq!(resp.status(), 400);
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0366");
 
-    let credential = context.db.credentials.get(&credential.common.id).await;
-    assert_eq!(CredentialStateEnum::Expired, credential.common.state);
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.common().state);
 }
 
 #[tokio::test]
@@ -405,7 +421,7 @@ async fn test_revoke_multi_format_batch_parent_with_rejected_format() {
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent.common.id),
+                parent_id: Some(parent.common().id),
                 format: Some(formats[0].clone()),
                 ..Default::default()
             },
@@ -421,7 +437,7 @@ async fn test_revoke_multi_format_batch_parent_with_rejected_format() {
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent.common.id),
+                parent_id: Some(parent.common().id),
                 format: Some(formats[1].clone()),
                 ..Default::default()
             },
@@ -430,14 +446,14 @@ async fn test_revoke_multi_format_batch_parent_with_rejected_format() {
     context.db.revocation_lists.create(identifier, None).await;
 
     // WHEN
-    let resp = context.api.credentials.revoke(&parent.common.id).await;
+    let resp = context.api.credentials.revoke(&parent.common().id).await;
 
     // THEN
     assert_eq!(resp.status(), 204);
-    let parent = context.db.credentials.get(&parent.common.id).await;
-    assert_eq!(CredentialStateEnum::Revoked, parent.common.state);
-    let issued_item = context.db.credentials.get(&issued_item.common.id).await;
-    assert_eq!(CredentialStateEnum::Revoked, issued_item.common.state);
-    let rejected_item = context.db.credentials.get(&rejected_item.common.id).await;
-    assert_eq!(CredentialStateEnum::Rejected, rejected_item.common.state);
+    let parent = context.db.credentials.get(&parent.common().id).await;
+    assert_eq!(CredentialStateEnum::Revoked, parent.common().state);
+    let issued_item = context.db.credentials.get(&issued_item.common().id).await;
+    assert_eq!(CredentialStateEnum::Revoked, issued_item.common().state);
+    let rejected_item = context.db.credentials.get(&rejected_item.common().id).await;
+    assert_eq!(CredentialStateEnum::Rejected, rejected_item.common().state);
 }

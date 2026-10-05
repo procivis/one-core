@@ -171,36 +171,36 @@ impl CredentialValidityManagerImpl {
             // state, so raising the flag leaves the items untouched
             None => {
                 return self
-                    .set_credential_state(credential.common.id, target_state)
+                    .set_credential_state(credential.common().id, target_state)
                     .await;
             }
             // ... and clearing it again is parent-only for the same reason: the items were never
             // marked when it was raised, so there is nothing to restore on them
             Some(RevocationState::Valid)
-                if credential.common.state == CredentialStateEnum::Expiring =>
+                if credential.common().state == CredentialStateEnum::Expiring =>
             {
                 return self
-                    .set_credential_state(credential.common.id, target_state)
+                    .set_credential_state(credential.common().id, target_state)
                     .await;
             }
             Some(revocation_state) => revocation_state,
         };
 
-        match credential.r#type {
+        match credential.r#type() {
             CredentialType::Single => {
                 self.change_revocation_state(&credential, &credential_schema, revocation_state)
                     .await?;
             }
             CredentialType::BatchItem => {
-                let parent = credential.parent.as_required_ref().await?;
+                let parent = credential.parent().as_required_ref().await?;
                 // `None` when the parent carries a state with no revocation equivalent -
                 // `Expiring` (a deliberate flag, cleared only by an explicit transition back to
                 // `Accepted`) or the terminal `Expired`. Those aren't aggregations of the items'
                 // revocation states, so the parent is left untouched instead of being recomputed
                 // from them.
                 let parent_status = revocation_state_from_credential_state(
-                    parent.common.state,
-                    parent.suspend_end_date,
+                    parent.common().state,
+                    parent.suspend_end_date(),
                 );
 
                 self.tx_manager
@@ -214,7 +214,7 @@ impl CredentialValidityManagerImpl {
 
                         // update parent state if needed
                         if parent_status.is_some_and(|status| status != revocation_state) {
-                            let batch_items = self.batch_items(parent.common.id).await?;
+                            let batch_items = self.batch_items(parent.common().id).await?;
 
                             self.update_batch_parent_state(
                                 &parent,
@@ -234,14 +234,14 @@ impl CredentialValidityManagerImpl {
                 // (`Revoked`, `Expired`, ...) and items that are not issued yet keep the state they
                 // have.
                 let batch_items_to_update: Vec<_> = self
-                    .batch_items(credential.common.id)
+                    .batch_items(credential.common().id)
                     .await?
                     .into_iter()
                     .filter(|batch_item| {
-                        can_follow_parent(batch_item.common.state)
+                        can_follow_parent(batch_item.common().state)
                             // an item already in the target state has nothing to do, except under
                             // suspension where `suspend_end_date` may have changed
-                            && (batch_item.common.state != target_state
+                            && (batch_item.common().state != target_state
                                 || matches!(change, ChangeCredentialState::Suspended { .. }))
                     })
                     .collect();
@@ -268,11 +268,11 @@ impl CredentialValidityManagerImpl {
                                         ErrorCode::BR_0162 | ErrorCode::BR_0098
                                     ) =>
                                 {
-                                    tracing::debug!(%err, "Batch item ({}) does not support revocation state {revocation_state}", batch_item.common.id);
+                                    tracing::debug!(%err, "Batch item ({}) does not support revocation state {revocation_state}", batch_item.common().id);
                                     items_error = Some(err);
                                 }
                                 Err(err) => {
-                                    tracing::info!(%err, "Updating batch_item ({}) state failed", batch_item.common.id);
+                                    tracing::info!(%err, "Updating batch_item ({}) state failed", batch_item.common().id);
                                     return Err(err);
                                 }
                             };
@@ -284,7 +284,7 @@ impl CredentialValidityManagerImpl {
                         }
 
                         // batch parent not linked directly with any technical credential, only update state
-                        self.update_credential_state(credential.common.id, revocation_state)
+                        self.update_credential_state(credential.common().id, revocation_state)
                             .await?;
 
                         Ok::<_, Error>(())
@@ -341,7 +341,7 @@ impl CredentialValidityManagerImpl {
         credential_schema: &CredentialSchema,
         revocation_state: RevocationState,
     ) -> Result<(), Error> {
-        let format = credential.format.as_required_ref().await?;
+        let format = credential.format().as_required_ref().await?;
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&format.format)?;
@@ -360,7 +360,7 @@ impl CredentialValidityManagerImpl {
             .await
             .error_while("marking credential status")?;
 
-        self.update_credential_state(credential.common.id, revocation_state)
+        self.update_credential_state(credential.common().id, revocation_state)
             .await?;
 
         Ok(())
@@ -402,13 +402,13 @@ impl CredentialValidityManagerImpl {
         }
 
         if credential
-            .common
+            .common()
             .expires_at
             .is_some_and(|expires_at| expires_at < crate::clock::now_utc())
         {
             self.credential_repository
                 .update_credential(
-                    credential.common.id,
+                    credential.common().id,
                     UpdateCredentialRequest {
                         state: Some(CredentialStateEnum::Expired),
                         ..Default::default()
@@ -419,7 +419,7 @@ impl CredentialValidityManagerImpl {
 
             return Ok((
                 CredentialValidityCheckResult {
-                    credential_id: credential.common.id,
+                    credential_id: credential.common().id,
                     status: CredentialStateEnum::Expired,
                     success: true,
                     reason: None,
@@ -428,7 +428,7 @@ impl CredentialValidityManagerImpl {
             ));
         }
 
-        let Some(credential_blob_id) = credential.credential_blob_id else {
+        let Some(credential_blob_id) = credential.credential_blob_id() else {
             return Err(Error::MappingError("no credential blob_id".to_string()));
         };
 
@@ -447,7 +447,7 @@ impl CredentialValidityManagerImpl {
             .into();
 
         let format = credential
-            .format
+            .format()
             .as_required_ref()
             .await
             .error_while("getting format")?
@@ -467,7 +467,7 @@ impl CredentialValidityManagerImpl {
             // no credential status -> credential is irrevocable
             return Ok((
                 CredentialValidityCheckResult {
-                    credential_id: credential.common.id,
+                    credential_id: credential.common().id,
                     status: CredentialStateEnum::Accepted,
                     success: true,
                     reason: None,
@@ -476,7 +476,7 @@ impl CredentialValidityManagerImpl {
             ));
         };
 
-        let current_state = credential.common.state;
+        let current_state = credential.common().state;
         let revocation_method = match credential_schema.revocation_method_id(formatter.as_ref()) {
             Some(method_id) => self
                 .revocation_method_provider
@@ -484,7 +484,7 @@ impl CredentialValidityManagerImpl {
             None => {
                 return Ok((
                     CredentialValidityCheckResult {
-                        credential_id: credential.common.id,
+                        credential_id: credential.common().id,
                         status: current_state,
                         success: false,
                         reason: Some("No revocation method specified for credential".to_owned()),
@@ -494,9 +494,9 @@ impl CredentialValidityManagerImpl {
             }
         };
 
-        let issuer_identifier = credential.issuer_identifier.as_required_ref().await?;
+        let issuer_identifier = credential.issuer_identifier().as_required_ref().await?;
 
-        let credential_data_by_role = match credential.role {
+        let credential_data_by_role = match credential.role() {
             CredentialRole::Holder => {
                 Some(CredentialDataByRole::Holder(Box::new(credential.clone())))
             }
@@ -517,7 +517,7 @@ impl CredentialValidityManagerImpl {
                 Err(error) => {
                     return Ok((
                         CredentialValidityCheckResult {
-                            credential_id: credential.common.id,
+                            credential_id: credential.common().id,
                             status: current_state,
                             success: false,
                             reason: Some(error.to_string()),
@@ -548,7 +548,7 @@ impl CredentialValidityManagerImpl {
         if current_state != detected_state {
             self.credential_repository
                 .update_credential(
-                    credential.common.id,
+                    credential.common().id,
                     UpdateCredentialRequest {
                         state: Some(detected_state),
                         suspend_end_date: Clearable::ForceSet(suspend_end_date),
@@ -561,7 +561,7 @@ impl CredentialValidityManagerImpl {
 
         Ok((
             CredentialValidityCheckResult {
-                credential_id: credential.common.id,
+                credential_id: credential.common().id,
                 status: detected_state,
                 success: true,
                 reason: None,
@@ -583,8 +583,8 @@ impl CredentialValidityManagerImpl {
         // a parent whose state has no revocation equivalent (`Expiring`, `Expired`) is not an
         // aggregation of its items - see `apply_state_change`
         if revocation_state_from_credential_state(
-            credential.common.state,
-            credential.suspend_end_date,
+            credential.common().state,
+            credential.suspend_end_date(),
         )
         .is_none()
         {
@@ -600,13 +600,13 @@ impl CredentialValidityManagerImpl {
             };
 
         // update parent credential state if change detected (use the best state among the items)
-        if credential.common.state != best_state.into()
-            || (credential.common.state == CredentialStateEnum::Suspended
-                && credential.suspend_end_date != overall_best_suspend_end_date)
+        if credential.common().state != best_state.into()
+            || (credential.common().state == CredentialStateEnum::Suspended
+                && credential.suspend_end_date() != overall_best_suspend_end_date)
         {
             self.credential_repository
                 .update_credential(
-                    credential.common.id,
+                    credential.common().id,
                     UpdateCredentialRequest {
                         state: Some(best_state.into()),
                         suspend_end_date: Clearable::ForceSet(overall_best_suspend_end_date),
@@ -632,10 +632,10 @@ impl CredentialValidityManagerImpl {
         item_revocation_states: &[RevocationState],
     ) -> Result<CredentialStateEnum, Error> {
         if is_batch_parent_expired(parent, interaction, crate::clock::now_utc())? {
-            if !parent.common.state.is_terminal() {
+            if !parent.common().state.is_terminal() {
                 self.credential_repository
                     .update_credential(
-                        parent.common.id,
+                        parent.common().id,
                         UpdateCredentialRequest {
                             state: Some(CredentialStateEnum::Expired),
                             ..Default::default()
@@ -649,12 +649,12 @@ impl CredentialValidityManagerImpl {
 
         // `Expiring` is a deliberate flag on the parent, not an aggregation of its items - it is
         // only ever cleared by an explicit transition back to `Accepted`
-        if parent.common.state == CredentialStateEnum::Expiring {
-            return Ok(parent.common.state);
+        if parent.common().state == CredentialStateEnum::Expiring {
+            return Ok(parent.common().state);
         }
 
         if item_revocation_states.is_empty() {
-            return Ok(parent.common.state);
+            return Ok(parent.common().state);
         }
 
         self.update_batch_parent_state(parent, item_revocation_states)
@@ -669,7 +669,7 @@ pub(crate) fn is_batch_parent_expired(
     now: OffsetDateTime,
 ) -> Result<bool, Error> {
     if parent
-        .common
+        .common()
         .expires_at
         .is_some_and(|expires_at| expires_at < now)
     {
@@ -709,19 +709,19 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .await
             .error_while("getting credential")?;
 
-        if credential.common.deleted_at.is_some() {
+        if credential.common().deleted_at.is_some() {
             return Err(EntityNotFoundError::Credential(*credential_id)
                 .error_while("validating credential")
                 .into());
         }
-        if credential.role != CredentialRole::Issuer {
+        if credential.role() != CredentialRole::Issuer {
             return Err(Error::InvalidCredentialRole {
-                role: credential.role,
-                credential_id: credential.common.id,
+                role: credential.role(),
+                credential_id: credential.common().id,
             });
         }
 
-        let credential_schema = credential.common.schema.as_ref().await?.clone();
+        let credential_schema = credential.common().schema.as_ref().await?.clone();
 
         throw_if_org_id_not_matching_session(
             credential_schema.organisation.id_ref(),
@@ -730,16 +730,16 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         .error_while("verifying organisation")?;
 
         validate_transition(
-            credential.common.state,
-            credential.r#type,
+            credential.common().state,
+            credential.r#type(),
             change_credential_state,
         )?;
 
         // re-applying the state a credential already has is a no-op. Two exceptions: suspension,
         // where the request may carry a new `suspend_end_date`, and a batch parent, whose state
         // is an aggregate of its items - items may still have to follow.
-        if credential.common.state == CredentialStateEnum::from(change_credential_state)
-            && credential.r#type != CredentialType::BatchParent
+        if credential.common().state == CredentialStateEnum::from(change_credential_state)
+            && credential.r#type() != CredentialType::BatchParent
             && !matches!(
                 change_credential_state,
                 ChangeCredentialState::Suspended { .. }
@@ -766,14 +766,14 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .await
             .error_while("verifying credential schema organisation")?;
 
-        if credential.common.deleted_at.is_some() {
+        if credential.common().deleted_at.is_some() {
             return Err(EntityNotFoundError::Credential(credential_id)
                 .error_while("validating credential")
                 .into());
         }
-        if credential.role != CredentialRole::Holder {
+        if credential.role() != CredentialRole::Holder {
             return Err(Error::InvalidCredentialRole {
-                role: credential.role,
+                role: credential.role(),
                 credential_id,
             });
         }
@@ -782,11 +782,11 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             return Ok(result);
         }
 
-        let credential_schema = credential.common.schema.as_ref().await?;
+        let credential_schema = credential.common().schema.as_ref().await?;
 
-        match credential.r#type {
+        match credential.r#type() {
             CredentialType::Single => {
-                let format = credential.format.as_required_ref().await?;
+                let format = credential.format().as_required_ref().await?;
                 let format_type = self
                     .config
                     .format
@@ -812,12 +812,12 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 Ok(result)
             }
             CredentialType::BatchParent => {
-                let batch_items = self.batch_items(credential.common.id).await?;
+                let batch_items = self.batch_items(credential.common().id).await?;
 
                 if batch_items.is_empty() {
                     return Ok(CredentialValidityCheckResult {
-                        credential_id: credential.common.id,
-                        status: credential.common.state,
+                        credential_id: credential.common().id,
+                        status: credential.common().state,
                         success: false,
                         reason: Some("No batch items found".to_owned()),
                     });
@@ -827,7 +827,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 for batch_item in batch_items {
                     let batch_item = self
                         .credential_repository
-                        .get_credential(&batch_item.common.id)
+                        .get_credential(&batch_item.common().id)
                         .await
                         .error_while("getting batch item")?;
 
@@ -841,8 +841,8 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
 
                     if !result.success {
                         return Ok(CredentialValidityCheckResult {
-                            credential_id: credential.common.id,
-                            status: credential.common.state,
+                            credential_id: credential.common().id,
+                            status: credential.common().state,
                             ..result
                         });
                     }
@@ -861,7 +861,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     }
                 }
 
-                let interaction = match credential.common.interaction.as_ref() {
+                let interaction = match credential.common().interaction.as_ref() {
                     Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
                     None => None,
                 };
@@ -870,7 +870,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     .await?;
 
                 Ok(CredentialValidityCheckResult {
-                    credential_id: credential.common.id,
+                    credential_id: credential.common().id,
                     status,
                     success: true,
                     reason: None,
@@ -886,13 +886,13 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     .await?;
 
                 if result.success {
-                    let parent = credential.parent.as_required_ref().await?;
+                    let parent = credential.parent().as_required_ref().await?;
 
-                    if parent.r#type == CredentialType::BatchParent {
-                        let batch_items = self.batch_items(parent.common.id).await?;
+                    if parent.r#type() == CredentialType::BatchParent {
+                        let batch_items = self.batch_items(parent.common().id).await?;
                         let item_states = item_revocation_states(&batch_items);
 
-                        let interaction = match credential.common.interaction.as_ref() {
+                        let interaction = match credential.common().interaction.as_ref() {
                             Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
                             None => None,
                         };
@@ -1020,7 +1020,7 @@ fn item_revocation_states(batch_items: &[Credential]) -> Vec<RevocationState> {
     batch_items
         .iter()
         .filter_map(|item| {
-            revocation_state_from_credential_state(item.common.state, item.suspend_end_date)
+            revocation_state_from_credential_state(item.common().state, item.suspend_end_date())
         })
         .collect()
 }
@@ -1029,7 +1029,7 @@ fn item_revocation_states(batch_items: &[Credential]) -> Vec<RevocationState> {
 fn check_invalid_or_terminal_state(
     credential: &Credential,
 ) -> Option<CredentialValidityCheckResult> {
-    match credential.common.state {
+    match credential.common().state {
         CredentialStateEnum::Accepted | CredentialStateEnum::Suspended => {
             // continue flow
             None
@@ -1037,7 +1037,7 @@ fn check_invalid_or_terminal_state(
         CredentialStateEnum::Revoked => {
             // credential already revoked, no need to check further
             Some(CredentialValidityCheckResult {
-                credential_id: credential.common.id,
+                credential_id: credential.common().id,
                 status: CredentialStateEnum::Revoked,
                 success: true,
                 reason: None,
@@ -1046,7 +1046,7 @@ fn check_invalid_or_terminal_state(
         CredentialStateEnum::Expired => {
             // credential already expired, no need to check further (refresh is not possible)
             Some(CredentialValidityCheckResult {
-                credential_id: credential.common.id,
+                credential_id: credential.common().id,
                 status: CredentialStateEnum::Expired,
                 success: true,
                 reason: None,
@@ -1055,7 +1055,7 @@ fn check_invalid_or_terminal_state(
         status => {
             // cannot check pending/offered credentials etc
             Some(CredentialValidityCheckResult {
-                credential_id: credential.common.id,
+                credential_id: credential.common().id,
                 status,
                 success: false,
                 reason: Some(format!("Invalid credential state: {status}")),

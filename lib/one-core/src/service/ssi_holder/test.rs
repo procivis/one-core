@@ -550,7 +550,7 @@ async fn test_accept_credential() {
         .returning(|credentials| {
             Ok(credentials
                 .into_iter()
-                .map(|credential| credential.common.id)
+                .map(|credential| credential.common().id)
                 .collect())
         });
 
@@ -702,7 +702,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
         .returning(|credentials| {
             Ok(credentials
                 .into_iter()
-                .map(|credential| credential.common.id)
+                .map(|credential| credential.common().id)
                 .collect())
         });
 
@@ -896,7 +896,7 @@ async fn test_accept_credential_with_did() {
         .returning(|credentials| {
             Ok(credentials
                 .into_iter()
-                .map(|credential| credential.common.id)
+                .map(|credential| credential.common().id)
                 .collect())
         });
 
@@ -1019,7 +1019,7 @@ async fn test_accept_credential_batch() {
         .returning(|credentials| {
             Ok(credentials
                 .into_iter()
-                .map(|credential| credential.common.id)
+                .map(|credential| credential.common().id)
                 .collect())
         });
 
@@ -1127,7 +1127,7 @@ async fn test_accept_credential_batch() {
         .await
         .unwrap();
 
-    assert_eq!(response.credential_ids, vec![main_credential.common.id]);
+    assert_eq!(response.credential_ids, vec![main_credential.common().id]);
 }
 
 #[tokio::test]
@@ -1236,7 +1236,7 @@ async fn test_accept_credential_wrong_tx_code() {
 #[tokio::test]
 async fn test_reject_credential() {
     let mut credential = dummy_credential(None);
-    credential.common.state = CredentialStateEnum::Accepted;
+    credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -1283,7 +1283,7 @@ async fn test_reject_credential() {
 #[tokio::test]
 async fn test_reject_credential_failed_issuer_notification() {
     let mut credential = dummy_credential(None);
-    credential.common.state = CredentialStateEnum::Accepted;
+    credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -1507,7 +1507,7 @@ async fn test_continue_issuance() {
         .return_once(|credentials| {
             Ok(credentials
                 .into_iter()
-                .map(|credential| credential.common.id)
+                .map(|credential| credential.common().id)
                 .collect())
         });
 
@@ -1687,7 +1687,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         }]
         .into(),
     };
-    Credential {
+    Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -2045,16 +2045,23 @@ fn dummy_interaction() -> HolderInteractionData {
 #[tokio::test]
 async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
     let service = mock_ssi_holder_service();
-    let schema = dummy_credential(None).common.schema;
+    let Credential::Generic { common, .. } = dummy_credential(None);
+    let schema = common.schema;
 
     // The protocol issued JWT and MDOC configurations of the same schema, each with its own parent.
     let mut issued = vec![];
     for (configuration_id, format_name) in [("jwt", "JWT"), ("mdoc", "MDOC")] {
         let mut credential = crate::service::test_utilities::dummy_credential();
-        credential.common.schema = schema.clone();
-        credential.embedded_disclosure_policy = Some(format!("{configuration_id}-policy"));
+        credential.common_mut().schema = schema.clone();
+        *credential.embedded_disclosure_policy_mut() = Some(format!("{configuration_id}-policy"));
         {
-            let mut format = credential.format.as_mut().unwrap().as_mut().await.unwrap();
+            let mut format = credential
+                .format_mut()
+                .as_mut()
+                .unwrap()
+                .as_mut()
+                .await
+                .unwrap();
             format.credential_schema_id = schema.id();
             format.format = format_name.into();
         }
@@ -2063,9 +2070,9 @@ async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
             serialized: Some(format!("{configuration_id}-credential").into()),
         };
         let parent = item.batch_parent(false);
-        item.credential.r#type = CredentialType::BatchItem;
-        item.credential.parent = Some(parent.credential.clone().into());
-        item.credential.common.interaction = None;
+        *item.credential.type_mut() = CredentialType::BatchItem;
+        *item.credential.parent_mut() = Some(parent.credential.clone().into());
+        item.credential.common_mut().interaction = None;
         issued.push(IssuanceAcceptResponse {
             credential_configuration_id: configuration_id.to_string(),
             main_credential: parent,
@@ -2087,7 +2094,7 @@ async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
     assert_eq!(batch.main_credential.serialized, jwt_parent.serialized);
     assert_eq!(
         assignments,
-        [("mdoc".to_string(), jwt_parent.credential.common.id)]
+        [("mdoc".to_string(), jwt_parent.credential.common().id)]
             .into_iter()
             .collect()
     );
@@ -2095,7 +2102,7 @@ async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
     // Reparenting must preserve both concrete credentials, including formats, policies, claims and blobs.
     assert_eq!(batch.batch_items.len(), 2);
     for (item, mut expected) in batch.batch_items.iter().zip(original_items) {
-        expected.credential.parent = Some(jwt_parent.credential.clone().into());
+        *expected.credential.parent_mut() = Some(jwt_parent.credential.clone().into());
         assert_eq!(item.credential, expected.credential);
         assert_eq!(item.serialized, expected.serialized);
     }
@@ -2149,7 +2156,8 @@ async fn accept_groups_batches_by_non_metadata_claims(
     #[case] merge: bool,
 ) {
     let service = mock_ssi_holder_service();
-    let schema = dummy_credential(None).common.schema;
+    let Credential::Generic { common, .. } = dummy_credential(None);
+    let schema = common.schema;
     let mut issued = vec![];
     // Repeated configurations must find their matching group even after another group appears.
     for (index, claims) in [first_claims, second_claims, first_claims, second_claims]
@@ -2157,8 +2165,8 @@ async fn accept_groups_batches_by_non_metadata_claims(
         .enumerate()
     {
         let mut credential = dummy_credential(None);
-        credential.common.schema = schema.clone();
-        credential.claims = claims
+        credential.common_mut().schema = schema.clone();
+        *credential.claims_mut() = claims
             .iter()
             .map(|(path, value, metadata)| Claim {
                 id: Uuid::new_v4().into(),
@@ -2181,9 +2189,9 @@ async fn accept_groups_batches_by_non_metadata_claims(
             serialized: Some(format!("credential-{index}").into()),
         };
         let parent = item.batch_parent(false);
-        item.credential.r#type = CredentialType::BatchItem;
-        item.credential.parent = Some(parent.credential.clone().into());
-        item.credential.common.interaction = None;
+        *item.credential.type_mut() = CredentialType::BatchItem;
+        *item.credential.parent_mut() = Some(parent.credential.clone().into());
+        item.credential.common_mut().interaction = None;
         issued.push(IssuanceAcceptResponse {
             credential_configuration_id: format!("config-{index}"),
             main_credential: parent,
@@ -2208,13 +2216,13 @@ async fn accept_groups_batches_by_non_metadata_claims(
         assert_eq!(group.batch_items.len(), members.len());
         for (item, (index, response)) in group.batch_items.iter().zip(members) {
             let mut expected = response.batch_items[0].clone();
-            expected.credential.parent = Some(parent.credential.clone().into());
+            *expected.credential.parent_mut() = Some(parent.credential.clone().into());
             assert_eq!(item.credential, expected.credential);
             assert_eq!(item.serialized, expected.serialized);
             if index != group_index {
                 expected_assignments.insert(
                     response.credential_configuration_id.clone(),
-                    parent.credential.common.id,
+                    parent.credential.common().id,
                 );
             }
         }
@@ -2227,14 +2235,9 @@ async fn accept_keeps_singles_separate_even_with_the_same_schema() {
     let service = mock_ssi_holder_service();
     let first = dummy_credential(None);
     let second = {
-        let base_credential = first.clone();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = first.clone();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential
     };
     let expected = [first, second];
     let issued = expected
@@ -2271,15 +2274,10 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
     let first = dummy_credential(None);
     let second = dummy_credential(None);
     let third = {
-        let base_credential = first.clone();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                ecosystem: Some("another-ecosystem".into()),
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = first.clone();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().ecosystem = Some("another-ecosystem".into());
+        updated_credential
     };
     let issued: Vec<_> = [first, second, third]
         .into_iter()
@@ -2290,9 +2288,9 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
                 serialized: Some("credential".into()),
             };
             let parent = item.batch_parent(true);
-            item.credential.r#type = CredentialType::BatchItem;
-            item.credential.parent = Some(parent.credential.clone().into());
-            item.credential.common.interaction = None;
+            *item.credential.type_mut() = CredentialType::BatchItem;
+            *item.credential.parent_mut() = Some(parent.credential.clone().into());
+            item.credential.common_mut().interaction = None;
             IssuanceAcceptResponse {
                 credential_configuration_id: format!("config-{index}"),
                 main_credential: parent,
@@ -2302,7 +2300,7 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
         .collect();
     let expected_ids: Vec<_> = issued
         .iter()
-        .map(|response| response.main_credential.credential.common.id)
+        .map(|response| response.main_credential.credential.common().id)
         .collect();
 
     let (grouped, assignments) = service.group_issued_credentials(issued).await.unwrap();
@@ -2310,12 +2308,12 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
     assert!(assignments.is_empty());
     assert_eq!(grouped.len(), 3);
     for (response, id) in grouped.iter().zip(expected_ids) {
-        assert_eq!(response.main_credential.credential.common.id, id);
+        assert_eq!(response.main_credential.credential.common().id, id);
         assert_eq!(response.batch_items.len(), 1);
         assert_eq!(
             response.batch_items[0]
                 .credential
-                .parent
+                .parent()
                 .as_ref()
                 .unwrap()
                 .id(),
@@ -2339,24 +2337,19 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
         serialized: None,
     }
     .batch_parent(true);
-    first.r#type = CredentialType::BatchItem;
-    first.parent = Some(parent.credential.clone().into());
-    first.common.interaction = None;
+    *first.type_mut() = CredentialType::BatchItem;
+    *first.parent_mut() = Some(parent.credential.clone().into());
+    first.common_mut().interaction = None;
     let second = {
-        let base_credential = first.clone();
-        Credential {
-            common: CredentialCommon {
-                id: Uuid::new_v4().into(),
-                ..base_credential.common
-            },
-            credential_blob_id: Some(Uuid::new_v4().into()),
-            ..base_credential
-        }
+        let mut updated_credential = first.clone();
+        updated_credential.common_mut().id = Uuid::new_v4().into();
+        *updated_credential.credential_blob_id_mut() = Some(Uuid::new_v4().into());
+        updated_credential
     };
-    let expected_ids = vec![first.common.id, second.common.id];
+    let expected_ids = vec![first.common().id, second.common().id];
     let expected_validations = vec![
-        ("first".to_string(), first.common.id),
-        ("second".to_string(), second.common.id),
+        ("first".to_string(), first.common().id),
+        ("second".to_string(), second.common().id),
     ];
     let configurations = [("first", first), ("second", second)];
     let refreshed = configurations
@@ -2374,8 +2367,8 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
         .map(|(configuration_id, item)| HolderCredentialConfiguration {
             credential_configuration_id: configuration_id.to_string(),
             format: "jwt_vc_json".to_string(),
-            credential_id: Some(parent.credential.common.id),
-            credential_schema_format_id: item.format.as_ref().map(|format| format.id()),
+            credential_id: Some(parent.credential.common().id),
+            credential_schema_format_id: item.format().as_ref().map(|format| format.id()),
             ..data.credential_configurations[0].clone()
         })
         .collect();
@@ -2393,7 +2386,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
     for (_, item) in configurations {
         credential_repository
             .expect_get_credential()
-            .with(eq(item.common.id))
+            .with(eq(item.common().id))
             .once()
             .return_once(move |_| Ok(item));
     }
@@ -2443,7 +2436,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
                 validations
                     .lock()
                     .unwrap()
-                    .push((credential_configuration_id.clone(), credential.common.id));
+                    .push((credential_configuration_id.clone(), credential.common().id));
             }
             Ok(None)
         });

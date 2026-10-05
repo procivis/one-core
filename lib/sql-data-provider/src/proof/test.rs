@@ -754,7 +754,7 @@ async fn test_set_proof_claims_success() {
             &proof_id,
             vec![ProofClaim {
                 claim,
-                credential: Related::new(credential.common.id, get_credential_repository_mock()),
+                credential: Related::new(credential.common().id, get_credential_repository_mock()),
             }],
         )
         .await;

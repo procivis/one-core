@@ -77,47 +77,48 @@ async fn test_issuer_submit_succeeds() {
     };
 
     let credential = {
-        let base_credential = dummy_credential().await;
-        Credential {
-            common: CredentialCommon {
-                state: CredentialStateEnum::Offered,
-                ..base_credential.common
-            },
-            suspend_end_date: None,
-            holder_identifier: Some(
-                Identifier {
-                    data: IdentifierData::Did((dummy_did()).into()),
-                    ..dummy_identifier()
-                }
-                .into(),
-            ),
-            issuer_identifier: Some(
-                Identifier {
-                    data: IdentifierData::Did(
-                        (Did {
-                            keys: vec![RelatedKey {
-                                role: KeyRole::AssertionMethod,
-                                key: key.to_owned(),
-                                reference: "1".to_string(),
-                            }]
-                            .into(),
-                            ..dummy_did()
-                        })
+        let mut updated_credential = dummy_credential().await;
+        updated_credential.common_mut().state = CredentialStateEnum::Offered;
+        *updated_credential.suspend_end_date_mut() = None;
+        *updated_credential.holder_identifier_mut() = Some(
+            Identifier {
+                data: IdentifierData::Did((dummy_did()).into()),
+                ..dummy_identifier()
+            }
+            .into(),
+        );
+        *updated_credential.issuer_identifier_mut() = Some(
+            Identifier {
+                data: IdentifierData::Did(
+                    (Did {
+                        keys: vec![RelatedKey {
+                            role: KeyRole::AssertionMethod,
+                            key: key.to_owned(),
+                            reference: "1".to_string(),
+                        }]
                         .into(),
-                    ),
-                    ..dummy_identifier()
-                }
-                .into(),
-            ),
-            key: Some(key.into()),
-            ..base_credential
-        }
+                        ..dummy_did()
+                    })
+                    .into(),
+                ),
+                ..dummy_identifier()
+            }
+            .into(),
+        );
+        *updated_credential.key_mut() = Some(key.into());
+        updated_credential
     };
 
     let credential_copy = credential.clone();
     let updated_schema = crate::model::credential_schema::CredentialSchema {
         organisation: dummy_organisation(None).into(),
-        ..credential.common.schema.as_ref().await.unwrap().to_owned()
+        ..credential
+            .common()
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     };
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -129,7 +130,7 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .return_once(move |_| {
             let mut credential = credential_copy;
-            credential.common.schema = updated_schema.into();
+            credential.common_mut().schema = updated_schema.into();
             Ok(credential)
         });
 
@@ -239,7 +240,7 @@ async fn test_issuer_submit_succeeds() {
     .unwrap();
 
     let format_id = credential
-        .common
+        .common()
         .schema
         .as_ref()
         .await
@@ -270,7 +271,13 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
 async fn generic_credential_with_format(state: CredentialStateEnum, format: &str) -> Credential {
     let key = dummy_key();
     let credential = dummy_credential().await;
-    let dummy_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
+    let dummy_schema = credential
+        .common()
+        .schema
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
     let dummy_format = dummy_schema
         .formats
         .as_ref()
@@ -298,21 +305,19 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         .unwrap()
         .first()
         .cloned();
-    Credential {
-        common: CredentialCommon {
-            state,
-            schema: credential_schema.into(),
-            ..credential.common
-        },
-        suspend_end_date: None,
-        holder_identifier: Some(
+    {
+        let mut updated_credential = credential;
+        updated_credential.common_mut().state = state;
+        updated_credential.common_mut().schema = credential_schema.into();
+        *updated_credential.suspend_end_date_mut() = None;
+        *updated_credential.holder_identifier_mut() = Some(
             Identifier {
                 data: IdentifierData::Did((dummy_did()).into()),
                 ..dummy_identifier()
             }
             .into(),
-        ),
-        issuer_identifier: Some(
+        );
+        *updated_credential.issuer_identifier_mut() = Some(
             Identifier {
                 data: IdentifierData::Did(
                     (Did {
@@ -329,10 +334,10 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
                 ..dummy_identifier()
             }
             .into(),
-        ),
-        key: Some(key.into()),
-        format: credential_format.map(Into::into),
-        ..credential
+        );
+        *updated_credential.key_mut() = Some(key.into());
+        *updated_credential.format_mut() = credential_format.map(Into::into);
+        updated_credential
     }
 }
 
@@ -346,7 +351,13 @@ async fn test_issue_credential_for_mdoc_succeeds() {
     let credential_copy = credential.clone();
     let updated_schema = CredentialSchema {
         organisation: dummy_organisation(None).into(),
-        ..credential.common.schema.as_ref().await.unwrap().to_owned()
+        ..credential
+            .common()
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     };
     credential_repository
         .expect_get_credential()
@@ -357,7 +368,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         .once()
         .return_once(move |_| {
             let mut credential = credential_copy;
-            credential.common.schema = updated_schema.into();
+            credential.common_mut().schema = updated_schema.into();
             Ok(credential)
         });
 
@@ -441,7 +452,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
     .unwrap();
 
     let format_id = credential
-        .common
+        .common()
         .schema
         .as_ref()
         .await
@@ -471,19 +482,20 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
 
     let old_last_modified = crate::clock::now_utc() - Duration::days(5);
     let credential = {
-        let base_credential = generic_mdoc_credential(CredentialStateEnum::Accepted).await;
-        Credential {
-            common: CredentialCommon {
-                last_modified: old_last_modified,
-                ..base_credential.common
-            },
-            ..base_credential
-        }
+        let mut updated_credential = generic_mdoc_credential(CredentialStateEnum::Accepted).await;
+        updated_credential.common_mut().last_modified = old_last_modified;
+        updated_credential
     };
     let credential_copy = credential.clone();
     let updated_schema = CredentialSchema {
         organisation: dummy_organisation(None).into(),
-        ..credential.common.schema.as_ref().await.unwrap().to_owned()
+        ..credential
+            .common()
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned()
     };
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -495,7 +507,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         .times(2)
         .returning(move |_| {
             let mut credential = credential_copy.clone();
-            credential.common.schema = updated_schema.clone().into();
+            credential.common_mut().schema = updated_schema.clone().into();
             Ok(credential)
         });
 
@@ -602,7 +614,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
     .unwrap();
 
     let format_id = credential
-        .common
+        .common()
         .schema
         .as_ref()
         .await
@@ -709,7 +721,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     .unwrap();
 
     let format_id = credential
-        .common
+        .common()
         .schema
         .as_ref()
         .await
@@ -810,7 +822,7 @@ async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
     .unwrap();
 
     let format_id = credential
-        .common
+        .common()
         .schema
         .as_ref()
         .await
@@ -900,7 +912,7 @@ async fn dummy_credential() -> Credential {
         }]
         .into(),
     };
-    Credential {
+    Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,

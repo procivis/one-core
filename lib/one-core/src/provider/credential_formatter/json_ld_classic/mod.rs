@@ -392,7 +392,7 @@ impl CredentialFormatter for JsonLdClassic {
             })
             .transpose()?;
 
-        Ok(Credential {
+        Ok(Credential::Generic {
             common: CredentialCommon {
                 expires_at: vcdm.valid_until.or(vcdm.expiration_date),
                 ecosystem: None,

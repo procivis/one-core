@@ -97,23 +97,23 @@ impl EudiEcosystem {
                 result.total_checks += 1;
 
                 // a batch shares one WIA and is revoked as a whole, through its parent
-                let main_credential = match &credential.parent {
+                let main_credential = match &credential.parent() {
                     Some(parent) => &parent.as_ref().await?,
                     None => credential,
                 };
 
-                let wia_revoked = match cached_wia_status.get(&main_credential.common.id) {
+                let wia_revoked = match cached_wia_status.get(&main_credential.common().id) {
                     Some(revoked) => *revoked,
                     None => {
                         let revoked = self
                             .attestation_revoked(
                                 main_credential,
                                 blob_storage.as_ref(),
-                                credential.wallet_instance_attestation_blob_id,
+                                credential.wallet_instance_attestation_blob_id(),
                                 AttestationType::WalletInstanceAttestation,
                             )
                             .await?;
-                        cached_wia_status.insert(main_credential.common.id, revoked);
+                        cached_wia_status.insert(main_credential.common().id, revoked);
 
                         if revoked {
                             self.revoke_pid(
@@ -137,7 +137,7 @@ impl EudiEcosystem {
                     .attestation_revoked(
                         credential,
                         blob_storage.as_ref(),
-                        credential.wallet_key_attestation_blob_id,
+                        credential.wallet_key_attestation_blob_id(),
                         AttestationType::KeyAttestation,
                     )
                     .await?
@@ -163,17 +163,17 @@ impl EudiEcosystem {
     ) {
         let Err(error) = self
             .credential_validity_manager
-            .change_credential_state(&credential.common.id, ChangeCredentialState::Revoked)
+            .change_credential_state(&credential.common().id, ChangeCredentialState::Revoked)
             .await
         else {
-            result.revoked_credential_ids.push(credential.common.id);
+            result.revoked_credential_ids.push(credential.common().id);
             return;
         };
 
-        result.failed_credential_ids.push(credential.common.id);
+        result.failed_credential_ids.push(credential.common().id);
 
         if error.error_code() == ErrorCode::BR_0098 {
-            let schema_id = credential.common.schema.id();
+            let schema_id = credential.common().schema.id();
             if schemas_without_revocation.insert(schema_id) {
                 tracing::warn!(
                     "PIDs of credential schema {schema_id} cannot be revoked because the schema does \
@@ -181,22 +181,22 @@ impl EudiEcosystem {
                 );
             }
         } else {
-            tracing::warn!("Failed to revoke PID `{}`: {error}", credential.common.id);
+            tracing::warn!("Failed to revoke PID `{}`: {error}", credential.common().id);
         }
 
-        if credential.r#type != CredentialType::BatchParent {
+        if credential.r#type() != CredentialType::BatchParent {
             // Only batch parents can be flagged as expiring
             return;
         }
 
         if let Err(error) = self
             .credential_validity_manager
-            .change_credential_state(&credential.common.id, ChangeCredentialState::Expiring)
+            .change_credential_state(&credential.common().id, ChangeCredentialState::Expiring)
             .await
         {
             tracing::warn!(
                 "Failed to flag PID `{}` as expiring: {error}",
-                credential.common.id
+                credential.common().id
             );
         }
     }
@@ -246,7 +246,7 @@ impl EudiEcosystem {
                 tracing::warn!(
                     "Could not check {} status of credential `{}`: {error}",
                     r#type,
-                    credential.common.id
+                    credential.common().id
                 );
                 Ok(false)
             }

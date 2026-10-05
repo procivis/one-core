@@ -30,11 +30,11 @@ pub(super) async fn prepare_credentials(
     let mut ids = HashSet::new();
     let mut credentials = Vec::with_capacity(requests.len());
     for credential in requests {
-        if !ids.insert(credential.common.id) {
+        if !ids.insert(credential.common().id) {
             return Err(DataLayerError::AlreadyExists);
         }
         let claims = credential
-            .claims
+            .claims()
             .as_ref()
             .await?
             .iter()
@@ -149,19 +149,19 @@ async fn insert_credential_rows(
     let (parents, items): (Vec<_>, Vec<_>) = credentials
         .iter()
         .map(|item| &item.credential)
-        .partition(|credential| credential.parent.is_none());
+        .partition(|credential| credential.parent().is_none());
     for group in [parents, items] {
         // 30 columns per credential: 25 rows use at most 750 binds.
         for chunk in group.chunks(25) {
             let models = chunk
                 .iter()
                 .map(|credential| {
-                    let organisation_id = organisations.get(&credential.common.schema.id()).ok_or(
-                        DataLayerError::MissingRequiredRelation {
+                    let organisation_id = organisations
+                        .get(&credential.common().schema.id())
+                        .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "credential_schema",
-                            id: credential.common.schema.id().to_string(),
-                        },
-                    )?;
+                            id: credential.common().schema.id().to_string(),
+                        })?;
                     Ok(request_to_active_model(credential, *organisation_id))
                 })
                 .collect::<Result<Vec<_>, DataLayerError>>()?;
@@ -182,7 +182,7 @@ async fn organisation_ids(
 ) -> Result<HashMap<CredentialSchemaId, OrganisationId>, DataLayerError> {
     let schema_ids: HashSet<CredentialSchemaId> = credentials
         .iter()
-        .map(|item| item.credential.common.schema.id())
+        .map(|item| item.credential.common().schema.id())
         .collect();
     let rows: Vec<(CredentialSchemaId, OrganisationId)> = credential_schema::Entity::find()
         .select_only()
@@ -228,7 +228,7 @@ async fn insert_claim_associations(
         .flat_map(|item| {
             item.claims
                 .iter()
-                .map(|claim| (item.credential.common.id, claim.id))
+                .map(|claim| (item.credential.common().id, claim.id))
         })
         .collect();
     // Two IDs per association: 400 rows use 800 binds.

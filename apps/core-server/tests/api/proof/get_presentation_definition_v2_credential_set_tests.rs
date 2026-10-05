@@ -66,7 +66,7 @@ async fn test_get_presentation_definition_v2_credential_sets_simple() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.common.id);
+        .assert_eq(&credential.common().id);
     body["credentialQueries"]["test_id2"]["failureHint"]["reason"]
         .assert_eq(&"NO_CREDENTIAL".to_string());
     let credential_sets = json!([
@@ -154,12 +154,12 @@ async fn test_get_presentation_definition_v2_credential_sets_multiple_credential
     assert!(
         query1_creds
             .iter()
-            .any(|c| c["id"] == credential1.common.id.to_string())
+            .any(|c| c["id"] == credential1.common().id.to_string())
     );
     assert!(
         query1_creds
             .iter()
-            .any(|c| c["id"] == credential2.common.id.to_string())
+            .any(|c| c["id"] == credential2.common().id.to_string())
     );
     let query2_creds = body["credentialQueries"]["test_id2"]["applicableCredentials"]
         .as_array()
@@ -168,12 +168,12 @@ async fn test_get_presentation_definition_v2_credential_sets_multiple_credential
     assert!(
         query2_creds
             .iter()
-            .any(|c| c["id"] == credential3.common.id.to_string())
+            .any(|c| c["id"] == credential3.common().id.to_string())
     );
     assert!(
         query2_creds
             .iter()
-            .any(|c| c["id"] == credential4.common.id.to_string())
+            .any(|c| c["id"] == credential4.common().id.to_string())
     );
     let credential_sets = json!([
         {
@@ -257,9 +257,9 @@ async fn test_get_presentation_definition_v2_optional_credential_sets() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential1.common.id);
+        .assert_eq(&credential1.common().id);
     body["credentialQueries"]["test_id2"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential2.common.id);
+        .assert_eq(&credential2.common().id);
     let credential_sets = json!([
         {
             "options": [

@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::error::IssuanceProtocolError;
-use crate::model::credential::{Credential, CredentialCommon, CredentialType};
+use crate::model::credential::{Credential, CredentialType};
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 
@@ -102,30 +102,25 @@ impl CredentialWithBlob {
     pub fn batch_parent(&self, refreshable: bool) -> Self {
         Self {
             credential: {
-                let base_credential = self.credential.clone();
-                Credential {
-                    common: CredentialCommon {
-                        id: Uuid::new_v4().into(),
-                        expires_at: if refreshable {
-                            None
-                        } else {
-                            self.credential.common.expires_at
-                        },
-                        ..base_credential.common
-                    },
-                    r#type: CredentialType::BatchParent,
-                    embedded_disclosure_policy: None,
-                    format: None,
-                    credential_blob_id: None,
-                    wallet_instance_attestation_blob_id: None,
-                    wallet_key_attestation_blob_id: None,
-                    issuer_identifier: None,
-                    issuer_certificate: None,
-                    holder_identifier: None,
-                    key: None,
-                    claims: Default::default(),
-                    ..base_credential
-                }
+                let mut updated_credential = self.credential.clone();
+                updated_credential.common_mut().id = Uuid::new_v4().into();
+                updated_credential.common_mut().expires_at = if refreshable {
+                    None
+                } else {
+                    self.credential.common().expires_at
+                };
+                *updated_credential.type_mut() = CredentialType::BatchParent;
+                *updated_credential.embedded_disclosure_policy_mut() = None;
+                *updated_credential.format_mut() = None;
+                *updated_credential.credential_blob_id_mut() = None;
+                *updated_credential.wallet_instance_attestation_blob_id_mut() = None;
+                *updated_credential.wallet_key_attestation_blob_id_mut() = None;
+                *updated_credential.issuer_identifier_mut() = None;
+                *updated_credential.issuer_certificate_mut() = None;
+                *updated_credential.holder_identifier_mut() = None;
+                *updated_credential.key_mut() = None;
+                *updated_credential.claims_mut() = Default::default();
+                updated_credential
             },
             serialized: None,
         }
