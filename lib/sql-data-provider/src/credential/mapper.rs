@@ -376,42 +376,64 @@ pub(super) fn credential_from_model(
             },
         });
     }
-    if credential.role == credential::CredentialRole::Issuer
-        && credential.r#type == credential::CredentialType::Single
-    {
-        return Ok(Credential::IssuerSingle {
-            common,
-            issuer: IssuerData {
-                identifier: Related::new(
-                    credential
-                        .issuer_identifier_id
-                        .ok_or(DataLayerError::MappingError)?,
-                    issuer,
-                ),
-                certificate: credential
-                    .issuer_certificate_id
-                    .map(|id| Related::new(id, repositories.certificate_repository.clone())),
-                signing_key: Related::new(
-                    credential.key_id.ok_or(DataLayerError::MappingError)?,
-                    repositories.key_repository.clone(),
-                ),
-            },
+    if credential.role == credential::CredentialRole::Issuer {
+        let issuer = IssuerData {
+            identifier: Related::new(
+                credential
+                    .issuer_identifier_id
+                    .ok_or(DataLayerError::MappingError)?,
+                issuer,
+            ),
+            certificate: credential
+                .issuer_certificate_id
+                .map(|id| Related::new(id, repositories.certificate_repository.clone())),
+            signing_key: Related::new(
+                credential.key_id.ok_or(DataLayerError::MappingError)?,
+                repositories.key_repository.clone(),
+            ),
+        };
+        if credential.r#type == credential::CredentialType::BatchParent {
+            return Ok(Credential::IssuerBatchParent {
+                common,
+                issuer,
+                suspend_end_date: credential.suspend_end_date,
+                webhook_url: credential.webhook_url,
+                subscriber_information: credential.subscriber_information,
+                claims: credential_claims(credential.id, repositories.claim_repository),
+            });
+        }
+        let data = IssuerCredentialData {
+            format: Related::new(
+                credential.format.ok_or(DataLayerError::MappingError)?,
+                format,
+            ),
+            holder_identifier: credential
+                .holder_identifier_id
+                .map(|id| Related::new(id, repositories.identifier_repository.clone())),
+            credential_blob_id: credential.credential_blob_id,
+            wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
+            wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
             suspend_end_date: credential.suspend_end_date,
-            webhook_url: credential.webhook_url,
-            subscriber_information: credential.subscriber_information,
-            claims: credential_claims(credential.id, repositories.claim_repository),
-            credential: IssuerCredentialData {
-                format: Related::new(
-                    credential.format.ok_or(DataLayerError::MappingError)?,
-                    format,
+        };
+        return Ok(match credential.r#type {
+            credential::CredentialType::BatchItem => Credential::IssuerBatchItem {
+                common,
+                issuer,
+                parent: Related::new(
+                    credential.parent_id.ok_or(DataLayerError::MappingError)?,
+                    repositories.credential_repository,
                 ),
-                holder_identifier: credential
-                    .holder_identifier_id
-                    .map(|id| Related::new(id, repositories.identifier_repository.clone())),
-                credential_blob_id: credential.credential_blob_id,
-                wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
-                wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+                credential: data,
             },
+            credential::CredentialType::Single => Credential::IssuerSingle {
+                common,
+                issuer,
+                webhook_url: credential.webhook_url,
+                subscriber_information: credential.subscriber_information,
+                claims: credential_claims(credential.id, repositories.claim_repository),
+                credential: data,
+            },
+            credential::CredentialType::BatchParent => unreachable!(),
         });
     }
     Ok(Credential::Generic {
@@ -483,7 +505,7 @@ pub(super) fn request_to_active_model(
         state: Set(request.common().state.into()),
         suspend_end_date: Set(request.suspend_end_date()),
         profile: Set(request.common().profile.clone()),
-        parent_id: Set(request.parent().as_ref().map(|m| m.id())),
+        parent_id: Set(request.parent().map(|m| m.id())),
         credential_blob_id: Set(request.credential_blob_id()),
         wallet_key_attestation_blob_id: Set(request.wallet_key_attestation_blob_id()),
         wallet_instance_attestation_blob_id: Set(request.wallet_instance_attestation_blob_id()),

@@ -109,7 +109,7 @@ async fn verifier_proof_rejects_unexpected_credential_variants(
     let valid = verifier_credential(invalid.clone()).unwrap();
     *invalid.role_mut().unwrap() = role;
     *invalid.type_mut().unwrap() = credential_type;
-    let claim = invalid.claims().as_ref().await.unwrap()[0].clone();
+    let claim = invalid.claims().unwrap().as_ref().await.unwrap()[0].clone();
     let mut credentials = vec![valid, invalid];
     if invalid_first {
         credentials.reverse();
@@ -639,7 +639,13 @@ async fn test_get_proof_with_array_holder() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let credential_claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -894,7 +900,13 @@ async fn test_get_proof_with_array_in_object_holder() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let credential_claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1163,7 +1175,13 @@ async fn test_get_proof_with_object_array_holder() {
         subscriber_information: None,
         format: Some(format.into()),
     };
-    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let credential_claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1410,7 +1428,13 @@ async fn test_get_proof_with_array() {
         format: Some(format.into()),
     };
     let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
-    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let credential_claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1676,7 +1700,13 @@ async fn test_get_proof_with_array_in_object() {
         format: Some(format.into()),
     };
     let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
-    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let credential_claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
 
     let proof = Proof {
         ecosystem: None,
@@ -1957,7 +1987,13 @@ async fn test_get_proof_with_object_array() {
         format: Some(format.into()),
     };
     let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
-    let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let credential_claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
 
     let proof = Proof {
         ecosystem: None,

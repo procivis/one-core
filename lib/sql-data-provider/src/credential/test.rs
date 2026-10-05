@@ -52,6 +52,9 @@ use crate::transaction_context::TransactionManagerImpl;
 #[path = "test/deduplication.rs"]
 mod deduplication;
 
+#[path = "test/issuer_batch.rs"]
+mod issuer_batch;
+
 #[path = "test/issuer_single.rs"]
 mod issuer_single;
 
@@ -1163,7 +1166,7 @@ async fn test_get_credential_success() {
         *credential.common().schema.as_ref().await.unwrap()
     );
     assert!(credential.common().interaction.is_none());
-    let credential_claims = credential.claims().as_ref().await.unwrap();
+    let credential_claims = credential.claims().unwrap().as_ref().await.unwrap();
     assert_eq!(credential_claims.len(), 2);
 
     // claims must be ordered in the same way as in the credential_schema
@@ -1378,7 +1381,7 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     .await
     .unwrap();
     let mut template = provider.get_credential(&single.common().id).await.unwrap();
-    *template.claims_mut() = Default::default();
+    *template.claims_mut().unwrap() = Default::default();
     let jwt_format = credential_schema_format_from_model(
         credential_schema_format::Entity::find()
             .one(&db)

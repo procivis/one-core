@@ -705,7 +705,7 @@ fn submission_artifact(index: usize) -> ProtocolArtifact<'static> {
     let credential = dummy_credential();
     ProtocolArtifact::VerifierSubmission {
         credential_id: submitted_credential(index),
-        claims: Cow::Owned(credential.claims().clone()),
+        claims: Cow::Owned(credential.claims().unwrap().clone()),
         format: Cow::Owned(credential.format().unwrap().clone()),
         issuer_details: Cow::Owned(submission_issuer(index)),
         proof_id: submitted_proof(),

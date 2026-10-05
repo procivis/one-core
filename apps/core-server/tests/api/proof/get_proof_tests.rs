@@ -643,7 +643,13 @@ async fn test_get_proof_with_array() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -927,7 +933,13 @@ async fn test_get_proof_with_nested_optional_inputs() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -1065,7 +1077,13 @@ async fn test_get_proof_with_credentials() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -1190,7 +1208,13 @@ async fn test_get_proof_with_deleted_credential() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -1488,7 +1512,13 @@ async fn test_get_proof_with_deleted_claims() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -1589,7 +1619,13 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -1735,7 +1771,13 @@ async fn test_get_proof_with_credentials_returns_profiles() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 

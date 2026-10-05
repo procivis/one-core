@@ -322,7 +322,7 @@ impl SSIHolderService {
                 continue;
             };
             let mut claims = vec![];
-            for claim in item.credential.claims().as_ref().await?.iter() {
+            for claim in item.credential.claims()?.as_ref().await?.iter() {
                 if !claim.schema.as_ref().await?.metadata {
                     claims.push((claim.path.clone(), claim.value.clone()));
                 }

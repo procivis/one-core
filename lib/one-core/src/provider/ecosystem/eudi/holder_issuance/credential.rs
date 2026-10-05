@@ -35,7 +35,7 @@ impl EudiEcosystem {
             .error_while("parsing credential")?
             .issuer;
 
-        let claims = credential.claims().as_ref().await?;
+        let claims = credential.claims()?.as_ref().await?;
         let credential_category = {
             let namespaced = formatter_requires_namespaces(formatter.as_ref());
             credential_category(&claims, namespaced)

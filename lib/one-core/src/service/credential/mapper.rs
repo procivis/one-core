@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, CredentialId, EcosystemId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -164,11 +163,17 @@ pub(crate) async fn credential_detail_response_from_model(
     let role = value.role();
     let suspend_end_date = value.suspend_end_date();
     let webhook_url = value.webhook_url().to_owned();
-    let parent_id = value.parent().as_ref().map(|parent| parent.id());
-    let subscriber_information = value.subscriber_information().to_owned();
+    let parent_id = value.parent().map(|parent| parent.id());
+    let subscriber_information = if let Credential::IssuerBatchItem { parent, .. } = &value {
+        parent.as_ref().await?.subscriber_information().clone()
+    } else {
+        value.subscriber_information().clone()
+    };
     let common = match value {
         Credential::Generic { common, .. }
         | Credential::IssuerSingle { common, .. }
+        | Credential::IssuerBatchParent { common, .. }
+        | Credential::IssuerBatchItem { common, .. }
         | Credential::Verifier { common, .. } => common,
     };
 
@@ -580,10 +585,12 @@ pub(super) async fn to_credential_list_response(
     let role = credential.role();
     let suspend_end_date = credential.suspend_end_date();
     let webhook_url = credential.webhook_url().to_owned();
-    let parent_id = credential.parent().as_ref().map(|parent| parent.id());
+    let parent_id = credential.parent().map(|parent| parent.id());
     let common = match credential {
         Credential::Generic { common, .. }
         | Credential::IssuerSingle { common, .. }
+        | Credential::IssuerBatchParent { common, .. }
+        | Credential::IssuerBatchItem { common, .. }
         | Credential::Verifier { common, .. } => common,
     };
 
@@ -685,11 +692,11 @@ pub(super) fn from_create_request(
                 certificate: issuer_certificate.map(Into::into),
                 signing_key: key.into(),
             },
-            suspend_end_date: None,
             webhook_url: request.webhook_destination_url,
             subscriber_information: request.subscriber_information,
             claims: claims.into(),
             credential: IssuerCredentialData {
+                suspend_end_date: None,
                 format: format
                     .ok_or(CredentialServiceError::InvalidFormatSelection)?
                     .into(),
@@ -700,25 +707,17 @@ pub(super) fn from_create_request(
             },
         });
     }
-    Ok(Credential::Generic {
+    Ok(Credential::IssuerBatchParent {
         common,
+        issuer: IssuerData {
+            identifier: issuer_identifier.into(),
+            certificate: issuer_certificate.map(Into::into),
+            signing_key: key.into(),
+        },
         suspend_end_date: None,
-        consumed_at: None,
         claims: claims.into(),
-        issuer_identifier: Some(issuer_identifier.into()),
-        issuer_certificate: issuer_certificate.map(Into::into),
-        holder_identifier: None,
-        key: Some(key.into()),
-        role: CredentialRole::Issuer,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
         webhook_url: request.webhook_destination_url,
-        r#type,
-        parent: None,
-        embedded_disclosure_policy: None,
         subscriber_information: request.subscriber_information,
-        format: convert_inner(format),
     })
 }
 

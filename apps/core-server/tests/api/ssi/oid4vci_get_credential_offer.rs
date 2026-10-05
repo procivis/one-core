@@ -460,6 +460,21 @@ async fn test_get_credential_offer_not_found_batch_item() {
         )
         .await;
 
+    let parent = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -471,6 +486,7 @@ async fn test_get_credential_offer_not_found_batch_item() {
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent.common().id),
                 ..Default::default()
             },
         )

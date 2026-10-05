@@ -379,6 +379,7 @@ async fn test_get_credential_success_batch() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
+                role: Some(CredentialRole::Holder),
                 parent_id: Some(parent_credential.common().id),
                 ..Default::default()
             },
@@ -472,6 +473,7 @@ async fn test_get_credential_success_batch_count_excludes_rejected_formats() {
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
+                role: Some(CredentialRole::Holder),
                 parent_id: Some(parent_credential.common().id),
                 format: Some(formats[0].clone()),
                 ..Default::default()
@@ -488,6 +490,7 @@ async fn test_get_credential_success_batch_count_excludes_rejected_formats() {
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
+                role: Some(CredentialRole::Holder),
                 parent_id: Some(parent_credential.common().id),
                 format: Some(formats[1].clone()),
                 ..Default::default()
@@ -589,8 +592,8 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
         .await;
     assert_eq!(parent_details.status(), 200);
     let parent_details = parent_details.json_value().await;
-    // Even legacy batch parents with a stored MDOC format have no MSO validity.
-    assert!(parent_credential.format().is_some());
+    // Issuer batch parents carry neither a format nor MSO validity.
+    assert!(parent_credential.format().is_none());
     assert!(parent_details["mdocMsoValidity"].is_null());
 
     // MDOC's `expirationSeconds` config default is 72h - pick a real expiration that doesn't
@@ -680,11 +683,16 @@ async fn test_get_credential_success_batch_parent_offered_formats() {
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchParent),
                 role: Some(CredentialRole::Issuer),
+                subscriber_information: Some("parent metadata".into()),
                 ..Default::default()
             },
         )
         .await;
 
+    assert!(matches!(
+        parent_credential,
+        one_core::model::credential::Credential::IssuerBatchParent { .. }
+    ));
     let format = credential_schema
         .formats
         .as_ref()
@@ -737,6 +745,13 @@ async fn test_get_credential_success_batch_parent_offered_formats() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     assert!(!resp.as_object().unwrap().contains_key("offeredFormats"));
+    assert!(matches!(
+        item_credential,
+        one_core::model::credential::Credential::IssuerBatchItem { .. }
+    ));
+    assert_eq!(resp["subscriberInformation"], "parent metadata");
+    assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
+    assert_eq!(resp["claims"][0]["value"], "test");
 }
 
 #[tokio::test]

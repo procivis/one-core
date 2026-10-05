@@ -423,7 +423,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
                 ValidatedProofResult {
                     proved_credentials: vec![ProvedCredential {
                         common: credential.common().clone(),
-                        claims: credential.claims().clone(),
+                        claims: credential.claims().unwrap().clone(),
                         format: credential.format().unwrap().clone(),
                         issuer_details: IdentifierDetails::Certificate(CertificateDetails {
                             chain: "chain".to_string(),

@@ -156,7 +156,7 @@ pub(crate) async fn get_presentation_definition_v2(
         // Historical matches are used only to classify parent submissions. They never
         // become selectable credentials in the definition.
         for candidate in &filtered_credential_candidates {
-            let Some(parent_id) = candidate.parent().as_ref().map(|parent| parent.id()) else {
+            let Some(parent_id) = candidate.parent().map(|parent| parent.id()) else {
                 continue;
             };
             if candidate.r#type() != CredentialType::BatchItem
@@ -171,7 +171,7 @@ pub(crate) async fn get_presentation_definition_v2(
             let format = candidate.format().as_required_ref().await?;
             let formatter = formatter_provider.get_credential_formatter(&format.format)?;
             let mut claim_source = candidate.clone();
-            *claim_source.claims_mut() =
+            *claim_source.claims_mut()? =
                 crate::mapper::credential::stored_credential_claims(candidate)
                     .await?
                     .into();
@@ -269,7 +269,7 @@ pub(crate) async fn get_presentation_definition_v2(
             let mut claim_source = candidate.clone();
             // Definition requests return singles and representative batch items;
             // submission also checks explicitly selected items.
-            *claim_source.claims_mut() =
+            *claim_source.claims_mut()? =
                 crate::mapper::credential::stored_credential_claims(&candidate)
                     .await?
                     .into();
@@ -289,7 +289,7 @@ pub(crate) async fn get_presentation_definition_v2(
 
             let credential_detail_dto = credential_detail_response_from_model(
                 candidate,
-                claim_source.claims().as_ref().await?.to_owned(),
+                claim_source.claims()?.as_ref().await?.to_owned(),
                 config,
                 CredentialAttestationBlobs::default(),
                 None,
@@ -594,7 +594,7 @@ async fn select_claims(
     formatter: &dyn CredentialFormatter,
     select_children: bool,
 ) -> Result<Vec<MatchedClaim>, VerificationProtocolError> {
-    let claims = credential.claims().as_ref().await?;
+    let claims = credential.claims()?.as_ref().await?;
 
     let mut selected = HashMap::new();
     // add all nonselectively disclosable claims defined from root
@@ -1229,7 +1229,7 @@ mod test {
         format.id = Uuid::new_v4().into();
         format.format = "MDOC".into();
         format.ecosystem_schema_id = "doctype".into();
-        let claim = item.claims().as_ref().await.unwrap()[0].clone();
+        let claim = item.claims().unwrap().as_ref().await.unwrap()[0].clone();
         format.claim_mappings = vec![CredentialSchemaFormatClaimSchema {
             id: Uuid::new_v4().into(),
             created_date: item.common().created_date,
@@ -1245,7 +1245,7 @@ mod test {
         schema.formats.as_mut().await.unwrap().push(format.clone());
         item.common_mut().schema = schema.into();
         *item.format_mut().unwrap() = Some(format.into());
-        item.claims_mut().as_mut().await.unwrap()[0].selectively_disclosable = true;
+        item.claims_mut().unwrap().as_mut().await.unwrap()[0].selectively_disclosable = true;
         let query: DcqlQuery = serde_json::from_value(serde_json::json!({
             "credentials": [{
                 "id": "mdoc", "format": "mso_mdoc", "meta": {"doctype_value": "doctype"},
@@ -1270,14 +1270,14 @@ mod test {
             vec!["namespace/renamed"]
         );
 
-        *item.claims_mut() = Default::default();
+        *item.claims_mut().unwrap() = Default::default();
         assert!(
             first_matching_claims(&item, filters, &formatter)
                 .await
                 .unwrap()
                 .is_none()
         );
-        *item.claims_mut() = vec![claim].into();
+        *item.claims_mut().unwrap() = vec![claim].into();
         item.format_mut()
             .unwrap()
             .as_required_mut()

@@ -500,7 +500,7 @@ impl SSIHolderService {
             .into();
 
         // Presented credential is always a single credential or a batch item.
-        *presented_credential.claims_mut() =
+        *presented_credential.claims_mut()? =
             crate::mapper::credential::stored_credential_claims(&presented_credential)
                 .await?
                 .into();
@@ -543,7 +543,7 @@ impl SSIHolderService {
         };
 
         let claims = presented_credential
-            .claims()
+            .claims()?
             .as_ref()
             .await?
             .iter()

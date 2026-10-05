@@ -243,7 +243,7 @@ pub(super) async fn get_verifier_proof_detail(
         .await
         .error_while("getting credential trust information")?;
 
-        let claims = credential.claims().as_ref().await?.to_owned();
+        let claims = credential.claims()?.as_ref().await?.to_owned();
         let credential_detail = credential_detail_response_from_model(
             credential,
             claims,

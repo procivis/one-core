@@ -477,7 +477,7 @@ impl OpenID4VCIFinal1_0 {
         for (parent_id, item) in refreshed
             .iter()
             .flat_map(|response| &response.credentials)
-            .filter_map(|item| item.parent().as_ref().map(|parent| (parent.id(), item)))
+            .filter_map(|item| item.parent().map(|parent| (parent.id(), item)))
             .unique_by(|(parent_id, _)| *parent_id)
         {
             self.history_repository
@@ -944,7 +944,7 @@ async fn attach_matching_holder_binding(
 ) -> Result<(), IssuanceProtocolError> {
     let parsed_identifier =
         credential
-            .holder_identifier_mut()
+            .holder_identifier_mut()?
             .take()
             .ok_or(IssuanceProtocolError::Failed(
                 "No parsed holder identifier".to_string(),
@@ -966,7 +966,7 @@ async fn attach_matching_holder_binding(
     };
 
     let matching_holder_binding = holder_bindings.swap_remove(position);
-    *credential.holder_identifier_mut() = Some(matching_holder_binding.identifier.into());
+    *credential.holder_identifier_mut()? = Some(matching_holder_binding.identifier.into());
     *credential.key_mut()? = Some(matching_holder_binding.key.into());
 
     Ok(())

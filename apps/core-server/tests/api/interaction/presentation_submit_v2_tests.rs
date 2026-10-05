@@ -525,6 +525,7 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
         assert!(
             credential
                 .claims()
+                .unwrap()
                 .as_ref()
                 .await
                 .unwrap()

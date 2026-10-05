@@ -221,7 +221,13 @@ async fn test_issuance_accept_openid4vc() {
     assert_eq!(holder_did.id, credential_holder_did.id());
     assert_eq!(CredentialStateEnum::Accepted, credential.common().state);
 
-    let claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
     let iss_claim = claims.iter().find(|claim| claim.path == "iss").unwrap();
     assert_eq!(
         iss_claim.value.as_ref().unwrap(),
@@ -813,7 +819,7 @@ async fn check_multi_configuration_issuance(
             assert!(main.format().is_none());
             assert!(main.credential_blob_id().is_none());
             assert!(main.embedded_disclosure_policy().is_none());
-            assert!(main.claims().as_ref().await.unwrap().is_empty());
+            assert!(main.claims().unwrap().as_ref().await.unwrap().is_empty());
             assert_eq!(
                 main.common().expires_at.is_none(),
                 refreshable || without_expiry
@@ -834,7 +840,7 @@ async fn check_multi_configuration_issuance(
                         .any(|id| id.parse::<shared_types::CredentialId>() == item.common().id)
                 );
                 assert!(all_item_ids.insert(item.common().id));
-                let claims = item.claims().as_ref().await.unwrap();
+                let claims = item.claims().unwrap().as_ref().await.unwrap();
 
                 assert!(claims.iter().any(
                     |claim| claim.path == "firstName" && claim.value.as_deref() == Some("John")
@@ -1229,11 +1235,19 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         .list(CredentialFilterValue::ParentCredential(credential.common().id).condition())
         .await;
     assert_eq!(2, batch_items.len());
-    assert!(credential.claims().as_ref().await.unwrap().is_empty());
+    assert!(
+        credential
+            .claims()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .is_empty()
+    );
     let mut canonical_claim_ids = std::collections::HashMap::new();
     let mut shared_claims = 0;
     for item in batch_items {
-        let claims = item.claims().as_ref().await.unwrap();
+        let claims = item.claims().unwrap().as_ref().await.unwrap();
         assert!(!claims.is_empty());
         let mut has_metadata = false;
         for claim in &claims {
@@ -1738,7 +1752,13 @@ async fn test_issuance_accept_with_new_nested_optional_claims() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Accepted, credential.common().state);
 
-    let claims = credential.claims().as_ref().await.unwrap().to_owned();
+    let claims = credential
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
 
     // new nested optional claim (schemas)
     let city_claim = claims

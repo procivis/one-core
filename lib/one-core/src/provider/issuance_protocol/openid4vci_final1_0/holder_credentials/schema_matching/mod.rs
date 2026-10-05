@@ -248,7 +248,7 @@ pub(super) async fn missing_required_claims(
 ) -> Result<Vec<String>, IssuanceProtocolError> {
     let format = credential.format().as_required_ref().await?;
     let credential_mappings = format.claim_mappings.as_ref().await?;
-    let claims = credential.claims().as_ref().await?;
+    let claims = credential.claims()?.as_ref().await?;
     let format_schema_ids = credential_mappings
         .iter()
         .map(|mapping| mapping.claim_schema_id)

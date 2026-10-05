@@ -626,7 +626,7 @@ mod tests {
         )
         .unwrap();
 
-        let claims = credential.claims().as_ref().await.unwrap();
+        let claims = credential.claims().unwrap().as_ref().await.unwrap();
         assert_eq!(claims.len(), 1);
         assert!(
             claims

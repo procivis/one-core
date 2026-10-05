@@ -200,7 +200,7 @@ async fn credential_claims(
     credential_schema_format: &CredentialSchemaFormat,
     datatype_config: &DatatypeConfig,
 ) -> Result<IssuedClaims, FormatterError> {
-    let stored_claims = credential.claims().as_ref().await?;
+    let stored_claims = crate::mapper::credential::stored_credential_claims(credential).await?;
     let mappings = credential_schema_format.claim_mappings.as_ref().await?;
     let mappings: HashMap<_, _> = mappings
         .iter()

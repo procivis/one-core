@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-use one_core::model::credential::{Credential, CredentialRole, CredentialType};
+use one_core::model::credential::{Credential, CredentialRole};
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
@@ -37,7 +37,6 @@ pub(super) async fn prepare_credentials(
                 ..
             } | Credential::Generic {
                 role: CredentialRole::Issuer,
-                r#type: CredentialType::Single,
                 ..
             }
         ) {
@@ -46,15 +45,19 @@ pub(super) async fn prepare_credentials(
         if !ids.insert(credential.common().id) {
             return Err(DataLayerError::AlreadyExists);
         }
-        let claims = credential
-            .claims()
-            .as_ref()
-            .await?
-            .iter()
-            .cloned()
-            .map(|claim| claim::ActiveModel::from(claim).try_into_model())
-            .collect::<Result<_, _>>()
-            .map_err(to_data_layer_error)?;
+        let claims = if matches!(credential, Credential::IssuerBatchItem { .. }) {
+            vec![]
+        } else {
+            credential
+                .claims()?
+                .as_ref()
+                .await?
+                .iter()
+                .cloned()
+                .map(|claim| claim::ActiveModel::from(claim).try_into_model())
+                .collect::<Result<_, _>>()
+                .map_err(to_data_layer_error)?
+        };
         credentials.push(CredentialToCreate { credential, claims });
     }
     Ok(credentials)

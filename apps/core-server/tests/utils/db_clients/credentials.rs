@@ -213,7 +213,7 @@ impl CredentialsDB {
             wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
             webhook_url: params.webhook_url,
             embedded_disclosure_policy: params.embedded_disclosure_policy,
-            subscriber_information: None,
+            subscriber_information: params.subscriber_information,
             parent: params
                 .parent_id
                 .map(|id| Related::new(id, self.repository.clone())),
@@ -237,7 +237,13 @@ impl CredentialsDB {
             .batch_size
             .expect("schema batch size is required to create credential batch");
         params.r#type = Some(CredentialType::BatchParent);
-        let key = params.key.take().map(Into::into);
+        let key = if params.role == Some(CredentialRole::Holder) {
+            params.key.take()
+        } else {
+            params.key.clone()
+        }
+        .map(Into::into);
+        let item_format = params.format.clone();
         let holder_identifier = params.holder_identifier.take().map(Into::into);
         let mut credential = self
             .prepare_credential(
@@ -248,10 +254,15 @@ impl CredentialsDB {
                 params,
             )
             .await;
-        *credential.type_mut().unwrap() = CredentialType::BatchParent;
         let holder_claims = if credential.role() == CredentialRole::Holder {
-            let claims = credential.claims().as_ref().await.unwrap().to_owned();
-            *credential.claims_mut() = Default::default();
+            let claims = credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned();
+            *credential.claims_mut().unwrap() = Default::default();
             Some(claims)
         } else {
             None
@@ -267,10 +278,36 @@ impl CredentialsDB {
             .create_credential(credential.to_owned())
             .await
             .unwrap();
-        let batch_item_template = {
+        let batch_item_template = if let Credential::IssuerBatchParent {
+            common,
+            issuer,
+            suspend_end_date,
+            ..
+        } = &credential
+        {
+            let mut common = common.clone();
+            common.interaction = None;
+            let item_format = match item_format {
+                Some(format) => format,
+                None => credential_schema.formats.as_ref().await.unwrap()[0].clone(),
+            };
+            Credential::IssuerBatchItem {
+                common,
+                issuer: issuer.clone(),
+                parent: Related::new(id, self.repository.clone()),
+                credential: one_core::model::credential::IssuerCredentialData {
+                    format: item_format.into(),
+                    holder_identifier,
+                    suspend_end_date: *suspend_end_date,
+                    credential_blob_id: None,
+                    wallet_key_attestation_blob_id: None,
+                    wallet_instance_attestation_blob_id: None,
+                },
+            }
+        } else {
             let mut updated_credential = credential.clone();
             updated_credential.common_mut().interaction = None;
-            *updated_credential.claims_mut() = Default::default();
+            *updated_credential.claims_mut().unwrap() = Default::default();
             *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
             *updated_credential.embedded_disclosure_policy_mut().unwrap() =
                 embedded_disclosure_policy;
@@ -278,7 +315,7 @@ impl CredentialsDB {
             *updated_credential.parent_mut().unwrap() =
                 Some(Related::new(id, self.repository.clone()));
             *updated_credential.key_mut().unwrap() = key;
-            *updated_credential.holder_identifier_mut() = holder_identifier;
+            *updated_credential.holder_identifier_mut().unwrap() = holder_identifier;
             updated_credential
         };
         for _ in 0..num_items {
@@ -311,7 +348,9 @@ impl CredentialsDB {
             let batch_item_credential = {
                 let mut updated_credential = batch_item_template.clone();
                 updated_credential.common_mut().id = item_id;
-                *updated_credential.claims_mut() = claims.into();
+                if updated_credential.role() == CredentialRole::Holder {
+                    *updated_credential.claims_mut().unwrap() = claims.into();
+                }
                 *updated_credential.credential_blob_id_mut().unwrap() = credential_blob_id;
                 updated_credential
             };
@@ -383,9 +422,7 @@ pub async fn credential_fixture(mut credential: Credential) -> Credential {
     if credential.role() == CredentialRole::Verifier {
         assert_eq!(credential.r#type(), CredentialType::Single);
         one_core::service::test_utilities::verifier_credential(credential).unwrap()
-    } else if credential.role() == CredentialRole::Issuer
-        && credential.r#type() == CredentialType::Single
-    {
+    } else if credential.role() == CredentialRole::Issuer {
         if credential.key().is_none() {
             let key = match &credential
                 .issuer_identifier()
@@ -425,7 +462,7 @@ pub async fn credential_fixture(mut credential: Credential) -> Credential {
             };
             *credential.key_mut().unwrap() = Some(key);
         }
-        one_core::service::test_utilities::issuer_single_credential(credential).unwrap()
+        one_core::service::test_utilities::issuer_credential(credential).unwrap()
     } else {
         credential
     }

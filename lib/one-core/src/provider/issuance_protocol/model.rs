@@ -117,9 +117,9 @@ impl CredentialWithBlob {
                 *updated_credential.wallet_key_attestation_blob_id_mut()? = None;
                 *updated_credential.issuer_identifier_mut()? = None;
                 *updated_credential.issuer_certificate_mut() = None;
-                *updated_credential.holder_identifier_mut() = None;
+                *updated_credential.holder_identifier_mut()? = None;
                 *updated_credential.key_mut()? = None;
-                *updated_credential.claims_mut() = Default::default();
+                *updated_credential.claims_mut()? = Default::default();
                 updated_credential
             },
             serialized: None,

@@ -373,7 +373,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     let mut policy_counts = [0, 0];
     let mut initial_payload_claim_ids = std::collections::HashSet::new();
     for item in &items {
-        let claims = item.claims().as_ref().await.unwrap();
+        let claims = item.claims().unwrap().as_ref().await.unwrap();
         initial_payload_claim_ids.insert(
             claims
                 .iter()
@@ -463,7 +463,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     for id in ids {
         let item = context.db.credentials.get(&id.parse()).await;
         assert_eq!(CredentialType::BatchItem, item.r#type());
-        assert_eq!(first_parent, item.parent().as_ref().unwrap().id());
+        assert_eq!(first_parent, item.parent().unwrap().id());
         if offer.fixed_identifier_expiry.is_some() {
             assert_eq!(
                 item.holder_identifier().as_ref().unwrap().id(),
@@ -479,7 +479,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             .expect("Unexpected policy ID");
         assert_eq!(policy["policy"], "none");
         refreshed_policy_counts[index] += 1;
-        let claims = item.claims().as_ref().await.unwrap();
+        let claims = item.claims().unwrap().as_ref().await.unwrap();
         assert!(!claims.is_empty());
 
         let payload = claims.iter().find(|claim| claim.path == "string").unwrap();

@@ -86,7 +86,7 @@ impl BatchSetup {
             updated_credential.common_mut().id = Uuid::new_v4().into();
             *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
             *updated_credential.parent_mut().unwrap() = Some(self.parent.clone().into());
-            *updated_credential.claims_mut() = claims.into();
+            *updated_credential.claims_mut().unwrap() = claims.into();
             updated_credential
         }
     }
@@ -256,12 +256,7 @@ async fn claims_are_not_reused_across_batches() {
 #[case::verifier(CredentialRole::Verifier)]
 #[tokio::test]
 async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRole) {
-    let setup = BatchSetup::with_role(if role == CredentialRole::Verifier {
-        CredentialRole::Holder
-    } else {
-        role
-    })
-    .await;
+    let setup = BatchSetup::new().await;
     setup.create_item(vec![setup.claim.clone()]).await;
     let different = Claim {
         id: Uuid::new_v4().into(),
@@ -289,7 +284,25 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
         *single.format_mut().unwrap() = Some(format.into());
         one_core::service::test_utilities::verifier_credential(single).unwrap()
     } else if role == CredentialRole::Issuer {
-        one_core::service::test_utilities::issuer_single_credential(single).unwrap()
+        let mut single = single;
+        let schema = single.common().schema.as_ref().await.unwrap().clone();
+        let key_id = insert_key_to_database(
+            &setup.db,
+            "EDDSA".into(),
+            vec![],
+            vec![],
+            None,
+            schema.organisation.id(),
+        )
+        .await
+        .unwrap();
+        *single.key_mut().unwrap() = Some(one_core::model::relation::Related::new(
+            key_id,
+            setup.repositories.get_key_repository(),
+        ));
+        *single.format_mut().unwrap() =
+            Some(schema.formats.as_ref().await.unwrap()[0].clone().into());
+        one_core::service::test_utilities::issuer_credential(single).unwrap()
     } else {
         single
     };
@@ -676,7 +689,7 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
     let issuer = {
         let mut issuer = issuer_template;
         issuer.common_mut().id = Uuid::new_v4().into();
-        *issuer.claims_mut() = vec![setup.claim.clone()].into();
+        *issuer.claims_mut().unwrap() = vec![setup.claim.clone()].into();
         issuer
     };
     let issuer_id = issuer.common().id;

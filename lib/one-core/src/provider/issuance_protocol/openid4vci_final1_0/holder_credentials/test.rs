@@ -54,7 +54,7 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
         updated_credential.common_mut().schema = schema.clone().into();
         *updated_credential.format_mut().unwrap() =
             Some(schema.formats.as_ref().await.unwrap()[0].clone().into());
-        *updated_credential.claims_mut() = vec![].into();
+        *updated_credential.claims_mut().unwrap() = vec![].into();
         updated_credential
     };
     let error = ensure_required_claims(&schema, &credential, &issuer_claim_metadata)

@@ -693,7 +693,12 @@ async fn test_fetch_unexportable_credentials_local() {
     );
 
     // ONE-8026: claims must contain claim schemas
-    unexportable.credentials[0].claims().as_ref().await.unwrap()[0]
+    unexportable.credentials[0]
+        .claims()
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()[0]
         .schema
         .as_ref()
         .await
@@ -1206,7 +1211,7 @@ async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
         .iter()
         .find(|credential| credential.common().id == parent_id)
         .unwrap();
-    let claims = parent.claims().as_ref().await.unwrap();
+    let claims = parent.claims().unwrap().as_ref().await.unwrap();
     assert_eq!(claims.len(), 1);
     assert_eq!(claims[0].schema.as_ref().await.unwrap().key, "name");
 }

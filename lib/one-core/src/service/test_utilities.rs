@@ -750,8 +750,8 @@ pub fn verifier_credential(
     })
 }
 
-/// Construct an issuer single fixture from a generic credential fixture.
-pub fn issuer_single_credential(
+/// Construct an issuer fixture from a generic credential fixture.
+pub fn issuer_credential(
     credential: Credential,
 ) -> Result<Credential, crate::repository::error::DataLayerError> {
     use crate::model::credential::{IssuerCredentialData, IssuerData};
@@ -759,6 +759,8 @@ pub fn issuer_single_credential(
 
     let Credential::Generic {
         common,
+        r#type,
+        parent,
         claims,
         issuer_identifier,
         issuer_certificate,
@@ -776,23 +778,44 @@ pub fn issuer_single_credential(
     else {
         return Err(DataLayerError::MappingError);
     };
-    Ok(Credential::IssuerSingle {
-        common,
-        issuer: IssuerData {
-            identifier: issuer_identifier.ok_or(DataLayerError::MappingError)?,
-            certificate: issuer_certificate,
-            signing_key: key.ok_or(DataLayerError::MappingError)?,
-        },
+    let issuer = IssuerData {
+        identifier: issuer_identifier.ok_or(DataLayerError::MappingError)?,
+        certificate: issuer_certificate,
+        signing_key: key.ok_or(DataLayerError::MappingError)?,
+    };
+    if r#type == CredentialType::BatchParent {
+        return Ok(Credential::IssuerBatchParent {
+            common,
+            issuer,
+            claims,
+            webhook_url,
+            subscriber_information,
+            suspend_end_date,
+        });
+    }
+    let credential = IssuerCredentialData {
         suspend_end_date,
-        claims,
-        webhook_url,
-        subscriber_information,
-        credential: IssuerCredentialData {
-            format: format.ok_or(DataLayerError::MappingError)?,
-            holder_identifier,
-            credential_blob_id,
-            wallet_key_attestation_blob_id,
-            wallet_instance_attestation_blob_id,
-        },
+        format: format.ok_or(DataLayerError::MappingError)?,
+        holder_identifier,
+        credential_blob_id,
+        wallet_key_attestation_blob_id,
+        wallet_instance_attestation_blob_id,
+    };
+    Ok(if r#type == CredentialType::BatchItem {
+        Credential::IssuerBatchItem {
+            common,
+            issuer,
+            credential,
+            parent: parent.ok_or(DataLayerError::MappingError)?,
+        }
+    } else {
+        Credential::IssuerSingle {
+            common,
+            issuer,
+            credential,
+            claims,
+            webhook_url,
+            subscriber_information,
+        }
     })
 }

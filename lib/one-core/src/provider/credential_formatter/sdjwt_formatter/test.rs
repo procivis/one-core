@@ -998,7 +998,7 @@ async fn test_parse_credential() {
         .unwrap();
 
     // Verify basic credential properties
-    let claims = result.claims().as_ref().await.unwrap();
+    let claims = result.claims().unwrap().as_ref().await.unwrap();
 
     // Should have parsed claims including disclosed ones and metadata
     assert!(!claims.is_empty());

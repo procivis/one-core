@@ -1084,7 +1084,7 @@ async fn test_parse_credential() {
         credential.common().expires_at.unwrap(),
         datetime!(2025-10-18 08:58:13 UTC)
     );
-    let claims = credential.claims().as_ref().await.unwrap();
+    let claims = credential.claims().unwrap().as_ref().await.unwrap();
     assert_eq!(claims.len(), 7);
 
     let get_claim_paths = |filter: &dyn Fn(&Claim) -> bool| {

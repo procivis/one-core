@@ -337,7 +337,7 @@ fn dummy_credential(
     schema: CredentialSchema,
     r#type: CredentialType,
 ) -> Credential {
-    Credential::Generic {
+    let credential = Credential::Generic {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -363,7 +363,7 @@ fn dummy_credential(
         issuer_identifier: Some(dummy_identifier().into()),
         issuer_certificate: None,
         holder_identifier: None,
-        key: None,
+        key: Some(crate::service::test_utilities::dummy_key().into()),
         credential_blob_id: Some(Uuid::new_v4().into()),
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -372,6 +372,11 @@ fn dummy_credential(
         embedded_disclosure_policy: None,
         subscriber_information: None,
         format: None,
+    };
+    if r#type == CredentialType::BatchParent {
+        crate::service::test_utilities::issuer_credential(credential).unwrap()
+    } else {
+        credential
     }
 }
 

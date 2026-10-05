@@ -87,7 +87,7 @@ use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
 use crate::model::organisation::Organisation;
-use crate::model::relation::{OptionalRelatedExt, OptionalRelatedRefExt, Related};
+use crate::model::relation::{OptionalRelatedRefExt, Related};
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
@@ -1078,7 +1078,6 @@ impl OpenID4VCIFinal1_0 {
             }
             let main_id = credential
                 .parent()
-                .as_ref()
                 .map_or(credential.common().id, Related::id);
             let format_id = credential.format().as_required_ref().await?.id;
             let mut configuration = data
@@ -1357,7 +1356,6 @@ impl OpenID4VCIFinal1_0 {
                     stored.credential_id = Some(
                         credential
                             .parent()
-                            .as_ref()
                             .map_or(credential.common().id, Related::id),
                     );
                     interaction_data_changed = true;
@@ -2452,21 +2450,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .await
             .error_while("getting credential")?;
 
-        if credential.r#type() == CredentialType::BatchItem {
-            // backfill claims for batch items, as these are only stored on the parent
-            let parent = credential
-                .parent()
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(format!(
-                    "batch item {} is missing parent id",
-                    credential.common().id
-                )))?;
-            // materialized on purpose: cloning the relation would alias the parent's claims
-            let parent_claims = parent.as_ref().await?.claims().as_ref().await?.to_owned();
-            *credential.claims_mut() = parent_claims.into();
-        }
-
-        *credential.holder_identifier_mut() = Some(holder_identifier.clone().into());
+        *credential.holder_identifier_mut()? = Some(holder_identifier.clone().into());
 
         let credential_schema = credential.common().schema.as_ref().await?.to_owned();
         let credential_state = credential.common().state;

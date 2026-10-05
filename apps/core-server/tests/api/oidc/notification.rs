@@ -8,6 +8,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryMetadata};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
@@ -23,7 +24,9 @@ use time::macros::format_description;
 use uuid::Uuid;
 
 use crate::fixtures::interaction::{IssuerInteractionDataParams, dummy_issuer_interaction_data};
-use crate::fixtures::{ClaimData, TestingCredentialParams, TestingIdentifierParams};
+use crate::fixtures::{
+    ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::interactions::TestingInteractionParams;
@@ -152,10 +155,25 @@ async fn setup_multi_format_batch(issued_formats: &[&str]) -> MultiFormatBatch {
     let access_token = format!("{interaction_id}.test");
     let context = TestContext::new_with_token(&access_token, None).await;
     let organisation = context.db.organisations.create().await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
     let did = context
         .db
         .dids
-        .create(organisation.clone(), Default::default())
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key,
+                    reference: "1".into(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
     let issuer_identifier = context
         .db

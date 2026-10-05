@@ -1716,7 +1716,13 @@ async fn test_run_retain_proof_check_with_update() {
         .set_proof_claims(
             &proof_1.id,
             credential_1.common().id,
-            credential_1.claims().as_ref().await.unwrap().to_owned(),
+            credential_1
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -1726,7 +1732,13 @@ async fn test_run_retain_proof_check_with_update() {
         .set_proof_claims(
             &proof_2.id,
             credential_2.common().id,
-            credential_2.claims().as_ref().await.unwrap().to_owned(),
+            credential_2
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -1734,6 +1746,7 @@ async fn test_run_retain_proof_check_with_update() {
     assert!(
         !credential_1
             .claims()
+            .unwrap()
             .as_ref()
             .await
             .unwrap()
@@ -1745,6 +1758,7 @@ async fn test_run_retain_proof_check_with_update() {
     assert!(
         !credential_2
             .claims()
+            .unwrap()
             .as_ref()
             .await
             .unwrap()
@@ -1765,6 +1779,7 @@ async fn test_run_retain_proof_check_with_update() {
     assert!(
         credential
             .claims()
+            .unwrap()
             .as_ref()
             .await
             .unwrap()
@@ -1785,6 +1800,7 @@ async fn test_run_retain_proof_check_with_update() {
     assert!(
         !credential
             .claims()
+            .unwrap()
             .as_ref()
             .await
             .unwrap()

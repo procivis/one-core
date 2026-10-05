@@ -873,7 +873,7 @@ async fn test_parse_credential() {
         "https://core.dev.procivis-one.com/ssi/schema/v1/b79b7b5b-20f9-434b-b247-b0d19cc151da"
     );
 
-    let claims = credential.claims().as_ref().await.unwrap();
+    let claims = credential.claims().unwrap().as_ref().await.unwrap();
     assert_eq!(claims.len(), 15);
 
     let mut metadata_paths: HashSet<&str> = HashSet::new();

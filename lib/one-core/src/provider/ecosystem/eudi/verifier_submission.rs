@@ -133,7 +133,7 @@ mod test {
         });
         ecosystem
             .resolve_verifier_submission(
-                credential.claims(),
+                credential.claims().unwrap(),
                 credential.format().unwrap(),
                 &issuer,
                 Uuid::new_v4().into(),

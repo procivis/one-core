@@ -39,7 +39,6 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             claims,
             webhook_url,
             subscriber_information,
-            suspend_end_date,
             ..
         } = &mut request
     );
@@ -52,7 +51,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     *claims = vec![claim.clone()].into();
     *webhook_url = Some("https://example.com/credential".into());
     *subscriber_information = Some("opaque metadata".into());
-    *suspend_end_date = Some(get_dummy_date() + Duration::days(1));
+    credential.suspend_end_date = Some(get_dummy_date() + Duration::days(1));
     let id = repository.create_credential(request.clone()).await.unwrap();
 
     let row = credential::Entity::find_by_id(id)
@@ -116,7 +115,10 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
                 .id,
             setup.identifier.id
         );
-        assert_eq!(actual.claims().as_ref().await.unwrap()[0].id, claim.id);
+        assert_eq!(
+            actual.claims().unwrap().as_ref().await.unwrap()[0].id,
+            claim.id
+        );
         assert_eq!(actual.suspend_end_date(), request.suspend_end_date());
         assert_eq!(actual.webhook_url(), request.webhook_url());
         assert_eq!(
@@ -183,8 +185,12 @@ async fn invalid_issuer_single_rows_return_mapping_errors(
     ));
 }
 
+#[rstest]
+#[case::single(CredentialType::Single)]
+#[case::parent(CredentialType::BatchParent)]
+#[case::item(CredentialType::BatchItem)]
 #[tokio::test]
-async fn generic_issuer_singles_cannot_be_persisted() {
+async fn generic_issuer_credentials_cannot_be_persisted(#[case] kind: CredentialType) {
     let setup = setup_with_credential().await;
     let repository = credential_repository(setup.db.clone(), None);
     // The raw fixture returns the old generic model, even though its stored relations are valid.
@@ -202,6 +208,7 @@ async fn generic_issuer_singles_cannot_be_persisted() {
     .await
     .unwrap();
     let mut request = request;
+    *request.type_mut().unwrap() = kind;
     request.common_mut().id = Uuid::new_v4().into();
     assert!(matches!(
         repository.create_credential(request.clone()).await,

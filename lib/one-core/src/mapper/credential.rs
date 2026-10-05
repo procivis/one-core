@@ -6,7 +6,7 @@ use crate::model::credential::{
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::OptionalRelatedRefExt;
 use crate::repository::credential_repository::CredentialRepository;
 
 /// Returns stored claims, resolving parent-owned claims for non-holder batch items.
@@ -20,13 +20,13 @@ pub(crate) async fn stored_credential_claims(
     if credential.r#type() != CredentialType::BatchItem
         || credential.role() == CredentialRole::Holder
     {
-        return Ok(credential.claims().as_ref().await?.to_owned());
+        return Ok(credential.claims()?.as_ref().await?.to_owned());
     }
     Ok(credential
         .parent()
         .as_required_ref()
         .await?
-        .claims()
+        .claims()?
         .as_ref()
         .await?
         .to_owned())
@@ -70,7 +70,7 @@ async fn holder_batch_parent_claims(
         .await
         .error_while("loading newest batch item")?;
     if let Some(item) = items.values.first() {
-        return Ok(item.claims().as_ref().await?.to_owned());
+        return Ok(item.claims()?.as_ref().await?.to_owned());
     }
     Ok(vec![])
 }
@@ -87,7 +87,7 @@ mod test {
     #[tokio::test]
     async fn holder_items_use_only_own_claims_while_issuer_items_inherit() {
         let parent = dummy_credential();
-        let parent_claim_id = parent.claims().as_ref().await.unwrap()[0].id;
+        let parent_claim_id = parent.claims().unwrap().as_ref().await.unwrap()[0].id;
         let mut item = {
             let mut updated_credential = dummy_credential();
             *updated_credential.role_mut().unwrap() = CredentialRole::Holder;
@@ -95,9 +95,12 @@ mod test {
             *updated_credential.parent_mut().unwrap() = Some(parent.into());
             updated_credential
         };
-        item.claims_mut().as_mut().await.unwrap()[0].selectively_disclosable = true;
+        item.claims_mut().unwrap().as_mut().await.unwrap()[0].selectively_disclosable = true;
         let own = stored_credential_claims(&item).await.unwrap();
-        assert_eq!(own[0].id, item.claims().as_ref().await.unwrap()[0].id);
+        assert_eq!(
+            own[0].id,
+            item.claims().unwrap().as_ref().await.unwrap()[0].id
+        );
         assert!(own[0].selectively_disclosable);
         assert_ne!(own[0].id, parent_claim_id);
 
@@ -107,7 +110,7 @@ mod test {
             parent_claim_id
         );
         *item.role_mut().unwrap() = CredentialRole::Holder;
-        *item.claims_mut() = Default::default();
+        *item.claims_mut().unwrap() = Default::default();
         assert!(stored_credential_claims(&item).await.unwrap().is_empty());
     }
 
@@ -121,9 +124,9 @@ mod test {
                 updated_credential
             };
             let mut item = dummy_credential();
-            let item_claim_id = item.claims().as_ref().await.unwrap()[0].id;
+            let item_claim_id = item.claims().unwrap().as_ref().await.unwrap()[0].id;
             if !has_item_claims {
-                *item.claims_mut() = Default::default();
+                *item.claims_mut().unwrap() = Default::default();
             }
             let mut repository = MockCredentialRepository::new();
             repository
@@ -146,7 +149,7 @@ mod test {
             } else {
                 assert!(claims.is_empty());
             }
-            *parent.claims_mut() = Default::default();
+            *parent.claims_mut().unwrap() = Default::default();
             assert_eq!(
                 detail_claims(&parent, &repository)
                     .await

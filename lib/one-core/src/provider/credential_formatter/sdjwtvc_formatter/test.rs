@@ -1608,7 +1608,7 @@ async fn test_parse_credential_eudi() {
         .unwrap();
 
     // Verify claims were parsed
-    let claims = result.claims().as_ref().await.unwrap();
+    let claims = result.claims().unwrap().as_ref().await.unwrap();
 
     assert_eq!(claims.len(), 17);
 
@@ -1911,7 +1911,7 @@ async fn test_parse_credential() {
         .unwrap();
 
     // Verify claims were parsed
-    let claims = result.claims().as_ref().await.unwrap();
+    let claims = result.claims().unwrap().as_ref().await.unwrap();
 
     assert_eq!(claims.len(), 10);
 

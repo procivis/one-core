@@ -80,7 +80,7 @@ async fn test_issuer_submit_succeeds() {
         let mut updated_credential = dummy_credential().await;
         updated_credential.common_mut().state = CredentialStateEnum::Offered;
         *updated_credential.suspend_end_date_mut().unwrap() = None;
-        *updated_credential.holder_identifier_mut() = Some(
+        *updated_credential.holder_identifier_mut().unwrap() = Some(
             Identifier {
                 data: IdentifierData::Did((dummy_did()).into()),
                 ..dummy_identifier()
@@ -106,7 +106,7 @@ async fn test_issuer_submit_succeeds() {
             .into(),
         );
         *updated_credential.key_mut().unwrap() = Some(key.into());
-        crate::service::test_utilities::issuer_single_credential(updated_credential).unwrap()
+        crate::service::test_utilities::issuer_credential(updated_credential).unwrap()
     };
 
     let credential_copy = credential.clone();
@@ -310,7 +310,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         updated_credential.common_mut().state = state;
         updated_credential.common_mut().schema = credential_schema.into();
         *updated_credential.suspend_end_date_mut().unwrap() = None;
-        *updated_credential.holder_identifier_mut() = Some(
+        *updated_credential.holder_identifier_mut().unwrap() = Some(
             Identifier {
                 data: IdentifierData::Did((dummy_did()).into()),
                 ..dummy_identifier()
@@ -337,7 +337,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         );
         *updated_credential.key_mut().unwrap() = Some(key.into());
         *updated_credential.format_mut().unwrap() = credential_format.map(Into::into);
-        crate::service::test_utilities::issuer_single_credential(updated_credential).unwrap()
+        crate::service::test_utilities::issuer_credential(updated_credential).unwrap()
     }
 }
 

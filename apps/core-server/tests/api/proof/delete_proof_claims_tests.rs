@@ -136,7 +136,13 @@ async fn test_delete_proof_claims_success() {
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential.claims().as_ref().await.unwrap().to_owned(),
+            credential
+                .claims()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .to_owned(),
         )
         .await;
 
@@ -144,6 +150,7 @@ async fn test_delete_proof_claims_success() {
     assert!(
         !credential
             .claims()
+            .unwrap()
             .as_ref()
             .await
             .unwrap()
@@ -176,6 +183,7 @@ async fn test_delete_proof_claims_success() {
     assert!(
         credential
             .claims()
+            .unwrap()
             .as_ref()
             .await
             .unwrap()

@@ -52,7 +52,8 @@ use crate::mapper::exchange::{
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::LockType;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, IssuerCredentialData,
+    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -1628,26 +1629,36 @@ impl OID4VCIFinal1_0Service {
             CredentialStateEnum::Offered
         };
 
-        Ok({
-            let mut updated_credential = parent_credential;
-            updated_credential.common_mut().id = Uuid::new_v4().into();
-            updated_credential.common_mut().created_date = now;
-            // last_modified is reused from the parent credential,
-            // so that it can be checked in the issuance protocol (e.g. MSO refresh rate limiting)
-            // it will be updated inside the issuance protocol logic
-            updated_credential.common_mut().issuance_date = Some(now);
-            updated_credential.common_mut().interaction = None;
-            updated_credential.common_mut().expires_at = expires_at;
-            updated_credential.common_mut().state = state;
-            *updated_credential.type_mut()? = CredentialType::BatchItem;
-            *updated_credential.parent_mut()? = Some(Related::new(
-                parent_credential_id,
-                self.credential_repository.clone(),
-            ));
-            *updated_credential.webhook_url_mut()? = None;
-            *updated_credential.claims_mut() = Default::default();
-            *updated_credential.format_mut()? = Some(format.to_owned().into());
-            updated_credential
+        let Credential::IssuerBatchParent {
+            mut common,
+            issuer,
+            suspend_end_date,
+            ..
+        } = parent_credential
+        else {
+            return Err(DataLayerError::MappingError
+                .error_while("preparing issuer batch item")
+                .into());
+        };
+        common.id = Uuid::new_v4().into();
+        common.created_date = now;
+        // Keep the parent's last_modified for the protocol's refresh rate limiting.
+        common.issuance_date = Some(now);
+        common.interaction = None;
+        common.expires_at = expires_at;
+        common.state = state;
+        Ok(Credential::IssuerBatchItem {
+            common,
+            issuer,
+            parent: Related::new(parent_credential_id, self.credential_repository.clone()),
+            credential: IssuerCredentialData {
+                format: format.to_owned().into(),
+                holder_identifier: None,
+                credential_blob_id: None,
+                wallet_key_attestation_blob_id: None,
+                wallet_instance_attestation_blob_id: None,
+                suspend_end_date,
+            },
         })
     }
 

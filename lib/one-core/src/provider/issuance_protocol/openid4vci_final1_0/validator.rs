@@ -303,7 +303,7 @@ struct ClaimWithType {
 async fn sorted_claim_entries(
     credential: &Credential,
 ) -> Result<Vec<ClaimWithType>, IssuanceProtocolError> {
-    let claims = credential.claims().as_ref().await?;
+    let claims = credential.claims()?.as_ref().await?;
     let mut claims_with_types = vec![];
     for claim in claims.iter() {
         let claim_schema = claim.schema.as_ref().await?;

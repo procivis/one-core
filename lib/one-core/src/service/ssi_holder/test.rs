@@ -2172,7 +2172,7 @@ async fn accept_groups_batches_by_non_metadata_claims(
     {
         let mut credential = dummy_credential(None);
         credential.common_mut().schema = schema.clone();
-        *credential.claims_mut() = claims
+        *credential.claims_mut().unwrap() = claims
             .iter()
             .map(|(path, value, metadata)| Claim {
                 id: Uuid::new_v4().into(),
@@ -2317,12 +2317,7 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
         assert_eq!(response.main_credential.credential.common().id, id);
         assert_eq!(response.batch_items.len(), 1);
         assert_eq!(
-            response.batch_items[0]
-                .credential
-                .parent()
-                .as_ref()
-                .unwrap()
-                .id(),
+            response.batch_items[0].credential.parent().unwrap().id(),
             id
         );
     }
