@@ -110,6 +110,20 @@ pub async fn insert_credential(
         .ok_or(DbErr::RecordNotFound(credential_schema_id.to_string()))?
         .organisation_id;
 
+    let (key_id, format_id) = if role == CredentialRole::Issuer {
+        let key_id =
+            insert_key_to_database(db, "EDDSA".into(), vec![], vec![], None, organisation_id)
+                .await?;
+        let format = credential_schema_format::Entity::find()
+            .filter(credential_schema_format::Column::CredentialSchemaId.eq(*credential_schema_id))
+            .one(db)
+            .await?
+            .ok_or(DbErr::RecordNotFound("credential format".into()))?;
+        (Some(key_id), Some(format.id))
+    } else {
+        (None, None)
+    };
+
     let credential = credential::ActiveModel {
         expires_at: Set(None),
         ecosystem: Set(None),
@@ -129,7 +143,7 @@ pub async fn insert_credential(
         issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
         interaction_id: Set(None),
-        key_id: Set(None),
+        key_id: Set(key_id),
         state: Set(state.into()),
         suspend_end_date: Set(suspend_end_date),
         profile: Set(None),
@@ -140,7 +154,7 @@ pub async fn insert_credential(
         webhook_url: Set(None),
         embedded_disclosure_policy: Set(None),
         subscriber_information: Set(None),
-        format: Set(None),
+        format: Set(format_id),
     }
     .insert(db)
     .await?;

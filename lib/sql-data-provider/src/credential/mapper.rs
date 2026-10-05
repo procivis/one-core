@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use one_core::model::claim::Claim;
 use one_core::model::credential::{
-    Clearable, Credential, CredentialCommon, CredentialFilterValue, IssuerIdentity,
-    SortableCredentialColumn, VerifierCredentialData,
+    Clearable, Credential, CredentialCommon, CredentialFilterValue, IssuerCredentialData,
+    IssuerData, IssuerIdentity, SortableCredentialColumn, VerifierCredentialData,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
@@ -376,6 +376,44 @@ pub(super) fn credential_from_model(
             },
         });
     }
+    if credential.role == credential::CredentialRole::Issuer
+        && credential.r#type == credential::CredentialType::Single
+    {
+        return Ok(Credential::IssuerSingle {
+            common,
+            issuer: IssuerData {
+                identifier: Related::new(
+                    credential
+                        .issuer_identifier_id
+                        .ok_or(DataLayerError::MappingError)?,
+                    issuer,
+                ),
+                certificate: credential
+                    .issuer_certificate_id
+                    .map(|id| Related::new(id, repositories.certificate_repository.clone())),
+                signing_key: Related::new(
+                    credential.key_id.ok_or(DataLayerError::MappingError)?,
+                    repositories.key_repository.clone(),
+                ),
+            },
+            suspend_end_date: credential.suspend_end_date,
+            webhook_url: credential.webhook_url,
+            subscriber_information: credential.subscriber_information,
+            claims: credential_claims(credential.id, repositories.claim_repository),
+            credential: IssuerCredentialData {
+                format: Related::new(
+                    credential.format.ok_or(DataLayerError::MappingError)?,
+                    format,
+                ),
+                holder_identifier: credential
+                    .holder_identifier_id
+                    .map(|id| Related::new(id, repositories.identifier_repository.clone())),
+                credential_blob_id: credential.credential_blob_id,
+                wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
+                wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+            },
+        });
+    }
     Ok(Credential::Generic {
         common,
         claims: credential_claims(credential.id, repositories.claim_repository),
@@ -440,7 +478,7 @@ pub(super) fn request_to_active_model(
             .interaction
             .as_ref()
             .map(|interaction| interaction.id())),
-        key_id: Set(request.key().as_ref().map(|key| key.id())),
+        key_id: Set(request.key().map(|key| key.id())),
         role: Set(request.role().to_owned().into()),
         state: Set(request.common().state.into()),
         suspend_end_date: Set(request.suspend_end_date()),

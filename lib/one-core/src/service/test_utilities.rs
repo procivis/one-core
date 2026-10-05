@@ -749,3 +749,50 @@ pub fn verifier_credential(
         },
     })
 }
+
+/// Construct an issuer single fixture from a generic credential fixture.
+pub fn issuer_single_credential(
+    credential: Credential,
+) -> Result<Credential, crate::repository::error::DataLayerError> {
+    use crate::model::credential::{IssuerCredentialData, IssuerData};
+    use crate::repository::error::DataLayerError;
+
+    let Credential::Generic {
+        common,
+        claims,
+        issuer_identifier,
+        issuer_certificate,
+        holder_identifier,
+        key,
+        format,
+        suspend_end_date,
+        credential_blob_id,
+        wallet_key_attestation_blob_id,
+        wallet_instance_attestation_blob_id,
+        webhook_url,
+        subscriber_information,
+        ..
+    } = credential
+    else {
+        return Err(DataLayerError::MappingError);
+    };
+    Ok(Credential::IssuerSingle {
+        common,
+        issuer: IssuerData {
+            identifier: issuer_identifier.ok_or(DataLayerError::MappingError)?,
+            certificate: issuer_certificate,
+            signing_key: key.ok_or(DataLayerError::MappingError)?,
+        },
+        suspend_end_date,
+        claims,
+        webhook_url,
+        subscriber_information,
+        credential: IssuerCredentialData {
+            format: format.ok_or(DataLayerError::MappingError)?,
+            holder_identifier,
+            credential_blob_id,
+            wallet_key_attestation_blob_id,
+            wallet_instance_attestation_blob_id,
+        },
+    })
+}

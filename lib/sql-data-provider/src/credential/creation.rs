@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-use one_core::model::credential::{Credential, CredentialRole};
+use one_core::model::credential::{Credential, CredentialRole, CredentialType};
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
@@ -34,6 +34,10 @@ pub(super) async fn prepare_credentials(
             credential,
             Credential::Generic {
                 role: CredentialRole::Verifier,
+                ..
+            } | Credential::Generic {
+                role: CredentialRole::Issuer,
+                r#type: CredentialType::Single,
                 ..
             }
         ) {

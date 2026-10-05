@@ -24,7 +24,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialCommon, CredentialFilterValue, CredentialRole, CredentialStateEnum,
-    CredentialType, ExactCredentialFilterColumn,
+    CredentialType, ExactCredentialFilterColumn, IssuerCredentialData, IssuerData,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -167,7 +167,9 @@ pub(crate) async fn credential_detail_response_from_model(
     let parent_id = value.parent().as_ref().map(|parent| parent.id());
     let subscriber_information = value.subscriber_information().to_owned();
     let common = match value {
-        Credential::Generic { common, .. } | Credential::Verifier { common, .. } => common,
+        Credential::Generic { common, .. }
+        | Credential::IssuerSingle { common, .. }
+        | Credential::Verifier { common, .. } => common,
     };
 
     Ok(CredentialDetailResponseDTO {
@@ -580,7 +582,9 @@ pub(super) async fn to_credential_list_response(
     let webhook_url = credential.webhook_url().to_owned();
     let parent_id = credential.parent().as_ref().map(|parent| parent.id());
     let common = match credential {
-        Credential::Generic { common, .. } | Credential::Verifier { common, .. } => common,
+        Credential::Generic { common, .. }
+        | Credential::IssuerSingle { common, .. }
+        | Credential::Verifier { common, .. } => common,
     };
 
     Ok(CredentialListItemResponseDTO {
@@ -658,22 +662,46 @@ pub(super) fn from_create_request(
     };
     let expires_at = schema.expiration.map(|e| now + e);
 
+    let common = CredentialCommon {
+        id: credential_id,
+        created_date: now,
+        issuance_date: None,
+        expires_at,
+        state: CredentialStateEnum::Created,
+        last_modified: now,
+        deleted_at: None,
+        protocol: request.protocol,
+        schema: schema.into(),
+        interaction: None,
+        redirect_uri: request.redirect_uri,
+        profile: request.profile,
+        ecosystem: request.ecosystem,
+    };
+    if r#type == CredentialType::Single {
+        return Ok(Credential::IssuerSingle {
+            common,
+            issuer: IssuerData {
+                identifier: issuer_identifier.into(),
+                certificate: issuer_certificate.map(Into::into),
+                signing_key: key.into(),
+            },
+            suspend_end_date: None,
+            webhook_url: request.webhook_destination_url,
+            subscriber_information: request.subscriber_information,
+            claims: claims.into(),
+            credential: IssuerCredentialData {
+                format: format
+                    .ok_or(CredentialServiceError::InvalidFormatSelection)?
+                    .into(),
+                holder_identifier: None,
+                credential_blob_id: None,
+                wallet_key_attestation_blob_id: None,
+                wallet_instance_attestation_blob_id: None,
+            },
+        });
+    }
     Ok(Credential::Generic {
-        common: CredentialCommon {
-            id: credential_id,
-            created_date: now,
-            issuance_date: None,
-            expires_at,
-            state: CredentialStateEnum::Created,
-            last_modified: now,
-            deleted_at: None,
-            protocol: request.protocol,
-            schema: schema.into(),
-            interaction: None,
-            redirect_uri: request.redirect_uri,
-            profile: request.profile,
-            ecosystem: request.ecosystem,
-        },
+        common,
         suspend_end_date: None,
         consumed_at: None,
         claims: claims.into(),

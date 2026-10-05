@@ -1,7 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::future::join_all;
 use one_core::model::certificate::CertificateRole;
-use one_core::model::credential::{CredentialStateEnum, CredentialType};
+use one_core::model::credential::{Credential, CredentialStateEnum, CredentialType};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
 use shared_types::CredentialId;
@@ -61,6 +61,7 @@ async fn test_create_credential_success() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert!(matches!(credential, Credential::IssuerSingle { .. }));
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
     assert_eq!(
         2,

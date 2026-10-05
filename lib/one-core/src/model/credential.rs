@@ -23,10 +23,6 @@ use crate::repository::error::DataLayerError;
 
 #[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
-#[expect(
-    clippy::large_enum_variant,
-    reason = "The generic variant remains inline until the other credential roles and types are split"
-)]
 pub enum Credential {
     /// TODO ONE-11429: Temporary shim until the credential model has been fully refactored into
     /// role and type specific variants.
@@ -54,6 +50,18 @@ pub enum Credential {
         key: Option<Related<Key>>,
         parent: Option<Related<Credential>>,
     },
+    IssuerSingle {
+        #[model(nested)]
+        common: CredentialCommon,
+        issuer: IssuerData,
+        suspend_end_date: Option<OffsetDateTime>,
+        webhook_url: Option<String>,
+        /// Optional, opaque metadata to allow external clients to store metadata on credentials.
+        /// Shared by an entire issuance: batch items read it through their parent.
+        subscriber_information: Option<String>,
+        claims: RelatedVec<Claim>,
+        credential: IssuerCredentialData,
+    },
     Verifier {
         #[model(nested)]
         common: CredentialCommon,
@@ -78,6 +86,24 @@ pub struct CredentialCommon {
     pub ecosystem: Option<EcosystemId>,
     pub schema: Related<CredentialSchema>,
     pub state: CredentialStateEnum,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
+pub struct IssuerData {
+    pub identifier: Related<Identifier>,
+    pub certificate: Option<Related<Certificate>>,
+    pub signing_key: Related<Key>,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
+pub struct IssuerCredentialData {
+    pub format: Related<CredentialSchemaFormat>,
+    pub holder_identifier: Option<Related<Identifier>>,
+    pub credential_blob_id: Option<BlobId>,
+    pub wallet_key_attestation_blob_id: Option<BlobId>,
+    pub wallet_instance_attestation_blob_id: Option<BlobId>,
 }
 
 #[derive(Clone, Debug)]
@@ -115,34 +141,39 @@ pub enum CredentialStateEnum {
 impl Credential {
     pub fn common(&self) -> &CredentialCommon {
         match self {
-            Self::Generic { common, .. } | Self::Verifier { common, .. } => common,
+            Self::Generic { common, .. }
+            | Self::IssuerSingle { common, .. }
+            | Self::Verifier { common, .. } => common,
         }
     }
 
     pub fn common_mut(&mut self) -> &mut CredentialCommon {
         match self {
-            Self::Generic { common, .. } | Self::Verifier { common, .. } => common,
+            Self::Generic { common, .. }
+            | Self::IssuerSingle { common, .. }
+            | Self::Verifier { common, .. } => common,
         }
     }
 
     pub fn consumed_at(&self) -> Option<OffsetDateTime> {
         match self {
             Self::Generic { consumed_at, .. } => *consumed_at,
-            Self::Verifier { .. } => None,
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => None,
         }
     }
 
     pub fn consumed_at_mut(&mut self) -> Result<&mut Option<OffsetDateTime>, NestedError> {
         match self {
             Self::Generic { consumed_at, .. } => Ok(consumed_at),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn role(&self) -> CredentialRole {
         match self {
             Self::Generic { role, .. } => *role,
+            Self::IssuerSingle { .. } => CredentialRole::Issuer,
             Self::Verifier { .. } => CredentialRole::Verifier,
         }
     }
@@ -150,29 +181,32 @@ impl Credential {
     pub fn role_mut(&mut self) -> Result<&mut CredentialRole, NestedError> {
         match self {
             Self::Generic { role, .. } => Ok(role),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn r#type(&self) -> CredentialType {
         match self {
             Self::Generic { r#type, .. } => *r#type,
-            Self::Verifier { .. } => CredentialType::Single,
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => CredentialType::Single,
         }
     }
 
     pub fn type_mut(&mut self) -> Result<&mut CredentialType, NestedError> {
         match self {
             Self::Generic { r#type, .. } => Ok(r#type),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn suspend_end_date(&self) -> Option<OffsetDateTime> {
         match self {
             Self::Generic {
+                suspend_end_date, ..
+            }
+            | Self::IssuerSingle {
                 suspend_end_date, ..
             } => *suspend_end_date,
             Self::Verifier { .. } => None,
@@ -182,6 +216,9 @@ impl Credential {
     pub fn suspend_end_date_mut(&mut self) -> Result<&mut Option<OffsetDateTime>, NestedError> {
         match self {
             Self::Generic {
+                suspend_end_date, ..
+            }
+            | Self::IssuerSingle {
                 suspend_end_date, ..
             } => Ok(suspend_end_date),
             Self::Verifier { .. } => Err(DataLayerError::MappingError
@@ -194,6 +231,7 @@ impl Credential {
             Self::Generic {
                 credential_blob_id, ..
             } => *credential_blob_id,
+            Self::IssuerSingle { credential, .. } => credential.credential_blob_id,
             Self::Verifier { .. } => None,
         }
     }
@@ -203,6 +241,7 @@ impl Credential {
             Self::Generic {
                 credential_blob_id, ..
             } => Ok(credential_blob_id),
+            Self::IssuerSingle { credential, .. } => Ok(&mut credential.credential_blob_id),
             Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on a verifier credential")),
         }
@@ -214,6 +253,7 @@ impl Credential {
                 wallet_key_attestation_blob_id,
                 ..
             } => *wallet_key_attestation_blob_id,
+            Self::IssuerSingle { credential, .. } => credential.wallet_key_attestation_blob_id,
             Self::Verifier { .. } => None,
         }
     }
@@ -226,6 +266,9 @@ impl Credential {
                 wallet_key_attestation_blob_id,
                 ..
             } => Ok(wallet_key_attestation_blob_id),
+            Self::IssuerSingle { credential, .. } => {
+                Ok(&mut credential.wallet_key_attestation_blob_id)
+            }
             Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on a verifier credential")),
         }
@@ -237,6 +280,7 @@ impl Credential {
                 wallet_instance_attestation_blob_id,
                 ..
             } => *wallet_instance_attestation_blob_id,
+            Self::IssuerSingle { credential, .. } => credential.wallet_instance_attestation_blob_id,
             Self::Verifier { .. } => None,
         }
     }
@@ -249,6 +293,9 @@ impl Credential {
                 wallet_instance_attestation_blob_id,
                 ..
             } => Ok(wallet_instance_attestation_blob_id),
+            Self::IssuerSingle { credential, .. } => {
+                Ok(&mut credential.wallet_instance_attestation_blob_id)
+            }
             Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on a verifier credential")),
         }
@@ -256,14 +303,18 @@ impl Credential {
 
     pub fn webhook_url(&self) -> &Option<String> {
         match self {
-            Self::Generic { webhook_url, .. } => webhook_url,
+            Self::Generic { webhook_url, .. } | Self::IssuerSingle { webhook_url, .. } => {
+                webhook_url
+            }
             Self::Verifier { .. } => &None,
         }
     }
 
     pub fn webhook_url_mut(&mut self) -> Result<&mut Option<String>, NestedError> {
         match self {
-            Self::Generic { webhook_url, .. } => Ok(webhook_url),
+            Self::Generic { webhook_url, .. } | Self::IssuerSingle { webhook_url, .. } => {
+                Ok(webhook_url)
+            }
             Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on a verifier credential")),
         }
@@ -275,7 +326,7 @@ impl Credential {
                 embedded_disclosure_policy,
                 ..
             } => embedded_disclosure_policy,
-            Self::Verifier { .. } => &None,
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => &None,
         }
     }
 
@@ -285,14 +336,18 @@ impl Credential {
                 embedded_disclosure_policy,
                 ..
             } => Ok(embedded_disclosure_policy),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn subscriber_information(&self) -> &Option<String> {
         match self {
             Self::Generic {
+                subscriber_information,
+                ..
+            }
+            | Self::IssuerSingle {
                 subscriber_information,
                 ..
             } => subscriber_information,
@@ -302,14 +357,14 @@ impl Credential {
 
     pub fn claims(&self) -> &RelatedVec<Claim> {
         match self {
-            Self::Generic { claims, .. } => claims,
+            Self::Generic { claims, .. } | Self::IssuerSingle { claims, .. } => claims,
             Self::Verifier { verifier_data, .. } => &verifier_data.claims,
         }
     }
 
     pub fn claims_mut(&mut self) -> &mut RelatedVec<Claim> {
         match self {
-            Self::Generic { claims, .. } => claims,
+            Self::Generic { claims, .. } | Self::IssuerSingle { claims, .. } => claims,
             Self::Verifier { verifier_data, .. } => &mut verifier_data.claims,
         }
     }
@@ -319,6 +374,7 @@ impl Credential {
             Self::Generic {
                 issuer_identifier, ..
             } => issuer_identifier.as_ref(),
+            Self::IssuerSingle { issuer, .. } => Some(&issuer.identifier),
             Self::Verifier { verifier_data, .. } => Some(&verifier_data.issuer.identifier),
         }
     }
@@ -330,8 +386,8 @@ impl Credential {
             Self::Generic {
                 issuer_identifier, ..
             } => Ok(issuer_identifier),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
@@ -340,6 +396,7 @@ impl Credential {
             Self::Generic {
                 issuer_certificate, ..
             } => issuer_certificate,
+            Self::IssuerSingle { issuer, .. } => &issuer.certificate,
             Self::Verifier { verifier_data, .. } => &verifier_data.issuer.certificate,
         }
     }
@@ -349,6 +406,7 @@ impl Credential {
             Self::Generic {
                 issuer_certificate, ..
             } => issuer_certificate,
+            Self::IssuerSingle { issuer, .. } => &mut issuer.certificate,
             Self::Verifier { verifier_data, .. } => &mut verifier_data.issuer.certificate,
         }
     }
@@ -358,6 +416,7 @@ impl Credential {
             Self::Generic {
                 holder_identifier, ..
             } => holder_identifier,
+            Self::IssuerSingle { credential, .. } => &credential.holder_identifier,
             Self::Verifier { verifier_data, .. } => &verifier_data.holder_identifier,
         }
     }
@@ -367,6 +426,7 @@ impl Credential {
             Self::Generic {
                 holder_identifier, ..
             } => holder_identifier,
+            Self::IssuerSingle { credential, .. } => &mut credential.holder_identifier,
             Self::Verifier { verifier_data, .. } => &mut verifier_data.holder_identifier,
         }
     }
@@ -374,6 +434,7 @@ impl Credential {
     pub fn format(&self) -> Option<&Related<CredentialSchemaFormat>> {
         match self {
             Self::Generic { format, .. } => format.as_ref(),
+            Self::IssuerSingle { credential, .. } => Some(&credential.format),
             Self::Verifier { verifier_data, .. } => Some(&verifier_data.format),
         }
     }
@@ -383,38 +444,39 @@ impl Credential {
     ) -> Result<&mut Option<Related<CredentialSchemaFormat>>, NestedError> {
         match self {
             Self::Generic { format, .. } => Ok(format),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
-    pub fn key(&self) -> &Option<Related<Key>> {
+    pub fn key(&self) -> Option<&Related<Key>> {
         match self {
-            Self::Generic { key, .. } => key,
-            Self::Verifier { .. } => &None,
+            Self::Generic { key, .. } => key.as_ref(),
+            Self::IssuerSingle { issuer, .. } => Some(&issuer.signing_key),
+            Self::Verifier { .. } => None,
         }
     }
 
     pub fn key_mut(&mut self) -> Result<&mut Option<Related<Key>>, NestedError> {
         match self {
             Self::Generic { key, .. } => Ok(key),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn parent(&self) -> &Option<Related<Credential>> {
         match self {
             Self::Generic { parent, .. } => parent,
-            Self::Verifier { .. } => &None,
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => &None,
         }
     }
 
     pub fn parent_mut(&mut self) -> Result<&mut Option<Related<Credential>>, NestedError> {
         match self {
             Self::Generic { parent, .. } => Ok(parent),
-            Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on a verifier credential")),
+            Self::IssuerSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 

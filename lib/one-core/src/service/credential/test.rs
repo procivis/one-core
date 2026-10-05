@@ -936,6 +936,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
 
         credential_repository
             .expect_create_credential()
+            .withf(|credential| matches!(credential, Credential::IssuerSingle { .. }))
             .times(1)
             .returning(move |_| Ok(clone.common().id));
     }
@@ -1060,6 +1061,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
 
         credential_repository
             .expect_create_credential()
+            .withf(|credential| matches!(credential, Credential::IssuerSingle { .. }))
             .times(1)
             .returning(move |_| Ok(clone.common().id));
     }
@@ -1650,6 +1652,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
         credential_repository
             .expect_create_credential()
+            .withf(|credential| matches!(credential, Credential::IssuerSingle { .. }))
             .times(1)
             .returning(move |_| Ok(clone.common().id));
 

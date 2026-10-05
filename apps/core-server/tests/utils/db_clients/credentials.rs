@@ -219,12 +219,7 @@ impl CredentialsDB {
                 .map(|id| Related::new(id, self.repository.clone())),
             format: convert_inner(params.format.or(format)),
         };
-        if credential.role() == CredentialRole::Verifier {
-            assert_eq!(credential.r#type(), CredentialType::Single);
-            one_core::service::test_utilities::verifier_credential(credential).unwrap()
-        } else {
-            credential
-        }
+        credential_fixture(credential).await
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -241,6 +236,7 @@ impl CredentialsDB {
         credential_schema
             .batch_size
             .expect("schema batch size is required to create credential batch");
+        params.r#type = Some(CredentialType::BatchParent);
         let key = params.key.take().map(Into::into);
         let holder_identifier = params.holder_identifier.take().map(Into::into);
         let mut credential = self
@@ -381,4 +377,56 @@ fn schema_to_dummy_value(claim_schema: &ClaimSchema, random_claims: bool) -> Opt
         }
     };
     Some(value)
+}
+
+pub async fn credential_fixture(mut credential: Credential) -> Credential {
+    if credential.role() == CredentialRole::Verifier {
+        assert_eq!(credential.r#type(), CredentialType::Single);
+        one_core::service::test_utilities::verifier_credential(credential).unwrap()
+    } else if credential.role() == CredentialRole::Issuer
+        && credential.r#type() == CredentialType::Single
+    {
+        if credential.key().is_none() {
+            let key = match &credential
+                .issuer_identifier()
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .data
+            {
+                IdentifierData::Key(key) => key.clone(),
+                IdentifierData::Did(did) => did
+                    .as_ref()
+                    .await
+                    .unwrap()
+                    .keys
+                    .as_ref()
+                    .await
+                    .unwrap()
+                    .first()
+                    .expect("issuer requires a signing key")
+                    .key
+                    .clone()
+                    .into(),
+                IdentifierData::Certificate(_) | IdentifierData::CertificateAuthority(_) => {
+                    credential
+                        .issuer_certificate()
+                        .as_ref()
+                        .unwrap()
+                        .as_ref()
+                        .await
+                        .unwrap()
+                        .key
+                        .as_ref()
+                        .expect("issuer certificate requires a signing key")
+                        .clone()
+                }
+            };
+            *credential.key_mut().unwrap() = Some(key);
+        }
+        one_core::service::test_utilities::issuer_single_credential(credential).unwrap()
+    } else {
+        credential
+    }
 }

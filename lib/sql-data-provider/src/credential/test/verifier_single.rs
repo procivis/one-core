@@ -1,3 +1,4 @@
+use assert2::let_assert;
 use one_core::model::credential::{IssuerIdentity, VerifierCredentialData};
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, IntoActiveModel};
@@ -70,9 +71,7 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
     assert!(row.credential_blob_id.is_none());
 
     let loaded = repository.get_credential(&id).await.unwrap();
-    let Credential::Verifier { verifier_data, .. } = &loaded else {
-        panic!("expected a verifier single");
-    };
+    let_assert!(Credential::Verifier { verifier_data, .. } = &loaded);
     assert_eq!(
         verifier_data.issuer.identifier.as_ref().await.unwrap().id,
         setup.identifier.id
@@ -145,6 +144,14 @@ async fn invalid_verifier_rows_return_mapping_errors(
 async fn generic_verifier_credentials_cannot_be_persisted(#[case] credential_type: CredentialType) {
     let setup = setup_with_credential().await;
     let repository = credential_repository(setup.db.clone(), None);
+    let mut row = credential::Entity::find_by_id(setup.credential_id)
+        .one(&setup.db)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    row.role = Set(credential::CredentialRole::Holder);
+    row.update(&setup.db).await.unwrap();
     let mut request = repository
         .get_credential(&setup.credential_id)
         .await

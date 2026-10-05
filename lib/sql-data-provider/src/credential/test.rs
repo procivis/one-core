@@ -52,6 +52,9 @@ use crate::transaction_context::TransactionManagerImpl;
 #[path = "test/deduplication.rs"]
 mod deduplication;
 
+#[path = "test/issuer_single.rs"]
+mod issuer_single;
+
 #[path = "test/verifier_single.rs"]
 mod verifier_single;
 
@@ -361,7 +364,7 @@ async fn test_create_credential_success() {
                 profile: None,
             },
             consumed_at: None,
-            role: CredentialRole::Issuer,
+            role: CredentialRole::Holder,
             r#type: CredentialType::Single,
             suspend_end_date: None,
             claims: claims.into(),
@@ -423,7 +426,7 @@ async fn test_create_credential_empty_claims() {
                 profile: None,
             },
             consumed_at: None,
-            role: CredentialRole::Issuer,
+            role: CredentialRole::Holder,
             r#type: CredentialType::Single,
             suspend_end_date: None,
             claims: Default::default(),
@@ -496,7 +499,7 @@ async fn test_create_credential_already_exists() {
                 profile: None,
             },
             consumed_at: None,
-            role: CredentialRole::Issuer,
+            role: CredentialRole::Holder,
             r#type: CredentialType::Single,
             suspend_end_date: None,
             claims: claims.into(),
@@ -664,16 +667,19 @@ async fn test_get_credential_list_formats_or_batch_parent() {
         .unwrap()
         .unwrap()
         .id;
+    use sea_orm::{ActiveModelTrait, IntoActiveModel};
+    let mut parent_row = credential::Entity::find_by_id(credential_id)
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    let parent_id = Uuid::new_v4().into();
+    parent_row.id = Set(parent_id);
+    parent_row.r#type = Set(credential::CredentialType::BatchParent);
+    parent_row.format = Set(None);
+    parent_row.insert(&db).await.unwrap();
     let provider = credential_repository(db, None);
-    let parent = {
-        let mut updated_credential = provider.get_credential(&credential_id).await.unwrap();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
-        *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
-        *updated_credential.format_mut().unwrap() = None;
-        *updated_credential.claims_mut() = Default::default();
-        updated_credential
-    };
-    provider.create_credential(parent.clone()).await.unwrap();
     provider
         .update_credential(
             credential_id,
@@ -704,7 +710,7 @@ async fn test_get_credential_list_formats_or_batch_parent() {
             .values
             .into_iter()
             .map(|credential| credential.common().id),
-        [credential_id, parent.common().id],
+        [credential_id, parent_id],
     );
 }
 

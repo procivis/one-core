@@ -106,7 +106,7 @@ async fn test_issuer_submit_succeeds() {
             .into(),
         );
         *updated_credential.key_mut().unwrap() = Some(key.into());
-        updated_credential
+        crate::service::test_utilities::issuer_single_credential(updated_credential).unwrap()
     };
 
     let credential_copy = credential.clone();
@@ -337,7 +337,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         );
         *updated_credential.key_mut().unwrap() = Some(key.into());
         *updated_credential.format_mut().unwrap() = credential_format.map(Into::into);
-        updated_credential
+        crate::service::test_utilities::issuer_single_credential(updated_credential).unwrap()
     }
 }
 

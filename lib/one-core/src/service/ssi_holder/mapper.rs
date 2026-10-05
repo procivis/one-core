@@ -13,7 +13,6 @@ pub(super) async fn holder_did_key_jwk_from_credential(
 ) -> Result<(Option<Did>, Key, Option<String>), HolderServiceError> {
     let key = credential
         .key()
-        .as_ref()
         .ok_or(HolderServiceError::MappingError(
             "missing holder key".to_string(),
         ))?

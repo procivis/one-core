@@ -37,6 +37,14 @@ impl BatchSetup {
         )
         .await
         .unwrap();
+        let mut row = credential::Entity::find_by_id(template.common().id)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap()
+            .into_active_model();
+        row.r#type = Set(credential::CredentialType::BatchParent);
+        row.update(&db).await.unwrap();
         let repositories = crate::DataLayer::build(db.clone(), vec![]);
         let parent = {
             let mut updated_credential = repositories
@@ -280,6 +288,8 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
             .clone();
         *single.format_mut().unwrap() = Some(format.into());
         one_core::service::test_utilities::verifier_credential(single).unwrap()
+    } else if role == CredentialRole::Issuer {
+        one_core::service::test_utilities::issuer_single_credential(single).unwrap()
     } else {
         single
     };
@@ -644,12 +654,30 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
         groups.push(ids);
         requests.push(parent);
     }
+    let issuer_template = insert_credential(
+        &setup.db,
+        &setup.parent.common().schema.id(),
+        CredentialStateEnum::Accepted,
+        "OPENID4VCI_FINAL1",
+        setup.parent.issuer_identifier().unwrap().id(),
+        None,
+        None,
+        Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
+    )
+    .await
+    .unwrap();
+    let issuer_template = setup
+        .repositories
+        .get_credential_repository()
+        .get_credential(&issuer_template.common().id)
+        .await
+        .unwrap();
     let issuer = {
-        let mut updated_credential = setup.item(vec![setup.claim.clone()]);
-        *updated_credential.role_mut().unwrap() = CredentialRole::Issuer;
-        *updated_credential.type_mut().unwrap() = CredentialType::Single;
-        *updated_credential.parent_mut().unwrap() = None;
-        updated_credential
+        let mut issuer = issuer_template;
+        issuer.common_mut().id = Uuid::new_v4().into();
+        *issuer.claims_mut() = vec![setup.claim.clone()].into();
+        issuer
     };
     let issuer_id = issuer.common().id;
     requests.push(issuer);

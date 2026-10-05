@@ -1,14 +1,12 @@
 use std::collections::HashSet;
 
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::DidType;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
-use one_core::model::identifier::IdentifierType;
 use one_core::model::trust_list_subscription::TrustListSubscriptionState;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
+use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::histories::QueryParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
@@ -57,7 +55,7 @@ async fn test_get_history_list_simple() {
 #[tokio::test]
 async fn test_get_history_list_schema_joins_credentials() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let (context, organisation, issuer_did, identifier, _) = TestContext::new_with_did(None).await;
     context
         .db
         .histories
@@ -67,25 +65,6 @@ async fn test_get_history_list_schema_joins_credentials() {
                 action: Some(HistoryAction::Created),
                 entity_id: Some(organisation.id.into()),
                 entity_type: Some(HistoryEntityType::Organisation),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let issuer_did = context
-        .db
-        .dids
-        .create(organisation.clone(), TestingDidParams::default())
-        .await;
-    let identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
                 ..Default::default()
             },
         )
@@ -639,26 +618,7 @@ async fn test_get_history_list_by_trust_collection_id() {
 #[tokio::test]
 async fn test_get_history_search_by_credential_schema_name() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let issuer_did = context
-        .db
-        .dids
-        .create(organisation.clone(), TestingDidParams::default())
-        .await;
-    let identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
+    let (context, organisation, _, identifier, _) = TestContext::new_with_did(None).await;
 
     let schema = context
         .db
@@ -732,26 +692,7 @@ async fn test_get_history_search_by_credential_schema_name() {
 #[tokio::test]
 async fn test_get_history_search_defaults_to_all() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let issuer_did = context
-        .db
-        .dids
-        .create(organisation.clone(), TestingDidParams::default())
-        .await;
-    let identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
+    let (context, organisation, _, identifier, _) = TestContext::new_with_did(None).await;
 
     let schema = context
         .db

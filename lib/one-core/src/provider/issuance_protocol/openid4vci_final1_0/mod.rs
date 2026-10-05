@@ -1201,7 +1201,6 @@ impl OpenID4VCIFinal1_0 {
             .to_owned();
         let key = credential
             .key()
-            .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
             .as_ref()
             .await?
@@ -2518,7 +2517,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let key = credential
             .key()
-            .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
             .as_ref()
             .await?;

@@ -2295,6 +2295,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -2415,6 +2416,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -2534,6 +2536,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -2695,6 +2698,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },

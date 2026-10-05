@@ -82,6 +82,11 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         )
         .await;
 
+    let signing_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
     let issuer_credential = context
         .db
         .credentials
@@ -92,6 +97,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Issuer),
+                key: Some(signing_key),
                 ..Default::default()
             },
         )
@@ -1738,6 +1744,7 @@ async fn test_revoke_check_failed_deleted_credential() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 credential_blob_id: Some(blob.id),
                 deleted_at: Some(one_core::clock::now_utc()),
                 ..Default::default()
