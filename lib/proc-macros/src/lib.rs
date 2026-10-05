@@ -327,14 +327,17 @@ pub fn endpoint(args: TokenStream, input: TokenStream) -> TokenStream {
 
 /// Derive macro: `#[derive(Model)]`
 ///
-/// Mark the identifier field with `#[model(id)]` attribute
+/// Mark the identifier field with `#[model(id)]` attribute. For enums, mark one
+/// identifier field in each variant.
 ///
 /// Purpose
 /// - Mark model and its primary identifier to use with the `Related` construct
 ///
 /// Limitations and requirements
-/// - only structs with named fields are supported
-/// - exactly one field must be marked with the `#[model(id)]` attribute
+/// - structs with named fields and enums with named or tuple fields are supported
+/// - exactly one field per struct or enum variant must be marked with `#[model(id)]`
+/// - all enum variants must have the same identifier type
+/// - empty enums and variants without fields are not supported
 #[proc_macro_derive(Model, attributes(model))]
 pub fn repository_model(input: TokenStream) -> TokenStream {
     model::repository_model(input)

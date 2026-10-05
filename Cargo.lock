@@ -4573,6 +4573,7 @@ dependencies = [
  "quote",
  "serde",
  "serde_with",
+ "similar-asserts",
  "syn 2.0.111",
  "utoipa",
  "walkdir",
