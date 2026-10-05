@@ -862,3 +862,18 @@ pub fn holder_single_credential(
         },
     })
 }
+
+pub fn parsed_credential(
+    value: Credential,
+) -> crate::provider::credential_formatter::model::ParsedCredential {
+    crate::provider::credential_formatter::model::ParsedCredential {
+        common: value.common().clone(),
+        issuer: crate::model::credential::IssuerIdentity {
+            identifier: value.issuer_identifier().unwrap().clone(),
+            certificate: value.issuer_certificate().clone(),
+        },
+        holder_identifier: value.holder_identifier().cloned(),
+        format: value.format().unwrap().clone(),
+        claims: value.claims().unwrap().clone(),
+    }
+}

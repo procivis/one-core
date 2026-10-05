@@ -31,9 +31,7 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
-use crate::model::credential::{
-    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
-};
+use crate::model::credential::{CredentialCommon, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierData;
 use crate::model::organisation::Organisation;
@@ -45,6 +43,7 @@ use crate::provider::credential_formatter::json_ld_bbsplus::mapper::{
 use crate::provider::credential_formatter::mapper::{
     default_2_years, first_certificate, to_format_with_mappings,
 };
+use crate::provider::credential_formatter::model::ParsedCredential;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -430,7 +429,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
-    ) -> Result<Credential, FormatterError> {
+    ) -> Result<ParsedCredential, FormatterError> {
         let now = crate::clock::now_utc();
 
         let mut vcdm: VcdmCredential = serde_json::from_str(credential.as_ref())?;
@@ -544,7 +543,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             })
             .transpose()?;
 
-        Ok(Credential::Generic {
+        Ok(ParsedCredential {
             common: CredentialCommon {
                 expires_at: vcdm.valid_until.or(vcdm.expiration_date),
                 ecosystem: None,
@@ -560,23 +559,13 @@ impl CredentialFormatter for JsonLdBbsplus {
                 schema: schema.into(),
                 interaction: None,
             },
-            consumed_at: None,
-            role: CredentialRole::Holder,
-            r#type: CredentialType::Single,
-            suspend_end_date: None,
-            credential_blob_id: None,
-            wallet_key_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
             claims: claims.into(),
-            issuer_certificate: first_certificate(&issuer_identifier).await?.map(Into::into),
-            issuer_identifier: Some(issuer_identifier.into()),
+            issuer: crate::model::credential::IssuerIdentity {
+                certificate: first_certificate(&issuer_identifier).await?.map(Into::into),
+                identifier: issuer_identifier.into(),
+            },
             holder_identifier: holder_identifier.map(Into::into),
-            key: None,
-            webhook_url: None,
-            parent: None,
-            embedded_disclosure_policy: None,
-            subscriber_information: None,
-            format: Some(format.into()),
+            format: format.into(),
         })
     }
 

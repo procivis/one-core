@@ -1075,16 +1075,15 @@ async fn test_parse_credential() {
         .await
         .unwrap();
 
-    assert_eq!(credential.role(), CredentialRole::Holder);
     assert_eq!(
-        credential.common().issuance_date.unwrap(),
+        credential.common.issuance_date.unwrap(),
         datetime!(2025-10-15 08:58:13 UTC)
     );
     assert_eq!(
-        credential.common().expires_at.unwrap(),
+        credential.common.expires_at.unwrap(),
         datetime!(2025-10-18 08:58:13 UTC)
     );
-    let claims = credential.claims().unwrap().as_ref().await.unwrap();
+    let claims = credential.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), 7);
 
     let get_claim_paths = |filter: &dyn Fn(&Claim) -> bool| {
@@ -1131,7 +1130,7 @@ async fn test_parse_credential() {
         arr_1_claim.schema.as_ref().await.unwrap().id
     );
 
-    let schema = credential.common().schema.as_ref().await.unwrap();
+    let schema = credential.common.schema.as_ref().await.unwrap();
     assert_eq!(schema.schema_id().await.unwrap(), "pavel.7545.strings");
     let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
     assert_eq!(claim_schemas.len(), 5);

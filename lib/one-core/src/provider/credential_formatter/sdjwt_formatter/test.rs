@@ -998,13 +998,13 @@ async fn test_parse_credential() {
         .unwrap();
 
     // Verify basic credential properties
-    let claims = result.claims().unwrap().as_ref().await.unwrap();
+    let claims = result.claims.as_ref().await.unwrap();
 
     // Should have parsed claims including disclosed ones and metadata
     assert!(!claims.is_empty());
 
     assert_eq!(
-        result.common().expires_at.unwrap(),
+        result.common.expires_at.unwrap(),
         datetime!(2027-10-15 15:14:37 UTC)
     );
 
@@ -1013,13 +1013,7 @@ async fn test_parse_credential() {
         Identifier {
             data: IdentifierData::Did(issuer_did),
             ..
-        } = result
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
+        } = result.issuer.identifier.as_ref().await.unwrap().to_owned()
     );
     assert_eq!(
         issuer_did.as_ref().await.unwrap().did.to_string(),
@@ -1028,7 +1022,8 @@ async fn test_parse_credential() {
 
     // Verify holder identifier
     let holder_identifier = result
-        .holder_identifier()
+        .holder_identifier
+        .as_ref()
         .as_ref()
         .unwrap()
         .as_ref()
@@ -1041,7 +1036,7 @@ async fn test_parse_credential() {
     );
 
     // Verify credential schema
-    let schema = result.common().schema.as_ref().await.unwrap();
+    let schema = result.common.schema.as_ref().await.unwrap();
     assert_eq!(schema.name, "ArraysAndObjects");
     assert_eq!(
         schema.schema_id().await.unwrap(),
@@ -1236,7 +1231,8 @@ async fn test_parse_credential_cnf() {
 
     // Verify holder identifier
     let holder_identifier = result
-        .holder_identifier()
+        .holder_identifier
+        .as_ref()
         .as_ref()
         .unwrap()
         .as_ref()

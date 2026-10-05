@@ -554,21 +554,13 @@ impl OpenID4VCIFinal1_0 {
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 
-        validate_issuance_time(&credential.common().issuance_date, formatter.get_leeway())
+        validate_issuance_time(&credential.common.issuance_date, formatter.get_leeway())
             .error_while("validating issuance time")?;
 
-        let issuer_identifier = match credential.issuer_identifier() {
-            None => None,
-            Some(identifier) => Some(identifier.as_ref().await?.to_owned()),
-        };
-        let identifier_details = match issuer_identifier
-            .as_ref()
-            .map(|identifier| &identifier.data)
-        {
-            Some(IdentifierData::Did(did)) => {
-                IdentifierDetails::Did(did.as_ref().await?.did.to_owned())
-            }
-            Some(IdentifierData::Certificate(certificates)) => {
+        let issuer_identifier = credential.issuer.identifier.as_ref().await?.to_owned();
+        let identifier_details = match &issuer_identifier.data {
+            IdentifierData::Did(did) => IdentifierDetails::Did(did.as_ref().await?.did.to_owned()),
+            IdentifierData::Certificate(certificates) => {
                 let certificate = certificates
                     .as_ref()
                     .await?
@@ -585,7 +577,7 @@ impl OpenID4VCIFinal1_0 {
                     x5_references: Default::default(),
                 })
             }
-            Some(IdentifierData::Key(key)) => {
+            IdentifierData::Key(key) => {
                 let key = key.as_ref().await?;
                 let key_handle = self
                     .key_algorithm_provider
@@ -650,53 +642,24 @@ impl OpenID4VCIFinal1_0 {
             None
         };
 
-        *credential.issuer_identifier_mut()? = Some(issuer_identifier.into());
-        *credential.issuer_certificate_mut() = issuer_certificate.map(Into::into);
-        credential.common_mut().redirect_uri = redirect_uri.cloned();
-        credential.common_mut().state = CredentialStateEnum::Accepted;
-        credential.common_mut().protocol = self.config_id.to_owned();
-        credential.common_mut().interaction = Some(interaction.to_owned().into());
-        attach_matching_holder_binding(&mut credential, holder_bindings).await?;
-        // Formatters carry the parsed holder identity until it is matched to a local key.
-        // Only then can the credential satisfy the holder-single binding invariant.
-        let Credential::Generic {
-            common,
-            claims,
-            issuer_identifier,
-            issuer_certificate,
-            holder_identifier,
-            key,
-            format,
-            credential_blob_id,
-            embedded_disclosure_policy,
-            ..
-        } = credential
-        else {
-            return Err(IssuanceProtocolError::Failed(
-                "Expected a parsed holder credential".into(),
-            ));
-        };
+        credential.common.redirect_uri = redirect_uri.cloned();
+        credential.common.state = CredentialStateEnum::Accepted;
+        credential.common.protocol = self.config_id.to_owned();
+        credential.common.interaction = Some(interaction.to_owned().into());
+        let binding =
+            take_matching_holder_binding(credential.holder_identifier, holder_bindings).await?;
         Ok(Credential::HolderSingle {
-            common,
+            common: credential.common,
             credential: HolderCredentialData {
                 issuer: IssuerIdentity {
-                    identifier: issuer_identifier.ok_or(IssuanceProtocolError::Failed(
-                        "Missing issuer identifier".into(),
-                    ))?,
-                    certificate: issuer_certificate,
+                    identifier: issuer_identifier.into(),
+                    certificate: issuer_certificate.map(Into::into),
                 },
-                format: format.ok_or(IssuanceProtocolError::Failed(
-                    "Missing credential format".into(),
-                ))?,
-                claims,
-                binding: Some(crate::model::credential::HolderBinding {
-                    identifier: holder_identifier.ok_or(IssuanceProtocolError::Failed(
-                        "Missing holder identifier".into(),
-                    ))?,
-                    key: key.ok_or(IssuanceProtocolError::Failed("Missing holder key".into()))?,
-                }),
-                credential_blob_id,
-                embedded_disclosure_policy,
+                format: credential.format,
+                claims: credential.claims,
+                binding: Some(binding),
+                credential_blob_id: None,
+                embedded_disclosure_policy: None,
             },
         })
     }
@@ -1012,18 +975,13 @@ fn changed_translations(
         .collect()
 }
 
-async fn attach_matching_holder_binding(
-    credential: &mut Credential,
+async fn take_matching_holder_binding(
+    parsed_identifier: Option<Related<Identifier>>,
     holder_bindings: &mut Vec<HolderBinding>,
-) -> Result<(), IssuanceProtocolError> {
-    let parsed_identifier =
-        credential
-            .holder_identifier_mut()?
-            .take()
-            .ok_or(IssuanceProtocolError::Failed(
-                "No parsed holder identifier".to_string(),
-            ))?;
-
+) -> Result<crate::model::credential::HolderBinding, IssuanceProtocolError> {
+    let parsed_identifier = parsed_identifier.ok_or(IssuanceProtocolError::Failed(
+        "No parsed holder identifier".into(),
+    ))?;
     let parsed_identifier = parsed_identifier.as_ref().await?;
 
     let mut position = None;
@@ -1040,10 +998,10 @@ async fn attach_matching_holder_binding(
     };
 
     let matching_holder_binding = holder_bindings.swap_remove(position);
-    *credential.holder_identifier_mut()? = Some(matching_holder_binding.identifier.into());
-    *credential.key_mut()? = Some(matching_holder_binding.key.into());
-
-    Ok(())
+    Ok(crate::model::credential::HolderBinding {
+        identifier: matching_holder_binding.identifier.into(),
+        key: matching_holder_binding.key.into(),
+    })
 }
 
 async fn holder_binding_matching_parsed_identifier(

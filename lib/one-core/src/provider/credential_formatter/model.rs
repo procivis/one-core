@@ -24,7 +24,11 @@ use crate::config::core_config::{
 };
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
+use crate::model::claim::Claim;
+use crate::model::credential::{CredentialCommon, IssuerIdentity};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::Identifier;
+use crate::model::relation::{Related, RelatedVec};
 use crate::proto::jwt::TokenError;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -486,4 +490,15 @@ pub struct LanguageValue {
     language: Option<String>,
     #[serde(default, rename = "@direction")]
     direction: Option<String>,
+}
+
+/// A verified, parsed credential before its issuer and holder binding are resolved locally.
+#[derive(Clone, Debug)]
+pub struct ParsedCredential {
+    pub common: CredentialCommon,
+    pub issuer: IssuerIdentity,
+    /// Identity from the token, before issuance matches it to a local holder key.
+    pub holder_identifier: Option<Related<Identifier>>,
+    pub format: Related<CredentialSchemaFormat>,
+    pub claims: RelatedVec<Claim>,
 }

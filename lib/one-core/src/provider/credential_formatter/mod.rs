@@ -10,7 +10,6 @@ use shared_types::{
 use time::Duration;
 
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
-use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::provider::Provider;
@@ -138,7 +137,7 @@ pub trait CredentialFormatter: Provider + Send + Sync {
         credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
-    ) -> Result<Credential, FormatterError>;
+    ) -> Result<model::ParsedCredential, FormatterError>;
 
     #[expect(clippy::needless_lifetimes)]
     fn revocation_method_id<'a>(&'a self) -> Option<&'a RevocationMethodId>;

@@ -9,12 +9,11 @@ use time::Duration;
 use super::error::FormatterError;
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
-    FormatterCapabilities, TokenVerifier,
+    FormatterCapabilities, ParsedCredential, TokenVerifier,
 };
 use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::provider::Provider;
@@ -119,7 +118,7 @@ impl<T: Provider + CredentialFormatter + Display + ?Sized> CredentialFormatter
         credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
-    ) -> Result<Credential, FormatterError> {
+    ) -> Result<ParsedCredential, FormatterError> {
         self.inner()
             .parse_credential(credential, organisation, verification)
             .await
@@ -276,7 +275,7 @@ impl CredentialFormatter for CapabilityChecked {
         credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
-    ) -> Result<Credential, FormatterError> {
+    ) -> Result<ParsedCredential, FormatterError> {
         self.0
             .parse_credential(credential, organisation, verification)
             .await

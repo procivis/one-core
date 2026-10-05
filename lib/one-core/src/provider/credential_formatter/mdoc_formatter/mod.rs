@@ -59,9 +59,7 @@ use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64}
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{
-    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
-};
+use crate::model::credential::{CredentialCommon, CredentialStateEnum};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier;
@@ -70,6 +68,7 @@ use crate::proto::certificate_validator::{CertificateValidationOptions, Certific
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
+use crate::provider::credential_formatter::model::ParsedCredential;
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -563,7 +562,7 @@ impl CredentialFormatter for MdocFormatter {
         credential: &SerializedCredential,
         organisation: Organisation,
         _verification: Box<dyn TokenVerifier>,
-    ) -> Result<Credential, FormatterError> {
+    ) -> Result<ParsedCredential, FormatterError> {
         let issuer_signed: IssuerSigned = decode_cbor_base64(credential.as_ref())?;
         let issuer_certificate = extract_certificate_from_x5chain_header(
             &*self.certificate_validator,
@@ -679,7 +678,7 @@ impl CredentialFormatter for MdocFormatter {
             organisation,
         )?;
 
-        Ok(Credential::Generic {
+        Ok(ParsedCredential {
             common: CredentialCommon {
                 expires_at: Some(mso.validity_info.valid_until.into()),
                 ecosystem: None,
@@ -695,23 +694,13 @@ impl CredentialFormatter for MdocFormatter {
                 schema: credential_schema.into(),
                 interaction: None,
             },
-            consumed_at: None,
-            role: CredentialRole::Holder,
-            r#type: CredentialType::Single,
-            suspend_end_date: None,
-            credential_blob_id: None,
-            wallet_key_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
-            issuer_certificate: first_certificate(&issuer_identifier).await?.map(Into::into),
-            issuer_identifier: Some(issuer_identifier.into()),
-            holder_identifier: Some(holder_identifier.into()),
-            key: None,
             claims: claims.into(),
-            webhook_url: None,
-            parent: None,
-            embedded_disclosure_policy: None,
-            subscriber_information: None,
-            format: Some(format.into()),
+            issuer: crate::model::credential::IssuerIdentity {
+                certificate: first_certificate(&issuer_identifier).await?.map(Into::into),
+                identifier: issuer_identifier.into(),
+            },
+            holder_identifier: Some(holder_identifier.into()),
+            format: format.into(),
         })
     }
 
