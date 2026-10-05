@@ -718,3 +718,34 @@ pub fn dummy_trust_list_publication() -> TrustListPublication {
         certificate: None,
     }
 }
+
+/// Construct a verifier fixture from a generic credential fixture.
+pub fn verifier_credential(
+    credential: Credential,
+) -> Result<Credential, crate::repository::error::DataLayerError> {
+    let Credential::Generic {
+        common,
+        claims,
+        issuer_identifier,
+        issuer_certificate,
+        holder_identifier,
+        format,
+        ..
+    } = credential
+    else {
+        return Err(crate::repository::error::DataLayerError::MappingError);
+    };
+    Ok(Credential::Verifier {
+        common,
+        verifier_data: crate::model::credential::VerifierCredentialData {
+            issuer: crate::model::credential::IssuerIdentity {
+                identifier: issuer_identifier
+                    .ok_or(crate::repository::error::DataLayerError::MappingError)?,
+                certificate: issuer_certificate,
+            },
+            claims,
+            holder_identifier,
+            format: format.ok_or(crate::repository::error::DataLayerError::MappingError)?,
+        },
+    })
+}

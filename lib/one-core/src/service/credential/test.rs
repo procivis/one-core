@@ -452,7 +452,7 @@ async fn test_delete_credential_incorrect_state() {
         .unwrap()
         .allow_revocation = true;
     credential.common_mut().state = CredentialStateEnum::Accepted;
-    *credential.role_mut() = CredentialRole::Issuer;
+    *credential.role_mut().unwrap() = CredentialRole::Issuer;
 
     let copy = credential.clone();
     credential_repository
@@ -477,8 +477,8 @@ async fn test_delete_credential_invalid_type() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    *credential.type_mut() = CredentialType::BatchItem;
-    *credential.role_mut() = CredentialRole::Issuer;
+    *credential.type_mut().unwrap() = CredentialType::BatchItem;
+    *credential.role_mut().unwrap() = CredentialRole::Issuer;
 
     let copy = credential.clone();
     credential_repository
@@ -626,7 +626,7 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
     credential.common_mut().state = CredentialStateEnum::Suspended;
-    *credential.suspend_end_date_mut() = Some(suspend_end_date);
+    *credential.suspend_end_date_mut().unwrap() = Some(suspend_end_date);
 
     {
         let clone = credential.clone();
@@ -698,7 +698,7 @@ async fn test_get_revoked_credential_success() {
 
     let mut credential = generic_credential().await;
     credential.common_mut().state = CredentialStateEnum::Revoked;
-    *credential.suspend_end_date_mut() = None;
+    *credential.suspend_end_date_mut().unwrap() = None;
 
     {
         let clone = credential.clone();
@@ -837,7 +837,7 @@ async fn test_share_credential_failed_invalid_type() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    *credential.type_mut() = CredentialType::BatchItem;
+    *credential.type_mut().unwrap() = CredentialType::BatchItem;
     {
         let clone = credential.clone();
         credential_repository
@@ -864,6 +864,7 @@ async fn test_share_credential_failed_inactive_identifier() {
     let mut credential = generic_credential().await;
     credential
         .issuer_identifier_mut()
+        .unwrap()
         .as_mut()
         .unwrap()
         .as_mut()
@@ -902,7 +903,6 @@ async fn test_create_credential_based_on_issuer_did_success() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -1036,7 +1036,6 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
         let clone = credential.clone();
         let issuer_identifier = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -1117,7 +1116,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
                 .unwrap()
                 .id
                 .to_owned(),
-            issuer: Some(credential.issuer_identifier().as_ref().unwrap().id()),
+            issuer: Some(credential.issuer_identifier().unwrap().id()),
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
@@ -1160,7 +1159,10 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
         claims,
         issuer_identifier,
         ..
-    } = generic_credential().await;
+    } = generic_credential().await
+    else {
+        panic!("expected generic credential")
+    };
 
     let mut schema = schema.as_ref().await.unwrap().to_owned();
     let claims = claims.as_ref().await.unwrap().to_owned();
@@ -1225,7 +1227,6 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -1359,7 +1360,6 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -1598,7 +1598,6 @@ async fn test_create_credential_one_required_claim_missing_success() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -1748,7 +1747,6 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -1895,7 +1893,6 @@ async fn test_create_credential_namespace_optional() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -2086,7 +2083,6 @@ async fn test_create_credential_schema_deleted() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -2204,7 +2200,6 @@ async fn test_create_credential_key_with_issuer_key() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -2352,7 +2347,6 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -2525,7 +2519,6 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -2671,7 +2664,6 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -2797,7 +2789,6 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -2943,7 +2934,6 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -3089,7 +3079,6 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -3222,7 +3211,6 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -3360,7 +3348,6 @@ async fn test_create_credential_fail_webhook_not_allowed() {
     {
         let issuer_identifier = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -3435,7 +3422,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
                 .unwrap()
                 .id
                 .to_owned(),
-            issuer: Some(credential.issuer_identifier().as_ref().unwrap().id()),
+            issuer: Some(credential.issuer_identifier().unwrap().id()),
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
@@ -6100,7 +6087,6 @@ async fn test_create_credential_session_org_mismatch() {
     let credential = generic_credential().await;
     let issuer_identifier = credential
         .issuer_identifier()
-        .as_ref()
         .unwrap()
         .as_ref()
         .await
@@ -6538,7 +6524,12 @@ async fn trust_information_of(
     outcomes: EcosystemOutcomes,
 ) -> Option<TrustInformation> {
     let mut credential = generic_credential().await;
-    *credential.role_mut() = role;
+    *credential.role_mut().unwrap() = role;
+    let mut credential = if role == CredentialRole::Verifier {
+        crate::service::test_utilities::verifier_credential(credential).unwrap()
+    } else {
+        credential
+    };
     credential.common_mut().ecosystem = ecosystem.map(EcosystemId::from);
 
     get_credential_trust_information(
@@ -6617,8 +6608,8 @@ fn trusted_by(ecosystem: &str) -> EcosystemOutcomes {
 
 #[tokio::test]
 async fn test_the_verifier_sees_the_issuer_by_name() {
-    let mut credential = generic_credential().await;
-    *credential.role_mut() = CredentialRole::Verifier;
+    let mut credential =
+        crate::service::test_utilities::verifier_credential(generic_credential().await).unwrap();
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
     *credential.issuer_certificate_mut() = Some(dummy_certificate(Uuid::new_v4().into()).into());
 
@@ -6638,7 +6629,7 @@ async fn test_the_verifier_sees_the_issuer_by_name() {
 #[tokio::test]
 async fn test_the_issuer_sees_the_wallet_by_name() {
     let mut credential = generic_credential().await;
-    *credential.role_mut() = CredentialRole::Issuer;
+    *credential.role_mut().unwrap() = CredentialRole::Issuer;
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
 
     let trust_information = get_credential_trust_information(
@@ -6660,7 +6651,7 @@ async fn test_the_issuer_sees_the_wallet_by_name() {
 #[tokio::test]
 async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
     let mut credential = generic_credential().await;
-    *credential.role_mut() = CredentialRole::Holder;
+    *credential.role_mut().unwrap() = CredentialRole::Holder;
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
 
     let mut ecosystem_provider = MockEcosystemDirectory::new();
@@ -6693,9 +6684,9 @@ async fn test_a_batch_item_reads_the_ecosystem_history_of_its_batch() {
     let batch = generic_credential().await;
     let batch_id = batch.common().id;
     let mut item = generic_credential().await;
-    *item.role_mut() = CredentialRole::Holder;
-    *item.type_mut() = CredentialType::BatchItem;
-    *item.parent_mut() = Some(batch.into());
+    *item.role_mut().unwrap() = CredentialRole::Holder;
+    *item.type_mut().unwrap() = CredentialType::BatchItem;
+    *item.parent_mut().unwrap() = Some(batch.into());
     item.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
 
     let mut outcomes = untrusted_by("LITHUANIA_SANDBOX");

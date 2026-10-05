@@ -2,13 +2,21 @@ use std::sync::Arc;
 
 use one_core::model::claim::Claim;
 use one_core::model::credential::{
-    Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
+    Clearable, Credential, CredentialCommon, CredentialFilterValue, IssuerIdentity,
+    SortableCredentialColumn, VerifierCredentialData,
 };
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::relation::{AsyncModelsLoader, RelatedVec};
+use one_core::model::relation::{AsyncModelLoader, AsyncModelsLoader, Related, RelatedVec};
+use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::claim_repository::{ClaimRepository, CredentialClaimsLoader};
+use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::identifier_repository::IdentifierRepository;
+use one_core::repository::interaction_repository::InteractionRepository;
+use one_core::repository::key_repository::KeyRepository;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{
     Alias, ColumnRef, Expr, ExprTrait, NullOrdering, Order, Query, SelectStatement, SimpleExpr,
@@ -306,6 +314,100 @@ pub(crate) fn credential_claims(
     })
 }
 
+pub(super) struct CredentialRepositories<'a> {
+    pub claim_repository: &'a Arc<dyn ClaimRepository>,
+    pub interaction_repository: &'a Arc<dyn InteractionRepository>,
+    pub certificate_repository: &'a Arc<dyn CertificateRepository>,
+    pub identifier_repository: &'a Arc<dyn IdentifierRepository>,
+    pub key_repository: &'a Arc<dyn KeyRepository>,
+    pub credential_repository: Arc<dyn CredentialRepository>,
+}
+
+pub(super) fn credential_from_model(
+    credential: credential::Model,
+    schema: impl AsyncModelLoader<CredentialSchema> + 'static,
+    issuer: impl AsyncModelLoader<Identifier> + 'static,
+    format: impl AsyncModelLoader<CredentialSchemaFormat> + 'static,
+    repositories: CredentialRepositories<'_>,
+) -> Result<Credential, DataLayerError> {
+    let common = CredentialCommon {
+        id: credential.id,
+        created_date: credential.created_date,
+        issuance_date: credential.issuance_date,
+        expires_at: credential.expires_at,
+        last_modified: credential.last_modified,
+        deleted_at: credential.deleted_at,
+        protocol: credential.protocol,
+        redirect_uri: credential.redirect_uri,
+        state: credential.state.into(),
+        profile: credential.profile,
+        schema: Related::new(credential.credential_schema_id, schema),
+        interaction: credential
+            .interaction_id
+            .map(|id| Related::new(id, repositories.interaction_repository.clone())),
+        ecosystem: credential.ecosystem,
+    };
+    if credential.role == credential::CredentialRole::Verifier {
+        if credential.r#type != credential::CredentialType::Single {
+            return Err(DataLayerError::MappingError);
+        }
+        return Ok(Credential::Verifier {
+            common,
+            verifier_data: VerifierCredentialData {
+                issuer: IssuerIdentity {
+                    identifier: Related::new(
+                        credential
+                            .issuer_identifier_id
+                            .ok_or(DataLayerError::MappingError)?,
+                        issuer,
+                    ),
+                    certificate: credential
+                        .issuer_certificate_id
+                        .map(|id| Related::new(id, repositories.certificate_repository.clone())),
+                },
+                format: Related::new(
+                    credential.format.ok_or(DataLayerError::MappingError)?,
+                    format,
+                ),
+                claims: credential_claims(credential.id, repositories.claim_repository),
+                holder_identifier: credential
+                    .holder_identifier_id
+                    .map(|id| Related::new(id, repositories.identifier_repository.clone())),
+            },
+        });
+    }
+    Ok(Credential::Generic {
+        common,
+        claims: credential_claims(credential.id, repositories.claim_repository),
+        consumed_at: credential.consumed_at,
+        role: credential.role.into(),
+        r#type: credential.r#type.into(),
+        suspend_end_date: credential.suspend_end_date,
+        issuer_identifier: credential
+            .issuer_identifier_id
+            .map(|id| Related::new(id, issuer)),
+        issuer_certificate: credential
+            .issuer_certificate_id
+            .map(|id| Related::new(id, repositories.certificate_repository.clone())),
+        holder_identifier: credential
+            .holder_identifier_id
+            .map(|id| Related::new(id, repositories.identifier_repository.clone())),
+        key: credential
+            .key_id
+            .map(|id| Related::new(id, repositories.key_repository.clone())),
+        credential_blob_id: credential.credential_blob_id,
+        wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
+        wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+        webhook_url: credential.webhook_url,
+        embedded_disclosure_policy: credential.embedded_disclosure_policy,
+        subscriber_information: credential.subscriber_information,
+        parent: credential
+            .parent_id
+            .map(|id| Related::new(id, repositories.credential_repository)),
+        format: credential.format.map(|id| Related::new(id, format)),
+    })
+}
+
 pub(super) fn request_to_active_model(
     request: &Credential,
     organisation_id: OrganisationId,
@@ -324,7 +426,6 @@ pub(super) fn request_to_active_model(
         redirect_uri: Set(request.common().redirect_uri.to_owned()),
         issuer_identifier_id: Set(request
             .issuer_identifier()
-            .as_ref()
             .map(|identifier| identifier.id())),
         issuer_certificate_id: Set(request
             .issuer_certificate()
@@ -353,7 +454,7 @@ pub(super) fn request_to_active_model(
         subscriber_information: Set(request.subscriber_information().clone()),
         ecosystem: Set(request.common().ecosystem.clone()),
         r#type: Set(request.r#type().into()),
-        format: Set(request.format().as_ref().map(|format| format.id())),
+        format: Set(request.format().map(|format| format.id())),
     }
 }
 

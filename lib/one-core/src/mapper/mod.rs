@@ -15,7 +15,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{
-    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+    Credential, CredentialCommon, CredentialStateEnum, IssuerIdentity, VerifierCredentialData,
 };
 use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaimsNestedObjectView,
@@ -206,7 +206,7 @@ pub(crate) fn extracted_credential_to_model(
         _ => None,
     };
 
-    Ok(Credential::Generic {
+    Ok(Credential::Verifier {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -222,23 +222,20 @@ pub(crate) fn extracted_credential_to_model(
             redirect_uri: None,
             interaction: None,
         },
-        consumed_at: None,
-        suspend_end_date: None,
-        claims: model_claims.into(),
-        issuer_identifier: Some(issuer_identifier.into()),
-        issuer_certificate,
-        holder_identifier: holder_identifier.map(Into::into),
-        format: format.map(|format| format.to_owned().into()),
-        key: None,
-        role: CredentialRole::Verifier,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        r#type: CredentialType::Single,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
+        verifier_data: VerifierCredentialData {
+            issuer: IssuerIdentity {
+                identifier: issuer_identifier.into(),
+                certificate: issuer_certificate,
+            },
+            holder_identifier: holder_identifier.map(Into::into),
+            claims: model_claims.into(),
+            format: format
+                .ok_or_else(|| {
+                    ServiceError::MappingError("Verifier credential format is missing".into())
+                })?
+                .to_owned()
+                .into(),
+        },
     })
 }
 

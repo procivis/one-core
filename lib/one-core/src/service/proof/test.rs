@@ -91,6 +91,53 @@ use crate::service::test_utilities::{
     dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
 
+#[rstest]
+#[case::holder_single(CredentialRole::Holder, CredentialType::Single)]
+#[case::issuer_single(CredentialRole::Issuer, CredentialType::Single)]
+#[case::generic_verifier_single(CredentialRole::Verifier, CredentialType::Single)]
+#[case::verifier_parent(CredentialRole::Verifier, CredentialType::BatchParent)]
+#[case::verifier_item(CredentialRole::Verifier, CredentialType::BatchItem)]
+#[tokio::test]
+async fn verifier_proof_rejects_unexpected_credential_variants(
+    #[case] role: CredentialRole,
+    #[case] credential_type: CredentialType,
+    #[values(false, true)] invalid_first: bool,
+) {
+    use crate::service::test_utilities::{dummy_credential, dummy_proof, verifier_credential};
+
+    let mut invalid = dummy_credential();
+    let valid = verifier_credential(invalid.clone()).unwrap();
+    *invalid.role_mut().unwrap() = role;
+    *invalid.type_mut().unwrap() = credential_type;
+    let claim = invalid.claims().as_ref().await.unwrap()[0].clone();
+    let mut credentials = vec![valid, invalid];
+    if invalid_first {
+        credentials.reverse();
+    }
+    let mut proof = dummy_proof();
+    // Both credentials use the same schema, so validation must happen before grouping.
+    proof.claims = credentials
+        .into_iter()
+        .map(|credential| ProofClaim {
+            credential: credential.into(),
+            claim: claim.clone(),
+        })
+        .collect::<Vec<_>>()
+        .into();
+
+    let result = super::mapper::get_verifier_proof_detail(
+        proof,
+        &generic_config().core,
+        None,
+        &MockCredentialRepository::new(),
+        &MockCredentialFormatterProvider::new(),
+        &MockEcosystemDirectory::new(),
+        &MockHistoryRepository::new(),
+    )
+    .await;
+    assert!(matches!(result, Err(ProofServiceError::MappingError(_))));
+}
+
 #[derive(Default)]
 struct Repositories {
     pub proof_repository: MockProofRepository,
@@ -1349,7 +1396,7 @@ async fn test_get_proof_with_array() {
             },
         ]
         .into(),
-        issuer_identifier: None,
+        issuer_identifier: Some(dummy_identifier().into()),
         issuer_certificate: None,
         holder_identifier: None,
         key: None,
@@ -1362,6 +1409,7 @@ async fn test_get_proof_with_array() {
         subscriber_information: None,
         format: Some(format.into()),
     };
+    let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
     let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
@@ -1614,7 +1662,7 @@ async fn test_get_proof_with_array_in_object() {
             },
         ]
         .into(),
-        issuer_identifier: None,
+        issuer_identifier: Some(dummy_identifier().into()),
         issuer_certificate: None,
         holder_identifier: None,
         key: None,
@@ -1627,6 +1675,7 @@ async fn test_get_proof_with_array_in_object() {
         subscriber_information: None,
         format: Some(format.into()),
     };
+    let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
     let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {
@@ -1894,7 +1943,7 @@ async fn test_get_proof_with_object_array() {
             },
         ]
         .into(),
-        issuer_identifier: None,
+        issuer_identifier: Some(dummy_identifier().into()),
         issuer_certificate: None,
         holder_identifier: None,
         key: None,
@@ -1907,6 +1956,7 @@ async fn test_get_proof_with_object_array() {
         subscriber_information: None,
         format: Some(format.into()),
     };
+    let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
     let credential_claims = credential.claims().as_ref().await.unwrap().to_owned();
 
     let proof = Proof {

@@ -852,6 +852,13 @@ pub async fn create_credential(
         format: convert_inner(params.format.or(format)),
     };
 
+    let credential = if credential.role() == CredentialRole::Verifier {
+        assert_eq!(credential.r#type(), CredentialType::Single);
+        one_core::service::test_utilities::verifier_credential(credential).unwrap()
+    } else {
+        credential
+    };
+
     data_layer
         .get_credential_repository()
         .create_credential(credential.to_owned())

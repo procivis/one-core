@@ -188,8 +188,12 @@ fn accepted_pid(wua_blob_id: Option<BlobId>, wia_blob_id: Option<BlobId>) -> Cre
         let mut updated_credential = dummy_credential();
         updated_credential.common_mut().id = Uuid::new_v4().into();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
-        *updated_credential.wallet_key_attestation_blob_id_mut() = wua_blob_id;
-        *updated_credential.wallet_instance_attestation_blob_id_mut() = wia_blob_id;
+        *updated_credential
+            .wallet_key_attestation_blob_id_mut()
+            .unwrap() = wua_blob_id;
+        *updated_credential
+            .wallet_instance_attestation_blob_id_mut()
+            .unwrap() = wia_blob_id;
         updated_credential
     }
 }
@@ -201,8 +205,8 @@ fn batch_item(
 ) -> Credential {
     {
         let mut updated_credential = accepted_pid(wua_blob_id, wia_blob_id);
-        *updated_credential.type_mut() = CredentialType::BatchItem;
-        *updated_credential.parent_mut() = Some(parent.clone().into());
+        *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
+        *updated_credential.parent_mut().unwrap() = Some(parent.clone().into());
         updated_credential
     }
 }
@@ -211,7 +215,7 @@ fn batch_parent() -> Credential {
     {
         let mut updated_credential = dummy_credential();
         updated_credential.common_mut().id = Uuid::new_v4().into();
-        *updated_credential.type_mut() = CredentialType::BatchParent;
+        *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
         updated_credential
     }
 }

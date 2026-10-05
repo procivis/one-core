@@ -627,7 +627,7 @@ impl CredentialService {
             ));
         }
 
-        let Some(issuer_identifier) = credential.issuer_identifier().as_ref() else {
+        let Some(issuer_identifier) = credential.issuer_identifier() else {
             return Err(CredentialServiceError::MappingError(
                 "Missing issuer identifier".to_string(),
             ));

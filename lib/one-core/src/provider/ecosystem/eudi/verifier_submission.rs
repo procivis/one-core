@@ -87,7 +87,7 @@ mod test {
         selected.ecosystem_schema_id = "mdoc-pid".into();
         schema.formats = vec![first, selected.clone()].into();
         credential.common_mut().schema = schema.into();
-        *credential.format_mut() = Some(selected.clone().into());
+        *credential.format_mut().unwrap() = Some(selected.clone().into());
 
         let mut formatter = MockCredentialFormatter::new();
         formatter
@@ -134,7 +134,7 @@ mod test {
         ecosystem
             .resolve_verifier_submission(
                 credential.claims(),
-                credential.format().as_ref().unwrap(),
+                credential.format().unwrap(),
                 &issuer,
                 Uuid::new_v4().into(),
             )

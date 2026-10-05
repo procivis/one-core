@@ -30,6 +30,9 @@ pub(super) fn credential_from_unexportable_model(
     organisation_repository: &Arc<dyn OrganisationRepository>,
     db: &TransactionManagerImpl,
 ) -> Result<Credential, DataLayerError> {
+    if value.role == crate::entity::credential::CredentialRole::Verifier {
+        return Err(DataLayerError::MappingError);
+    }
     let claims_with_schema: Vec<ClaimWithSchema> =
         serde_json::from_str(&value.claims).map_err(|_| DataLayerError::MappingError)?;
 

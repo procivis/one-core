@@ -18,7 +18,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::{OptionalRelatedExt, OptionalRelatedRefExt};
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;

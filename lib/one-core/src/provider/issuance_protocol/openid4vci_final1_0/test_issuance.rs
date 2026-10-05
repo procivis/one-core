@@ -79,7 +79,7 @@ async fn test_issuer_submit_succeeds() {
     let credential = {
         let mut updated_credential = dummy_credential().await;
         updated_credential.common_mut().state = CredentialStateEnum::Offered;
-        *updated_credential.suspend_end_date_mut() = None;
+        *updated_credential.suspend_end_date_mut().unwrap() = None;
         *updated_credential.holder_identifier_mut() = Some(
             Identifier {
                 data: IdentifierData::Did((dummy_did()).into()),
@@ -87,7 +87,7 @@ async fn test_issuer_submit_succeeds() {
             }
             .into(),
         );
-        *updated_credential.issuer_identifier_mut() = Some(
+        *updated_credential.issuer_identifier_mut().unwrap() = Some(
             Identifier {
                 data: IdentifierData::Did(
                     (Did {
@@ -105,7 +105,7 @@ async fn test_issuer_submit_succeeds() {
             }
             .into(),
         );
-        *updated_credential.key_mut() = Some(key.into());
+        *updated_credential.key_mut().unwrap() = Some(key.into());
         updated_credential
     };
 
@@ -309,7 +309,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         let mut updated_credential = credential;
         updated_credential.common_mut().state = state;
         updated_credential.common_mut().schema = credential_schema.into();
-        *updated_credential.suspend_end_date_mut() = None;
+        *updated_credential.suspend_end_date_mut().unwrap() = None;
         *updated_credential.holder_identifier_mut() = Some(
             Identifier {
                 data: IdentifierData::Did((dummy_did()).into()),
@@ -317,7 +317,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
             }
             .into(),
         );
-        *updated_credential.issuer_identifier_mut() = Some(
+        *updated_credential.issuer_identifier_mut().unwrap() = Some(
             Identifier {
                 data: IdentifierData::Did(
                     (Did {
@@ -335,8 +335,8 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
             }
             .into(),
         );
-        *updated_credential.key_mut() = Some(key.into());
-        *updated_credential.format_mut() = credential_format.map(Into::into);
+        *updated_credential.key_mut().unwrap() = Some(key.into());
+        *updated_credential.format_mut().unwrap() = credential_format.map(Into::into);
         updated_credential
     }
 }

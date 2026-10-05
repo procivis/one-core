@@ -706,7 +706,7 @@ fn submission_artifact(index: usize) -> ProtocolArtifact<'static> {
     ProtocolArtifact::VerifierSubmission {
         credential_id: submitted_credential(index),
         claims: Cow::Owned(credential.claims().clone()),
-        format: Cow::Owned(credential.format().as_ref().unwrap().clone()),
+        format: Cow::Owned(credential.format().unwrap().clone()),
         issuer_details: Cow::Owned(submission_issuer(index)),
         proof_id: submitted_proof(),
     }
@@ -1260,7 +1260,7 @@ async fn test_an_issued_batch_item_records_on_its_batch() {
     let batch = dummy_credential();
     let item = {
         let mut updated_credential = dummy_credential();
-        *updated_credential.parent_mut() = Some(batch.to_owned().into());
+        *updated_credential.parent_mut().unwrap() = Some(batch.to_owned().into());
         updated_credential
     };
     let (interaction_id, interaction_repository, _) = interaction_under_test(

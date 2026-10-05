@@ -18,7 +18,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::localized_text::LocalizedTextField;
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::{OptionalRelatedExt, OptionalRelatedRefExt};
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::provider::issuance_protocol::IssuanceProtocolError;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -532,7 +532,12 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
         common,
         format,
         ..
-    } = credential;
+    } = credential
+    else {
+        return Err(IssuanceProtocolError::Failed(
+            "Expected a holder credential".into(),
+        ));
+    };
     let mut claims = claims.as_mut().await?;
     claims.sort_by_key(|c| c.path.clone());
 

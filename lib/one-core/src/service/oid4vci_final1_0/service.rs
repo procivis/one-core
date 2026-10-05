@@ -339,7 +339,6 @@ impl OID4VCIFinal1_0Service {
 
         let identifier_id = credential
             .issuer_identifier()
-            .as_ref()
             .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
                 "Missing issuer_identifier".to_owned(),
             ))?
@@ -549,7 +548,6 @@ impl OID4VCIFinal1_0Service {
 
         let issuer_identifier = credential
             .issuer_identifier()
-            .as_ref()
             .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
                 "Missing issuer_identifier".to_string(),
             ))?
@@ -1228,7 +1226,6 @@ impl OID4VCIFinal1_0Service {
             Some(
                 credential
                     .issuer_identifier()
-                    .as_ref()
                     .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
                         "missing issuer_identifier".to_string(),
                     ))?
@@ -1642,14 +1639,14 @@ impl OID4VCIFinal1_0Service {
             updated_credential.common_mut().interaction = None;
             updated_credential.common_mut().expires_at = expires_at;
             updated_credential.common_mut().state = state;
-            *updated_credential.type_mut() = CredentialType::BatchItem;
-            *updated_credential.parent_mut() = Some(Related::new(
+            *updated_credential.type_mut()? = CredentialType::BatchItem;
+            *updated_credential.parent_mut()? = Some(Related::new(
                 parent_credential_id,
                 self.credential_repository.clone(),
             ));
-            *updated_credential.webhook_url_mut() = None;
+            *updated_credential.webhook_url_mut()? = None;
             *updated_credential.claims_mut() = Default::default();
-            *updated_credential.format_mut() = Some(format.to_owned().into());
+            *updated_credential.format_mut()? = Some(format.to_owned().into());
             updated_credential
         })
     }
@@ -1732,7 +1729,7 @@ impl OID4VCIFinal1_0Service {
             .get_batch_items(parent.common().id)
             .await?
             .into_iter()
-            .partition(|item| item.format().as_ref().is_some_and(|f| f.id() == format_id));
+            .partition(|item| item.format().is_some_and(|f| f.id() == format_id));
 
         if affected.is_empty() {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());

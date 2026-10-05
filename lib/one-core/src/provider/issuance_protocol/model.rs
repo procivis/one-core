@@ -99,8 +99,8 @@ pub(crate) struct CredentialWithBlob {
 }
 
 impl CredentialWithBlob {
-    pub fn batch_parent(&self, refreshable: bool) -> Self {
-        Self {
+    pub fn batch_parent(&self, refreshable: bool) -> Result<Self, IssuanceProtocolError> {
+        Ok(Self {
             credential: {
                 let mut updated_credential = self.credential.clone();
                 updated_credential.common_mut().id = Uuid::new_v4().into();
@@ -109,21 +109,21 @@ impl CredentialWithBlob {
                 } else {
                     self.credential.common().expires_at
                 };
-                *updated_credential.type_mut() = CredentialType::BatchParent;
-                *updated_credential.embedded_disclosure_policy_mut() = None;
-                *updated_credential.format_mut() = None;
-                *updated_credential.credential_blob_id_mut() = None;
-                *updated_credential.wallet_instance_attestation_blob_id_mut() = None;
-                *updated_credential.wallet_key_attestation_blob_id_mut() = None;
-                *updated_credential.issuer_identifier_mut() = None;
+                *updated_credential.type_mut()? = CredentialType::BatchParent;
+                *updated_credential.embedded_disclosure_policy_mut()? = None;
+                *updated_credential.format_mut()? = None;
+                *updated_credential.credential_blob_id_mut()? = None;
+                *updated_credential.wallet_instance_attestation_blob_id_mut()? = None;
+                *updated_credential.wallet_key_attestation_blob_id_mut()? = None;
+                *updated_credential.issuer_identifier_mut()? = None;
                 *updated_credential.issuer_certificate_mut() = None;
                 *updated_credential.holder_identifier_mut() = None;
-                *updated_credential.key_mut() = None;
+                *updated_credential.key_mut()? = None;
                 *updated_credential.claims_mut() = Default::default();
                 updated_credential
             },
             serialized: None,
-        }
+        })
     }
 }
 

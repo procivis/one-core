@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-use one_core::model::credential::Credential;
+use one_core::model::credential::{Credential, CredentialRole};
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
@@ -30,6 +30,15 @@ pub(super) async fn prepare_credentials(
     let mut ids = HashSet::new();
     let mut credentials = Vec::with_capacity(requests.len());
     for credential in requests {
+        if matches!(
+            credential,
+            Credential::Generic {
+                role: CredentialRole::Verifier,
+                ..
+            }
+        ) {
+            return Err(DataLayerError::MappingError);
+        }
         if !ids.insert(credential.common().id) {
             return Err(DataLayerError::AlreadyExists);
         }

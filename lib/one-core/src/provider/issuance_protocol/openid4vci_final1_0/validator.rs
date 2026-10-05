@@ -333,7 +333,6 @@ async fn comparable_issuer(
 ) -> Result<ComparableIssuer, IssuanceProtocolError> {
     let issuer = credential
         .issuer_identifier()
-        .as_ref()
         .ok_or(IssuanceProtocolError::Failed(
             "missing parsed credential issuer".to_string(),
         ))?;

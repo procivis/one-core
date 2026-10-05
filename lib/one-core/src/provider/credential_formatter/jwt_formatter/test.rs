@@ -841,7 +841,6 @@ async fn test_parse_credential() {
             ..
         } = credential
             .issuer_identifier()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await

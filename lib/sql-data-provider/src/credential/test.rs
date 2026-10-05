@@ -52,6 +52,9 @@ use crate::transaction_context::TransactionManagerImpl;
 #[path = "test/deduplication.rs"]
 mod deduplication;
 
+#[path = "test/verifier_single.rs"]
+mod verifier_single;
+
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
     pub credential_schema: CredentialSchema,
@@ -665,8 +668,8 @@ async fn test_get_credential_list_formats_or_batch_parent() {
     let parent = {
         let mut updated_credential = provider.get_credential(&credential_id).await.unwrap();
         updated_credential.common_mut().id = Uuid::new_v4().into();
-        *updated_credential.type_mut() = CredentialType::BatchParent;
-        *updated_credential.format_mut() = None;
+        *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
+        *updated_credential.format_mut().unwrap() = None;
         *updated_credential.claims_mut() = Default::default();
         updated_credential
     };
@@ -1393,8 +1396,8 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     let new_parent = || {
         let mut updated_credential = template.clone();
         updated_credential.common_mut().id = Uuid::new_v4().into();
-        *updated_credential.type_mut() = CredentialType::BatchParent;
-        *updated_credential.format_mut() = None;
+        *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
+        *updated_credential.format_mut().unwrap() = None;
         updated_credential
     };
     let first_parent = new_parent();
@@ -1410,9 +1413,9 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
         updated_credential.common_mut().created_date =
             get_dummy_date() - Duration::seconds(seconds);
         updated_credential.common_mut().expires_at = Some(expiry + Duration::seconds(seconds));
-        *updated_credential.type_mut() = CredentialType::BatchItem;
-        *updated_credential.parent_mut() = Some(parent.clone().into());
-        *updated_credential.format_mut() = Some(format.clone().into());
+        *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
+        *updated_credential.parent_mut().unwrap() = Some(parent.clone().into());
+        *updated_credential.format_mut().unwrap() = Some(format.clone().into());
         updated_credential
     };
 
@@ -1425,7 +1428,7 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     // An already consumed item is unavailable even though its state is Accepted.
     let consumed_jwt = {
         let mut updated_credential = new_item(&first_parent, &jwt_format, 1);
-        *updated_credential.consumed_at_mut() = Some(get_dummy_date());
+        *updated_credential.consumed_at_mut().unwrap() = Some(get_dummy_date());
         updated_credential
     };
     // Deleted items must likewise be skipped even if they expire earlier.

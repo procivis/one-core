@@ -178,7 +178,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
             assert_eq!(credential.role(), CredentialRole::Verifier);
             assert_eq!(credential.common().protocol, "ISO_MDL");
             assert_eq!(
-                credential.issuer_identifier().as_ref().unwrap().id(),
+                credential.issuer_identifier().unwrap().id(),
                 issuer_identifier_id
             );
             assert_eq!(

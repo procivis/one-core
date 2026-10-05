@@ -87,7 +87,7 @@ use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
 use crate::model::organisation::Organisation;
-use crate::model::relation::{OptionalRelatedExt, Related};
+use crate::model::relation::{OptionalRelatedExt, OptionalRelatedRefExt, Related};
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
@@ -1033,7 +1033,6 @@ impl OpenID4VCIFinal1_0 {
                     .unwrap_or(&response.main_credential)
                     .credential
                     .format()
-                    .as_ref()
                     .map(Related::id)
             });
         }
@@ -1170,7 +1169,7 @@ impl OpenID4VCIFinal1_0 {
                 unsupported_fixed_binding = true;
                 continue;
             }
-            configuration.credential_schema_format_id = item.format().as_ref().map(Related::id);
+            configuration.credential_schema_format_id = item.format().map(Related::id);
             configurations.push(RefreshConfiguration {
                 configuration,
                 holder_binding: if fixed_binding {
@@ -1471,12 +1470,12 @@ impl OpenID4VCIFinal1_0 {
                 advertised_batch_size,
                 any_batch_issued,
             ) {
-                let parent = response.main_credential.batch_parent(has_refresh_token);
+                let parent = response.main_credential.batch_parent(has_refresh_token)?;
                 let mut item = std::mem::replace(&mut response.main_credential, parent);
                 let parent_id = response.main_credential.credential.common().id;
-                self.change_to_batch_item(&mut item.credential, parent_id);
+                self.change_to_batch_item(&mut item.credential, parent_id)?;
                 for batch_item in &mut response.batch_items {
-                    self.change_to_batch_item(&mut batch_item.credential, parent_id);
+                    self.change_to_batch_item(&mut batch_item.credential, parent_id)?;
                 }
                 response.batch_items.insert(0, item);
                 if let Some(configuration) =
@@ -2384,7 +2383,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let mut query = if self.params.credential_offer_by_value {
             let identifier_id = credential
                 .issuer_identifier()
-                .as_ref()
                 .ok_or(IssuanceProtocolError::Failed(
                     "issuer_identifier missing".to_string(),
                 ))?
@@ -2527,7 +2525,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let issuer_identifier = credential
             .issuer_identifier()
-            .as_ref()
             .ok_or(IssuanceProtocolError::Failed(
                 "missing issuer identifier".to_string(),
             ))?

@@ -97,7 +97,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
-        *updated_credential.suspend_end_date_mut() = None;
+        *updated_credential.suspend_end_date_mut().unwrap() = None;
         updated_credential
     };
 

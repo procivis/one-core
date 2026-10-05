@@ -1479,7 +1479,7 @@ async fn errors_when_parsed_format_missing() {
     );
 
     let mut credential = credential(parsed_schema, vec![]).await;
-    *credential.format_mut() = None;
+    *credential.format_mut().unwrap() = None;
 
     let result =
         align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)

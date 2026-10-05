@@ -424,7 +424,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
                     proved_credentials: vec![ProvedCredential {
                         common: credential.common().clone(),
                         claims: credential.claims().clone(),
-                        format: credential.format().as_ref().unwrap().clone(),
+                        format: credential.format().unwrap().clone(),
                         issuer_details: IdentifierDetails::Certificate(CertificateDetails {
                             chain: "chain".to_string(),
                             fingerprint: "fingerprint".to_string(),

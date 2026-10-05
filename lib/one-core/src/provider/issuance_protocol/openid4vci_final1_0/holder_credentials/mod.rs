@@ -37,7 +37,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
-use crate::model::relation::{OptionalRelatedExt, Related};
+use crate::model::relation::{OptionalRelatedRefExt, Related};
 use crate::proto::identifier_creator::{
     IdentifierLogo, IdentifierName, IdentifierRole, RemoteIdentifierRelation,
     issuer_display_to_identifier_translations,
@@ -94,7 +94,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction_data.issuer_display.as_deref(),
                 )
                 .await?;
-            *credential.embedded_disclosure_policy_mut() = disclosure_policy.clone();
+            *credential.embedded_disclosure_policy_mut()? = disclosure_policy.clone();
             credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -141,11 +141,12 @@ impl OpenID4VCIFinal1_0 {
         &self,
         credential: &mut Credential,
         parent_id: CredentialId,
-    ) {
-        *credential.type_mut() = CredentialType::BatchItem;
-        *credential.parent_mut() =
+    ) -> Result<(), IssuanceProtocolError> {
+        *credential.type_mut()? = CredentialType::BatchItem;
+        *credential.parent_mut()? =
             Some(Related::new(parent_id, self.credential_repository.clone()));
         credential.common_mut().interaction = None;
+        Ok(())
     }
 
     async fn update_credential_schema(
@@ -392,7 +393,7 @@ impl OpenID4VCIFinal1_0 {
                     None,
                 )
                 .await?;
-            *credential.embedded_disclosure_policy_mut() = disclosure_policy.clone();
+            *credential.embedded_disclosure_policy_mut()? = disclosure_policy.clone();
             batch_credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -437,7 +438,7 @@ impl OpenID4VCIFinal1_0 {
                             mut credential,
                             serialized,
                         } = batch_credential;
-                        self.change_to_batch_item(&mut credential, batch_parent.common().id);
+                        self.change_to_batch_item(&mut credential, batch_parent.common().id)?;
                         let credential_blob_id = if let Some(token) = serialized {
                             let blob = Blob::new(token.as_ref(), BlobType::Credential);
                             let blob_id = blob.id;
@@ -450,7 +451,7 @@ impl OpenID4VCIFinal1_0 {
                             None
                         };
                         credential.common_mut().state = CredentialStateEnum::Accepted;
-                        *credential.credential_blob_id_mut() = credential_blob_id;
+                        *credential.credential_blob_id_mut()? = credential_blob_id;
                         result.push(credential);
                     }
                     self.credential_repository
@@ -523,7 +524,7 @@ impl OpenID4VCIFinal1_0 {
         validate_issuance_time(&credential.common().issuance_date, formatter.get_leeway())
             .error_while("validating issuance time")?;
 
-        let issuer_identifier = match credential.issuer_identifier().as_ref() {
+        let issuer_identifier = match credential.issuer_identifier() {
             None => None,
             Some(identifier) => Some(identifier.as_ref().await?.to_owned()),
         };
@@ -616,7 +617,7 @@ impl OpenID4VCIFinal1_0 {
             None
         };
 
-        *credential.issuer_identifier_mut() = Some(issuer_identifier.into());
+        *credential.issuer_identifier_mut()? = Some(issuer_identifier.into());
         *credential.issuer_certificate_mut() = issuer_certificate.map(Into::into);
         credential.common_mut().redirect_uri = redirect_uri.cloned();
         credential.common_mut().state = CredentialStateEnum::Accepted;
@@ -966,7 +967,7 @@ async fn attach_matching_holder_binding(
 
     let matching_holder_binding = holder_bindings.swap_remove(position);
     *credential.holder_identifier_mut() = Some(matching_holder_binding.identifier.into());
-    *credential.key_mut() = Some(matching_holder_binding.key.into());
+    *credential.key_mut()? = Some(matching_holder_binding.key.into());
 
     Ok(())
 }

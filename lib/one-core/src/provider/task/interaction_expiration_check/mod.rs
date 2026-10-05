@@ -145,7 +145,6 @@ fn target_from_credential(credential: &Credential) -> Option<String> {
     match credential.role() {
         CredentialRole::Holder => credential
             .issuer_identifier()
-            .as_ref()
             .map(|identifier| identifier.id().to_string()),
         CredentialRole::Issuer => credential
             .holder_identifier()

@@ -271,7 +271,7 @@ async fn batch_item_states(
         .await
     {
         states
-            .entry(item.format().as_ref().unwrap().id())
+            .entry(item.format().unwrap().id())
             .or_default()
             .push(item.common().state);
     }

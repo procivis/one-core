@@ -6,7 +6,7 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
 use crate::model::history::{HistoryAction, HistoryEntityType, WalletRelyingPartyMetadata};
 use crate::model::interaction::Interaction;
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::OptionalRelatedRefExt;
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::{IdentifierDetails, X5References};
 use crate::provider::ecosystem::eudi::mapper::formatter_requires_namespaces;

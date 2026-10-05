@@ -212,7 +212,6 @@ impl RevocationMethod for TokenStatusList {
     ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
         let issuer_identifier = credential
             .issuer_identifier()
-            .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer identifier is None".to_string(),
             ))?
@@ -247,7 +246,6 @@ impl RevocationMethod for TokenStatusList {
     ) -> Result<(), RevocationError> {
         let issuer_identifier = credential
             .issuer_identifier()
-            .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer identifier is None".to_string(),
             ))?

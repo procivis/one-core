@@ -13,6 +13,7 @@ use one_core::model::relation::Related;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_dto_mapper::convert_inner;
 use shared_types::CredentialId;
+use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -173,7 +174,7 @@ impl CredentialsDB {
             .first()
             .cloned();
 
-        Credential::Generic {
+        let credential = Credential::Generic {
             common: CredentialCommon {
                 expires_at: params.expires_at,
                 ecosystem: params.ecosystem,
@@ -217,6 +218,12 @@ impl CredentialsDB {
                 .parent_id
                 .map(|id| Related::new(id, self.repository.clone())),
             format: convert_inner(params.format.or(format)),
+        };
+        if credential.role() == CredentialRole::Verifier {
+            assert_eq!(credential.r#type(), CredentialType::Single);
+            one_core::service::test_utilities::verifier_credential(credential).unwrap()
+        } else {
+            credential
         }
     }
 
@@ -245,7 +252,7 @@ impl CredentialsDB {
                 params,
             )
             .await;
-        *credential.type_mut() = CredentialType::BatchParent;
+        *credential.type_mut().unwrap() = CredentialType::BatchParent;
         let holder_claims = if credential.role() == CredentialRole::Holder {
             let claims = credential.claims().as_ref().await.unwrap().to_owned();
             *credential.claims_mut() = Default::default();
@@ -254,7 +261,7 @@ impl CredentialsDB {
             None
         };
         let embedded_disclosure_policy = if credential.role() == CredentialRole::Holder {
-            credential.embedded_disclosure_policy_mut().take()
+            credential.embedded_disclosure_policy_mut().unwrap().take()
         } else {
             credential.embedded_disclosure_policy().clone()
         };
@@ -268,11 +275,13 @@ impl CredentialsDB {
             let mut updated_credential = credential.clone();
             updated_credential.common_mut().interaction = None;
             *updated_credential.claims_mut() = Default::default();
-            *updated_credential.type_mut() = CredentialType::BatchItem;
-            *updated_credential.embedded_disclosure_policy_mut() = embedded_disclosure_policy;
-            *updated_credential.webhook_url_mut() = None;
-            *updated_credential.parent_mut() = Some(Related::new(id, self.repository.clone()));
-            *updated_credential.key_mut() = key;
+            *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
+            *updated_credential.embedded_disclosure_policy_mut().unwrap() =
+                embedded_disclosure_policy;
+            *updated_credential.webhook_url_mut().unwrap() = None;
+            *updated_credential.parent_mut().unwrap() =
+                Some(Related::new(id, self.repository.clone()));
+            *updated_credential.key_mut().unwrap() = key;
             *updated_credential.holder_identifier_mut() = holder_identifier;
             updated_credential
         };
@@ -307,7 +316,7 @@ impl CredentialsDB {
                 let mut updated_credential = batch_item_template.clone();
                 updated_credential.common_mut().id = item_id;
                 *updated_credential.claims_mut() = claims.into();
-                *updated_credential.credential_blob_id_mut() = credential_blob_id;
+                *updated_credential.credential_blob_id_mut().unwrap() = credential_blob_id;
                 updated_credential
             };
             self.repository

@@ -1621,14 +1621,7 @@ async fn test_create_credential_success_with_format_selection() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(
-        credential
-            .format()
-            .as_ref()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .format,
+        credential.format().unwrap().as_ref().await.unwrap().format,
         format
     );
 }

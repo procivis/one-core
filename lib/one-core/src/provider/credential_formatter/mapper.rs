@@ -404,7 +404,7 @@ async fn issuer_url_for_credential(
     credential: &Credential,
     core_base_url: &str,
 ) -> Result<Url, FormatterError> {
-    let issuer_identifier = match credential.issuer_identifier().as_ref() {
+    let issuer_identifier = match credential.issuer_identifier() {
         Some(identifier) => Some(identifier.as_ref().await?.to_owned()),
         None => None,
     };

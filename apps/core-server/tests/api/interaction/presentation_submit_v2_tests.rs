@@ -385,7 +385,6 @@ async fn mixed_format_batch_parent_rejection() {
             .get(&batch.bbs_item)
             .await
             .format()
-            .as_ref()
             .unwrap()
             .id();
         // Consumed JWT items imply exhaustion; consumed BBS items never match this request.

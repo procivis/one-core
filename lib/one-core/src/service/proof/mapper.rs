@@ -224,7 +224,12 @@ pub(super) async fn get_verifier_proof_detail(
     let mut credential_for_schema_model: HashMap<CredentialSchemaId, Credential> = HashMap::new();
     for proof_claim in &claims {
         let credential = proof_claim.credential.as_ref().await?.to_owned();
-        credential_for_schema_model.insert(credential.common().schema.id(), credential);
+        let Credential::Verifier { common, .. } = &credential else {
+            return Err(ProofServiceError::MappingError(
+                "Expected a verifier credential".into(),
+            ));
+        };
+        credential_for_schema_model.insert(common.schema.id(), credential);
     }
 
     for (credential_schema_id, credential) in credential_for_schema_model {
@@ -238,8 +243,7 @@ pub(super) async fn get_verifier_proof_detail(
         .await
         .error_while("getting credential trust information")?;
 
-        // Verifier side, credentials are type single and have claims directly
-        let claims = crate::mapper::credential::stored_credential_claims(&credential).await?;
+        let claims = credential.claims().as_ref().await?.to_owned();
         let credential_detail = credential_detail_response_from_model(
             credential,
             claims,

@@ -646,7 +646,7 @@ async fn check_batch_item_rejection(
             let item = context.db.credentials.get(&id.parse()).await;
             assert_eq!(item.parent().as_ref().unwrap().id(), parent_id);
             assert_eq!(item.common().state, CredentialStateEnum::Accepted);
-            let format_id = item.format().as_ref().unwrap().id();
+            let format_id = item.format().unwrap().id();
             counts[formats
                 .iter()
                 .position(|format| format.id == format_id)

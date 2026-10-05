@@ -260,6 +260,34 @@ where
     }
 }
 
+/// Read an optional borrowed relation without tying the loaded value to the temporary option.
+#[async_trait::async_trait]
+pub trait OptionalRelatedRefExt<'a, M: Model>: Copy {
+    fn id_opt(self) -> Option<M::Id>;
+    fn id_opt_ref(self) -> Option<&'a M::Id>;
+    async fn as_required_ref(self) -> Result<RoLoadedRelated<'a, M>, NestedError>;
+}
+
+#[async_trait::async_trait]
+impl<'a, M: Model + Send + Sync> OptionalRelatedRefExt<'a, M> for Option<&'a Related<M>>
+where
+    M::Id: Copy + Send + Sync,
+{
+    fn id_opt(self) -> Option<M::Id> {
+        self.map(Related::id)
+    }
+
+    fn id_opt_ref(self) -> Option<&'a M::Id> {
+        self.map(Related::id_ref)
+    }
+
+    async fn as_required_ref(self) -> Result<RoLoadedRelated<'a, M>, NestedError> {
+        self.ok_or_else(|| OptionalRelatedExtError::MissingRelation(std::any::type_name::<M>()))?
+            .as_ref()
+            .await
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RelatedVec<T> {
     data: Arc<RwLock<AsyncVecStore<T>>>,

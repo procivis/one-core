@@ -45,7 +45,7 @@ impl BatchSetup {
                 .await
                 .unwrap();
             updated_credential.common_mut().id = Uuid::new_v4().into();
-            *updated_credential.type_mut() = CredentialType::BatchParent;
+            *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
             updated_credential
         };
         repositories
@@ -76,8 +76,8 @@ impl BatchSetup {
         {
             let mut updated_credential = self.parent.clone();
             updated_credential.common_mut().id = Uuid::new_v4().into();
-            *updated_credential.type_mut() = CredentialType::BatchItem;
-            *updated_credential.parent_mut() = Some(self.parent.clone().into());
+            *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
+            *updated_credential.parent_mut().unwrap() = Some(self.parent.clone().into());
             *updated_credential.claims_mut() = claims.into();
             updated_credential
         }
@@ -226,7 +226,7 @@ async fn claims_are_not_reused_across_batches() {
         .unwrap();
     let item = {
         let mut updated_credential = setup.item(vec![different.clone()]);
-        *updated_credential.parent_mut() = Some(other_parent.into());
+        *updated_credential.parent_mut().unwrap() = Some(other_parent.into());
         updated_credential
     };
     let id = setup
@@ -248,7 +248,12 @@ async fn claims_are_not_reused_across_batches() {
 #[case::verifier(CredentialRole::Verifier)]
 #[tokio::test]
 async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRole) {
-    let setup = BatchSetup::with_role(role).await;
+    let setup = BatchSetup::with_role(if role == CredentialRole::Verifier {
+        CredentialRole::Holder
+    } else {
+        role
+    })
+    .await;
     setup.create_item(vec![setup.claim.clone()]).await;
     let different = Claim {
         id: Uuid::new_v4().into(),
@@ -256,9 +261,27 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
     };
     let single = {
         let mut updated_credential = setup.item(vec![different.clone()]);
-        *updated_credential.type_mut() = CredentialType::Single;
-        *updated_credential.parent_mut() = None;
+        *updated_credential.type_mut().unwrap() = CredentialType::Single;
+        *updated_credential.parent_mut().unwrap() = None;
         updated_credential
+    };
+    let single = if role == CredentialRole::Verifier {
+        let mut single = single;
+        let format = single
+            .common()
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .formats
+            .as_ref()
+            .await
+            .unwrap()[0]
+            .clone();
+        *single.format_mut().unwrap() = Some(format.into());
+        one_core::service::test_utilities::verifier_credential(single).unwrap()
+    } else {
+        single
     };
     let id = setup
         .repositories
@@ -614,7 +637,7 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
                 id: Uuid::new_v4().into(),
                 ..setup.claim.clone()
             }]);
-            *item.parent_mut() = Some(parent.clone().into());
+            *item.parent_mut().unwrap() = Some(parent.clone().into());
             ids.push(item.common().id);
             requests.push(item);
         }
@@ -623,9 +646,9 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
     }
     let issuer = {
         let mut updated_credential = setup.item(vec![setup.claim.clone()]);
-        *updated_credential.role_mut() = CredentialRole::Issuer;
-        *updated_credential.type_mut() = CredentialType::Single;
-        *updated_credential.parent_mut() = None;
+        *updated_credential.role_mut().unwrap() = CredentialRole::Issuer;
+        *updated_credential.type_mut().unwrap() = CredentialType::Single;
+        *updated_credential.parent_mut().unwrap() = None;
         updated_credential
     };
     let issuer_id = issuer.common().id;

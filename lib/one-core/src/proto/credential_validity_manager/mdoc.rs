@@ -8,7 +8,7 @@ use crate::model::credential::{
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::OptionalRelatedRefExt;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 

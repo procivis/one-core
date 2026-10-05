@@ -1434,7 +1434,7 @@ async fn check_multi_format_credential_expiry(
         .await;
     assert_eq!(items.len(), 3);
     for item in items {
-        let format = item.format().as_ref().unwrap().as_ref().await.unwrap();
+        let format = item.format().unwrap().as_ref().await.unwrap();
         if batch_size.is_none() || expiration.is_some_and(|expiry| expiry <= Duration::days(10)) {
             assert_eq!(item.common().expires_at, parent.common().expires_at);
         } else {
@@ -1506,7 +1506,6 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
         assert!(item.credential_blob_id().is_some());
         issued_formats.push(
             item.format()
-                .as_ref()
                 .unwrap()
                 .as_ref()
                 .await

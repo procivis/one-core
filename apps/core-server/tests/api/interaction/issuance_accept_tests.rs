@@ -700,7 +700,6 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
     assert_eq!(
         mdoc_items[0]
             .format()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -716,7 +715,6 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
     assert_eq!(
         sd_jwt_vc
             .format()
-            .as_ref()
             .unwrap()
             .as_ref()
             .await
@@ -889,7 +887,7 @@ async fn check_multi_configuration_issuance(
         for item in matching {
             assert_eq!(
                 configuration["credential_schema_format_id"],
-                item.format().as_ref().unwrap().id().to_string()
+                item.format().unwrap().id().to_string()
             );
         }
     }
@@ -3302,7 +3300,6 @@ async fn test_issuance_accept_persists_issuer_display_translations_and_logo() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     let issuer_identifier = credential
         .issuer_identifier()
-        .as_ref()
         .unwrap()
         .as_ref()
         .await
@@ -3487,7 +3484,6 @@ async fn test_issuance_accept_refreshes_display_for_existing_issuer_identifier()
         .await;
     let used_issuer = credential
         .issuer_identifier()
-        .as_ref()
         .unwrap()
         .as_ref()
         .await

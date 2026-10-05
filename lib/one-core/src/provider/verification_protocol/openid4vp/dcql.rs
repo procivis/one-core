@@ -30,7 +30,7 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::proof::Proof;
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::OptionalRelatedRefExt;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -1218,6 +1218,7 @@ mod test {
 
     use super::*;
     use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
+    use crate::model::relation::OptionalRelatedExt;
     use crate::provider::credential_formatter::MockCredentialFormatter;
     use crate::service::test_utilities::dummy_credential;
 
@@ -1243,7 +1244,7 @@ mod test {
         let mut schema = item.common().schema.as_ref().await.unwrap().to_owned();
         schema.formats.as_mut().await.unwrap().push(format.clone());
         item.common_mut().schema = schema.into();
-        *item.format_mut() = Some(format.into());
+        *item.format_mut().unwrap() = Some(format.into());
         item.claims_mut().as_mut().await.unwrap()[0].selectively_disclosable = true;
         let query: DcqlQuery = serde_json::from_value(serde_json::json!({
             "credentials": [{
@@ -1278,6 +1279,7 @@ mod test {
         );
         *item.claims_mut() = vec![claim].into();
         item.format_mut()
+            .unwrap()
             .as_required_mut()
             .await
             .unwrap()

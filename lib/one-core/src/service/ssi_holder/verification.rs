@@ -25,7 +25,7 @@ use crate::model::credential::{Clearable, CredentialType, UpdateCredentialReques
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
-use crate::model::relation::{OptionalRelatedExt, Related};
+use crate::model::relation::{OptionalRelatedRefExt, Related};
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;

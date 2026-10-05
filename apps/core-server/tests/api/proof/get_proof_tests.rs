@@ -487,6 +487,7 @@ async fn test_get_proof_with_array() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
+                role: Some(CredentialRole::Verifier),
                 claims_data: Some(vec![
                     ClaimData {
                         schema_id: nested_obj_claim_id,
@@ -885,6 +886,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
+                role: Some(CredentialRole::Verifier),
                 claims_data: Some(vec![
                     ClaimData {
                         schema_id: root_claim.id,
@@ -1160,6 +1162,7 @@ async fn test_get_proof_with_deleted_credential() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
+                role: Some(CredentialRole::Verifier),
                 deleted_at: Some(get_dummy_date()),
                 ..Default::default()
             },
@@ -1558,7 +1561,10 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
             CredentialStateEnum::Created,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            Default::default(),
+            TestingCredentialParams {
+                role: Some(CredentialRole::Verifier),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -1700,7 +1706,10 @@ async fn test_get_proof_with_credentials_returns_profiles() {
             CredentialStateEnum::Created,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            Default::default(),
+            TestingCredentialParams {
+                role: Some(CredentialRole::Verifier),
+                ..Default::default()
+            },
         )
         .await;
 

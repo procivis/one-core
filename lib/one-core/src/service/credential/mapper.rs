@@ -36,7 +36,7 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::list_query::ListQuery;
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::OptionalRelatedRefExt;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -160,16 +160,15 @@ pub(crate) async fn credential_detail_response_from_model(
 
     let claims = from_vec_claim(claims, &schema_model, config).await?;
     drop(schema_model);
-    let Credential::Generic {
-        common,
-        consumed_at,
-        role,
-        suspend_end_date,
-        webhook_url,
-        parent,
-        subscriber_information,
-        ..
-    } = value;
+    let consumed_at = value.consumed_at();
+    let role = value.role();
+    let suspend_end_date = value.suspend_end_date();
+    let webhook_url = value.webhook_url().to_owned();
+    let parent_id = value.parent().as_ref().map(|parent| parent.id());
+    let subscriber_information = value.subscriber_information().to_owned();
+    let common = match value {
+        Credential::Generic { common, .. } | Credential::Verifier { common, .. } => common,
+    };
 
     Ok(CredentialDetailResponseDTO {
         id: common.id,
@@ -205,7 +204,7 @@ pub(crate) async fn credential_detail_response_from_model(
         webhook_destination_url: webhook_url,
         trust_information,
         remaining_batch_item_count,
-        parent_id: parent.map(|parent| parent.id()),
+        parent_id,
         subscriber_information,
         ecosystem: common.ecosystem,
         offered_formats,
@@ -575,15 +574,14 @@ pub(super) async fn to_credential_list_response(
         Some(issuer_identifier) => Some(issuer_identifier.as_ref().await?.to_owned().into()),
     };
 
-    let Credential::Generic {
-        common,
-        consumed_at,
-        role,
-        suspend_end_date,
-        webhook_url,
-        parent,
-        ..
-    } = credential;
+    let consumed_at = credential.consumed_at();
+    let role = credential.role();
+    let suspend_end_date = credential.suspend_end_date();
+    let webhook_url = credential.webhook_url().to_owned();
+    let parent_id = credential.parent().as_ref().map(|parent| parent.id());
+    let common = match credential {
+        Credential::Generic { common, .. } | Credential::Verifier { common, .. } => common,
+    };
 
     Ok(CredentialListItemResponseDTO {
         id: common.id,
@@ -609,7 +607,7 @@ pub(super) async fn to_credential_list_response(
         protocol: common.protocol,
         profile: common.profile,
         webhook_destination_url: webhook_url,
-        parent_id: parent.map(|parent| parent.id()),
+        parent_id,
         redirect_uri: common.redirect_uri,
         ecosystem: common.ecosystem,
     })
@@ -1070,7 +1068,6 @@ pub(crate) async fn get_remaining_batch_item_count(
     for item in batch_items {
         let format = item
             .format()
-            .as_ref()
             .ok_or(CredentialServiceError::MappingError(format!(
                 "Missing format on batch_item credential {}",
                 item.common().id
@@ -1091,6 +1088,17 @@ pub(crate) async fn get_credential_trust_information(
     ecosystem_provider: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {
+    if matches!(
+        credential,
+        Credential::Generic {
+            role: CredentialRole::Verifier,
+            ..
+        }
+    ) {
+        return Err(CredentialServiceError::MappingError(
+            "Expected a verifier credential".into(),
+        ));
+    }
     let ecosystem_errors =
         recorded_ecosystem_outcomes(credential.ecosystem_history_id().into(), history_repository)
             .await?;

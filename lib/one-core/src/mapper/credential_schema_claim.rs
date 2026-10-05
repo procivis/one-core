@@ -16,7 +16,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::relation::OptionalRelatedRefExt;
 use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;

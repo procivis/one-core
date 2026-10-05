@@ -90,9 +90,9 @@ mod test {
         let parent_claim_id = parent.claims().as_ref().await.unwrap()[0].id;
         let mut item = {
             let mut updated_credential = dummy_credential();
-            *updated_credential.role_mut() = CredentialRole::Holder;
-            *updated_credential.type_mut() = CredentialType::BatchItem;
-            *updated_credential.parent_mut() = Some(parent.into());
+            *updated_credential.role_mut().unwrap() = CredentialRole::Holder;
+            *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
+            *updated_credential.parent_mut().unwrap() = Some(parent.into());
             updated_credential
         };
         item.claims_mut().as_mut().await.unwrap()[0].selectively_disclosable = true;
@@ -101,12 +101,12 @@ mod test {
         assert!(own[0].selectively_disclosable);
         assert_ne!(own[0].id, parent_claim_id);
 
-        *item.role_mut() = CredentialRole::Issuer;
+        *item.role_mut().unwrap() = CredentialRole::Issuer;
         assert_eq!(
             stored_credential_claims(&item).await.unwrap()[0].id,
             parent_claim_id
         );
-        *item.role_mut() = CredentialRole::Holder;
+        *item.role_mut().unwrap() = CredentialRole::Holder;
         *item.claims_mut() = Default::default();
         assert!(stored_credential_claims(&item).await.unwrap().is_empty());
     }
@@ -116,8 +116,8 @@ mod test {
         for (has_item, has_item_claims) in [(true, true), (true, false), (false, false)] {
             let mut parent = {
                 let mut updated_credential = dummy_credential();
-                *updated_credential.role_mut() = CredentialRole::Holder;
-                *updated_credential.type_mut() = CredentialType::BatchParent;
+                *updated_credential.role_mut().unwrap() = CredentialRole::Holder;
+                *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
                 updated_credential
             };
             let mut item = dummy_credential();

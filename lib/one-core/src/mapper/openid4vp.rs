@@ -1,7 +1,9 @@
 use crate::config::core_config::FormatType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::RemoteIdentifierRelation;
-use crate::model::credential::{Credential, CredentialCommon, CredentialRole, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, IssuerIdentity, VerifierCredentialData,
+};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
@@ -52,7 +54,7 @@ pub(crate) async fn credential_from_proved(
         .await
         .error_while("creating remote holder identifier")?;
 
-    Ok(Credential::Generic {
+    Ok(Credential::Verifier {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: common.ecosystem,
@@ -72,23 +74,15 @@ pub(crate) async fn credential_from_proved(
             interaction: None,
             profile: common.profile,
         },
-        consumed_at: None,
-        role: CredentialRole::Verifier,
-        r#type: CredentialType::Single,
-        claims,
-        issuer_identifier: Some(issuer_identifier.into()),
-        issuer_certificate,
-        holder_identifier: Some(holder_identifier.into()),
-        key: None,
-        suspend_end_date: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        format: Some(format),
+        verifier_data: VerifierCredentialData {
+            issuer: IssuerIdentity {
+                identifier: issuer_identifier.into(),
+                certificate: issuer_certificate,
+            },
+            claims,
+            holder_identifier: Some(holder_identifier.into()),
+            format,
+        },
     })
 }
 

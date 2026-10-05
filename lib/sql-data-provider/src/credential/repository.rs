@@ -4,13 +4,10 @@ use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::credential::{
-    Credential, CredentialCommon, CredentialFilterValue, CredentialListIncludeEntityTypeEnum,
-    CredentialListQuery, GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
+    GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
 };
-use one_core::model::credential_schema::CredentialSchema;
-use one_core::model::credential_schema_format::CredentialSchemaFormat;
-use one_core::model::identifier::Identifier;
-use one_core::model::relation::{AsyncModelLoader, BatchModelLoader, Related};
+use one_core::model::relation::BatchModelLoader;
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
@@ -24,7 +21,9 @@ use shared_types::{CredentialId, InteractionId};
 
 use super::CredentialProvider;
 use super::creation::{insert_credentials_with_claims, prepare_credentials};
-use super::mapper::{CredentialSchemaFormatLoader, credential_claims, from_clearable};
+use super::mapper::{
+    CredentialRepositories, CredentialSchemaFormatLoader, credential_from_model, from_clearable,
+};
 use crate::common::calculate_pages_count;
 use crate::credential_schema::mapper::CredentialSchemasLoader;
 use crate::entity::{claim, claim_schema, credential, credential_claim};
@@ -33,73 +32,33 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::transaction_context::TransactionManagerImpl;
 
 impl CredentialProvider {
-    fn credential_from_model(
-        &self,
-        credential: credential::Model,
-        schema: impl AsyncModelLoader<CredentialSchema> + 'static,
-        issuer: impl AsyncModelLoader<Identifier> + 'static,
-        format: impl AsyncModelLoader<CredentialSchemaFormat> + 'static,
-    ) -> Credential {
-        Credential::Generic {
-            common: CredentialCommon {
-                id: credential.id,
-                created_date: credential.created_date,
-                issuance_date: credential.issuance_date,
-                expires_at: credential.expires_at,
-                last_modified: credential.last_modified,
-                deleted_at: credential.deleted_at,
-                protocol: credential.protocol,
-                redirect_uri: credential.redirect_uri,
-                state: credential.state.into(),
-                profile: credential.profile,
-                schema: Related::new(credential.credential_schema_id, schema),
-                interaction: credential
-                    .interaction_id
-                    .map(|id| Related::new(id, self.interaction_repository.clone())),
-                ecosystem: credential.ecosystem,
-            },
-            claims: credential_claims(credential.id, &self.claim_repository),
-            consumed_at: credential.consumed_at,
-            role: credential.role.into(),
-            r#type: credential.r#type.into(),
-            suspend_end_date: credential.suspend_end_date,
-            issuer_identifier: credential
-                .issuer_identifier_id
-                .map(|id| Related::new(id, issuer)),
-            issuer_certificate: credential
-                .issuer_certificate_id
-                .map(|id| Related::new(id, self.certificate_repository.clone())),
-            holder_identifier: credential
-                .holder_identifier_id
-                .map(|id| Related::new(id, self.identifier_repository.clone())),
-            key: credential
-                .key_id
-                .map(|id| Related::new(id, self.key_repository.clone())),
-            credential_blob_id: credential.credential_blob_id,
-            wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
-            wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
-            webhook_url: credential.webhook_url,
-            embedded_disclosure_policy: credential.embedded_disclosure_policy,
-            subscriber_information: credential.subscriber_information,
-            parent: credential
-                .parent_id
-                .map(|id| Related::new(id, self.cloned())),
-            format: credential.format.map(|id| Related::new(id, format)),
+    fn repositories(&self) -> CredentialRepositories<'_> {
+        CredentialRepositories {
+            claim_repository: &self.claim_repository,
+            interaction_repository: &self.interaction_repository,
+            certificate_repository: &self.certificate_repository,
+            identifier_repository: &self.identifier_repository,
+            key_repository: &self.key_repository,
+            credential_repository: self.cloned(),
         }
     }
 
-    fn credential_model_to_repository_model(&self, credential: credential::Model) -> Credential {
+    fn credential_model_to_repository_model(
+        &self,
+        credential: credential::Model,
+    ) -> Result<Credential, DataLayerError> {
         let format = BatchModelLoader::new(
             credential.format,
             CredentialSchemaFormatLoader {
                 db: self.db.clone(),
             },
         );
-        self.credential_from_model(
+        credential_from_model(
             credential,
             self.credential_schema_repository.clone(),
             self.identifier_repository.clone(),
             format,
+            self.repositories(),
         )
     }
 
@@ -108,7 +67,7 @@ impl CredentialProvider {
         &self,
         credentials: Vec<credential::Model>,
         skip_layout_properties: bool,
-    ) -> Vec<Credential> {
+    ) -> Result<Vec<Credential>, DataLayerError> {
         let schemas = BatchModelLoader::new(
             credentials
                 .iter()
@@ -136,11 +95,12 @@ impl CredentialProvider {
         credentials
             .into_iter()
             .map(|credential| {
-                self.credential_from_model(
+                credential_from_model(
                     credential,
                     schemas.clone(),
                     issuers.clone(),
                     formats.clone(),
+                    self.repositories(),
                 )
             })
             .collect()
@@ -333,7 +293,7 @@ impl CredentialRepository for CredentialProvider {
                 id: (*id).into(),
             })?;
 
-        Ok(self.credential_model_to_repository_model(credential))
+        self.credential_model_to_repository_model(credential)
     }
 
     async fn get_credentials_by_interaction_id(
@@ -346,7 +306,7 @@ impl CredentialRepository for CredentialProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        Ok(self.credentials_to_repository(credentials, false))
+        self.credentials_to_repository(credentials, false)
     }
 
     async fn get_credential_list(
@@ -407,7 +367,7 @@ impl CredentialRepository for CredentialProvider {
         };
 
         Ok(GetCredentialList {
-            values: self.credentials_to_repository(credentials, skip_layout_properties),
+            values: self.credentials_to_repository(credentials, skip_layout_properties)?,
             total_pages,
             total_items,
         })
@@ -541,7 +501,7 @@ impl CredentialRepository for CredentialProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        Ok(self.credentials_to_repository(credentials, false))
+        self.credentials_to_repository(credentials, false)
     }
 
     async fn delete_credential_blobs(

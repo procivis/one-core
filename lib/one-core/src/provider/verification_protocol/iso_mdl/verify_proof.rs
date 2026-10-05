@@ -8,6 +8,7 @@ use super::common::to_cbor;
 use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{ValidatedProofClaim, extracted_credential_to_model};
+use crate::model::credential::Credential;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::KeyRole;
 use crate::model::interaction::Interaction;
@@ -371,12 +372,19 @@ pub(super) async fn accept_proof(
         let artifacts = model_credentials
             .iter()
             .map(|(model_credential, issuer_details)| {
+                let Credential::Verifier {
+                    common,
+                    verifier_data,
+                } = model_credential
+                else {
+                    return Err(ServiceError::MappingError(
+                        "Expected a verifier credential".into(),
+                    ));
+                };
                 Ok(ProtocolArtifact::VerifierSubmission {
-                    credential_id: model_credential.common().id,
-                    claims: Cow::Borrowed(model_credential.claims()),
-                    format: Cow::Borrowed(model_credential.format().as_ref().ok_or_else(|| {
-                        ServiceError::MappingError("Missing credential format".into())
-                    })?),
+                    credential_id: common.id,
+                    claims: Cow::Borrowed(&verifier_data.claims),
+                    format: Cow::Borrowed(&verifier_data.format),
                     issuer_details: Cow::Borrowed(issuer_details),
                     proof_id: proof.id,
                 })

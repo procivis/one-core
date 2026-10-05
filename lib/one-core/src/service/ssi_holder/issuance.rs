@@ -344,7 +344,7 @@ impl SSIHolderService {
             let parent_id = group.main_credential.credential.common().id;
             configuration_parents.insert(response.credential_configuration_id, parent_id);
             for item in &mut response.batch_items {
-                *item.credential.parent_mut() =
+                *item.credential.parent_mut()? =
                     Some(Related::new(parent_id, self.credential_repository.clone()));
             }
             group.batch_items.append(&mut response.batch_items);
@@ -439,7 +439,7 @@ impl SSIHolderService {
         };
 
         credential.common_mut().state = CredentialStateEnum::Accepted;
-        *credential.credential_blob_id_mut() = credential_blob_id;
+        *credential.credential_blob_id_mut()? = credential_blob_id;
         Ok(credential)
     }
 

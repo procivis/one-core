@@ -105,7 +105,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
     .unwrap();
 
     let mut credential = dummy_credential();
-    *credential.issuer_identifier_mut() = Some(issuer_identifier.into());
+    *credential.issuer_identifier_mut().unwrap() = Some(issuer_identifier.into());
     {
         let mut schema = credential.common_mut().schema.as_mut().await.unwrap();
         schema.allow_suspension = suspension;
