@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use one_core::model::backup::UnexportableCredential;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{Credential, CredentialCommon};
+use one_core::model::credential::CredentialCommon;
 use one_core::model::credential_schema::{CredentialSchema, TransactionCode, WalletAttestation};
 use one_core::model::relation::{BatchModelLoader, Related};
-use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
@@ -26,10 +26,9 @@ fn claim_with_schema_to_claim(value: ClaimWithSchema, db: TransactionManagerImpl
 
 pub(super) fn credential_from_unexportable_model(
     value: UnexportableCredentialModel,
-    credential_repository: &Arc<dyn CredentialRepository>,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     db: &TransactionManagerImpl,
-) -> Result<Credential, DataLayerError> {
+) -> Result<UnexportableCredential, DataLayerError> {
     if value.role == crate::entity::credential::CredentialRole::Verifier {
         return Err(DataLayerError::MappingError);
     }
@@ -60,7 +59,7 @@ pub(super) fn credential_from_unexportable_model(
 
     let formats = credential_schema_formats(value.credential_schema_id, db.clone());
 
-    Ok(Credential::Generic {
+    Ok(UnexportableCredential {
         common: CredentialCommon {
             ecosystem: None,
             id: value.id,
@@ -118,23 +117,13 @@ pub(super) fn credential_from_unexportable_model(
         role: value.role.into(),
         r#type: value.r#type.into(),
         suspend_end_date: value.suspend_end_date,
-        claims: claims.into(),
-        issuer_identifier: None,
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: value.credential_blob_id,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
         webhook_url: value.webhook_url,
-        embedded_disclosure_policy: value.embedded_disclosure_policy,
         subscriber_information: value.subscriber_information,
-        parent: value
-            .parent_id
-            .map(|id| Related::new(id, credential_repository.clone())),
         format: value.format.map(|id| {
             let loader = CredentialSchemaFormatLoader { db: db.clone() };
             Related::new(id, BatchModelLoader::new([id], loader))
         }),
+        claims,
+        parent_id: value.parent_id,
     })
 }

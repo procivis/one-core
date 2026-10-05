@@ -1,9 +1,7 @@
 use one_core::model::credential_schema::CredentialSchemaName;
 use sea_orm::FromQueryResult;
 use serde::Deserialize;
-use shared_types::{
-    BlobId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, OrganisationId,
-};
+use shared_types::{CredentialId, CredentialSchemaFormatId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState, CredentialType};
@@ -27,7 +25,6 @@ pub struct UnexportableCredentialModel {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub webhook_url: Option<String>,
-    pub embedded_disclosure_policy: Option<String>,
     pub subscriber_information: Option<String>,
     pub format: Option<CredentialSchemaFormatId>,
 
@@ -53,7 +50,6 @@ pub struct UnexportableCredentialModel {
     pub organisation_id: OrganisationId,
 
     pub parent_id: Option<CredentialId>,
-    pub credential_blob_id: Option<BlobId>,
 
     pub claims: String,
 }

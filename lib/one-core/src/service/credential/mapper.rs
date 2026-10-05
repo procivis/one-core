@@ -82,41 +82,12 @@ pub(crate) async fn credential_detail_response_from_model(
     let state = value.common().state;
 
     let credential_format = value.credential_format().await?;
-    // Batch parents have no concrete format and therefore no MDOC validity.
-    let mdoc_mso_validity = if let Some(credential_format) = &credential_format
-        && config
-            .format
-            .get_type(credential_format)
-            .error_while("getting format config")?
-            == FormatType::Mdoc
-        && [
-            CredentialStateEnum::Accepted,
-            CredentialStateEnum::Suspended,
-            CredentialStateEnum::Revoked,
-        ]
-        .contains(&value.common().state)
-    {
-        let params = config
-            .format
-            .get::<mdoc_formatter::Params, _>(credential_format)
-            .error_while("parsing formatter params")?;
-        let issuance_date_with_expiry = value
-            .common()
-            .issuance_date
-            .map(|i| (i, value.common().expires_at))
-            // Legacy singles may predate the issuance date field.
-            .or_else(|| {
-                (value.r#type() == CredentialType::Single)
-                    .then_some((value.common().last_modified, None))
-            });
-        issuance_date_with_expiry.map(|(issuance_date, expiry)| MdocMsoValidityResponseDTO {
-            expiration: expiry.unwrap_or(issuance_date + params.expiration_seconds),
-            next_update: issuance_date + params.mso_expected_update_in_seconds,
-            last_update: issuance_date,
-        })
-    } else {
-        None
-    };
+    let mdoc_mso_validity = mdoc_mso_validity(
+        value.common(),
+        value.r#type(),
+        credential_format.as_ref(),
+        config,
+    )?;
 
     let issuer_certificate = match &value.issuer_certificate() {
         None => None,
@@ -154,7 +125,14 @@ pub(crate) async fn credential_detail_response_from_model(
         }
     };
 
-    let offered_formats = get_offered_formats(&value, credential_repository).await?;
+    let offered_formats = get_offered_formats(
+        value.common(),
+        value.role(),
+        value.r#type(),
+        value.format(),
+        credential_repository,
+    )
+    .await?;
     let credential_type = value.r#type();
 
     let claims = from_vec_claim(claims, &schema_model, config).await?;
@@ -450,35 +428,35 @@ fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
 }
 
 async fn get_offered_formats(
-    value: &Credential,
+    common: &CredentialCommon,
+    role: CredentialRole,
+    credential_type: CredentialType,
+    credential_format: Option<&crate::model::relation::Related<CredentialSchemaFormat>>,
     credential_repository: &dyn CredentialRepository,
 ) -> Result<Option<Vec<OfferedFormatDTO>>, CredentialServiceError> {
-    if value.role() != CredentialRole::Issuer
-        || value.r#type() == CredentialType::BatchItem
-        || value.common().state == CredentialStateEnum::Error
+    if role != CredentialRole::Issuer
+        || credential_type == CredentialType::BatchItem
+        || common.state == CredentialStateEnum::Error
     {
         return Ok(None);
     }
 
-    let schema = value.common().schema.as_ref().await?;
+    let schema = common.schema.as_ref().await?;
     let mut formats = schema.formats.as_ref().await?.to_vec();
 
-    if value.r#type() == CredentialType::Single {
+    if credential_type == CredentialType::Single {
         if formats.len() < 2 {
             return Ok(None);
         }
 
         // single credential based on a multi-format schema (by selecting only one format for issuance)
-        let Some(format) = &value.format() else {
-            tracing::error!(
-                "Single credential without format set: {}",
-                value.common().id
-            );
+        let Some(format) = credential_format else {
+            tracing::error!("Single credential without format set: {}", common.id);
             return Ok(None);
         };
 
         let format = format.as_ref().await?;
-        let state = match value.common().state {
+        let state = match common.state {
             CredentialStateEnum::Created
             | CredentialStateEnum::Pending
             | CredentialStateEnum::Offered
@@ -498,7 +476,7 @@ async fn get_offered_formats(
     }
 
     // batch parent credential
-    if let Some(interaction) = &value.common().interaction {
+    if let Some(interaction) = &common.interaction {
         let interaction = interaction.as_ref().await?;
         let data: OpenID4VCIIssuerInteractionDataDTO =
             deserialize_interaction_data(interaction.data.as_ref())
@@ -510,7 +488,7 @@ async fn get_offered_formats(
 
     let mut result = vec![];
     for format in formats {
-        let state = match value.common().state {
+        let state = match common.state {
             CredentialStateEnum::Created
             | CredentialStateEnum::Pending
             | CredentialStateEnum::Offered
@@ -526,7 +504,7 @@ async fn get_offered_formats(
                     .get_credential_list(ListQuery {
                         include_count: false,
                         filtering: Some(
-                            CredentialFilterValue::ParentCredential(value.common().id).condition()
+                            CredentialFilterValue::ParentCredential(common.id).condition()
                                 & CredentialFilterValue::FormatIds(vec![format.id]),
                         ),
                         ..Default::default()
@@ -1229,5 +1207,117 @@ async fn issuer_name(credential: &Credential) -> Result<Option<String>, Credenti
     Ok(match &credential.issuer_certificate() {
         Some(certificate) => Some(certificate.as_ref().await?.name.to_owned()),
         None => None,
+    })
+}
+
+fn mdoc_mso_validity(
+    common: &CredentialCommon,
+    credential_type: CredentialType,
+    credential_format: Option<&CredentialFormat>,
+    config: &CoreConfig,
+) -> Result<Option<MdocMsoValidityResponseDTO>, CredentialServiceError> {
+    Ok(
+        if let Some(credential_format) = credential_format
+            && config
+                .format
+                .get_type(credential_format)
+                .error_while("getting format config")?
+                == FormatType::Mdoc
+            && [
+                CredentialStateEnum::Accepted,
+                CredentialStateEnum::Suspended,
+                CredentialStateEnum::Revoked,
+            ]
+            .contains(&common.state)
+        {
+            let params = config
+                .format
+                .get::<mdoc_formatter::Params, _>(credential_format)
+                .error_while("parsing formatter params")?;
+            let issuance_date_with_expiry = common
+                .issuance_date
+                .map(|i| (i, common.expires_at))
+                // Legacy singles may predate the issuance date field.
+                .or_else(|| {
+                    (credential_type == CredentialType::Single)
+                        .then_some((common.last_modified, None))
+                });
+            issuance_date_with_expiry.map(|(issuance_date, expiry)| MdocMsoValidityResponseDTO {
+                expiration: expiry.unwrap_or(issuance_date + params.expiration_seconds),
+                next_update: issuance_date + params.mso_expected_update_in_seconds,
+                last_update: issuance_date,
+            })
+        } else {
+            None
+        },
+    )
+}
+
+pub(crate) async fn credential_detail_response_from_backup(
+    value: crate::model::backup::UnexportableCredential,
+    config: &CoreConfig,
+    credential_repository: &dyn CredentialRepository,
+    formatter_provider: &dyn CredentialFormatterProvider,
+) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
+    let schema = value.common.schema.as_ref().await?;
+    let schema_dto =
+        to_credential_schema_detail_response(schema.clone(), config, formatter_provider).await?;
+    let mut claims = vec![];
+    for claim in value.claims {
+        if !claim.schema.as_ref().await?.metadata {
+            claims.push(claim);
+        }
+    }
+    let claims = from_vec_claim(claims, &schema, config).await?;
+    drop(schema);
+    let format = match &value.format {
+        Some(format) if value.r#type != CredentialType::BatchParent => {
+            Some(format.as_ref().await?.format.clone())
+        }
+        _ => None,
+    };
+    let mdoc_mso_validity =
+        mdoc_mso_validity(&value.common, value.r#type, format.as_ref(), config)?;
+    let offered_formats = get_offered_formats(
+        &value.common,
+        value.role,
+        value.r#type,
+        value.format.as_ref(),
+        credential_repository,
+    )
+    .await?;
+    let common = value.common;
+    Ok(CredentialDetailResponseDTO {
+        id: common.id,
+        created_date: common.created_date,
+        issuance_date: common.issuance_date,
+        revocation_date: get_revocation_date(&common.state, &common.last_modified),
+        expires_at: common.expires_at,
+        consumed_at: value.consumed_at,
+        state: common.state.into(),
+        last_modified: common.last_modified,
+        claims,
+        schema: schema_dto,
+        issuer: None,
+        redirect_uri: common.redirect_uri,
+        role: value.role.into(),
+        r#type: value.r#type.into(),
+        format,
+        interaction_id: common.interaction.map(|interaction| interaction.id()),
+        suspend_end_date: value.suspend_end_date,
+        mdoc_mso_validity,
+        holder: None,
+        protocol: common.protocol,
+        issuer_certificate: None,
+        profile: common.profile,
+        wallet_instance_attestation: None,
+        wallet_unit_attestation: None,
+        webhook_destination_url: value.webhook_url,
+        trust_information: None,
+        remaining_batch_item_count: None,
+        parent_id: value.parent_id,
+        subscriber_information: value.subscriber_information,
+        ecosystem: common.ecosystem,
+        offered_formats,
     })
 }

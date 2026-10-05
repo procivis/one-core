@@ -7,8 +7,7 @@ use crate::model::backup::UnexportableEntities;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
-use crate::service::credential::dto::CredentialAttestationBlobs;
-use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential::mapper::credential_detail_response_from_backup;
 
 pub(super) async fn unexportable_entities_to_response_dto(
     entities: UnexportableEntities,
@@ -19,20 +18,12 @@ pub(super) async fn unexportable_entities_to_response_dto(
     let mut credentials = vec![];
 
     for credential in entities.credentials {
-        // Batch parents without claims have their latest item claims backfilled by the repository
-        // which uses the `effective_claim_owner` helper.
-        let claims = crate::mapper::credential::stored_credential_claims(&credential).await?;
         credentials.push(
-            credential_detail_response_from_model(
+            credential_detail_response_from_backup(
                 credential,
-                claims,
                 config,
-                CredentialAttestationBlobs::default(),
-                None,
-                None,
                 credential_repository,
                 formatter_provider,
-                None,
             )
             .await
             .error_while("converting credential")?,

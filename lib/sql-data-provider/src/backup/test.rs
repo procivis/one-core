@@ -3,7 +3,6 @@ use std::sync::Arc;
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::certificate_repository::MockCertificateRepository;
-use one_core::repository::credential_repository::MockCredentialRepository;
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::identifier_trust_information_repository::MockIdentifierTrustInformationRepository;
 use one_core::repository::key_repository::MockKeyRepository;
@@ -298,7 +297,6 @@ async fn setup_empty() -> TestSetup {
         provider: BackupProvider {
             db: TransactionManagerImpl::new(db.clone()),
             exportable_storages: vec!["INTERNAL".into()],
-            credential_repository: Arc::new(MockCredentialRepository::new()),
             organisation_repository: Arc::new(MockOrganisationRepository::new()),
             did_repository: Arc::new(MockDidRepository::new()),
             key_repository: Arc::new(MockKeyRepository::new()),
@@ -688,24 +686,19 @@ async fn test_fetch_unexportable_credentials_local() {
     );
 
     assert_eq_unordered(
-        unexportable.credentials.iter().map(|item| item.common().id),
+        unexportable.credentials.iter().map(|item| item.common.id),
         unexportable_credentials_setup.unexportable_ids,
     );
 
     // ONE-8026: claims must contain claim schemas
-    unexportable.credentials[0]
-        .claims()
-        .unwrap()
-        .as_ref()
-        .await
-        .unwrap()[0]
+    unexportable.credentials[0].claims[0]
         .schema
         .as_ref()
         .await
         .expect("claim schema present");
 
     let schema = unexportable.credentials[0]
-        .common()
+        .common
         .schema
         .as_ref()
         .await
@@ -859,12 +852,12 @@ async fn test_fetch_unexportable_credentials_dump() {
         unexportable_credentials_setup.unexportable_ids.len()
     );
     assert_eq_unordered(
-        unexportable.credentials.iter().map(|item| item.common().id),
+        unexportable.credentials.iter().map(|item| item.common.id),
         unexportable_credentials_setup.unexportable_ids,
     );
 
     let schema = unexportable.credentials[0]
-        .common()
+        .common
         .schema
         .as_ref()
         .await
@@ -1209,9 +1202,9 @@ async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
     let parent = backup
         .credentials
         .iter()
-        .find(|credential| credential.common().id == parent_id)
+        .find(|credential| credential.common.id == parent_id)
         .unwrap();
-    let claims = parent.claims().unwrap().as_ref().await.unwrap();
+    let claims = &parent.claims;
     assert_eq!(claims.len(), 1);
     assert_eq!(claims[0].schema.as_ref().await.unwrap().key, "name");
 }

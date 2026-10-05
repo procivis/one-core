@@ -12,7 +12,7 @@ use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+    CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -62,7 +62,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
         claim_mappings: Default::default(),
     };
     UnexportableEntities {
-        credentials: vec![Credential::Generic {
+        credentials: vec![crate::model::backup::UnexportableCredential {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -143,20 +143,11 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                     translations: Default::default(),
                 }
                 .into(),
-            }]
-            .into(),
-            issuer_identifier: None,
-            issuer_certificate: None,
-            holder_identifier: None,
-            key: None,
-            credential_blob_id: None,
-            wallet_key_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
+            }],
             webhook_url: None,
-            parent: None,
-            embedded_disclosure_policy: None,
             subscriber_information: None,
             format: Some(format.into()),
+            parent_id: None,
         }],
         keys: vec![dummy_key()],
         dids: vec![dummy_did()],

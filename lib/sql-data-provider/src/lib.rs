@@ -285,7 +285,6 @@ impl DataLayer {
 
         let backup_repository = Arc::new(BackupProvider::new(
             transaction_manager.clone(),
-            credential_repository.clone(),
             exportable_storages,
             organisation_repository.clone(),
             did_repository.clone(),

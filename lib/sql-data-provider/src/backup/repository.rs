@@ -7,7 +7,6 @@ use one_core::model::backup::{Metadata, UnexportableEntities};
 use one_core::model::history::History;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::certificate_repository::CertificateRepository;
-use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
@@ -44,7 +43,6 @@ impl BackupProvider {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: TransactionManagerImpl,
-        credential_repository: Arc<dyn CredentialRepository>,
         exportable_storages: Vec<String>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         did_repository: Arc<dyn DidRepository>,
@@ -55,7 +53,6 @@ impl BackupProvider {
     ) -> Self {
         Self {
             db,
-            credential_repository,
             exportable_storages,
             organisation_repository,
             did_repository,
@@ -228,10 +225,8 @@ impl BackupRepository for BackupProvider {
                 credential::Column::SuspendEndDate,
                 credential::Column::ConsumedAt,
                 credential::Column::ParentId,
-                credential::Column::CredentialBlobId,
                 credential::Column::Protocol,
                 credential::Column::WebhookUrl,
-                credential::Column::EmbeddedDisclosurePolicy,
                 credential::Column::Format,
             ])
             .column_as(credential_schema::Column::Id, "credential_schema_id")
@@ -441,12 +436,7 @@ impl BackupRepository for BackupProvider {
         let credentials = credentials
             .into_iter()
             .map(|credential| {
-                credential_from_unexportable_model(
-                    credential,
-                    &self.credential_repository,
-                    &self.organisation_repository,
-                    &db,
-                )
+                credential_from_unexportable_model(credential, &self.organisation_repository, &db)
             })
             .collect::<Result<_, DataLayerError>>()?;
 
