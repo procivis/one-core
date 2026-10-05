@@ -210,6 +210,10 @@ async fn test_issuance_accept_openid4vc() {
     assert!(resp.get("partiallySuccessful").is_none());
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert!(matches!(
+        credential,
+        one_core::model::credential::Credential::HolderSingle { .. }
+    ));
     let holder_identifier = credential
         .holder_identifier()
         .as_ref()

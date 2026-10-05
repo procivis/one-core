@@ -463,6 +463,8 @@ pub async fn credential_fixture(mut credential: Credential) -> Credential {
             *credential.key_mut().unwrap() = Some(key);
         }
         one_core::service::test_utilities::issuer_credential(credential).unwrap()
+    } else if credential.r#type() == CredentialType::Single {
+        one_core::service::test_utilities::holder_single_credential(credential).unwrap()
     } else {
         credential
     }

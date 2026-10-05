@@ -819,3 +819,46 @@ pub fn issuer_credential(
         }
     })
 }
+
+/// Construct a holder-single fixture from a generic credential fixture.
+pub fn holder_single_credential(
+    credential: Credential,
+) -> Result<Credential, crate::repository::error::DataLayerError> {
+    use crate::model::credential::{HolderBinding, HolderCredentialData, IssuerIdentity};
+    use crate::repository::error::DataLayerError;
+
+    let Credential::Generic {
+        common,
+        claims,
+        issuer_identifier,
+        issuer_certificate,
+        holder_identifier,
+        key,
+        format,
+        credential_blob_id,
+        embedded_disclosure_policy,
+        ..
+    } = credential
+    else {
+        return Err(DataLayerError::MappingError);
+    };
+    let binding = match (holder_identifier, key) {
+        (Some(identifier), Some(key)) => Some(HolderBinding { identifier, key }),
+        (None, None) => None,
+        _ => return Err(DataLayerError::MappingError),
+    };
+    Ok(Credential::HolderSingle {
+        common,
+        credential: HolderCredentialData {
+            issuer: IssuerIdentity {
+                identifier: issuer_identifier.ok_or(DataLayerError::MappingError)?,
+                certificate: issuer_certificate,
+            },
+            format: format.ok_or(DataLayerError::MappingError)?,
+            claims,
+            binding,
+            credential_blob_id,
+            embedded_disclosure_policy,
+        },
+    })
+}

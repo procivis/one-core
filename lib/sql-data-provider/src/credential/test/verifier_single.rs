@@ -151,6 +151,7 @@ async fn generic_verifier_credentials_cannot_be_persisted(#[case] credential_typ
         .unwrap()
         .into_active_model();
     row.role = Set(credential::CredentialRole::Holder);
+    row.r#type = Set(credential::CredentialType::BatchParent);
     row.update(&setup.db).await.unwrap();
     let mut request = repository
         .get_credential(&setup.credential_id)

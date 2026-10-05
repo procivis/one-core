@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use one_core::model::claim::Claim;
 use one_core::model::credential::{
-    Clearable, Credential, CredentialCommon, CredentialFilterValue, IssuerCredentialData,
-    IssuerData, IssuerIdentity, SortableCredentialColumn, VerifierCredentialData,
+    Clearable, Credential, CredentialCommon, CredentialFilterValue, HolderBinding,
+    HolderCredentialData, IssuerCredentialData, IssuerData, IssuerIdentity,
+    SortableCredentialColumn, VerifierCredentialData,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
@@ -434,6 +435,42 @@ pub(super) fn credential_from_model(
                 credential: data,
             },
             credential::CredentialType::BatchParent => unreachable!(),
+        });
+    }
+    if credential.role == credential::CredentialRole::Holder
+        && credential.r#type == credential::CredentialType::Single
+    {
+        let binding = match (credential.holder_identifier_id, credential.key_id) {
+            (Some(identifier), Some(key)) => Some(HolderBinding {
+                identifier: Related::new(identifier, repositories.identifier_repository.clone()),
+                key: Related::new(key, repositories.key_repository.clone()),
+            }),
+            (None, None) => None,
+            _ => return Err(DataLayerError::MappingError),
+        };
+        return Ok(Credential::HolderSingle {
+            common,
+            credential: HolderCredentialData {
+                issuer: IssuerIdentity {
+                    identifier: Related::new(
+                        credential
+                            .issuer_identifier_id
+                            .ok_or(DataLayerError::MappingError)?,
+                        issuer,
+                    ),
+                    certificate: credential
+                        .issuer_certificate_id
+                        .map(|id| Related::new(id, repositories.certificate_repository.clone())),
+                },
+                format: Related::new(
+                    credential.format.ok_or(DataLayerError::MappingError)?,
+                    format,
+                ),
+                claims: credential_claims(credential.id, repositories.claim_repository),
+                binding,
+                credential_blob_id: credential.credential_blob_id,
+                embedded_disclosure_policy: credential.embedded_disclosure_policy,
+            },
         });
     }
     Ok(Credential::Generic {

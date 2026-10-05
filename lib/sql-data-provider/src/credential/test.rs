@@ -7,7 +7,8 @@ use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
     Clearable, Credential, CredentialCommon, CredentialFilterValue, CredentialListQuery,
-    CredentialRole, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+    CredentialRole, CredentialStateEnum, CredentialType, HolderCredentialData, IssuerIdentity,
+    UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, WalletAttestation};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
@@ -55,6 +56,9 @@ mod deduplication;
 #[path = "test/issuer_batch.rs"]
 mod issuer_batch;
 
+#[path = "test/holder_single.rs"]
+mod holder_single;
+
 #[path = "test/issuer_single.rs"]
 mod issuer_single;
 
@@ -82,9 +86,10 @@ async fn setup_empty() -> TestSetup {
     .await
     .unwrap();
 
-    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
-        .await
-        .unwrap();
+    let format_id =
+        insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+            .await
+            .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
@@ -119,7 +124,7 @@ async fn setup_empty() -> TestSetup {
         last_modified: get_dummy_date(),
         name: "credential schema".to_string(),
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: format_id,
             created_date: now_utc(),
             last_modified: now_utc(),
             credential_schema_id,
@@ -349,8 +354,9 @@ async fn test_create_credential_success() {
         },
     ];
 
+    let format = credential_schema.formats.as_ref().await.unwrap()[0].clone();
     let result = provider
-        .create_credential(Credential::Generic {
+        .create_credential(Credential::HolderSingle {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -366,23 +372,17 @@ async fn test_create_credential_success() {
                 interaction: None,
                 profile: None,
             },
-            consumed_at: None,
-            role: CredentialRole::Holder,
-            r#type: CredentialType::Single,
-            suspend_end_date: None,
-            claims: claims.into(),
-            issuer_identifier: Some(identifier.into()),
-            issuer_certificate: None,
-            holder_identifier: None,
-            key: None,
-            credential_blob_id: None,
-            wallet_key_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
-            webhook_url: None,
-            embedded_disclosure_policy: None,
-            subscriber_information: None,
-            parent: None,
-            format: None,
+            credential: HolderCredentialData {
+                claims: claims.into(),
+                issuer: IssuerIdentity {
+                    identifier: identifier.into(),
+                    certificate: None,
+                },
+                binding: None,
+                credential_blob_id: None,
+                embedded_disclosure_policy: None,
+                format: format.into(),
+            },
         })
         .await;
 
@@ -411,8 +411,9 @@ async fn test_create_credential_empty_claims() {
     let provider = credential_repository(db.clone(), None);
 
     let credential_id = Uuid::new_v4().into();
+    let format = credential_schema.formats.as_ref().await.unwrap()[0].clone();
     let result = provider
-        .create_credential(Credential::Generic {
+        .create_credential(Credential::HolderSingle {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -428,23 +429,17 @@ async fn test_create_credential_empty_claims() {
                 interaction: None,
                 profile: None,
             },
-            consumed_at: None,
-            role: CredentialRole::Holder,
-            r#type: CredentialType::Single,
-            suspend_end_date: None,
-            claims: Default::default(),
-            issuer_identifier: Some(identifier.into()),
-            issuer_certificate: None,
-            holder_identifier: None,
-            key: None,
-            credential_blob_id: None,
-            wallet_key_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
-            webhook_url: None,
-            embedded_disclosure_policy: None,
-            subscriber_information: None,
-            parent: None,
-            format: None,
+            credential: HolderCredentialData {
+                claims: Default::default(),
+                issuer: IssuerIdentity {
+                    identifier: identifier.into(),
+                    certificate: None,
+                },
+                binding: None,
+                credential_blob_id: None,
+                embedded_disclosure_policy: None,
+                format: format.into(),
+            },
         })
         .await;
 
@@ -484,8 +479,9 @@ async fn test_create_credential_already_exists() {
         selectively_disclosable: false,
     }];
 
+    let format = credential_schema.formats.as_ref().await.unwrap()[0].clone();
     let result = provider
-        .create_credential(Credential::Generic {
+        .create_credential(Credential::HolderSingle {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -501,23 +497,17 @@ async fn test_create_credential_already_exists() {
                 interaction: None,
                 profile: None,
             },
-            consumed_at: None,
-            role: CredentialRole::Holder,
-            r#type: CredentialType::Single,
-            suspend_end_date: None,
-            claims: claims.into(),
-            issuer_identifier: Some(identifier.into()),
-            issuer_certificate: None,
-            holder_identifier: None,
-            key: None,
-            credential_blob_id: None,
-            wallet_key_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
-            webhook_url: None,
-            embedded_disclosure_policy: None,
-            subscriber_information: None,
-            parent: None,
-            format: None,
+            credential: HolderCredentialData {
+                claims: claims.into(),
+                issuer: IssuerIdentity {
+                    identifier: identifier.into(),
+                    certificate: None,
+                },
+                binding: None,
+                credential_blob_id: None,
+                embedded_disclosure_policy: None,
+                format: format.into(),
+            },
         })
         .await;
 
@@ -1380,8 +1370,9 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     )
     .await
     .unwrap();
-    let mut template = provider.get_credential(&single.common().id).await.unwrap();
-    *template.claims_mut().unwrap() = Default::default();
+    // Use the raw fixture to construct the remaining generic holder batch variants.
+    let mut template = single.clone();
+    *template.issuer_identifier_mut().unwrap() = Some(identifier.into());
     let jwt_format = credential_schema_format_from_model(
         credential_schema_format::Entity::find()
             .one(&db)

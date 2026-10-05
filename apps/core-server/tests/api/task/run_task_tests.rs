@@ -2001,7 +2001,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
                 did_type: Some(DidType::Local),
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
-                    key: holder_key,
+                    key: holder_key.clone(),
                     reference: "1".to_string(),
                 }]),
                 ..Default::default()
@@ -2078,6 +2078,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 holder_identifier: Some(holder_identifier),
+                key: Some(holder_key),
                 role: Some(CredentialRole::Holder),
                 ..Default::default()
             },

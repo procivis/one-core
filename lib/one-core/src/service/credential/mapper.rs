@@ -174,6 +174,7 @@ pub(crate) async fn credential_detail_response_from_model(
         | Credential::IssuerSingle { common, .. }
         | Credential::IssuerBatchParent { common, .. }
         | Credential::IssuerBatchItem { common, .. }
+        | Credential::HolderSingle { common, .. }
         | Credential::Verifier { common, .. } => common,
     };
 
@@ -591,6 +592,7 @@ pub(super) async fn to_credential_list_response(
         | Credential::IssuerSingle { common, .. }
         | Credential::IssuerBatchParent { common, .. }
         | Credential::IssuerBatchItem { common, .. }
+        | Credential::HolderSingle { common, .. }
         | Credential::Verifier { common, .. } => common,
     };
 

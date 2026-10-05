@@ -304,7 +304,7 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
             Some(schema.formats.as_ref().await.unwrap()[0].clone().into());
         one_core::service::test_utilities::issuer_credential(single).unwrap()
     } else {
-        single
+        one_core::service::test_utilities::holder_single_credential(single).unwrap()
     };
     let id = setup
         .repositories

@@ -18,7 +18,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::localized_text::LocalizedTextField;
-use crate::model::relation::{OptionalRelatedExt, OptionalRelatedRefExt};
+use crate::model::relation::OptionalRelatedRefExt;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::provider::issuance_protocol::IssuanceProtocolError;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -527,16 +527,21 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     default_language: &str,
     format_id: Option<shared_types::CredentialSchemaFormatId>,
 ) -> Result<AlignmentUpdate, IssuanceProtocolError> {
-    let Credential::Generic {
-        claims,
-        common,
-        format,
-        ..
-    } = credential
-    else {
-        return Err(IssuanceProtocolError::Failed(
-            "Expected a holder credential".into(),
-        ));
+    let (common, claims, format) = match credential {
+        Credential::HolderSingle { common, credential } => {
+            (common, &mut credential.claims, &mut credential.format)
+        }
+        Credential::Generic {
+            common,
+            claims,
+            format: Some(format),
+            ..
+        } => (common, claims, format),
+        _ => {
+            return Err(IssuanceProtocolError::Failed(
+                "Expected a holder credential with a format".into(),
+            ));
+        }
     };
     let mut claims = claims.as_mut().await?;
     claims.sort_by_key(|c| c.path.clone());
@@ -548,7 +553,7 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
     let (parsed_format, parsed_mappings) = {
-        let parsed_format = format.as_required_ref().await?;
+        let parsed_format = format.as_ref().await?;
         let mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
         (parsed_format.format.clone(), mappings)
     };
@@ -663,7 +668,7 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
         stored_claim_schemas.extend(new_claim_schemas.clone());
     }
 
-    *format = Some(stored_format.into());
+    *format = stored_format.into();
     common.schema = stored_schema.clone().into();
     Ok(AlignmentUpdate {
         new_claim_schemas,

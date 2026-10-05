@@ -110,19 +110,19 @@ pub async fn insert_credential(
         .ok_or(DbErr::RecordNotFound(credential_schema_id.to_string()))?
         .organisation_id;
 
-    let (key_id, format_id) = if role == CredentialRole::Issuer {
-        let key_id =
+    let key_id = if role == CredentialRole::Issuer {
+        Some(
             insert_key_to_database(db, "EDDSA".into(), vec![], vec![], None, organisation_id)
-                .await?;
-        let format = credential_schema_format::Entity::find()
-            .filter(credential_schema_format::Column::CredentialSchemaId.eq(*credential_schema_id))
-            .one(db)
-            .await?
-            .ok_or(DbErr::RecordNotFound("credential format".into()))?;
-        (Some(key_id), Some(format.id))
+                .await?,
+        )
     } else {
-        (None, None)
+        None
     };
+    let format_id = credential_schema_format::Entity::find()
+        .filter(credential_schema_format::Column::CredentialSchemaId.eq(*credential_schema_id))
+        .one(db)
+        .await?
+        .map(|format| format.id);
 
     let credential = credential::ActiveModel {
         expires_at: Set(None),

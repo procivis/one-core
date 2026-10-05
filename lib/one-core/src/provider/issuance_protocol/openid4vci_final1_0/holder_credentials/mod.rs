@@ -29,7 +29,10 @@ use crate::mapper::NESTED_CLAIM_MARKER_STR;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialRole, CredentialStateEnum, CredentialType, HolderCredentialData,
+    IssuerIdentity,
+};
 use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
@@ -142,9 +145,39 @@ impl OpenID4VCIFinal1_0 {
         credential: &mut Credential,
         parent_id: CredentialId,
     ) -> Result<(), IssuanceProtocolError> {
-        *credential.type_mut()? = CredentialType::BatchItem;
-        *credential.parent_mut()? =
-            Some(Related::new(parent_id, self.credential_repository.clone()));
+        if let Credential::HolderSingle {
+            common,
+            credential: data,
+        } = credential
+        {
+            *credential = Credential::Generic {
+                common: common.clone(),
+                role: CredentialRole::Holder,
+                r#type: CredentialType::BatchItem,
+                consumed_at: None,
+                suspend_end_date: None,
+                credential_blob_id: data.credential_blob_id,
+                wallet_key_attestation_blob_id: None,
+                wallet_instance_attestation_blob_id: None,
+                webhook_url: None,
+                embedded_disclosure_policy: data.embedded_disclosure_policy.clone(),
+                subscriber_information: None,
+                claims: data.claims.clone(),
+                issuer_identifier: Some(data.issuer.identifier.clone()),
+                issuer_certificate: data.issuer.certificate.clone(),
+                holder_identifier: data
+                    .binding
+                    .as_ref()
+                    .map(|binding| binding.identifier.clone()),
+                format: Some(data.format.clone()),
+                key: data.binding.as_ref().map(|binding| binding.key.clone()),
+                parent: Some(Related::new(parent_id, self.credential_repository.clone())),
+            };
+        } else {
+            *credential.type_mut()? = CredentialType::BatchItem;
+            *credential.parent_mut()? =
+                Some(Related::new(parent_id, self.credential_repository.clone()));
+        }
         credential.common_mut().interaction = None;
         Ok(())
     }
@@ -624,7 +657,48 @@ impl OpenID4VCIFinal1_0 {
         credential.common_mut().protocol = self.config_id.to_owned();
         credential.common_mut().interaction = Some(interaction.to_owned().into());
         attach_matching_holder_binding(&mut credential, holder_bindings).await?;
-        Ok(credential)
+        // Formatters carry the parsed holder identity until it is matched to a local key.
+        // Only then can the credential satisfy the holder-single binding invariant.
+        let Credential::Generic {
+            common,
+            claims,
+            issuer_identifier,
+            issuer_certificate,
+            holder_identifier,
+            key,
+            format,
+            credential_blob_id,
+            embedded_disclosure_policy,
+            ..
+        } = credential
+        else {
+            return Err(IssuanceProtocolError::Failed(
+                "Expected a parsed holder credential".into(),
+            ));
+        };
+        Ok(Credential::HolderSingle {
+            common,
+            credential: HolderCredentialData {
+                issuer: IssuerIdentity {
+                    identifier: issuer_identifier.ok_or(IssuanceProtocolError::Failed(
+                        "Missing issuer identifier".into(),
+                    ))?,
+                    certificate: issuer_certificate,
+                },
+                format: format.ok_or(IssuanceProtocolError::Failed(
+                    "Missing credential format".into(),
+                ))?,
+                claims,
+                binding: Some(crate::model::credential::HolderBinding {
+                    identifier: holder_identifier.ok_or(IssuanceProtocolError::Failed(
+                        "Missing holder identifier".into(),
+                    ))?,
+                    key: key.ok_or(IssuanceProtocolError::Failed("Missing holder key".into()))?,
+                }),
+                credential_blob_id,
+                embedded_disclosure_policy,
+            },
+        })
     }
 
     async fn enrich_credential_schema(
