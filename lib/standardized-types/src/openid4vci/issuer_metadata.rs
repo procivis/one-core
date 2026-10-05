@@ -257,16 +257,21 @@ pub enum KeyStorageSecurityLevel {
 }
 
 impl KeyStorageSecurityLevel {
+    pub fn rank(&self) -> u8 {
+        match self {
+            Self::High => 4,
+            Self::Moderate => 3,
+            Self::EnhancedBasic => 2,
+            Self::Basic => 1,
+        }
+    }
+
+    pub fn satisfies(&self, required: Self) -> bool {
+        self.rank() >= required.rank()
+    }
+
     pub fn select_lowest(levels: &[Self]) -> Option<Self> {
-        levels
-            .iter()
-            .min_by_key(|level| match level {
-                Self::High => 4,
-                Self::Moderate => 3,
-                Self::EnhancedBasic => 2,
-                Self::Basic => 1,
-            })
-            .copied()
+        levels.iter().min_by_key(|level| level.rank()).copied()
     }
 }
 
@@ -275,6 +280,13 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
+
+    #[test]
+    fn test_key_storage_security_level_satisfies_lower_or_equal_level() {
+        assert!(KeyStorageSecurityLevel::High.satisfies(KeyStorageSecurityLevel::Basic));
+        assert!(KeyStorageSecurityLevel::Basic.satisfies(KeyStorageSecurityLevel::Basic));
+        assert!(!KeyStorageSecurityLevel::Basic.satisfies(KeyStorageSecurityLevel::Moderate));
+    }
 
     #[test]
     fn test_issuer_metadata_deserializes_with_default_type_parameters() {

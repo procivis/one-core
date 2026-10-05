@@ -786,9 +786,7 @@ impl OID4VCIFinal1_0Service {
                 return Err(OpenID4VCIError::InvalidOrMissingProof.into());
             }
         } else if key_attestation.is_some() {
-            // Key attestation provided but not required
-            tracing::debug!("key attestation provided but not required");
-            return Err(OpenID4VCIError::InvalidOrMissingProof.into());
+            tracing::debug!("key attestation provided but not required, ignored");
         }
 
         let organisation = schema.organisation.as_ref().await?.to_owned();

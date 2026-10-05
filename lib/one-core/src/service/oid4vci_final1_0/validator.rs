@@ -190,7 +190,8 @@ pub(crate) async fn validate_key_attestation(
         .payload
         .custom
         .key_storage
-        .contains(&expected_key_storage_security_level)
+        .iter()
+        .any(|level| level.satisfies(expected_key_storage_security_level))
     {
         tracing::debug!(
             "key attestation does not list expected key storage security level: {:?}",
