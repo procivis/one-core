@@ -1,9 +1,7 @@
-use one_dto_mapper::convert_inner;
-
 use crate::config::core_config::FormatType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::RemoteIdentifierRelation;
-use crate::model::credential::{Credential, CredentialCommon, CredentialType};
+use crate::model::credential::{Credential, CredentialCommon, CredentialRole, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
@@ -15,10 +13,18 @@ pub(crate) async fn credential_from_proved(
     proved_credential: ProvedCredential,
     organisation: &Organisation,
 ) -> Result<Credential, ServiceError> {
+    let ProvedCredential {
+        common,
+        claims,
+        format,
+        issuer_details,
+        holder_details,
+    } = proved_credential;
+
     let (issuer_identifier, issuer_relation) = identifier_creator
         .get_or_create_remote_identifier(
             organisation,
-            &proved_credential.issuer_details,
+            &issuer_details,
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
             None,
@@ -37,7 +43,7 @@ pub(crate) async fn credential_from_proved(
     let (holder_identifier, ..) = identifier_creator
         .get_or_create_remote_identifier(
             organisation,
-            &proved_credential.holder_details,
+            &holder_details,
             IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
             true,
             None,
@@ -45,19 +51,6 @@ pub(crate) async fn credential_from_proved(
         )
         .await
         .error_while("creating remote holder identifier")?;
-
-    let Credential::Generic {
-        common,
-        role,
-        claims,
-        key,
-        suspend_end_date,
-        credential_blob_id,
-        wallet_key_attestation_blob_id,
-        wallet_instance_attestation_blob_id,
-        format,
-        ..
-    } = proved_credential.credential;
 
     Ok(Credential::Generic {
         common: CredentialCommon {
@@ -80,22 +73,22 @@ pub(crate) async fn credential_from_proved(
             profile: common.profile,
         },
         consumed_at: None,
-        role,
+        role: CredentialRole::Verifier,
         r#type: CredentialType::Single,
         claims,
         issuer_identifier: Some(issuer_identifier.into()),
         issuer_certificate,
         holder_identifier: Some(holder_identifier.into()),
-        key,
-        suspend_end_date: convert_inner(suspend_end_date),
-        credential_blob_id,
-        wallet_key_attestation_blob_id,
-        wallet_instance_attestation_blob_id,
+        key: None,
+        suspend_end_date: None,
+        credential_blob_id: None,
+        wallet_key_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
-        format,
+        format: Some(format),
     })
 }
 

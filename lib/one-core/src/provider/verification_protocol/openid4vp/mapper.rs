@@ -19,9 +19,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::value_to_model_claims;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{
-    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
-};
+use crate::model::credential::{CredentialCommon, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -107,40 +105,23 @@ pub(crate) fn extracted_credential_to_model(
     }
 
     Ok(ProvedCredential {
-        credential: Credential::Generic {
-            common: CredentialCommon {
-                expires_at: None,
-                ecosystem: None,
-                id: credential_id,
-                created_date: now,
-                issuance_date,
-                last_modified: now,
-                deleted_at: None,
-                protocol: verification_protocol.to_string(),
-                state: CredentialStateEnum::Accepted,
-                profile: profile.clone(),
-                schema: credential_schema.into(),
-                redirect_uri: None,
-                interaction: None,
-            },
-            consumed_at: None,
-            suspend_end_date: None,
-            claims: model_claims.to_owned().into(),
-            issuer_identifier: None,
-            issuer_certificate: None,
-            holder_identifier: None,
-            key: None,
-            role: CredentialRole::Verifier,
-            credential_blob_id: None,
-            wallet_key_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
-            webhook_url: None,
-            r#type: CredentialType::Single,
-            parent: None,
-            embedded_disclosure_policy: None,
-            subscriber_information: None,
-            format: Some(credential_schema_format.to_owned().into()),
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: now,
+            issuance_date,
+            last_modified: now,
+            deleted_at: None,
+            protocol: verification_protocol.to_string(),
+            state: CredentialStateEnum::Accepted,
+            profile: profile.clone(),
+            schema: credential_schema.into(),
+            redirect_uri: None,
+            interaction: None,
         },
+        claims: model_claims.into(),
+        format: credential_schema_format.to_owned().into(),
         issuer_details,
         holder_details,
     })

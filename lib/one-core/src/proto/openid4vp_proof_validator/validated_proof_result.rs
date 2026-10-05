@@ -5,9 +5,9 @@ use shared_types::{CredentialId, CredentialSchemaFormatId, CredentialSchemaId, P
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::proof::{Proof, ProofClaim};
+use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
+use crate::proto::openid4vp_proof_validator::{ProvedClaim, ValidatedProofResult};
 use crate::provider::credential_formatter::model::{CredentialClaim, DetailCredential};
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::extracted_credential_to_model;
@@ -31,7 +31,7 @@ impl ValidatedProofResult {
         validate_proof(proof.to_owned(), proved_claims).await
     }
 
-    pub(crate) fn into_credentials_and_claims(self) -> (Vec<ProvedCredential>, Vec<ProofClaim>) {
+    pub(crate) fn into_credentials_and_claims(self) -> (Vec<ProvedCredential>, Vec<ProvedClaim>) {
         (self.proved_credentials, self.proved_claims)
     }
 }
@@ -68,7 +68,7 @@ async fn validate_proof(
 
     let mut proved_credentials = vec![];
 
-    let mut proof_claims: Vec<ProofClaim> = vec![];
+    let mut proof_claims: Vec<ProvedClaim> = vec![];
     for credential_claims in claims_per_credential.into_values() {
         let claims: Vec<(CredentialClaim, ClaimSchema)> = credential_claims
             .iter()
@@ -121,15 +121,14 @@ async fn validate_proof(
 
         proof_claims.extend(
             proved_credential
-                .credential
-                .claims()
+                .claims
                 .as_ref()
                 .await
                 .map_err(|e| OpenID4VCError::Other(e.to_string()))?
                 .iter()
                 .cloned()
-                .map(|claim| ProofClaim {
-                    credential: proved_credential.credential.clone().into(),
+                .map(|claim| ProvedClaim {
+                    credential_id: proved_credential.common.id,
                     claim,
                 }),
         );

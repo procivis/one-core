@@ -370,14 +370,18 @@ pub(super) async fn accept_proof(
     let ecosystems = {
         let artifacts = model_credentials
             .iter()
-            .map(
-                |(model_credential, issuer_details)| ProtocolArtifact::VerifierSubmission {
-                    credential: Cow::Borrowed(model_credential),
+            .map(|(model_credential, issuer_details)| {
+                Ok(ProtocolArtifact::VerifierSubmission {
+                    credential_id: model_credential.common().id,
+                    claims: Cow::Borrowed(model_credential.claims()),
+                    format: Cow::Borrowed(model_credential.format().as_ref().ok_or_else(|| {
+                        ServiceError::MappingError("Missing credential format".into())
+                    })?),
                     issuer_details: Cow::Borrowed(issuer_details),
                     proof_id: proof.id,
-                },
-            )
-            .collect::<Vec<_>>();
+                })
+            })
+            .collect::<Result<Vec<_>, ServiceError>>()?;
 
         ecosystem_resolver
             .resolve(interaction.id, &artifacts, None)

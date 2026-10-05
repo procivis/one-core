@@ -122,11 +122,12 @@ async fn test_validate_submission_success_dcql() {
     assert_eq!(result.0.proved_credentials.len(), 1);
     assert_eq!(
         result.0.proved_credentials[0]
-            .credential
-            .credential_format()
+            .format
+            .as_ref()
             .await
-            .unwrap(),
-        Some("format".into())
+            .unwrap()
+            .format,
+        "format".into()
     );
     assert_eq!(
         result.0.proved_credentials.first().unwrap().issuer_details,
@@ -976,11 +977,12 @@ async fn each_format_option_is_accepted_and_persisted_with_its_own_mapping(
     assert_eq!(result.proved_credentials.len(), 1);
     assert_eq!(
         result.proved_credentials[0]
-            .credential
-            .credential_format()
+            .format
+            .as_ref()
             .await
-            .unwrap(),
-        Some(name.into())
+            .unwrap()
+            .format,
+        name.into()
     );
     assert_eq!(result.proved_claims[0].claim.value, Some(value.to_string()));
 }
@@ -1003,8 +1005,8 @@ async fn submitted_alternatives_are_stored_as_separate_credentials() {
     assert_eq!(result.proved_credentials.len(), 2);
     assert_eq!(result.proved_claims.len(), 2);
     assert_ne!(
-        result.proved_claims[0].credential.id(),
-        result.proved_claims[1].credential.id()
+        result.proved_claims[0].credential_id,
+        result.proved_claims[1].credential_id
     );
 }
 

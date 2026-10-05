@@ -11,9 +11,12 @@ use strum::Display;
 use time::OffsetDateTime;
 
 use crate::model::blob::BlobType;
+use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::WalletAttestation;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier_trust_information::SchemaFormat;
+use crate::model::relation::{Related, RelatedVec};
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::service::common_dto::EudiTrustInformationResponseDTO;
@@ -45,6 +48,10 @@ pub enum IssuerMetadataRepresentation {
 }
 
 #[derive(Clone, Debug, Display)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "Holder issuance still carries the transitional generic credential inline"
+)]
 pub enum ProtocolArtifact<'a> {
     /// As holder, protocol artifacts about the issuance & issuer
     HolderIssuanceInvitation {
@@ -72,7 +79,9 @@ pub enum ProtocolArtifact<'a> {
     },
     /// As verifier, protocol artifacts of a proof-request (after submission)
     VerifierSubmission {
-        credential: Cow<'a, Credential>,
+        credential_id: CredentialId,
+        claims: Cow<'a, RelatedVec<Claim>>,
+        format: Cow<'a, Related<CredentialSchemaFormat>>,
         issuer_details: Cow<'a, IdentifierDetails>,
         proof_id: ProofId,
     },

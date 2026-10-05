@@ -15,7 +15,10 @@ use time::OffsetDateTime;
 use url::Url;
 
 use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
-use crate::model::credential::Credential;
+use crate::model::claim::Claim;
+use crate::model::credential::CredentialCommon;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::relation::{Related, RelatedVec};
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 
@@ -135,9 +138,12 @@ pub(crate) struct SubmissionRequestData {
     pub encryption_key: Option<KeyId>,
 }
 
+/// Verified submission data before issuer and holder identifiers are resolved for persistence.
 #[derive(Clone, Debug)]
 pub(crate) struct ProvedCredential {
-    pub credential: Credential,
+    pub common: CredentialCommon,
+    pub claims: RelatedVec<Claim>,
+    pub format: Related<CredentialSchemaFormat>,
     pub issuer_details: IdentifierDetails,
     pub holder_details: IdentifierDetails,
 }

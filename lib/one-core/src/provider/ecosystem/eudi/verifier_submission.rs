@@ -3,8 +3,9 @@ use shared_types::OrganisationId;
 use super::mapper::formatter_requires_namespaces;
 use super::{EudiEcosystem, pid_schema_ids};
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::Credential;
-use crate::model::relation::OptionalRelatedExt;
+use crate::model::claim::Claim;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::relation::{Related, RelatedVec};
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::error::EcosystemError;
@@ -12,16 +13,17 @@ use crate::provider::ecosystem::error::EcosystemError;
 impl EudiEcosystem {
     pub(super) async fn resolve_verifier_submission(
         &self,
-        credential: &Credential,
+        claims: &RelatedVec<Claim>,
+        schema_format: &Related<CredentialSchemaFormat>,
         issuer_details: &IdentifierDetails,
         organisation_id: OrganisationId,
     ) -> Result<(), EcosystemError> {
-        let schema_format = credential.format().as_required_ref().await?;
+        let schema_format = schema_format.as_ref().await?;
         let format = &schema_format.format;
         let formatter = self.formatter_provider.get_credential_formatter(format)?;
 
         let namespaced = formatter_requires_namespaces(formatter.as_ref());
-        let claims = credential.claims().as_ref().await?;
+        let claims = claims.as_ref().await?;
         let category = credential_category(&claims, namespaced);
 
         let IdentifierDetails::Certificate(issuer_certificate) = issuer_details else {
@@ -130,7 +132,12 @@ mod test {
             x5_references: Default::default(),
         });
         ecosystem
-            .resolve_verifier_submission(&credential, &issuer, Uuid::new_v4().into())
+            .resolve_verifier_submission(
+                credential.claims(),
+                credential.format().as_ref().unwrap(),
+                &issuer,
+                Uuid::new_v4().into(),
+            )
             .await
             .unwrap();
     }

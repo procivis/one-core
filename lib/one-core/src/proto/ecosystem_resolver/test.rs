@@ -702,12 +702,11 @@ async fn test_an_invitation_does_not_store_an_ecosystem() {
 }
 
 fn submission_artifact(index: usize) -> ProtocolArtifact<'static> {
+    let credential = dummy_credential();
     ProtocolArtifact::VerifierSubmission {
-        credential: Cow::Owned({
-            let mut updated_credential = dummy_credential();
-            updated_credential.common_mut().id = submitted_credential(index);
-            updated_credential
-        }),
+        credential_id: submitted_credential(index),
+        claims: Cow::Owned(credential.claims().clone()),
+        format: Cow::Owned(credential.format().as_ref().unwrap().clone()),
         issuer_details: Cow::Owned(submission_issuer(index)),
         proof_id: submitted_proof(),
     }

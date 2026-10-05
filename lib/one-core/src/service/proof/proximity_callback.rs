@@ -216,7 +216,9 @@ impl ProofService {
                     .proved_credentials
                     .iter()
                     .map(|proved_credential| ProtocolArtifact::VerifierSubmission {
-                        credential: Cow::Borrowed(&proved_credential.credential),
+                        credential_id: proved_credential.common.id,
+                        claims: Cow::Borrowed(&proved_credential.claims),
+                        format: Cow::Borrowed(&proved_credential.format),
                         issuer_details: Cow::Borrowed(&proved_credential.issuer_details),
                         proof_id: proof.id,
                     })
@@ -233,7 +235,7 @@ impl ProofService {
                 .iter_mut()
                 .zip(ecosystems.per_credential)
             {
-                proved_credential.credential.common_mut().ecosystem = ecosystem;
+                proved_credential.common.ecosystem = ecosystem;
             }
 
             Ok((proof_result, ecosystems.ecosystem, response))

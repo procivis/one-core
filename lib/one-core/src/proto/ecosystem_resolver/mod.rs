@@ -442,8 +442,8 @@ fn history_entity(artifact: &ProtocolArtifact<'_>) -> Option<(EntityId, HistoryE
         ProtocolArtifact::IssuerIssuance { credential_id, .. } => {
             Some(((*credential_id).into(), HistoryEntityType::Credential))
         }
-        ProtocolArtifact::VerifierSubmission { credential, .. } => {
-            Some((credential.common().id.into(), HistoryEntityType::Credential))
+        ProtocolArtifact::VerifierSubmission { credential_id, .. } => {
+            Some(((*credential_id).into(), HistoryEntityType::Credential))
         }
     }
 }

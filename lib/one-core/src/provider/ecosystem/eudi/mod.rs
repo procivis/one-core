@@ -247,12 +247,14 @@ impl Ecosystem for EudiEcosystem {
                 .await?;
             }
             ProtocolArtifact::VerifierSubmission {
-                credential,
+                claims,
+                format,
                 issuer_details,
                 ..
             } => {
                 self.resolve_verifier_submission(
-                    credential,
+                    claims,
+                    format,
                     issuer_details,
                     interaction.organisation.id(),
                 )
