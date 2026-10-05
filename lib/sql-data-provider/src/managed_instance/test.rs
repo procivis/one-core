@@ -1,3 +1,4 @@
+use one_core::model::common::SortDirection;
 use one_core::model::instance::{InstanceRole, InstanceStatus};
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::{ListPagination, ListSorting};
@@ -1136,24 +1137,23 @@ async fn test_sort_by_os_descending() {
     assert_eq!(result.values[1].os, ManagedInstanceOs::Android);
 }
 
+#[rstest::rstest]
+#[case::ascending(SortDirection::Ascending, [2, 1])]
+#[case::descending(SortDirection::Descending, [1, 2])]
 #[tokio::test]
-async fn test_sort_by_created_date_ascending() {
+async fn test_sort_by_created_date(
+    #[case] direction: SortDirection,
+    #[case] expected_ids: [u128; 2],
+) {
     let test_setup = setup(0).await;
     let provider = test_setup.provider;
 
-    // Create wallet units with sufficient delay to ensure different timestamps
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
-    wallet_unit1.name = "first_wallet".to_string();
-    provider.create(wallet_unit1).await.unwrap();
-
-    // Larger delay to ensure different created_date
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
-    wallet_unit2.name = "second_wallet".to_string();
-    provider.create(wallet_unit2).await.unwrap();
+    for (id, days) in [(1, 1), (2, 0)] {
+        let mut instance =
+            dummy_managed_instance(Uuid::from_u128(id).into(), test_setup.organisation_id);
+        instance.created_date = get_dummy_date() + time::Duration::days(days);
+        provider.create(instance).await.unwrap();
+    }
 
     let query = ManagedInstanceListQuery {
         include_count: true,
@@ -1163,7 +1163,7 @@ async fn test_sort_by_created_date_ascending() {
         }),
         sorting: Some(ListSorting {
             column: SortableManagedInstanceColumn::CreatedDate,
-            direction: Some(one_core::model::common::SortDirection::Ascending),
+            direction: Some(direction),
         }),
         filtering: None,
         include: None,
@@ -1172,73 +1172,14 @@ async fn test_sort_by_created_date_ascending() {
     let result = provider.get_list(query).await.unwrap();
 
     assert_eq!(result.total_items.unwrap(), 2);
-
-    // Verify timestamps are properly ordered
-    assert!(result.values[0].created_date <= result.values[1].created_date);
-
-    // If timestamps are identical, just verify both are present
-    if result.values[0].created_date == result.values[1].created_date {
-        let names: Vec<&String> = result.values.iter().map(|wu| &wu.name).collect();
-        assert!(names.contains(&&"first_wallet".to_string()));
-        assert!(names.contains(&&"second_wallet".to_string()));
-    } else {
-        // First created should come first in ascending order
-        assert_eq!(result.values[0].name, "first_wallet");
-        assert_eq!(result.values[1].name, "second_wallet");
-    }
-}
-
-#[tokio::test]
-async fn test_sort_by_created_date_descending() {
-    let test_setup = setup(0).await;
-    let provider = test_setup.provider;
-
-    // Create wallet units with sufficient delay to ensure different timestamps
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
-    wallet_unit1.name = "first_wallet".to_string();
-    provider.create(wallet_unit1).await.unwrap();
-
-    // Larger delay to ensure different created_date
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
-    wallet_unit2.name = "second_wallet".to_string();
-    provider.create(wallet_unit2).await.unwrap();
-
-    let query = ManagedInstanceListQuery {
-        include_count: true,
-        pagination: Some(ListPagination {
-            page: 0,
-            page_size: 10,
-        }),
-        sorting: Some(ListSorting {
-            column: SortableManagedInstanceColumn::CreatedDate,
-            direction: Some(one_core::model::common::SortDirection::Descending),
-        }),
-        filtering: None,
-        include: None,
-    };
-
-    let result = provider.get_list(query).await.unwrap();
-
-    assert_eq!(result.total_items.unwrap(), 2);
-
-    // Verify timestamps are actually different
-    assert!(result.values[0].created_date >= result.values[1].created_date);
-
-    // If timestamps are identical, we can't rely on order, so just verify we have both
-    if result.values[0].created_date == result.values[1].created_date {
-        // If created dates are identical, just verify both wallet units are present
-        let names: Vec<&String> = result.values.iter().map(|wu| &wu.name).collect();
-        assert!(names.contains(&&"first_wallet".to_string()));
-        assert!(names.contains(&&"second_wallet".to_string()));
-    } else {
-        // Most recent created should come first in descending order
-        assert_eq!(result.values[0].name, "second_wallet");
-        assert_eq!(result.values[1].name, "first_wallet");
-    }
+    assert_eq!(
+        result
+            .values
+            .iter()
+            .map(|instance| instance.id)
+            .collect::<Vec<_>>(),
+        expected_ids.map(|id| ManagedInstanceId::from(Uuid::from_u128(id)))
+    );
 }
 
 #[tokio::test]

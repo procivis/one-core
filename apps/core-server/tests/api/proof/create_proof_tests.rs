@@ -11,8 +11,7 @@ use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::fixtures::{self, TestingDidParams, TestingIdentifierParams, assert_history_count};
-use crate::utils;
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams, assert_history_count};
 use crate::utils::api_clients::proofs::CreateProofTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
@@ -20,16 +19,12 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::field_match::FieldHelpers;
-use crate::utils::server::run_server;
 
-#[tokio::test]
-async fn test_create_proof_success_without_related_key() {
-    // GIVEN
-    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+async fn create_proof_schema(context: &TestContext, organisation: &Organisation) -> ProofSchema {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, Default::default())
+        .create("test", organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -40,12 +35,12 @@ async fn test_create_proof_success_without_related_key() {
         .unwrap()
         .to_owned();
 
-    let proof_schema = context
+    context
         .db
         .proof_schemas
         .create(
             "test",
-            &organisation,
+            organisation,
             vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
@@ -57,7 +52,14 @@ async fn test_create_proof_success_without_related_key() {
                 credential_schema: &credential_schema,
             }],
         )
-        .await;
+        .await
+}
+
+#[tokio::test]
+async fn test_create_proof_success_without_related_key() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let proof_schema = create_proof_schema(&context, &organisation).await;
 
     // WHEN
     let resp = context
@@ -87,38 +89,7 @@ async fn test_create_proof_success_without_related_key() {
 async fn test_create_proof_wrong_identifier_type() {
     // GIVEN
     let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-    let claim_schema = credential_schema
-        .claim_schemas
-        .as_ref()
-        .await
-        .unwrap()
-        .first()
-        .unwrap()
-        .to_owned();
-
-    let proof_schema = context
-        .db
-        .proof_schemas
-        .create(
-            "test",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
+    let proof_schema = create_proof_schema(&context, &organisation).await;
 
     // WHEN
     let resp = context
@@ -141,38 +112,7 @@ async fn test_create_proof_wrong_identifier_type() {
 async fn test_create_proof_success_with_related_key() {
     // GIVEN
     let (context, organisation, did, _, key) = TestContext::new_with_did(None).await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-    let claim_schema = credential_schema
-        .claim_schemas
-        .as_ref()
-        .await
-        .unwrap()
-        .first()
-        .unwrap()
-        .to_owned();
-
-    let proof_schema = context
-        .db
-        .proof_schemas
-        .create(
-            "test",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
+    let proof_schema = create_proof_schema(&context, &organisation).await;
 
     // WHEN
     let resp = context
@@ -200,75 +140,56 @@ async fn test_create_proof_success_with_related_key() {
 #[tokio::test]
 async fn test_create_proof_for_deactivated_did_returns_400() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            deactivated: Some(true),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let _identifier = fixtures::create_identifier(
-        &db_conn,
-        &organisation,
-        Some(TestingIdentifierParams {
-            did: Some(did.clone()),
-            ..Default::default()
-        }),
-    )
-    .await;
-
-    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
-    let claim_schema = credential_schema
-        .claim_schemas
-        .as_ref()
-        .await
-        .unwrap()
-        .first()
-        .unwrap()
-        .to_owned();
-
-    let proof_schema = fixtures::create_proof_schema(
-        &db_conn,
-        "test",
-        &organisation,
-        &[CreateProofInputSchema {
-            claims: vec![CreateProofClaim {
-                id: claim_schema.id,
-                key: &claim_schema.key,
-                required: true,
-                data_type: &claim_schema.data_type,
-                array: false,
-            }],
-            credential_schema: &credential_schema,
-        }],
-    )
-    .await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                deactivated: Some(true),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let proof_schema = create_proof_schema(&context, &organisation).await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-    let url = format!("{base_url}/api/proof-request/v1");
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "proofSchemaId": proof_schema.id,
-          "verificationProtocol": "OPENID4VP_FINAL1",
-          "verifierDid": did.id,
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            ..Default::default()
+        })
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0330");
 }
 
 #[tokio::test]
