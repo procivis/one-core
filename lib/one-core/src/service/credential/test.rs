@@ -4,6 +4,7 @@ use std::vec;
 
 use assert2::let_assert;
 use mockall::predicate::*;
+use rstest::rstest;
 use serde_json::json;
 use serde_yaml;
 use shared_types::{CredentialId, EcosystemId, EntityId};
@@ -50,6 +51,7 @@ use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::ecosystem::MockEcosystem;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
@@ -890,140 +892,139 @@ async fn test_share_credential_failed_inactive_identifier() {
     assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::IdentifierIsDeactivated(_))));
 }
 
-#[tokio::test]
-async fn test_create_credential_based_on_issuer_did_success() {
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
+struct CredentialCreationFixture {
+    request: CreateCredentialRequestDTO,
+    schema: CredentialSchema,
+    issuer_did: Did,
+    formatter_capabilities: FormatterCapabilities,
+}
 
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
+impl CredentialCreationFixture {
+    async fn new() -> Self {
+        let credential = generic_credential().await;
+        let issuer = credential
             .issuer_identifier()
             .unwrap()
             .as_ref()
             .await
-            .unwrap()
-            .to_owned()
-    );
-    {
-        let clone = credential.clone();
-        let issuer_did = issuer_identifier_did.clone();
-        let credential_schema = credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned();
+            .unwrap();
+        let_assert!(IdentifierData::Did(issuer_did) = &issuer.data);
+        let issuer_did = issuer_did.as_ref().await.unwrap().clone();
+        let schema = credential.common().schema.as_ref().await.unwrap().clone();
+        let claims = credential.claims().unwrap().as_ref().await.unwrap();
+        let claim = &claims[0];
+        let issuer_key = issuer_did.keys.as_ref().await.unwrap()[0].key.id;
 
-        identifier_repository
+        Self {
+            request: CreateCredentialRequestDTO {
+                credential_schema_id: schema.id,
+                issuer: None,
+                issuer_did: Some(issuer_did.id),
+                issuer_key: Some(issuer_key),
+                issuer_certificate: None,
+                protocol: "OPENID4VCI_FINAL1".to_string(),
+                claim_values: vec![CredentialRequestClaimDTO {
+                    claim_schema_id: claim.schema.id(),
+                    value: claim.value.clone().unwrap(),
+                    path: claim.path.clone(),
+                }],
+                redirect_uri: None,
+                profile: None,
+                webhook_destination_url: None,
+                subscriber_information: None,
+                ecosystem: None,
+                formats: None,
+            },
+            schema,
+            issuer_did,
+            formatter_capabilities: generic_formatter_capabilities(),
+        }
+    }
+
+    async fn into_repositories(self) -> (Repositories, CreateCredentialRequestDTO) {
+        let mut repositories = Repositories {
+            config: generic_config().core,
+            ..Default::default()
+        };
+        let format = self.schema.format().await.unwrap();
+        repositories
+            .credential_schema_repository
+            .expect_get_credential_schema()
+            .once()
+            .with(eq(self.schema.id))
+            .return_once(move |_| Ok(self.schema));
+        repositories
+            .identifier_repository
             .expect_get_from_did_id()
-            .return_once(|_| {
+            .once()
+            .with(eq(self.issuer_did.id))
+            .return_once(move |_| {
                 Ok(Some(Identifier {
-                    data: IdentifierData::Did(issuer_did),
+                    data: IdentifierData::Did(self.issuer_did.into()),
                     ..dummy_identifier()
                 }))
             });
 
-        credential_schema_repository
-            .expect_get_credential_schema()
-            .times(1)
-            .returning(move |_| Ok(credential_schema.clone()));
+        let mut formatter = MockCredentialFormatter::default();
+        formatter
+            .expect_get_capabilities()
+            .once()
+            .return_once(move || self.formatter_capabilities);
+        repositories
+            .formatter_provider
+            .expect_get_credential_formatter()
+            .once()
+            .with(eq(format))
+            .return_once(move |_| Ok(Arc::new(formatter)));
 
-        credential_repository
-            .expect_create_credential()
-            .withf(|credential| matches!(credential, Credential::IssuerSingle { .. }))
-            .times(1)
-            .returning(move |_| Ok(clone.common().id));
+        let mut protocol = MockIssuanceProtocol::default();
+        protocol
+            .expect_get_capabilities()
+            .once()
+            .return_once(generic_capabilities);
+        repositories
+            .protocol_provider
+            .expect_get_protocol()
+            .once()
+            .with(eq(self.request.protocol.clone()))
+            .return_once(move |_| Ok(Arc::new(protocol)));
+
+        (repositories, self.request)
+    }
+}
+
+#[rstest]
+#[case::automatic_key_selection(false, false)]
+#[case::explicit_issuer_key(true, false)]
+#[case::same_key_with_multiple_roles(true, true)]
+#[tokio::test]
+async fn test_create_credential_with_issuer_key(
+    #[case] explicit_key: bool,
+    #[case] multiple_roles: bool,
+) {
+    let mut fixture = CredentialCreationFixture::new().await;
+    if !explicit_key {
+        fixture.request.issuer_key = None;
+    }
+    if multiple_roles {
+        let mut keys = fixture.issuer_did.keys.as_mut().await.unwrap();
+        let mut key = keys[0].clone();
+        key.role = KeyRole::KeyAgreement;
+        keys.insert(0, key);
     }
 
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
+    let (mut repositories, request) = fixture.into_repositories().await;
+    let credential_id = Uuid::new_v4().into();
+    repositories
+        .credential_repository
+        .expect_create_credential()
+        .withf(|credential| matches!(credential, Credential::IssuerSingle { .. }))
         .once()
-        .return_once(generic_formatter_capabilities);
+        .return_once(move |_| Ok(credential_id));
 
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
+    let result = setup_service(repositories).create_credential(request).await;
 
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: None,
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
-
-    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), credential_id);
 }
 
 #[tokio::test]
@@ -2190,1011 +2191,56 @@ async fn test_create_credential_schema_deleted() {
     );
 }
 
+#[rstest]
+#[case::no_assertion_key(
+    |request: &mut CreateCredentialRequestDTO, key: &mut RelatedKey| {
+        request.issuer_key = None;
+        key.role = KeyRole::KeyAgreement;
+    },
+    ErrorCode::BR_0330,
+)]
+#[case::unknown_key_id(
+    |request: &mut CreateCredentialRequestDTO, _: &mut RelatedKey| {
+        request.issuer_key = Some(Uuid::new_v4().into());
+    },
+    ErrorCode::BR_0330,
+)]
+#[case::wrong_key_role(
+    |_: &mut CreateCredentialRequestDTO, key: &mut RelatedKey| key.role = KeyRole::KeyAgreement,
+    ErrorCode::BR_0330,
+)]
+#[case::unsupported_key_algorithm(
+    |_: &mut CreateCredentialRequestDTO, key: &mut RelatedKey| key.key.key_type = "unsupported".to_string(),
+    ErrorCode::BR_0330,
+)]
 #[tokio::test]
-async fn test_create_credential_key_with_issuer_key() {
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    let issuer_did = issuer_identifier_did.clone();
-    let credential_schema = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    identifier_repository.expect_get_from_did_id().return_once({
-        let issuer_did = issuer_did.clone();
-        |_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did(issuer_did),
-                ..dummy_identifier()
-            }))
-        }
-    });
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_| Ok(credential_schema.clone()));
-
-    credential_repository
-        .expect_create_credential()
-        .times(1)
-        .returning({
-            let credential = credential.clone();
-            move |_| Ok(credential.common().id)
-        });
-
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: Some(
-                issuer_did
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .keys
-                    .as_ref()
-                    .await
-                    .unwrap()[0]
-                    .key
-                    .id,
-            ),
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    let key_id = Uuid::new_v4();
-    let issuer_did = Did {
-        keys: vec![
-            RelatedKey {
-                role: KeyRole::KeyAgreement,
-                key: Key {
-                    autogenerated: false,
-                    id: key_id.into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    public_key: vec![],
-                    name: "key_name".to_string(),
-                    key_reference: None,
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: dummy_organisation(None).into(),
-                },
-                reference: "1".to_string(),
-            },
-            RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: Key {
-                    autogenerated: false,
-                    id: key_id.into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    public_key: vec![],
-                    name: "key_name".to_string(),
-                    key_reference: None,
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: dummy_organisation(None).into(),
-                },
-                reference: "1".to_string(),
-            },
-        ]
-        .into(),
-        ..issuer_identifier_did.as_ref().await.unwrap().clone()
-    };
-    let credential_schema = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    identifier_repository
-        .expect_get_from_did_id()
-        .return_once(|_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did((issuer_did).into()),
-                ..dummy_identifier()
-            }))
-        });
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_| Ok(credential_schema.clone()));
-
-    credential_repository
-        .expect_create_credential()
-        .times(1)
-        .returning({
-            let credential = credential.clone();
-            move |_| Ok(credential.common().id)
-        });
-
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: Some(key_id.into()),
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_fail_to_create_credential_no_assertion_key() {
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    let issuer_did = Did {
-        keys: vec![RelatedKey {
-            role: KeyRole::KeyAgreement,
-            key: Key {
-                autogenerated: false,
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                public_key: vec![],
-                name: "key_name".to_string(),
-                key_reference: None,
-                storage_type: "INTERNAL".to_string(),
-                key_type: "EDDSA".to_string(),
-                organisation: dummy_organisation(None).into(),
-            },
-            reference: "1".to_string(),
-        }]
-        .into(),
-        ..issuer_identifier_did.as_ref().await.unwrap().clone()
-    };
-
-    let credential_schema = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    identifier_repository
-        .expect_get_from_did_id()
-        .return_once(|_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did((issuer_did).into()),
-                ..dummy_identifier()
-            }))
-        });
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_| Ok(credential_schema.clone()));
-
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: None,
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
-
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
-}
-
-#[tokio::test]
-async fn test_fail_to_create_credential_unknown_key_id() {
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    let issuer_did = issuer_identifier_did.clone();
-    let credential_schema = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    identifier_repository
-        .expect_get_from_did_id()
-        .return_once(|_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did(issuer_did),
-                ..dummy_identifier()
-            }))
-        });
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_| Ok(credential_schema.clone()));
-
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: Some(Uuid::new_v4().into()),
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
-
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
-}
-
-#[tokio::test]
-async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    let key_id = Uuid::new_v4();
-    let issuer_did = Did {
-        keys: vec![RelatedKey {
-            role: KeyRole::KeyAgreement,
-            key: Key {
-                autogenerated: false,
-                id: key_id.into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                public_key: vec![],
-                name: "key_name".to_string(),
-                key_reference: None,
-                storage_type: "INTERNAL".to_string(),
-                key_type: "EDDSA".to_string(),
-                organisation: dummy_organisation(None).into(),
-            },
-            reference: "1".to_string(),
-        }]
-        .into(),
-        ..issuer_identifier_did.as_ref().await.unwrap().clone()
-    };
-    let credential_schema = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    identifier_repository
-        .expect_get_from_did_id()
-        .return_once(|_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did((issuer_did).into()),
-                ..dummy_identifier()
-            }))
-        });
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_| Ok(credential_schema.clone()));
-
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: Some(key_id.into()),
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
-
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
-}
-
-#[tokio::test]
-async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorithm() {
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    let key_id = Uuid::new_v4();
-    let issuer_did = Did {
-        keys: vec![RelatedKey {
-            role: KeyRole::AssertionMethod,
-            key: Key {
-                autogenerated: false,
-                id: key_id.into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                public_key: vec![],
-                name: "key_name".to_string(),
-                key_reference: None,
-                storage_type: "INTERNAL".to_string(),
-                key_type: "unsupported".to_string(),
-                organisation: dummy_organisation(None).into(),
-            },
-            reference: "1".to_string(),
-        }]
-        .into(),
-        ..issuer_identifier_did.as_ref().await.unwrap().clone()
-    };
-    let credential_schema = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    identifier_repository
-        .expect_get_from_did_id()
-        .return_once(|_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did((issuer_did).into()),
-                ..dummy_identifier()
-            }))
-        });
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_| Ok(credential_schema.clone()));
-
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: Some(key_id.into()),
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
-
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
-}
-
-#[tokio::test]
-async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol() {
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
+async fn test_create_credential_rejects_invalid_issuer_key(
+    #[case] invalid_override: fn(&mut CreateCredentialRequestDTO, &mut RelatedKey),
+    #[case] expected_error: ErrorCode,
+) {
+    let mut fixture = CredentialCreationFixture::new().await;
     {
-        let credential_schema = credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned();
-        credential_schema_repository
-            .expect_get_credential_schema()
-            .times(1)
-            .returning(move |_| Ok(credential_schema.clone()));
+        let mut keys = fixture.issuer_did.keys.as_mut().await.unwrap();
+        invalid_override(&mut fixture.request, &mut keys[0]);
     }
+    let (repositories, request) = fixture.into_repositories().await;
 
-    let issuer_did = issuer_identifier_did.clone();
-    identifier_repository
-        .expect_get_from_did_id()
-        .return_once(|_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did(issuer_did),
-                ..dummy_identifier()
-            }))
-        });
+    let result = setup_service(repositories).create_credential(request).await;
 
-    let mut formatter_capabilities = generic_formatter_capabilities();
-    formatter_capabilities.issuance_exchange_protocols = vec![];
+    assert_eq!(result.unwrap_err().error_code(), expected_error);
+}
 
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(|| formatter_capabilities);
+#[tokio::test]
+async fn test_create_credential_fail_incompatible_format_and_transport_protocol() {
+    let mut fixture = CredentialCreationFixture::new().await;
+    fixture.request.issuer_key = None;
+    fixture
+        .formatter_capabilities
+        .issuance_exchange_protocols
+        .clear();
+    let (repositories, request) = fixture.into_repositories().await;
 
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: None,
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: None,
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
+    let result = setup_service(repositories).create_credential(request).await;
 
     assert!(matches!(
         result,
@@ -3204,137 +2250,11 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 
 #[tokio::test]
 async fn test_create_credential_fail_invalid_redirect_uri() {
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
+    let mut fixture = CredentialCreationFixture::new().await;
+    fixture.request.redirect_uri = Some("invalid://domain.com".to_string());
+    let (repositories, request) = fixture.into_repositories().await;
 
-    let credential = generic_credential().await;
-    let_assert!(
-        Identifier {
-            data: IdentifierData::Did(issuer_identifier_did),
-            ..
-        } = credential
-            .issuer_identifier()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    );
-    let issuer_did = issuer_identifier_did.clone();
-    let credential_schema = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    identifier_repository.expect_get_from_did_id().return_once({
-        let issuer_did = issuer_did.clone();
-        |_| {
-            Ok(Some(Identifier {
-                data: IdentifierData::Did(issuer_did),
-                ..dummy_identifier()
-            }))
-        }
-    });
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_| Ok(credential_schema.clone()));
-
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .with(eq(credential
-            .common()
-            .schema
-            .as_ref()
-            .await
-            .unwrap()
-            .format()
-            .await
-            .unwrap()))
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut dummy_protocol = MockIssuanceProtocol::default();
-    dummy_protocol
-        .expect_get_capabilities()
-        .once()
-        .returning(generic_capabilities);
-    let mut protocol_provider = MockIssuanceProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .once()
-        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
-
-    let service = setup_service(Repositories {
-        credential_schema_repository,
-        identifier_repository,
-        formatter_provider,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential
-                .common()
-                .schema
-                .as_ref()
-                .await
-                .unwrap()
-                .id
-                .to_owned(),
-            issuer: None,
-            issuer_did: Some(issuer_identifier_did.id()),
-            issuer_key: Some(
-                issuer_did
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .keys
-                    .as_ref()
-                    .await
-                    .unwrap()[0]
-                    .key
-                    .id,
-            ),
-            issuer_certificate: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
-            }],
-            redirect_uri: Some("invalid://domain.com".to_string()),
-            profile: None,
-            webhook_destination_url: None,
-            subscriber_information: None,
-            ecosystem: None,
-            formats: None,
-        })
-        .await;
+    let result = setup_service(repositories).create_credential(request).await;
 
     assert!(matches!(
         result,

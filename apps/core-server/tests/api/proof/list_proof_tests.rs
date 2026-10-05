@@ -1,9 +1,14 @@
 use std::collections::HashSet;
 
-use one_core::model::did::{DidType, KeyRole, RelatedKey};
-use one_core::model::identifier::IdentifierType;
+use one_core::model::credential_schema::CredentialSchema;
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::InteractionType;
+use one_core::model::key::Key;
+use one_core::model::organisation::Organisation;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
+use one_core::model::proof_schema::ProofSchema;
+use rstest::rstest;
 use shared_types::ProofId;
 use similar_asserts::assert_eq;
 use time::Duration;
@@ -123,102 +128,139 @@ async fn test_list_proof_success() {
     }
 }
 
-#[tokio::test]
-async fn test_list_proofs_by_ids() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
+struct ProofListFixture {
+    context: TestContext,
+    organisation: Organisation,
+    verifier_did: Did,
+    verifier_identifier: Identifier,
+    verifier_key: Key,
+    credential_schema: CredentialSchema,
+}
 
-    let verifier_key = context
-        .db
-        .keys
-        .create(&organisation, Default::default())
-        .await;
-
-    let verifier_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: verifier_key.to_owned(),
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let verifier_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(verifier_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(verifier_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-
-    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
-
-    let proof_schema = context
-        .db
-        .proof_schemas
-        .create(
-            "proof-schema-name",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
-
-    let mut proofs = vec![];
-
-    for _ in 1..5 {
-        let proof = context
+impl ProofListFixture {
+    async fn new() -> Self {
+        let (context, organisation) = TestContext::new_with_organisation(None).await;
+        let verifier_key = context
             .db
-            .proofs
+            .keys
+            .create(&organisation, Default::default())
+            .await;
+        let verifier_did = context
+            .db
+            .dids
             .create(
-                ProofStateEnum::Requested,
-                "OPENID4VP_FINAL1",
-                TestingProofParams {
-                    verifier_identifier: Some(verifier_identifier.clone()),
-                    verifier_key: Some(verifier_key.to_owned()),
-                    proof_schema: Some(proof_schema.clone()),
+                organisation.clone(),
+                TestingDidParams {
+                    keys: Some(vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: verifier_key.clone(),
+                        reference: "1".to_string(),
+                    }]),
                     ..Default::default()
                 },
             )
             .await;
+        let verifier_identifier = context
+            .db
+            .identifiers
+            .create(
+                &organisation,
+                TestingIdentifierParams {
+                    did: Some(verifier_did.clone()),
+                    r#type: Some(IdentifierType::Did),
+                    is_remote: Some(verifier_did.did_type == DidType::Remote),
+                    ..Default::default()
+                },
+            )
+            .await;
+        let credential_schema = context
+            .db
+            .credential_schemas
+            .create("test", &organisation, Default::default())
+            .await;
 
-        proofs.push(proof.id);
+        Self {
+            context,
+            organisation,
+            verifier_did,
+            verifier_identifier,
+            verifier_key,
+            credential_schema,
+        }
     }
 
-    // WHEN
-    let resp = context
+    async fn create_schema(&self, name: &str) -> ProofSchema {
+        let claims = self.credential_schema.claim_schemas.as_ref().await.unwrap();
+        let claim = &claims[0];
+        self.context
+            .db
+            .proof_schemas
+            .create(
+                name,
+                &self.organisation,
+                vec![CreateProofInputSchema {
+                    claims: vec![CreateProofClaim {
+                        id: claim.id,
+                        key: &claim.key,
+                        required: true,
+                        data_type: &claim.data_type,
+                        array: false,
+                    }],
+                    credential_schema: &self.credential_schema,
+                }],
+            )
+            .await
+    }
+
+    async fn create_proof(
+        &self,
+        schema: &ProofSchema,
+        state: ProofStateEnum,
+        verifier: &Identifier,
+    ) -> ProofId {
+        self.context
+            .db
+            .proofs
+            .create(
+                state,
+                "OPENID4VP_FINAL1",
+                TestingProofParams {
+                    verifier_identifier: Some(verifier.clone()),
+                    verifier_key: Some(self.verifier_key.clone()),
+                    proof_schema: Some(schema.clone()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .id
+    }
+}
+
+#[tokio::test]
+async fn test_list_proofs_by_ids() {
+    let fixture = ProofListFixture::new().await;
+    let schema = fixture.create_schema("proof-schema-name").await;
+    let mut proofs = vec![];
+    for _ in 0..4 {
+        proofs.push(
+            fixture
+                .create_proof(
+                    &schema,
+                    ProofStateEnum::Requested,
+                    &fixture.verifier_identifier,
+                )
+                .await,
+        );
+    }
+
+    let resp = fixture
+        .context
         .api
         .proofs
         .list(
             0,
             10,
-            &organisation.id,
+            &fixture.organisation.id,
             ProofFilters {
                 ids: Some(&proofs),
                 ..Default::default()
@@ -226,10 +268,8 @@ async fn test_list_proofs_by_ids() {
         )
         .await;
 
-    // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-
     assert_eq!(resp["totalItems"], 4);
     assert_eq!(resp["totalPages"], 1);
 
@@ -243,301 +283,49 @@ async fn test_list_proofs_by_ids() {
     assert_eq!(HashSet::from_iter(proofs), result_proofs);
 }
 
+#[rstest]
+#[case::name((|schema| ProofFilters {
+    name: Some(&schema.name),
+    ..Default::default()
+}) as fn(&ProofSchema) -> ProofFilters<'_>)]
+#[case::schema_ids((|schema| ProofFilters {
+    proof_schema_ids: Some(std::slice::from_ref(&schema.id)),
+    ..Default::default()
+}) as fn(&ProofSchema) -> ProofFilters<'_>)]
 #[tokio::test]
-async fn test_list_proofs_by_name() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let verifier_key = context
-        .db
-        .keys
-        .create(&organisation, Default::default())
-        .await;
-
-    let verifier_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: verifier_key.to_owned(),
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let verifier_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(verifier_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(verifier_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-
-    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
-
-    let proof_schema1 = context
-        .db
-        .proof_schemas
-        .create(
-            "proof-schema-name",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
-
-    let proof_schema2 = context
-        .db
-        .proof_schemas
-        .create(
-            "other-schema",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
-
+async fn test_list_proofs_by_schema(#[case] filter: fn(&ProofSchema) -> ProofFilters<'_>) {
+    let fixture = ProofListFixture::new().await;
+    let matching_schema = fixture.create_schema("proof-schema-name").await;
+    let other_schema = fixture.create_schema("other-schema").await;
     let mut proofs = vec![];
-
-    for _ in 1..5 {
-        let proof = context
-            .db
-            .proofs
-            .create(
-                ProofStateEnum::Requested,
-                "OPENID4VP_FINAL1",
-                TestingProofParams {
-                    verifier_identifier: Some(verifier_identifier.clone()),
-                    verifier_key: Some(verifier_key.to_owned()),
-                    proof_schema: Some(proof_schema1.clone()),
-                    ..Default::default()
-                },
-            )
-            .await;
-
-        proofs.push(proof.id);
+    for _ in 0..4 {
+        proofs.push(
+            fixture
+                .create_proof(
+                    &matching_schema,
+                    ProofStateEnum::Requested,
+                    &fixture.verifier_identifier,
+                )
+                .await,
+        );
     }
-
-    context
-        .db
-        .proofs
-        .create(
+    fixture
+        .create_proof(
+            &other_schema,
             ProofStateEnum::Requested,
-            "OPENID4VP_FINAL1",
-            TestingProofParams {
-                verifier_identifier: Some(verifier_identifier.clone()),
-                verifier_key: Some(verifier_key.to_owned()),
-                proof_schema: Some(proof_schema2.clone()),
-                ..Default::default()
-            },
+            &fixture.verifier_identifier,
         )
         .await;
 
-    // WHEN
-    let resp = context
+    let resp = fixture
+        .context
         .api
         .proofs
-        .list(
-            0,
-            10,
-            &organisation.id,
-            ProofFilters {
-                name: Some(&proof_schema1.name),
-                ..Default::default()
-            },
-        )
+        .list(0, 10, &fixture.organisation.id, filter(&matching_schema))
         .await;
 
-    // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-
-    assert_eq!(resp["totalItems"], 4);
-    assert_eq!(resp["totalPages"], 1);
-
-    let result_proofs: HashSet<ProofId> = resp["values"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|v| v["id"].parse())
-        .collect();
-    assert_eq!(result_proofs.len(), 4);
-    assert_eq!(HashSet::from_iter(proofs), result_proofs);
-}
-
-#[tokio::test]
-async fn test_list_proofs_by_schema_ids() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let verifier_key = context
-        .db
-        .keys
-        .create(&organisation, Default::default())
-        .await;
-
-    let verifier_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: verifier_key.to_owned(),
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let verifier_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(verifier_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(verifier_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-
-    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
-
-    let proof_schema1 = context
-        .db
-        .proof_schemas
-        .create(
-            "proof-schema-name",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
-
-    let proof_schema2 = context
-        .db
-        .proof_schemas
-        .create(
-            "other-schema",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
-
-    let mut proofs = vec![];
-
-    for _ in 1..5 {
-        let proof = context
-            .db
-            .proofs
-            .create(
-                ProofStateEnum::Requested,
-                "OPENID4VP_FINAL1",
-                TestingProofParams {
-                    verifier_identifier: Some(verifier_identifier.clone()),
-                    verifier_key: Some(verifier_key.to_owned()),
-                    proof_schema: Some(proof_schema1.clone()),
-                    ..Default::default()
-                },
-            )
-            .await;
-
-        proofs.push(proof.id);
-    }
-
-    context
-        .db
-        .proofs
-        .create(
-            ProofStateEnum::Requested,
-            "OPENID4VP_FINAL1",
-            TestingProofParams {
-                verifier_identifier: Some(verifier_identifier.clone()),
-                verifier_key: Some(verifier_key.to_owned()),
-                proof_schema: Some(proof_schema2.clone()),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .proofs
-        .list(
-            0,
-            10,
-            &organisation.id,
-            ProofFilters {
-                proof_schema_ids: Some(&[proof_schema1.id]),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-
     assert_eq!(resp["totalItems"], 4);
     assert_eq!(resp["totalPages"], 1);
 
@@ -553,250 +341,83 @@ async fn test_list_proofs_by_schema_ids() {
 
 #[tokio::test]
 async fn test_list_proofs_by_verifiers() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let verifier_key = context
-        .db
-        .keys
-        .create(&organisation, Default::default())
-        .await;
-
-    let verifier_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: verifier_key.to_owned(),
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let verifier_identifier = context
+    let fixture = ProofListFixture::new().await;
+    let schema = fixture.create_schema("proof-schema-name").await;
+    let other_verifier = fixture
+        .context
         .db
         .identifiers
         .create(
-            &organisation,
+            &fixture.organisation,
             TestingIdentifierParams {
-                did: Some(verifier_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(verifier_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let identifier2 = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(verifier_did.clone()),
+                did: Some(fixture.verifier_did.clone()),
                 r#type: Some(IdentifierType::Did),
                 ..Default::default()
             },
         )
         .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-
-    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
-
-    let proof_schema = context
-        .db
-        .proof_schemas
-        .create(
-            "proof-schema-name",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
-
-    let proof = context
-        .db
-        .proofs
-        .create(
+    let proof_id = fixture
+        .create_proof(
+            &schema,
             ProofStateEnum::Requested,
-            "OPENID4VP_FINAL1",
-            TestingProofParams {
-                verifier_identifier: Some(verifier_identifier.clone()),
-                verifier_key: Some(verifier_key.to_owned()),
-                proof_schema: Some(proof_schema.clone()),
-                ..Default::default()
-            },
+            &fixture.verifier_identifier,
         )
         .await;
-
-    context
-        .db
-        .proofs
-        .create(
-            ProofStateEnum::Requested,
-            "OPENID4VP_FINAL1",
-            TestingProofParams {
-                verifier_identifier: Some(identifier2.clone()),
-                verifier_key: Some(verifier_key.to_owned()),
-                proof_schema: Some(proof_schema.clone()),
-                ..Default::default()
-            },
-        )
+    fixture
+        .create_proof(&schema, ProofStateEnum::Requested, &other_verifier)
         .await;
 
-    // WHEN
-    let resp = context
+    let resp = fixture
+        .context
         .api
         .proofs
         .list(
             0,
             10,
-            &organisation.id,
+            &fixture.organisation.id,
             ProofFilters {
-                verifiers: Some(&[verifier_identifier.id]),
+                verifiers: Some(&[fixture.verifier_identifier.id]),
                 ..Default::default()
             },
         )
         .await;
 
-    // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-
     assert_eq!(resp["totalItems"], 1);
     assert_eq!(resp["totalPages"], 1);
     assert_eq!(resp["values"].as_array().unwrap().len(), 1);
-    resp["values"][0]["id"].assert_eq(&proof.id);
+    resp["values"][0]["id"].assert_eq(&proof_id);
 }
 
 #[tokio::test]
 async fn test_list_proofs_by_state() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let verifier_key = context
-        .db
-        .keys
-        .create(&organisation, Default::default())
-        .await;
-
-    let verifier_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: verifier_key.to_owned(),
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let verifier_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(verifier_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(verifier_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-
-    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
-
-    let proof_schema = context
-        .db
-        .proof_schemas
-        .create(
-            "proof-schema-name",
-            &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
-        )
-        .await;
-
+    let fixture = ProofListFixture::new().await;
+    let schema = fixture.create_schema("proof-schema-name").await;
     let mut proofs = vec![];
-
-    for _ in 1..5 {
-        let proof = context
-            .db
-            .proofs
-            .create(
-                ProofStateEnum::Requested,
-                "OPENID4VP_FINAL1",
-                TestingProofParams {
-                    verifier_identifier: Some(verifier_identifier.clone()),
-                    verifier_key: Some(verifier_key.to_owned()),
-                    proof_schema: Some(proof_schema.clone()),
-                    ..Default::default()
-                },
-            )
-            .await;
-
-        proofs.push(proof.id);
+    for _ in 0..4 {
+        proofs.push(
+            fixture
+                .create_proof(
+                    &schema,
+                    ProofStateEnum::Requested,
+                    &fixture.verifier_identifier,
+                )
+                .await,
+        );
     }
-
-    context
-        .db
-        .proofs
-        .create(
-            ProofStateEnum::Error,
-            "OPENID4VP_FINAL1",
-            TestingProofParams {
-                verifier_identifier: Some(verifier_identifier.clone()),
-                verifier_key: Some(verifier_key.to_owned()),
-                proof_schema: Some(proof_schema.clone()),
-                ..Default::default()
-            },
-        )
+    fixture
+        .create_proof(&schema, ProofStateEnum::Error, &fixture.verifier_identifier)
         .await;
 
-    // WHEN
-    let resp = context
+    let resp = fixture
+        .context
         .api
         .proofs
         .list(
             0,
             10,
-            &organisation.id,
+            &fixture.organisation.id,
             ProofFilters {
                 states: Some(&[ProofStateEnum::Requested]),
                 ..Default::default()
@@ -804,10 +425,8 @@ async fn test_list_proofs_by_state() {
         )
         .await;
 
-    // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-
     assert_eq!(resp["totalItems"], 4);
     assert_eq!(resp["totalPages"], 1);
 
