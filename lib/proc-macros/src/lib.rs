@@ -328,7 +328,9 @@ pub fn endpoint(args: TokenStream, input: TokenStream) -> TokenStream {
 /// Derive macro: `#[derive(Model)]`
 ///
 /// Mark the identifier field with `#[model(id)]` attribute. For enums, mark one
-/// identifier field in each variant.
+/// identifier field in each variant. Alternatively, mark a field with
+/// `#[model(nested)]` to delegate to that field's `Model` implementation, using its
+/// `Model::Id` type and borrowing its identifier through `Model::id`.
 ///
 /// Purpose
 /// - Mark model and its primary identifier to use with the `Related` construct
@@ -336,8 +338,42 @@ pub fn endpoint(args: TokenStream, input: TokenStream) -> TokenStream {
 /// Limitations and requirements
 /// - structs with named fields and enums with named or tuple fields are supported
 /// - exactly one field per struct or enum variant must be marked with `#[model(id)]`
+///   or `#[model(nested)]`; the two attributes cannot be combined on one field
+/// - nested fields must implement `Model` (for example, by deriving it themselves)
+///   and may delegate to further nested models
 /// - all enum variants must have the same identifier type
 /// - empty enums and variants without fields are not supported
+///
+/// ```rust,standalone_crate
+/// # mod model {
+/// #     pub mod relation {
+/// #         pub trait Model {
+/// #             type Id: Clone + std::fmt::Debug + std::fmt::Display;
+/// #             fn id(&self) -> &Self::Id;
+/// #         }
+/// #     }
+/// # }
+/// use proc_macros::Model;
+///
+/// #[derive(Model)]
+/// struct Details {
+///     #[model(id)]
+///     id: String,
+/// }
+///
+/// #[derive(Model)]
+/// struct Record {
+///     #[model(nested)]
+///     details: Details,
+/// }
+///
+/// #[derive(Model)]
+/// enum Entry {
+///     Record(#[model(nested)] Record),
+///     Direct { #[model(id)] id: String },
+/// }
+/// # fn main() {}
+/// ```
 #[proc_macro_derive(Model, attributes(model))]
 pub fn repository_model(input: TokenStream) -> TokenStream {
     model::repository_model(input)

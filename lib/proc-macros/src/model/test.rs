@@ -129,3 +129,64 @@ fn preserves_struct_identifier_validation() {
         assert!(process_model(input).is_err());
     }
 }
+
+#[test]
+fn rejects_multiple_identifier_sources() {
+    for input in [
+        parse_quote! {
+            struct Example {
+                #[model(id)] id: String,
+                #[model(nested)] details: Details,
+            }
+        },
+        parse_quote! {
+            struct Example {
+                #[model(nested)] first: Details,
+                #[model(nested)] second: Details,
+            }
+        },
+        parse_quote! {
+            enum Example {
+                Variant {
+                    #[model(nested)] details: Details,
+                    #[model(id)] id: String,
+                },
+            }
+        },
+        parse_quote! {
+            enum Example {
+                Variant(#[model(nested)] Details, #[model(nested)] Details),
+            }
+        },
+    ] {
+        let error = process_model(input).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "Multiple model identifier fields specified"
+        );
+    }
+}
+
+#[test]
+fn rejects_combining_id_and_nested_on_one_field() {
+    for input in [
+        parse_quote! {
+            struct Example { #[model(id, nested)] details: Details }
+        },
+        parse_quote! {
+            struct Example { #[model(id)] #[model(nested)] details: Details }
+        },
+        parse_quote! {
+            enum Example { Variant { #[model(id, nested)] details: Details } }
+        },
+        parse_quote! {
+            enum Example { Variant(#[model(nested, id)] Details) }
+        },
+    ] {
+        let error = process_model(input).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "`model(id)` and `model(nested)` are mutually exclusive"
+        );
+    }
+}

@@ -18,6 +18,27 @@ pub(super) fn repository_model(input: TokenStream) -> TokenStream {
 struct IdentifierField {
     member: Member,
     field_type: syn::Type,
+    nested: bool,
+}
+
+impl IdentifierField {
+    fn id_type(&self) -> TokenStream2 {
+        let field_type = &self.field_type;
+        if self.nested {
+            quote! { <#field_type as crate::model::relation::Model>::Id }
+        } else {
+            quote! { #field_type }
+        }
+    }
+
+    fn id_reference(&self, field_reference: TokenStream2) -> TokenStream2 {
+        let field_type = &self.field_type;
+        if self.nested {
+            quote! { <#field_type as crate::model::relation::Model>::id(#field_reference) }
+        } else {
+            field_reference
+        }
+    }
 }
 
 fn process_model(input: DeriveInput) -> Result<TokenStream2, Error> {
@@ -40,10 +61,13 @@ fn process_model(input: DeriveInput) -> Result<TokenStream2, Error> {
                 )
                 .with_span(&input.ident));
             }
-            let IdentifierField { member, field_type } =
-                extract_identifier_from_fields(struct_data.fields)
-                    .map_err(|err| err.with_span(&input.ident))?;
-            (field_type, quote! { &self.#member })
+            let identifier = extract_identifier_from_fields(struct_data.fields)
+                .map_err(|err| err.with_span(&input.ident))?;
+            let member = &identifier.member;
+            (
+                identifier.id_type(),
+                identifier.id_reference(quote! { &self.#member }),
+            )
         }
         Data::Enum(enum_data) => {
             let mut identifier_type = None;
@@ -59,14 +83,15 @@ fn process_model(input: DeriveInput) -> Result<TokenStream2, Error> {
                             .with_span(attribute),
                     );
                 }
-                let IdentifierField { member, field_type } =
-                    extract_identifier_from_fields(variant.fields)
-                        .map_err(|err| err.with_span(&variant.ident))?;
+                let identifier = extract_identifier_from_fields(variant.fields)
+                    .map_err(|err| err.with_span(&variant.ident))?;
                 // Let Rust check type compatibility so aliases work across variants.
-                identifier_type.get_or_insert(field_type);
+                identifier_type.get_or_insert(identifier.id_type());
                 let variant_name = variant.ident;
+                let member = &identifier.member;
+                let id_reference = identifier.id_reference(quote! { id });
                 // Numeric members allow this pattern to work for tuple variants too.
-                arms.push(quote! { Self::#variant_name { #member: id, .. } => id });
+                arms.push(quote! { Self::#variant_name { #member: id, .. } => #id_reference });
             }
             let field_type = identifier_type.ok_or_else(|| {
                 Error::custom("`Model` macro requires an enum with at least one variant")
@@ -100,7 +125,13 @@ fn extract_identifier_from_fields(fields: Fields) -> Result<IdentifierField, Err
 
     for (index, field) in fields.into_iter().enumerate() {
         let attributes = ModelAttributes::from_attributes(&field.attrs)?;
-        if !attributes.id.is_present() {
+        if attributes.id.is_present() && attributes.nested.is_present() {
+            return Err(
+                Error::custom("`model(id)` and `model(nested)` are mutually exclusive")
+                    .with_span(&field),
+            );
+        }
+        if !attributes.id.is_present() && !attributes.nested.is_present() {
             continue;
         }
         if identifier_field.is_some() {
@@ -115,13 +146,14 @@ fn extract_identifier_from_fields(fields: Fields) -> Result<IdentifierField, Err
                 .map(Member::Named)
                 .unwrap_or_else(|| Member::Unnamed(index.into())),
             field_type: field.ty,
+            nested: attributes.nested.is_present(),
         });
     }
 
     match identifier_field {
         Some(field) => Ok(field),
         None => Err(Error::custom(
-            "No model identifier field specified. Mark the identifier field with `#[model(id)]`.",
+            "No model identifier field specified. Mark the identifier field with `#[model(id)]` or a nested model with `#[model(nested)]`.",
         )),
     }
 }
@@ -130,4 +162,5 @@ fn extract_identifier_from_fields(fields: Fields) -> Result<IdentifierField, Err
 #[darling(attributes(model))]
 struct ModelAttributes {
     id: Flag,
+    nested: Flag,
 }
