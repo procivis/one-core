@@ -3,6 +3,7 @@ use std::sync::Arc;
 use shared_types::{DidId, DidValue, OrganisationId};
 use uuid::Uuid;
 
+use crate::model::common::LockType;
 use crate::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
@@ -61,8 +62,8 @@ impl DidRepository for DidHistoryDecorator {
         Ok(did_id)
     }
 
-    async fn get_did(&self, id: &DidId) -> Result<Did, DataLayerError> {
-        self.inner.get_did(id).await
+    async fn get_did(&self, id: &DidId, lock: Option<LockType>) -> Result<Did, DataLayerError> {
+        self.inner.get_did(id, lock).await
     }
 
     async fn get_did_by_value(
@@ -85,7 +86,7 @@ impl DidRepository for DidHistoryDecorator {
         self.inner.update_did(id, request.clone()).await?;
 
         if let Some(deactivated) = request.deactivated {
-            let did = self.inner.get_did(id).await?;
+            let did = self.inner.get_did(id, None).await?;
 
             self.create_history(
                 did.id,
@@ -109,7 +110,7 @@ impl DidRepository for DidHistoryDecorator {
         keys: Vec<RelatedKey>,
     ) -> Result<(), DataLayerError> {
         self.inner.update_did_keys(id, keys).await?;
-        let did = self.inner.get_did(id).await?;
+        let did = self.inner.get_did(id, None).await?;
         self.create_history(
             did.id,
             did.name,

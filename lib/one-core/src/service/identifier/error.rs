@@ -41,6 +41,8 @@ pub enum IdentifierServiceError {
     ProofSchemaNotFound(ProofSchemaId),
     #[error("Invalid ecosystem query: {0}")]
     InvalidEcosystemQuery(String),
+    #[error("DID keys of identifier `{0}` cannot be updated: {1}")]
+    DidKeysNotUpdatable(IdentifierId, String),
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -79,6 +81,7 @@ impl ErrorCodeMixin for IdentifierServiceError {
             | Self::NoEcosystemEnabledForTrustInformation
             | Self::TrustInformationRejected(_) => ErrorCode::BR_0416,
             Self::InvalidEcosystemQuery(_) => ErrorCode::BR_0479,
+            Self::DidKeysNotUpdatable(_, _) => ErrorCode::BR_0181,
             Self::MissingLogoBlob(_) => ErrorCode::BR_0484,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::InvalidUpdateForIdentifierType { .. } => ErrorCode::BR_0513,

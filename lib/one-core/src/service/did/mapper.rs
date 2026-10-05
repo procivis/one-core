@@ -61,15 +61,10 @@ impl From<GetDidList<u64>> for GetDidListResponseDTO {
     }
 }
 
-pub(crate) fn did_from_did_request(
-    did_id: DidId,
-    request: CreateDidRequestDTO,
-    organisation: Organisation,
-    did_create: DidCreated,
+pub(crate) fn related_keys_from_did_keys(
     found_keys: DidKeys,
-    now: OffsetDateTime,
-    key_reference_mapping: HashMap<KeyId, String>,
-) -> Result<Did, DidServiceError> {
+    key_reference_mapping: &HashMap<KeyId, String>,
+) -> Result<Vec<RelatedKey>, DidServiceError> {
     struct KeyEntry {
         role: KeyRole,
         key: Key,
@@ -82,7 +77,7 @@ pub(crate) fn did_from_did_request(
         })
     });
 
-    let keys: Vec<_> = [
+    [
         (KeyRole::Authentication, found_keys.authentication),
         (KeyRole::AssertionMethod, found_keys.assertion_method),
         (KeyRole::KeyAgreement, found_keys.key_agreement),
@@ -98,23 +93,31 @@ pub(crate) fn did_from_did_request(
     .into_iter()
     .flat_map(|(role, keys)| keys.into_iter().map(move |key| KeyEntry { role, key }))
     .chain(update_keys)
-    .collect();
-
-    let keys = keys
-        .into_iter()
-        .map(|KeyEntry { role, key }| {
-            Ok::<_, DidServiceError>(RelatedKey {
-                role,
-                reference: key_reference_mapping
-                    .get(&key.id)
-                    .ok_or(DidServiceError::MappingError(
-                        "key reference not found".to_string(),
-                    ))?
-                    .to_owned(),
-                key,
-            })
+    .map(|KeyEntry { role, key }| {
+        Ok::<_, DidServiceError>(RelatedKey {
+            role,
+            reference: key_reference_mapping
+                .get(&key.id)
+                .ok_or(DidServiceError::MappingError(
+                    "key reference not found".to_string(),
+                ))?
+                .to_owned(),
+            key,
         })
-        .collect::<Result<Vec<_>, _>>()?;
+    })
+    .collect()
+}
+
+pub(crate) fn did_from_did_request(
+    did_id: DidId,
+    request: CreateDidRequestDTO,
+    organisation: Organisation,
+    did_create: DidCreated,
+    found_keys: DidKeys,
+    now: OffsetDateTime,
+    key_reference_mapping: HashMap<KeyId, String>,
+) -> Result<Did, DidServiceError> {
+    let keys = related_keys_from_did_keys(found_keys, &key_reference_mapping)?;
 
     Ok(Did {
         id: did_id,

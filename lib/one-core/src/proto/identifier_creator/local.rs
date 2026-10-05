@@ -10,7 +10,7 @@ use super::{CreateLocalIdentifierRequestParams, Error, IdentifierCreator, Identi
 use crate::config::core_config::SignerType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateState};
-use crate::model::did::Did;
+use crate::model::did::{Did, KeyRole, RelatedKey, UpdateDidRequest};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::key::Key;
 use crate::model::localized_text::LocalizedText;
@@ -22,13 +22,16 @@ use crate::proto::certificate_validator::{
 };
 use crate::proto::csr_creator::GenerateCsrRequest;
 use crate::proto::identifier_creator::mapper::build_identifier_translations;
+use crate::provider::did_method::DidKeys;
+use crate::provider::did_method::model::{DidCapabilities, Operation};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::signer::dto::{CreateSignatureRequest, Issuer};
 use crate::provider::signer::x509_certificate;
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
-use crate::service::did::dto::CreateDidRequestDTO;
-use crate::service::did::mapper::did_from_did_request;
+use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
+use crate::service::did::error::DidServiceError;
+use crate::service::did::mapper::{did_from_did_request, related_keys_from_did_keys};
 use crate::service::did::service::{build_keys_request, generate_update_key};
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 use crate::service::key::dto::KeyGenerateCSRRequestProfile;
@@ -249,50 +252,13 @@ impl IdentifierCreatorProto {
             .did_method_provider
             .get_did_method(&request.did_method)?;
 
-        let keys = request.keys.to_owned();
-        let key_ids = HashSet::<KeyId>::from_iter(
-            [
-                keys.authentication,
-                keys.assertion_method,
-                keys.key_agreement,
-                keys.capability_invocation,
-                keys.capability_delegation,
-            ]
-            .concat(),
-        );
-
-        let key_ids = key_ids.into_iter().collect::<Vec<_>>();
-        let mut all_keys = self
-            .key_repository
-            .get_keys(&key_ids)
-            .await
-            .error_while("getting keys")?;
-
         let new_id = Uuid::new_v4();
         let new_did_id = DidId::from(new_id);
 
         let capabilities = did_method.get_capabilities();
-        for key in &all_keys {
-            if key.is_remote() {
-                return Err(Error::KeyMustNotBeRemote(key.name.clone()));
-            }
-            let key_algorithm = self
-                .key_algorithm_provider
-                .key_algorithm_from_key(key)
-                .error_while("getting key algorithm")?;
-            if !capabilities
-                .key_algorithms
-                .contains(&key_algorithm.algorithm_type())
-            {
-                return Err(Error::DidMethodIncapableKeyAlgorithm {
-                    did_method: request.did_method,
-                    key_algorithm: key.key_type.to_owned(),
-                });
-            }
-        }
-
-        let mut keys = build_keys_request(&request.keys, all_keys.clone())
-            .error_while("building key request")?;
+        let (mut all_keys, mut keys) = self
+            .load_and_validate_did_keys(&capabilities, &request.did_method, &request.keys, None)
+            .await?;
 
         let mut update_keys = None;
         if let Some(update_key_type) = capabilities.supported_update_key_types.first() {
@@ -349,6 +315,151 @@ impl IdentifierCreatorProto {
             })?;
 
         Ok(did)
+    }
+
+    async fn load_and_validate_did_keys(
+        &self,
+        capabilities: &DidCapabilities,
+        did_method_id: &shared_types::DidMethodId,
+        request: &CreateDidRequestKeysDTO,
+        expected_organisation: Option<&Organisation>,
+    ) -> Result<(Vec<Key>, DidKeys), Error> {
+        let key_ids = requested_did_key_ids(request)
+            .into_iter()
+            .collect::<Vec<_>>();
+        let all_keys = self
+            .key_repository
+            .get_keys(&key_ids)
+            .await
+            .error_while("getting keys")?;
+
+        for key in &all_keys {
+            if key.is_remote() {
+                return Err(Error::KeyMustNotBeRemote(key.name.clone()));
+            }
+            if expected_organisation
+                .is_some_and(|organisation| key.organisation.id() != organisation.id)
+            {
+                return Err(Error::OrganisationMismatch);
+            }
+            let key_algorithm = self
+                .key_algorithm_provider
+                .key_algorithm_from_key(key)
+                .error_while("getting key algorithm")?;
+            if !capabilities
+                .key_algorithms
+                .contains(&key_algorithm.algorithm_type())
+            {
+                return Err(Error::DidMethodIncapableKeyAlgorithm {
+                    did_method: did_method_id.to_owned(),
+                    key_algorithm: key.key_type.to_owned(),
+                });
+            }
+        }
+
+        let keys =
+            build_keys_request(request, all_keys.clone()).error_while("building key request")?;
+
+        Ok((all_keys, keys))
+    }
+
+    pub(super) async fn update_local_did_keys(
+        &self,
+        did: Did,
+        request: CreateDidRequestKeysDTO,
+    ) -> Result<(), Error> {
+        if did.is_remote() {
+            return Err(Error::DidCannotBeUpdated(
+                "remote DIDs cannot be updated".to_string(),
+            ));
+        }
+        if did.deactivated {
+            return Err(Error::DidCannotBeUpdated("DID is deactivated".to_string()));
+        }
+        if did.deleted_at.is_some() {
+            return Err(Error::DidCannotBeUpdated("DID is deleted".to_string()));
+        }
+
+        let (did_method, _) = self.did_method_provider.get_did_method(&did.did_method)?;
+        let capabilities = did_method.get_capabilities();
+        if !capabilities.operations.contains(&Operation::UPDATE) {
+            return Err(Error::DidCannotBeUpdated(format!(
+                "DID method `{}` does not support key updates",
+                did.did_method
+            )));
+        }
+
+        let organisation = did.organisation.as_ref().await?;
+        let (all_keys, mut keys) = self
+            .load_and_validate_did_keys(
+                &capabilities,
+                &did.did_method,
+                &request,
+                Some(&organisation),
+            )
+            .await?;
+
+        let found_key_ids: HashSet<_> = all_keys.iter().map(|key| key.id).collect();
+        if let Some(missing) = requested_did_key_ids(&request)
+            .difference(&found_key_ids)
+            .next()
+        {
+            return Err(DidServiceError::MissingKey(*missing)
+                .error_while("validating replacement DID keys")
+                .into());
+        }
+
+        // existing update keys (did:webvh) are kept as they are
+        let existing_keys = did.keys.as_ref().await.error_while("loading DID keys")?;
+        let update_keys: Vec<RelatedKey> = existing_keys
+            .iter()
+            .filter(|key| key.role == KeyRole::UpdateKey)
+            .cloned()
+            .collect();
+        keys.update_keys = (!update_keys.is_empty())
+            .then(|| update_keys.iter().map(|key| key.key.clone()).collect());
+
+        let current_keys = DidKeys {
+            update_keys: keys.update_keys.clone(),
+            ..Default::default()
+        };
+        let update = did_method
+            .update(did.id, current_keys, keys.clone(), did.log.clone())
+            .await
+            .error_while("updating DID")?;
+
+        let mut key_reference_mapping: HashMap<KeyId, String> = HashMap::new();
+        for key in &all_keys {
+            let reference = did_method
+                .get_reference_for_key(key)
+                .error_while("getting DID key reference")?;
+            key_reference_mapping.insert(key.id, reference);
+        }
+        for key in &update_keys {
+            key_reference_mapping.insert(key.key.id, key.reference.clone());
+        }
+
+        let related_keys = related_keys_from_did_keys(keys, &key_reference_mapping)
+            .error_while("building DID keys")?;
+
+        if let Some(log) = update.log {
+            self.did_repository
+                .update_did(
+                    &did.id,
+                    UpdateDidRequest {
+                        deactivated: None,
+                        log: Some(Some(log)),
+                    },
+                )
+                .await
+                .error_while("updating DID log")?;
+        }
+        self.did_repository
+            .update_did_keys(&did.id, related_keys)
+            .await
+            .error_while("updating DID keys")?;
+
+        Ok(())
     }
 
     async fn validate_and_prepare_certificate(
@@ -672,6 +783,20 @@ fn validate_no_conflicts(certificates: &[Certificate], cert: &Certificate) -> Re
     } else {
         Ok(())
     }
+}
+
+fn requested_did_key_ids(request: &CreateDidRequestKeysDTO) -> HashSet<KeyId> {
+    [
+        &request.authentication,
+        &request.assertion_method,
+        &request.key_agreement,
+        &request.capability_invocation,
+        &request.capability_delegation,
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect()
 }
 
 fn non_deleted(certificates: Vec<Certificate>) -> Vec<Certificate> {

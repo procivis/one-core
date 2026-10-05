@@ -1,7 +1,8 @@
 use serde_json::Value;
 use time::format_description::well_known::Rfc3339;
+use time::{Duration, OffsetDateTime};
 
-use super::common::{build_proof, hash_entry, make_keyref, now_utc};
+use super::common::{build_proof, hash_entry, make_keyref};
 use super::create::create_document;
 use super::{DidWebvh, KeyRef, LogEntry, LogParameters, VerifiedLog};
 use crate::config::core_config::KeyAlgorithmType;
@@ -100,7 +101,12 @@ async fn build_signed_update_entry(
         .entries
         .last()
         .ok_or_else(|| DidMethodError::CouldNotUpdate("Empty DID log".to_string()))?;
-    let now = now_utc()?;
+    let previous_time = OffsetDateTime::parse(&previous.version_time, &Rfc3339)
+        .map_err(|e| DidMethodError::CouldNotUpdate(format!("Invalid versionTime: {e}")))?;
+    let now = std::cmp::max(
+        crate::clock::now_utc(),
+        previous_time + Duration::nanoseconds(1),
+    );
     let mut entry = LogEntry {
         version_id: previous.version_id.clone(),
         version_time: now

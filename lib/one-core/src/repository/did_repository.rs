@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use shared_types::{DidId, DidValue, OrganisationId};
 
+use crate::model::common::LockType;
 use crate::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
 use crate::model::relation::AsyncModelLoader;
 use crate::repository::error::DataLayerError;
@@ -11,7 +12,9 @@ use crate::repository::error::DataLayerError;
 pub trait DidRepository: Send + Sync {
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError>;
 
-    async fn get_did(&self, id: &DidId) -> Result<Did, DataLayerError>;
+    /// Loads the DID, optionally locking its row until the enclosing transaction ends.
+    /// Call this inside a transaction when specifying a lock.
+    async fn get_did(&self, id: &DidId, lock: Option<LockType>) -> Result<Did, DataLayerError>;
 
     async fn get_did_by_value(
         &self,
@@ -45,6 +48,6 @@ pub trait DidRepository: Send + Sync {
 #[async_trait::async_trait]
 impl AsyncModelLoader<Did> for Arc<dyn DidRepository> {
     async fn load(&self, id: &DidId) -> Result<Did, DataLayerError> {
-        self.get_did(id).await
+        self.get_did(id, None).await
     }
 }

@@ -208,6 +208,12 @@ pub struct PatchIdentifierRequestDTO {
     pub translations: Option<Option<IdentifierTranslationsDTO>>,
     pub trust_information: Option<Vec<CreateIdentifierTrustInformationRequestDTO>>,
     pub key: Option<CreateIdentifierKeyRequestDTO>,
+    pub did: Option<PatchIdentifierDidRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PatchIdentifierDidRequestDTO {
+    pub keys: CreateDidRequestKeysDTO,
 }
 
 #[derive(Debug, Clone)]

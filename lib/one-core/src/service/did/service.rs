@@ -44,7 +44,7 @@ impl DidService {
     ) -> Result<DidDocumentDTO, DidServiceError> {
         let did = self
             .did_repository
-            .get_did(id)
+            .get_did(id, None)
             .await
             .map_err(|error| match error {
                 DataLayerError::EntityNotFound { .. } => DidServiceError::NotFound(*id),
@@ -105,7 +105,7 @@ impl DidService {
     pub async fn get_did_webvh_log(&self, id: &DidId) -> Result<String, DidServiceError> {
         let did = self
             .did_repository
-            .get_did(id)
+            .get_did(id, None)
             .await
             .map_err(|error| match error {
                 DataLayerError::EntityNotFound { .. } => DidServiceError::NotFound(*id),
@@ -132,7 +132,7 @@ impl DidService {
     pub async fn get_did(&self, id: &DidId) -> Result<DidResponseDTO, DidServiceError> {
         let did = self
             .did_repository
-            .get_did(id)
+            .get_did(id, None)
             .await
             .map_err(|error| match error {
                 DataLayerError::EntityNotFound { .. } => DidServiceError::NotFound(*id),
@@ -228,7 +228,7 @@ impl DidService {
     ) -> Result<(), DidServiceError> {
         let did = self
             .did_repository
-            .get_did(id)
+            .get_did(id, None)
             .await
             .error_while("getting did")?;
 

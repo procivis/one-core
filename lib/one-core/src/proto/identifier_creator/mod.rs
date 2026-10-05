@@ -1,5 +1,5 @@
 use shared_types::i18n::I18nString;
-use shared_types::{BlobId, DidMethodId, DidValue, IdentifierId};
+use shared_types::{BlobId, DidId, DidMethodId, DidValue, IdentifierId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -12,7 +12,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
-use crate::service::did::dto::CreateDidRequestDTO;
+use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 
 pub(crate) mod creator;
@@ -138,6 +138,11 @@ pub(crate) trait IdentifierCreator: Send + Sync {
         identifier: &Identifier,
         requests: Vec<CreateCertificateAuthorityRequestDTO>,
     ) -> Result<Vec<Certificate>, Error>;
+    async fn update_local_did_keys(
+        &self,
+        did_id: DidId,
+        keys: CreateDidRequestKeysDTO,
+    ) -> Result<(), Error>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -179,6 +184,8 @@ pub(crate) enum Error {
     InvalidCSRProfile,
     #[error("Certificate roles must not be empty")]
     EmptyCertificateRoles,
+    #[error("DID cannot be updated: {0}")]
+    DidCannotBeUpdated(String),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -202,6 +209,7 @@ impl ErrorCodeMixin for Error {
             Self::InvalidCSRProfile => ErrorCode::BR_0323,
             Self::ConflictingCertificates => ErrorCode::BR_0408,
             Self::EmptyCertificateRoles => ErrorCode::BR_0409,
+            Self::DidCannotBeUpdated(_) => ErrorCode::BR_0181,
             Self::Nested(nested) => nested.error_code(),
         }
     }

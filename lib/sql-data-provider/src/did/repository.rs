@@ -1,12 +1,14 @@
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
+use one_core::model::common::LockType;
 use one_core::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set,
+    Unchanged,
 };
 use shared_types::{DidId, DidValue, OrganisationId};
 
@@ -15,13 +17,18 @@ use super::mapper::did_from_model;
 use crate::common::list_query_with_custom_model;
 use crate::entity::{did, key_did};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
+use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
 impl DidRepository for DidProvider {
-    async fn get_did(&self, id: &DidId) -> Result<Did, DataLayerError> {
-        let did = did::Entity::find_by_id(id)
+    async fn get_did(&self, id: &DidId, lock: Option<LockType>) -> Result<Did, DataLayerError> {
+        let select = did::Entity::find_by_id(id);
+        let select = match lock {
+            None => select,
+            Some(lock) => select.lock(map_lock_type(lock)),
+        };
+        let did = select
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?

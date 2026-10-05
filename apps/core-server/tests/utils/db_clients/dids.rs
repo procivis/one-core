@@ -45,6 +45,6 @@ impl DidsDB {
     }
 
     pub async fn get(&self, did_id: &DidId) -> Did {
-        self.repository.get_did(did_id).await.unwrap()
+        self.repository.get_did(did_id, None).await.unwrap()
     }
 }

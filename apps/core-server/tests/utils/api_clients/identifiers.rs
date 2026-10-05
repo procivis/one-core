@@ -317,6 +317,10 @@ impl IdentifiersApi {
         self.client.get(&format!("/api/identifier/v1/{id}")).await
     }
 
+    pub async fn update_did_keys(&self, id: &IdentifierId, keys: serde_json::Value) -> Response {
+        self.patch(id, json!({ "did": { "keys": keys } })).await
+    }
+
     pub async fn delete(&self, id: &IdentifierId) -> Response {
         self.client
             .delete(&format!("/api/identifier/v1/{id}"))

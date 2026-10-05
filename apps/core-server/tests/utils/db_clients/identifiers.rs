@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::identifier::{Identifier, IdentifierState};
 use one_core::model::organisation::Organisation;
 use one_core::repository::identifier_repository::IdentifierRepository;
-use shared_types::IdentifierId;
+use shared_types::{DidId, IdentifierId};
 use uuid::Uuid;
 
 use crate::fixtures::{TestingIdentifierParams, unwrap_or_random};
@@ -49,5 +49,13 @@ impl IdentifiersDB {
 
     pub async fn get(&self, identifier_id: IdentifierId) -> Identifier {
         self.repository.get(identifier_id).await.unwrap()
+    }
+
+    pub async fn get_from_did_id(&self, did_id: DidId) -> Identifier {
+        self.repository
+            .get_from_did_id(did_id)
+            .await
+            .unwrap()
+            .expect("identifier for DID")
     }
 }

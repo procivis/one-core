@@ -45,6 +45,18 @@ impl TestContext {
     }
 
     pub async fn new_with_token(token: &str, additional_config: Option<String>) -> Self {
+        Self::new_with_token_and_core_base_url(token, additional_config, None).await
+    }
+
+    pub async fn new_with_core_base_url(core_base_url: &str) -> Self {
+        Self::new_with_token_and_core_base_url("test", None, Some(core_base_url)).await
+    }
+
+    async fn new_with_token_and_core_base_url(
+        token: &str,
+        additional_config: Option<String>,
+        core_base_url: Option<&str>,
+    ) -> Self {
         let server_mock = MockServer::new().await;
         let stdout_log = tracing_subscriber::fmt::layer().with_test_writer();
 
@@ -52,7 +64,7 @@ impl TestContext {
         let base_url = format!("http://{}", listener.local_addr().unwrap());
 
         let config = fixtures::create_config(
-            &base_url,
+            core_base_url.unwrap_or(&base_url),
             Some(TestingConfigParams {
                 mock_url: Some(server_mock.uri()),
                 additional_config,

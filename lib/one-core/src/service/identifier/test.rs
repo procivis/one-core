@@ -10,7 +10,9 @@ use uuid::Uuid;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::blob::BlobType;
 use crate::model::certificate::Certificate;
-use crate::model::identifier::{GetIdentifierList, Identifier, IdentifierData, IdentifierType};
+use crate::model::identifier::{
+    GetIdentifierList, Identifier, IdentifierData, IdentifierState, IdentifierType,
+};
 use crate::model::relation::RelatedVec;
 use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
 use crate::model::trust_list_role::TrustListRoleEnum;
@@ -47,12 +49,13 @@ use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
 use crate::service::common_dto::ListQueryDTO;
+use crate::service::did::dto::CreateDidRequestKeysDTO;
 use crate::service::identifier::IdentifierService;
 use crate::service::identifier::dto::{
     CertificateRolesMatchMode, CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
     CreateIdentifierTrustInformationRequestDTO, CreateRemoteCertificateChainDTO,
     CreateRemoteIdentifierRequestDTO, IdentifierFilterParamsDTO, IdentifierTrustInformationType,
-    PatchIdentifierRequestDTO, ResolveTrustEntriesRequestDTO,
+    PatchIdentifierDidRequestDTO, PatchIdentifierRequestDTO, ResolveTrustEntriesRequestDTO,
 };
 use crate::service::identifier::error::IdentifierServiceError;
 use crate::service::test_utilities::{
@@ -2775,4 +2778,155 @@ async fn test_remove_certificate_wrong_identifier_type() {
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0514);
+}
+
+fn setup_service_for_identifier(identifier: Identifier) -> IdentifierService {
+    let organisation_id = identifier.organisation.id();
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_get()
+        .once()
+        .return_once(move |_| Ok(identifier));
+
+    setup_service(Mocks {
+        identifier_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    })
+}
+
+fn did_keys_request() -> CreateDidRequestKeysDTO {
+    let key_id = Uuid::new_v4().into();
+    CreateDidRequestKeysDTO {
+        authentication: vec![key_id],
+        assertion_method: vec![key_id],
+        key_agreement: vec![],
+        capability_invocation: vec![],
+        capability_delegation: vec![],
+    }
+}
+
+fn patch_did_keys_request() -> PatchIdentifierRequestDTO {
+    PatchIdentifierRequestDTO {
+        did: Some(PatchIdentifierDidRequestDTO {
+            keys: did_keys_request(),
+        }),
+        ..Default::default()
+    }
+}
+
+#[tokio::test]
+async fn test_update_did_keys_success() {
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+    let IdentifierData::Did(did) = &identifier.data else {
+        panic!("dummy identifier is a DID identifier");
+    };
+    let did_id = did.id();
+
+    let organisation_id = identifier.organisation.id();
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_get()
+        .once()
+        .return_once(move |_| Ok(identifier));
+
+    identifier_repository
+        .expect_update()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_update_local_did_keys()
+        .once()
+        .withf(move |id, keys| *id == did_id && keys.authentication.len() == 1)
+        .returning(|_, _| Ok(()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        identifier_creator,
+        session_provider: StaticSessionProvider::new_with_org(organisation_id),
+        ..Default::default()
+    });
+
+    service
+        .update_identifier(&identifier_id, patch_did_keys_request())
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_did_keys_fails_for_non_did_identifier() {
+    let identifier = Identifier {
+        data: IdentifierData::Key(dummy_key().into()),
+        ..dummy_identifier()
+    };
+    let identifier_id = identifier.id;
+    let service = setup_service_for_identifier(identifier);
+
+    let error = service
+        .update_identifier(&identifier_id, patch_did_keys_request())
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0513);
+    assert!(matches!(
+        error,
+        IdentifierServiceError::InvalidUpdateForIdentifierType {
+            attribute: "did",
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn test_update_did_keys_fails_for_deactivated_identifier() {
+    let identifier = Identifier {
+        state: IdentifierState::Deactivated,
+        ..dummy_identifier()
+    };
+    let identifier_id = identifier.id;
+    let service = setup_service_for_identifier(identifier);
+
+    let error = service
+        .update_identifier(&identifier_id, patch_did_keys_request())
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0181);
+}
+
+#[tokio::test]
+async fn test_update_did_keys_fails_for_remote_identifier() {
+    let identifier = Identifier {
+        is_remote: true,
+        ..dummy_identifier()
+    };
+    let identifier_id = identifier.id;
+    let service = setup_service_for_identifier(identifier);
+
+    let error = service
+        .update_identifier(&identifier_id, patch_did_keys_request())
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0513);
+}
+
+#[tokio::test]
+async fn test_update_did_keys_not_found_for_deleted_identifier() {
+    let identifier = Identifier {
+        deleted_at: Some(get_dummy_date()),
+        ..dummy_identifier()
+    };
+    let identifier_id = identifier.id;
+    let service = setup_service_for_identifier(identifier);
+
+    let error = service
+        .update_identifier(&identifier_id, patch_did_keys_request())
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0207);
 }

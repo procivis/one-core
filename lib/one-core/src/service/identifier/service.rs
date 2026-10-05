@@ -600,6 +600,26 @@ impl IdentifierService {
                         key_id = Some(key.id);
                     }
 
+                    if let Some(did_request) = request.did {
+                        let IdentifierData::Did(did) = &identifier.data else {
+                            return Err(IdentifierServiceError::InvalidUpdateForIdentifierType {
+                                identifier_type: identifier.data.r#type(),
+                                attribute: "did",
+                            });
+                        };
+                        if identifier.state != IdentifierState::Active {
+                            return Err(IdentifierServiceError::DidKeysNotUpdatable(
+                                *id,
+                                format!("identifier is in state `{:?}`", identifier.state),
+                            ));
+                        }
+
+                        self.identifier_creator
+                            .update_local_did_keys(did.id(), did_request.keys)
+                            .await
+                            .error_while("updating DID keys")?;
+                    }
+
                     match (request.logo, identifier.logo) {
                         (None, _) | (Some(None), None) => {}
                         (Some(None), Some(existing_logo_id)) => {

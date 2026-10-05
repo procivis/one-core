@@ -157,6 +157,42 @@ async fn create_update_resolve_roundtrip() {
 }
 
 #[tokio::test]
+async fn rapid_updates_have_increasing_version_times() {
+    let id = Uuid::new_v4().into();
+    let setup = setup(MockHttpClient::new());
+    let time = OffsetDateTime::from_unix_timestamp(1_700_000_000).unwrap();
+    let created = crate::clock::run_with_mocked_time_async(time, create_log(&setup, id)).await;
+    let keys = did_keys(&setup);
+    let update_time = time + Duration::milliseconds(500);
+    let mut log = created.log.unwrap();
+    for _ in 0..2 {
+        let updated = crate::clock::run_with_mocked_time_async(
+            update_time,
+            setup
+                .method
+                .update(id, keys.clone(), keys.clone(), Some(log)),
+        )
+        .await
+        .unwrap();
+        log = updated.log.unwrap();
+    }
+
+    let verified = setup
+        .method
+        .verify_log(&log, Some(&created.did))
+        .await
+        .unwrap();
+    assert_eq!(verified.entries.len(), 3);
+    let times: Vec<_> = verified
+        .entries
+        .iter()
+        .map(|entry| OffsetDateTime::parse(&entry.version_time, &Rfc3339).unwrap())
+        .collect();
+    assert_eq!(times[1], update_time);
+    assert_eq!(times[2], update_time + Duration::nanoseconds(1));
+}
+
+#[tokio::test]
 async fn update_preserves_document_fields_and_removes_old_relationships() {
     let id = Uuid::new_v4().into();
     let mut setup = setup(MockHttpClient::new());

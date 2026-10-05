@@ -94,8 +94,8 @@ async fn test_get_did_exists() {
         repository
             .expect_get_did()
             .once()
-            .with(eq(did.id.to_owned()))
-            .returning(move |_| Ok(did_clone.clone()));
+            .with(eq(did.id.to_owned()), eq(None))
+            .returning(move |_, _| Ok(did_clone.clone()));
     }
 
     let service = setup_service(
@@ -119,7 +119,7 @@ async fn test_get_did_exists() {
 #[tokio::test]
 async fn test_get_did_missing() {
     let mut repository = MockDidRepository::default();
-    repository.expect_get_did().once().returning(|id| {
+    repository.expect_get_did().once().returning(|id, _| {
         Err(DataLayerError::EntityNotFound {
             kind: EntityKind::Did,
             id: (*id).into(),
@@ -301,7 +301,7 @@ async fn test_update_did() {
     let mut did_repository = MockDidRepository::default();
     did_repository.expect_get_did().once().returning({
         let clone = did.to_owned();
-        move |_| Ok(clone.to_owned())
+        move |_, _| Ok(clone.to_owned())
     });
     did_repository
         .expect_update_did()
@@ -365,7 +365,7 @@ async fn test_update_did_fail_reactivation() {
     let mut did_repository = MockDidRepository::default();
     did_repository.expect_get_did().once().returning({
         let clone = did.to_owned();
-        move |_| Ok(clone.to_owned())
+        move |_, _| Ok(clone.to_owned())
     });
 
     let service = setup_service(
@@ -440,7 +440,7 @@ async fn test_did_ops_session_org_mismatch() {
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
-        .returning(move |_| Ok(did.clone()));
+        .returning(move |_, _| Ok(did.clone()));
     let service = DidService {
         did_repository: Arc::new(did_repository),
         identifier_creator: Arc::new(MockIdentifierCreator::default()),

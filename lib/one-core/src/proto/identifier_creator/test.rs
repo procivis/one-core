@@ -20,6 +20,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{
     Certificate, CertificateRole, CertificateState, GetCertificateList,
 };
+use crate::model::common::LockType;
+use crate::model::did::{Did, DidType as DidModelType, KeyRole, RelatedKey};
 use crate::model::identifier::{
     GetIdentifierList, Identifier, IdentifierData, UpdateIdentifierRequest,
 };
@@ -35,7 +37,7 @@ use crate::provider::credential_formatter::model::{CertificateDetails, Identifie
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::{DidCapabilities, Operation};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::did_method::{DidCreated, MockDidMethod};
+use crate::provider::did_method::{DidCreated, DidUpdate, MockDidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -52,7 +54,7 @@ use crate::service::certificate::dto::{CertificateX509AttributesDTO, CreateCerti
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 use crate::service::test_utilities::{
-    dummy_certificate, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
 };
 
 #[derive(Default)]
@@ -1307,4 +1309,483 @@ async fn test_prepare_certificate_authorities_conflicts_with_existing_certificat
         .await;
 
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0408);
+}
+
+fn eddsa_key_algorithm_provider(times: usize) -> MockKeyAlgorithmProvider {
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_key()
+        .times(times)
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .returning(|| KeyAlgorithmType::Eddsa);
+            Ok(Arc::new(key_algorithm))
+        });
+    key_algorithm_provider
+}
+
+fn update_capable_did_method(update_key_types: Vec<KeyAlgorithmType>) -> MockDidMethod {
+    let mut did_method = MockDidMethod::new();
+    did_method
+        .expect_get_capabilities()
+        .returning(move || DidCapabilities {
+            operations: vec![Operation::CREATE, Operation::UPDATE],
+            key_algorithms: vec![KeyAlgorithmType::Eddsa],
+            method_names: vec![],
+            features: vec![],
+            supported_update_key_types: update_key_types.clone(),
+        });
+    did_method
+}
+
+fn did_method_provider_with(did_method: MockDidMethod) -> MockDidMethodProvider {
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_did_method()
+        .once()
+        .return_once(move |_| Ok((Arc::new(did_method), DidType::Web)));
+    did_method_provider
+}
+
+fn keys_request(key_id: shared_types::KeyId) -> CreateDidRequestKeysDTO {
+    CreateDidRequestKeysDTO {
+        authentication: vec![key_id],
+        assertion_method: vec![key_id],
+        key_agreement: vec![],
+        capability_invocation: vec![],
+        capability_delegation: vec![],
+    }
+}
+
+fn did_repository_for_update(did: Did) -> MockDidRepository {
+    let mut repository = MockDidRepository::new();
+    let did_id = did.id;
+    repository
+        .expect_get_did()
+        .once()
+        .withf(move |id, lock| *id == did_id && matches!(lock, Some(LockType::Update)))
+        .return_once(move |_, _| Ok(did));
+    repository
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_web() {
+    let organisation = dummy_organisation(None);
+    let new_key = Key {
+        key_reference: Some(vec![]),
+        organisation: organisation.clone().into(),
+        ..dummy_key()
+    };
+    let new_key_id = new_key.id;
+    let old_key = Key {
+        key_reference: Some(vec![]),
+        organisation: organisation.clone().into(),
+        ..dummy_key()
+    };
+    let did = Did {
+        organisation: organisation.clone().into(),
+        did_method: "WEB".into(),
+        keys: vec![RelatedKey {
+            role: KeyRole::Authentication,
+            key: old_key,
+            reference: "old".to_string(),
+        }]
+        .into(),
+        ..dummy_did()
+    };
+    let did_id = did.id;
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_get_keys()
+        .once()
+        .return_once(move |_| Ok(vec![new_key]));
+
+    let mut did_method = update_capable_did_method(vec![]);
+    did_method
+        .expect_update()
+        .once()
+        .withf(move |id, current_keys, keys, log| {
+            *id == did_id
+                && current_keys.update_keys.is_none()
+                && log.is_none()
+                && keys.update_keys.is_none()
+                && keys.authentication.len() == 1
+                && keys.assertion_method.len() == 1
+                && keys.key_agreement.is_empty()
+        })
+        .returning(|_, _, _, _| {
+            Ok(DidUpdate {
+                deactivated: None,
+                log: None,
+            })
+        });
+    did_method
+        .expect_get_reference_for_key()
+        .once()
+        .returning(|key| Ok(format!("key-{}", key.id)));
+
+    let mut did_repository = did_repository_for_update(did.clone());
+    did_repository
+        .expect_update_did_keys()
+        .once()
+        .withf(move |id, keys| {
+            *id == did_id
+                && keys.len() == 2
+                && keys.iter().all(|key| {
+                    key.key.id == new_key_id && key.reference == format!("key-{new_key_id}")
+                })
+                && keys.iter().any(|key| key.role == KeyRole::Authentication)
+                && keys.iter().any(|key| key.role == KeyRole::AssertionMethod)
+        })
+        .returning(|_, _| Ok(()));
+
+    let creator = setup_creator(Mocks {
+        key_algorithm_provider: eddsa_key_algorithm_provider(1),
+        key_repository,
+        did_method_provider: did_method_provider_with(did_method),
+        did_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    creator
+        .update_local_did_keys(did.id, keys_request(new_key_id))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_webvh_keeps_update_key() {
+    let organisation = dummy_organisation(None);
+    let new_key = Key {
+        key_reference: Some(vec![]),
+        organisation: organisation.clone().into(),
+        ..dummy_key()
+    };
+    let new_key_id = new_key.id;
+    let update_key = Key {
+        key_reference: Some(vec![]),
+        organisation: organisation.clone().into(),
+        ..dummy_key()
+    };
+    let update_key_id = update_key.id;
+    let did = Did {
+        organisation: organisation.clone().into(),
+        did_method: "WEBVH".into(),
+        log: Some("line-1".to_string()),
+        keys: vec![
+            RelatedKey {
+                role: KeyRole::Authentication,
+                key: Key {
+                    organisation: organisation.clone().into(),
+                    ..dummy_key()
+                },
+                reference: "old".to_string(),
+            },
+            RelatedKey {
+                role: KeyRole::UpdateKey,
+                key: update_key,
+                reference: "key-upd".to_string(),
+            },
+        ]
+        .into(),
+        ..dummy_did()
+    };
+    let did_id = did.id;
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_get_keys()
+        .once()
+        .return_once(move |_| Ok(vec![new_key]));
+
+    let mut did_method = update_capable_did_method(vec![KeyAlgorithmType::Eddsa]);
+    did_method
+        .expect_update()
+        .once()
+        .withf(move |_, current_keys, keys, log| {
+            let is_update_key = |keys: &Option<Vec<Key>>| {
+                keys.as_ref()
+                    .is_some_and(|keys| keys.len() == 1 && keys[0].id == update_key_id)
+            };
+            is_update_key(&current_keys.update_keys)
+                && is_update_key(&keys.update_keys)
+                && log.is_some()
+        })
+        .returning(|_, _, _, _| {
+            Ok(DidUpdate {
+                deactivated: None,
+                log: Some("line-1\nline-2".to_string()),
+            })
+        });
+    did_method
+        .expect_get_reference_for_key()
+        .once()
+        .returning(|key| Ok(format!("key-{}", key.id)));
+
+    let mut did_repository = did_repository_for_update(did.clone());
+    did_repository
+        .expect_update_did()
+        .once()
+        .withf(move |id, request| {
+            *id == did_id
+                && request.deactivated.is_none()
+                && request.log == Some(Some("line-1\nline-2".to_string()))
+        })
+        .returning(|_, _| Ok(()));
+    did_repository
+        .expect_update_did_keys()
+        .once()
+        .withf(move |id, keys| {
+            *id == did_id
+                && keys.len() == 3
+                && keys.iter().any(|key| {
+                    key.role == KeyRole::UpdateKey
+                        && key.key.id == update_key_id
+                        && key.reference == "key-upd"
+                })
+                && keys.iter().filter(|key| key.key.id == new_key_id).count() == 2
+        })
+        .returning(|_, _| Ok(()));
+
+    let creator = setup_creator(Mocks {
+        key_algorithm_provider: eddsa_key_algorithm_provider(1),
+        key_repository,
+        did_method_provider: did_method_provider_with(did_method),
+        did_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    creator
+        .update_local_did_keys(did.id, keys_request(new_key_id))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_fails_for_remote_did() {
+    let did = Did {
+        did_type: DidModelType::Remote,
+        ..dummy_did()
+    };
+
+    let creator = setup_creator(Mocks {
+        did_repository: did_repository_for_update(did.clone()),
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = creator
+        .update_local_did_keys(did.id, keys_request(Uuid::new_v4().into()))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0181);
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_fails_for_deactivated_did() {
+    let did = Did {
+        deactivated: true,
+        ..dummy_did()
+    };
+
+    let creator = setup_creator(Mocks {
+        did_repository: did_repository_for_update(did.clone()),
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = creator
+        .update_local_did_keys(did.id, keys_request(Uuid::new_v4().into()))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0181);
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_fails_when_method_does_not_support_update() {
+    let mut did_method = MockDidMethod::new();
+    did_method
+        .expect_get_capabilities()
+        .returning(|| DidCapabilities {
+            operations: vec![Operation::CREATE, Operation::RESOLVE],
+            key_algorithms: vec![KeyAlgorithmType::Eddsa],
+            method_names: vec![],
+            features: vec![],
+            supported_update_key_types: vec![],
+        });
+    let did = dummy_did();
+    let creator = setup_creator(Mocks {
+        did_repository: did_repository_for_update(did.clone()),
+        did_method_provider: did_method_provider_with(did_method),
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = creator
+        .update_local_did_keys(did.id, keys_request(Uuid::new_v4().into()))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0181);
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_fails_for_remote_key() {
+    let organisation = dummy_organisation(None);
+    let remote_key = Key {
+        key_reference: None,
+        organisation: organisation.clone().into(),
+        ..dummy_key()
+    };
+    let remote_key_id = remote_key.id;
+    let did = Did {
+        organisation: organisation.into(),
+        ..dummy_did()
+    };
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_get_keys()
+        .once()
+        .return_once(move |_| Ok(vec![remote_key]));
+
+    let creator = setup_creator(Mocks {
+        did_repository: did_repository_for_update(did.clone()),
+        key_repository,
+        did_method_provider: did_method_provider_with(update_capable_did_method(vec![])),
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = creator
+        .update_local_did_keys(did.id, keys_request(remote_key_id))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0076);
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_fails_for_key_of_other_organisation() {
+    let foreign_key = Key {
+        key_reference: Some(vec![]),
+        ..dummy_key()
+    };
+    let foreign_key_id = foreign_key.id;
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_get_keys()
+        .once()
+        .return_once(move |_| Ok(vec![foreign_key]));
+
+    let did = dummy_did();
+    let creator = setup_creator(Mocks {
+        did_repository: did_repository_for_update(did.clone()),
+        key_repository,
+        did_method_provider: did_method_provider_with(update_capable_did_method(vec![])),
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = creator
+        .update_local_did_keys(did.id, keys_request(foreign_key_id))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0285);
+}
+
+#[tokio::test]
+async fn test_update_local_did_keys_propagates_did_method_error() {
+    let organisation = dummy_organisation(None);
+    let new_key = Key {
+        key_reference: Some(vec![]),
+        organisation: organisation.clone().into(),
+        ..dummy_key()
+    };
+    let new_key_id = new_key.id;
+    let did = Did {
+        organisation: organisation.into(),
+        ..dummy_did()
+    };
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_get_keys()
+        .once()
+        .return_once(move |_| Ok(vec![new_key]));
+
+    let mut did_method = update_capable_did_method(vec![]);
+    did_method
+        .expect_update()
+        .once()
+        .returning(|_, _, _, _| Err(DidMethodError::InvalidNumberOfKeys));
+
+    // No write expectations: method errors must not change the stored DID.
+    let creator = setup_creator(Mocks {
+        did_repository: did_repository_for_update(did.clone()),
+        key_algorithm_provider: eddsa_key_algorithm_provider(1),
+        key_repository,
+        did_method_provider: did_method_provider_with(did_method),
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = creator
+        .update_local_did_keys(did.id, keys_request(new_key_id))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0030);
+}
+
+#[rstest::rstest]
+#[case(false)]
+#[case(true)]
+#[tokio::test]
+async fn test_update_local_did_keys_rejects_missing_keys(#[case] partially_found: bool) {
+    let organisation = dummy_organisation(None);
+    let key = Key {
+        key_reference: Some(vec![]),
+        organisation: organisation.clone().into(),
+        ..dummy_key()
+    };
+    let missing_key_id = Uuid::new_v4().into();
+    let mut request = keys_request(missing_key_id);
+    if partially_found {
+        request.assertion_method = vec![key.id];
+    }
+    let did = Did {
+        organisation: organisation.into(),
+        ..dummy_did()
+    };
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_get_keys()
+        .once()
+        .return_once(move |_| Ok(if partially_found { vec![key] } else { vec![] }));
+    let creator = setup_creator(Mocks {
+        did_repository: did_repository_for_update(did.clone()),
+        key_repository,
+        key_algorithm_provider: eddsa_key_algorithm_provider(usize::from(partially_found)),
+        did_method_provider: did_method_provider_with(update_capable_did_method(vec![])),
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    // Neither the DID method's update nor any repository writes may be called.
+    let error = creator
+        .update_local_did_keys(did.id, request)
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.error_code(), ErrorCode::BR_0037);
 }

@@ -20,8 +20,8 @@ use one_core::service::identifier::dto::{
     CreateSelfSignedCertificateAuthorityRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO, IdentifierFilterParamsDTO,
     IdentifierTranslationsDTO, IdentifierTrustInformationResponseDTO,
-    IdentifierTrustInformationType, PatchIdentifierRequestDTO, ResolveTrustEntriesRequestDTO,
-    ResolvedTrustEntriesResponseDTO, ResolvedTrustEntryResponseDTO,
+    IdentifierTrustInformationType, PatchIdentifierDidRequestDTO, PatchIdentifierRequestDTO,
+    ResolveTrustEntriesRequestDTO, ResolvedTrustEntriesResponseDTO, ResolvedTrustEntryResponseDTO,
     ResolvedTrustEntrySourceResponseDTO,
 };
 use one_dto_mapper::{
@@ -137,6 +137,9 @@ pub(crate) struct PatchIdentifierRequestRestDTO {
 
     #[try_into(with_fn = convert_inner, infallible)]
     pub key: Option<CreateIdentifierKeyRequestRestDTO>,
+
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub did: Option<PatchIdentifierDidRequestRestDTO>,
 }
 
 #[options_not_nullable]
@@ -279,6 +282,13 @@ pub(crate) struct CreateCertificateCaRestDTO {
 #[into(CreateIdentifierKeyRequestDTO)]
 pub(crate) struct CreateIdentifierKeyRequestRestDTO {
     pub key_id: KeyId,
+}
+
+#[derive(Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(PatchIdentifierDidRequestDTO)]
+pub(crate) struct PatchIdentifierDidRequestRestDTO {
+    pub keys: CreateDidRequestKeysRestDTO,
 }
 
 #[options_not_nullable]

@@ -211,3 +211,171 @@ impl DidMethod for CapabilityChecked {
         self.0.config_name()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+
+    use similar_asserts::assert_eq;
+    use uuid::Uuid;
+
+    use super::*;
+    use crate::provider::did_method::MockDidMethod;
+    use crate::provider::did_method::keys::MinMax;
+    use crate::service::test_utilities::dummy_key;
+
+    fn capabilities(operations: Vec<Operation>) -> DidCapabilities {
+        DidCapabilities {
+            operations,
+            key_algorithms: vec![KeyAlgorithmType::Eddsa],
+            method_names: vec![],
+            features: vec![],
+            supported_update_key_types: vec![KeyAlgorithmType::Eddsa],
+        }
+    }
+
+    fn limits(authentication_max: usize) -> Keys {
+        let optional = || MinMax { min: 0, max: 5 };
+        Keys {
+            global: MinMax { min: 1, max: 5 },
+            authentication: MinMax {
+                min: 1,
+                max: authentication_max,
+            },
+            assertion_method: optional(),
+            key_agreement: optional(),
+            capability_invocation: optional(),
+            capability_delegation: optional(),
+        }
+    }
+
+    fn authentication_keys(keys: Vec<Key>) -> DidKeys {
+        DidKeys {
+            authentication: keys,
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_rejected_when_operation_not_supported() {
+        let mut inner = MockDidMethod::new();
+        inner
+            .expect_get_capabilities()
+            .returning(|| capabilities(vec![Operation::CREATE, Operation::RESOLVE]));
+        let method = CapabilityChecked(Arc::new(inner));
+
+        let result = method
+            .update(
+                Uuid::new_v4().into(),
+                DidKeys::default(),
+                authentication_keys(vec![dummy_key()]),
+                None,
+            )
+            .await;
+
+        assert2::assert!(let Err(DidMethodError::OperationNotSupported) = result);
+    }
+
+    #[tokio::test]
+    async fn test_update_rejected_for_unsupported_key_algorithm() {
+        let mut inner = MockDidMethod::new();
+        inner
+            .expect_get_capabilities()
+            .returning(|| capabilities(vec![Operation::UPDATE]));
+        inner.expect_get_keys().returning(|| Some(limits(5)));
+        let method = CapabilityChecked(Arc::new(inner));
+
+        let key = Key {
+            key_type: "ECDSA".to_string(),
+            ..dummy_key()
+        };
+        let result = method
+            .update(
+                Uuid::new_v4().into(),
+                DidKeys::default(),
+                authentication_keys(vec![key]),
+                None,
+            )
+            .await;
+
+        assert2::assert!(let Err(DidMethodError::UnsupportedKeyType(_)) = result);
+    }
+
+    #[tokio::test]
+    async fn test_update_rejected_for_unsupported_update_key_algorithm() {
+        let mut inner = MockDidMethod::new();
+        inner
+            .expect_get_capabilities()
+            .returning(|| capabilities(vec![Operation::UPDATE]));
+        let method = CapabilityChecked(Arc::new(inner));
+
+        let update_key = Key {
+            key_type: "ECDSA".to_string(),
+            ..dummy_key()
+        };
+        let result = method
+            .update(
+                Uuid::new_v4().into(),
+                DidKeys::default(),
+                DidKeys {
+                    authentication: vec![dummy_key()],
+                    update_keys: Some(vec![update_key]),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await;
+
+        assert2::assert!(let Err(DidMethodError::UnsupportedKeyType(_)) = result);
+    }
+
+    #[tokio::test]
+    async fn test_update_rejected_for_invalid_number_of_keys() {
+        let mut inner = MockDidMethod::new();
+        inner
+            .expect_get_capabilities()
+            .returning(|| capabilities(vec![Operation::UPDATE]));
+        inner.expect_get_keys().returning(|| Some(limits(1)));
+        let method = CapabilityChecked(Arc::new(inner));
+
+        let result = method
+            .update(
+                Uuid::new_v4().into(),
+                DidKeys::default(),
+                authentication_keys(vec![dummy_key(), dummy_key()]),
+                None,
+            )
+            .await;
+
+        assert2::assert!(let Err(DidMethodError::InvalidNumberOfKeys) = result);
+    }
+
+    #[tokio::test]
+    async fn test_update_delegates_when_valid() {
+        let mut inner = MockDidMethod::new();
+        inner
+            .expect_get_capabilities()
+            .returning(|| capabilities(vec![Operation::UPDATE]));
+        inner.expect_get_keys().returning(|| Some(limits(5)));
+        inner.expect_update().once().returning(|_, _, _, _| {
+            Ok(DidUpdate {
+                deactivated: None,
+                log: Some("log".to_string()),
+            })
+        });
+        let method = CapabilityChecked(Arc::new(inner));
+
+        let update = method
+            .update(
+                Uuid::new_v4().into(),
+                DidKeys::default(),
+                authentication_keys(vec![dummy_key()]),
+                None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(update.log.as_deref(), Some("log"));
+        assert_eq!(update.deactivated, None);
+    }
+}

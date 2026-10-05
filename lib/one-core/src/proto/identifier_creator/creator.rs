@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use futures::FutureExt;
-use shared_types::{BlobId, IdentifierId};
+use shared_types::{BlobId, DidId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -16,6 +16,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
 };
+use crate::model::common::LockType;
 use crate::model::identifier::{
     Identifier, IdentifierData, IdentifierState, IdentifierType, UpdateIdentifierRequest,
 };
@@ -40,6 +41,7 @@ use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
+use crate::service::did::dto::CreateDidRequestKeysDTO;
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 use crate::{CertificateValidator, KeyAlgorithmProvider};
 
@@ -465,6 +467,30 @@ impl IdentifierCreator for IdentifierCreatorProto {
         requests: Vec<CreateCertificateAuthorityRequestDTO>,
     ) -> Result<Vec<Certificate>, Error> {
         IdentifierCreatorProto::prepare_certificate_authorities(self, identifier, requests).await
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+    async fn update_local_did_keys(
+        &self,
+        did_id: DidId,
+        keys: CreateDidRequestKeysDTO,
+    ) -> Result<(), Error> {
+        self.tx_manager
+            .tx_with_config(
+                async {
+                    let did = self
+                        .did_repository
+                        .get_did(&did_id, Some(LockType::Update))
+                        .await
+                        .error_while("locking DID for update")?;
+                    self.update_local_did_keys(did, keys).await
+                }
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await
+            .error_while("updating local DID keys")?
     }
 }
 

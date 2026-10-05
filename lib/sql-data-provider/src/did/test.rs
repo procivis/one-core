@@ -525,7 +525,7 @@ async fn test_get_did_existing() {
     })
     .await;
 
-    let result = provider.get_did(&did_id).await;
+    let result = provider.get_did(&did_id, None).await;
 
     assert!(result.is_ok());
 
@@ -546,7 +546,7 @@ async fn test_get_did_existing() {
 async fn test_get_did_not_existing() {
     let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
-    let result = provider.get_did(&Uuid::new_v4().into()).await;
+    let result = provider.get_did(&Uuid::new_v4().into(), None).await;
 
     assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
 }
