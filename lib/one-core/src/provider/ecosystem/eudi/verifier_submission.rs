@@ -71,14 +71,14 @@ mod test {
     #[tokio::test]
     async fn uses_concrete_format_from_multiformat_schema() {
         let mut credential = dummy_credential();
-        let mut schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let mut schema = credential.common.schema.as_ref().await.unwrap().to_owned();
         let first = schema.formats.as_ref().await.unwrap()[0].clone();
         let mut selected = first.clone();
         selected.id = Uuid::new_v4().into();
         selected.format = "MDOC".into();
         selected.ecosystem_schema_id = "mdoc-pid".into();
         schema.formats = vec![first, selected.clone()].into();
-        credential.schema = schema.into();
+        credential.common.schema = schema.into();
         credential.format = Some(selected.clone().into());
 
         let mut formatter = MockCredentialFormatter::new();

@@ -19,7 +19,7 @@ use one_core::model::certificate::{Certificate, CertificateRole, CertificateStat
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, CredentialType,
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, KeyStorageSecurity, LayoutProperties, WalletAttestation,
@@ -816,28 +816,30 @@ pub async fn create_credential(
         .cloned();
 
     let credential = Credential {
-        expires_at: params.expires_at,
-        ecosystem: params.ecosystem,
-        id: credential_id,
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        issuance_date: None,
-        deleted_at: params.deleted_at,
+        common: CredentialCommon {
+            expires_at: params.expires_at,
+            ecosystem: params.ecosystem,
+            id: credential_id,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            issuance_date: None,
+            deleted_at: params.deleted_at,
+            protocol: protocol.to_owned(),
+            redirect_uri: None,
+            state,
+            schema: credential_schema.to_owned().into(),
+            interaction: convert_inner(params.interaction),
+            profile: None,
+        },
         consumed_at: params.consumed_at,
-        protocol: protocol.to_owned(),
-        redirect_uri: None,
         role: params.role.unwrap_or(CredentialRole::Issuer),
         r#type: params.r#type.unwrap_or(CredentialType::Single),
-        state,
         suspend_end_date: params.suspend_end_date,
         claims: claims.into(),
         issuer_identifier: Some(issuer_identifier.to_owned().into()),
         issuer_certificate: None,
         holder_identifier: params.holder_identifier.map(Into::into),
-        schema: credential_schema.to_owned().into(),
-        interaction: convert_inner(params.interaction),
         key: params.key.map(Into::into),
-        profile: None,
         credential_blob_id: params.credential_blob_id,
         wallet_key_attestation_blob_id: params.wallet_key_attestation_blob_id,
         wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,

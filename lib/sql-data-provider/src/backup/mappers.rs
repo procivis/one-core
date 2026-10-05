@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::Credential;
+use one_core::model::credential::{Credential, CredentialCommon};
 use one_core::model::credential_schema::{CredentialSchema, TransactionCode, WalletAttestation};
 use one_core::model::relation::{BatchModelLoader, Related};
 use one_core::repository::credential_repository::CredentialRepository;
@@ -58,62 +58,67 @@ pub(super) fn credential_from_unexportable_model(
     let formats = credential_schema_formats(value.credential_schema_id, db.clone());
 
     Ok(Credential {
-        ecosystem: None,
-        id: value.id,
-        created_date: value.created_date,
-        issuance_date: value.issuance_date,
-        expires_at: value.expires_at,
-        last_modified: value.last_modified,
-        deleted_at: value.deleted_at,
+        common: CredentialCommon {
+            ecosystem: None,
+            id: value.id,
+            created_date: value.created_date,
+            issuance_date: value.issuance_date,
+            expires_at: value.expires_at,
+            last_modified: value.last_modified,
+            deleted_at: value.deleted_at,
+            protocol: value.protocol,
+            redirect_uri: value.redirect_uri,
+            state: value.state.into(),
+            profile: value.profile,
+            schema: CredentialSchema {
+                ecosystem: None,
+                id: value.credential_schema_id,
+                deleted_at: value.credential_schema_deleted_at,
+                created_date: value.credential_schema_created_date,
+                last_modified: value.credential_schema_last_modified,
+                imported_source_url: value.credential_schema_imported_source_url,
+                name: value.credential_schema_name,
+                formats,
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: value
+                        .credential_schema_requires_wallet_instance_attestation,
+                    key_storage_security_level: convert_inner(
+                        value.credential_schema_key_storage_security,
+                    ),
+                    preferred_key_storage_attestation_lifetime: value
+                        .credential_schema_preferred_key_storage_attestation_lifetime
+                        .map(|seconds| Duration::seconds(seconds as i64)),
+                    preferred_instance_attestation_lifetime: value
+                        .credential_schema_preferred_instance_attestation_lifetime
+                        .map(|seconds| Duration::seconds(seconds as i64)),
+                },
+                claim_schemas: claim_schemas.into(),
+                organisation: Related::new(
+                    value.organisation_id,
+                    organisation_repository.to_owned(),
+                ),
+                layout_properties: None,
+                allow_suspension: value.credential_schema_allow_suspension,
+                transaction_code,
+                batch_size: value.credential_schema_batch_size,
+                allow_revocation: value.credential_schema_allow_revocation,
+                translations: localized_texts(value.credential_schema_id.into(), db.to_owned()),
+                embedded_disclosure_policy: value.credential_schema_embedded_disclosure_policy,
+                expiration: value
+                    .credential_schema_expiration
+                    .map(|seconds| Duration::seconds(seconds as i64)),
+            }
+            .into(),
+            interaction: None,
+        },
         consumed_at: value.consumed_at,
-        protocol: value.protocol,
-        redirect_uri: value.redirect_uri,
         role: value.role.into(),
         r#type: value.r#type.into(),
-        state: value.state.into(),
         suspend_end_date: value.suspend_end_date,
-        profile: value.profile,
         claims: claims.into(),
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: CredentialSchema {
-            ecosystem: None,
-            id: value.credential_schema_id,
-            deleted_at: value.credential_schema_deleted_at,
-            created_date: value.credential_schema_created_date,
-            last_modified: value.credential_schema_last_modified,
-            imported_source_url: value.credential_schema_imported_source_url,
-            name: value.credential_schema_name,
-            formats,
-            wallet_attestation: WalletAttestation {
-                require_instance_attestation: value
-                    .credential_schema_requires_wallet_instance_attestation,
-                key_storage_security_level: convert_inner(
-                    value.credential_schema_key_storage_security,
-                ),
-                preferred_key_storage_attestation_lifetime: value
-                    .credential_schema_preferred_key_storage_attestation_lifetime
-                    .map(|seconds| Duration::seconds(seconds as i64)),
-                preferred_instance_attestation_lifetime: value
-                    .credential_schema_preferred_instance_attestation_lifetime
-                    .map(|seconds| Duration::seconds(seconds as i64)),
-            },
-            claim_schemas: claim_schemas.into(),
-            organisation: Related::new(value.organisation_id, organisation_repository.to_owned()),
-            layout_properties: None,
-            allow_suspension: value.credential_schema_allow_suspension,
-            transaction_code,
-            batch_size: value.credential_schema_batch_size,
-            allow_revocation: value.credential_schema_allow_revocation,
-            translations: localized_texts(value.credential_schema_id.into(), db.to_owned()),
-            embedded_disclosure_policy: value.credential_schema_embedded_disclosure_policy,
-            expiration: value
-                .credential_schema_expiration
-                .map(|seconds| Duration::seconds(seconds as i64)),
-        }
-        .into(),
-        interaction: None,
         key: None,
         credential_blob_id: value.credential_blob_id,
         wallet_key_attestation_blob_id: None,

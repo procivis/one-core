@@ -58,13 +58,13 @@ async fn test_get_credential_success() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.id).await;
+    let resp = context.api.credentials.get(&credential.common.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp["id"].assert_eq(&credential.id);
+    resp["id"].assert_eq(&credential.common.id);
     resp["schema"]["organisationId"].assert_eq(&organisation.id);
     assert_eq!(resp["schema"]["name"], "test");
     assert_eq!(resp["schema"]["translations"]["name"]["en"], "test");
@@ -157,7 +157,7 @@ async fn test_get_credential_with_trust_information_success() {
         .create(
             &organisation,
             TestingHistoryParams {
-                entity_id: Some(credential.id.into()),
+                entity_id: Some(credential.common.id.into()),
                 action: Some(HistoryAction::WrpAcReceived),
                 metadata_blob_id: Some(ac_blob.id),
                 ..Default::default()
@@ -181,7 +181,7 @@ async fn test_get_credential_with_trust_information_success() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::WrpRcReceived),
-                entity_id: Some(credential.id.into()),
+                entity_id: Some(credential.common.id.into()),
                 metadata: Some(HistoryMetadata::WalletRelyingParty(
                     WalletRelyingPartyMetadata {
                         name: Some("Sprint Review WRP".to_string()),
@@ -195,13 +195,13 @@ async fn test_get_credential_with_trust_information_success() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.id).await;
+    let resp = context.api.credentials.get(&credential.common.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp["id"].assert_eq(&credential.id);
+    resp["id"].assert_eq(&credential.common.id);
     assert_eq!(resp["trustInformation"]["name"], "Sprint Review WRP");
     assert_eq!(resp["trustInformation"]["result"], "TRUSTED");
     assert!(!resp["trustInformation"]["receivedAt"].is_null());
@@ -230,13 +230,13 @@ async fn test_get_credential_certificate_identifier_success() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.id).await;
+    let resp = context.api.credentials.get(&credential.common.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    resp["id"].assert_eq(&credential.id);
+    resp["id"].assert_eq(&credential.common.id);
     resp["schema"]["organisationId"].assert_eq(&organisation.id);
     assert_eq!(resp["schema"]["name"], "test");
     assert!(resp["revocationDate"].is_null());
@@ -325,12 +325,12 @@ async fn test_get_credential_success_metadata() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.id).await;
+    let resp = context.api.credentials.get(&credential.common.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    resp["id"].assert_eq(&credential.id);
+    resp["id"].assert_eq(&credential.common.id);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
     assert_eq!(resp["claims"][0]["path"], "string_claim".to_string());
 }
@@ -379,31 +379,39 @@ async fn test_get_credential_success_batch() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent_credential.id),
+                parent_id: Some(parent_credential.common.id),
                 ..Default::default()
             },
         )
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&parent_credential.id).await;
+    let resp = context
+        .api
+        .credentials
+        .get(&parent_credential.common.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    resp["id"].assert_eq(&parent_credential.id);
+    resp["id"].assert_eq(&parent_credential.common.id);
     assert_eq!(resp["type"].as_str().unwrap(), "BATCH_PARENT");
     assert!(!resp.as_object().unwrap().contains_key("parentId"));
     assert_eq!(resp["remainingBatchItemCount"]["JWT"], 1);
     assert!(!resp.as_object().unwrap().contains_key("format"));
 
     // WHEN
-    let resp = context.api.credentials.get(&item_credential.id).await;
+    let resp = context
+        .api
+        .credentials
+        .get(&item_credential.common.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    resp["id"].assert_eq(&item_credential.id);
+    resp["id"].assert_eq(&item_credential.common.id);
     assert_eq!(resp["type"].as_str().unwrap(), "BATCH_ITEM");
     assert_eq!(resp["format"], "JWT");
     assert!(
@@ -414,7 +422,7 @@ async fn test_get_credential_success_batch() {
     );
     assert_eq!(
         resp["parentId"].as_str().unwrap(),
-        parent_credential.id.to_string()
+        parent_credential.common.id.to_string()
     );
 }
 
@@ -464,7 +472,7 @@ async fn test_get_credential_success_batch_count_excludes_rejected_formats() {
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent_credential.id),
+                parent_id: Some(parent_credential.common.id),
                 format: Some(formats[0].clone()),
                 ..Default::default()
             },
@@ -480,7 +488,7 @@ async fn test_get_credential_success_batch_count_excludes_rejected_formats() {
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent_credential.id),
+                parent_id: Some(parent_credential.common.id),
                 format: Some(formats[1].clone()),
                 ..Default::default()
             },
@@ -488,7 +496,11 @@ async fn test_get_credential_success_batch_count_excludes_rejected_formats() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&parent_credential.id).await;
+    let resp = context
+        .api
+        .credentials
+        .get(&parent_credential.common.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -526,12 +538,12 @@ async fn test_get_credential_with_expires_at() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.id).await;
+    let resp = context.api.credentials.get(&credential.common.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    resp["id"].assert_eq(&credential.id);
+    resp["id"].assert_eq(&credential.common.id);
     let returned_expires_at =
         OffsetDateTime::parse(resp["expiresAt"].as_str().unwrap(), &Rfc3339).unwrap();
     assert_eq!(returned_expires_at, expires_at);
@@ -570,7 +582,11 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
         )
         .await;
 
-    let parent_details = context.api.credentials.get(&parent_credential.id).await;
+    let parent_details = context
+        .api
+        .credentials
+        .get(&parent_credential.common.id)
+        .await;
     assert_eq!(parent_details.status(), 200);
     let parent_details = parent_details.json_value().await;
     // Even legacy batch parents with a stored MDOC format have no MSO validity.
@@ -591,7 +607,7 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(parent_credential.id),
+                parent_id: Some(parent_credential.common.id),
                 expires_at: Some(expires_at),
                 ..Default::default()
             },
@@ -599,12 +615,16 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&item_credential.id).await;
+    let resp = context
+        .api
+        .credentials
+        .get(&item_credential.common.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    resp["id"].assert_eq(&item_credential.id);
+    resp["id"].assert_eq(&item_credential.common.id);
 
     let returned_expires_at =
         OffsetDateTime::parse(resp["expiresAt"].as_str().unwrap(), &Rfc3339).unwrap();
@@ -619,7 +639,11 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
     assert_eq!(expires_at, mso_expiration);
 
     // Adding an MDOC item must not give the parent MSO validity either.
-    let parent_details = context.api.credentials.get(&parent_credential.id).await;
+    let parent_details = context
+        .api
+        .credentials
+        .get(&parent_credential.common.id)
+        .await;
     assert_eq!(parent_details.status(), 200);
     let parent_details = parent_details.json_value().await;
     assert!(parent_details["mdocMsoValidity"].is_null());
@@ -681,7 +705,7 @@ async fn test_get_credential_success_batch_parent_offered_formats() {
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
                 role: Some(CredentialRole::Issuer),
-                parent_id: Some(parent_credential.id),
+                parent_id: Some(parent_credential.common.id),
                 format: Some(format),
                 ..Default::default()
             },
@@ -689,7 +713,11 @@ async fn test_get_credential_success_batch_parent_offered_formats() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&parent_credential.id).await;
+    let resp = context
+        .api
+        .credentials
+        .get(&parent_credential.common.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -699,7 +727,11 @@ async fn test_get_credential_success_batch_parent_offered_formats() {
     assert_eq!(resp["offeredFormats"][0]["state"], "ACCEPTED".to_string());
 
     // WHEN
-    let resp = context.api.credentials.get(&item_credential.id).await;
+    let resp = context
+        .api
+        .credentials
+        .get(&item_credential.common.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -755,7 +787,7 @@ async fn test_get_credential_success_multi_format_single_offered_formats() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(&credential.id).await;
+    let resp = context.api.credentials.get(&credential.common.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);

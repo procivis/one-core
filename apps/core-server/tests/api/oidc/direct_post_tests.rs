@@ -210,6 +210,7 @@ async fn test_direct_post_one_credential(
                 .as_ref()
                 .await
                 .unwrap()
+                .common
                 .issuance_date
                 .is_some()
         );
@@ -378,7 +379,14 @@ async fn test_direct_post_with_profile_verification() {
     assert_eq!(proof.profile.as_deref(), Some(profile));
     for claim in &proof.claims.as_ref().await.unwrap() {
         assert_eq!(
-            claim.credential.as_ref().await.unwrap().profile.as_deref(),
+            claim
+                .credential
+                .as_ref()
+                .await
+                .unwrap()
+                .common
+                .profile
+                .as_deref(),
             Some(profile)
         );
     }

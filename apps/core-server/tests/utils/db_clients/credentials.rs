@@ -3,8 +3,8 @@ use std::sync::Arc;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
-    Credential, CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum,
-    CredentialType, UpdateCredentialRequest,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialListQuery, CredentialRole,
+    CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::{Identifier, IdentifierData};
@@ -47,7 +47,7 @@ impl CredentialsDB {
             .values;
         let mut result = vec![];
         for cred in creds {
-            result.push(self.get(&cred.id).await);
+            result.push(self.get(&cred.common.id).await);
         }
         result
     }
@@ -174,19 +174,24 @@ impl CredentialsDB {
             .cloned();
 
         Credential {
-            expires_at: params.expires_at,
-            ecosystem: params.ecosystem,
-            id: credential_id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            issuance_date,
-            deleted_at: params.deleted_at,
+            common: CredentialCommon {
+                expires_at: params.expires_at,
+                ecosystem: params.ecosystem,
+                id: credential_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                issuance_date,
+                deleted_at: params.deleted_at,
+                protocol: protocol.to_owned(),
+                redirect_uri: None,
+                state,
+                schema: credential_schema.to_owned().into(),
+                interaction: convert_inner(params.interaction),
+                profile: params.profile,
+            },
             consumed_at: params.consumed_at,
-            protocol: protocol.to_owned(),
-            redirect_uri: None,
             role: params.role.unwrap_or(CredentialRole::Issuer),
             r#type: params.r#type.unwrap_or(CredentialType::Single),
-            state,
             suspend_end_date: params.suspend_end_date,
             claims: claims.into(),
             issuer_identifier: Some(issuer_identifier.to_owned().into()),
@@ -201,10 +206,7 @@ impl CredentialsDB {
                 })
                 .map(Into::into),
             holder_identifier: params.holder_identifier.map(Into::into),
-            schema: credential_schema.to_owned().into(),
-            interaction: convert_inner(params.interaction),
             key: params.key.map(Into::into),
-            profile: params.profile,
             credential_blob_id: params.credential_blob_id,
             wallet_key_attestation_blob_id: params.wallet_key_attestation_blob_id,
             wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
@@ -262,16 +264,22 @@ impl CredentialsDB {
             .create_credential(credential.to_owned())
             .await
             .unwrap();
-        let batch_item_template = Credential {
-            claims: Default::default(),
-            r#type: CredentialType::BatchItem,
-            embedded_disclosure_policy,
-            webhook_url: None,
-            parent: Some(Related::new(id, self.repository.clone())),
-            interaction: None,
-            key,
-            holder_identifier,
-            ..credential.clone()
+        let batch_item_template = {
+            let base_credential = credential.clone();
+            Credential {
+                common: CredentialCommon {
+                    interaction: None,
+                    ..base_credential.common
+                },
+                claims: Default::default(),
+                r#type: CredentialType::BatchItem,
+                embedded_disclosure_policy,
+                webhook_url: None,
+                parent: Some(Related::new(id, self.repository.clone())),
+                key,
+                holder_identifier,
+                ..base_credential
+            }
         };
         for _ in 0..num_items {
             let credential_blob_id = if let Some(blob_storage) = blob_storage {
@@ -300,11 +308,17 @@ impl CredentialsDB {
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_default();
-            let batch_item_credential = Credential {
-                id: item_id,
-                claims: claims.into(),
-                credential_blob_id,
-                ..batch_item_template.clone()
+            let batch_item_credential = {
+                let base_credential = batch_item_template.clone();
+                Credential {
+                    common: CredentialCommon {
+                        id: item_id,
+                        ..base_credential.common
+                    },
+                    claims: claims.into(),
+                    credential_blob_id,
+                    ..base_credential
+                }
             };
             self.repository
                 .create_credential(batch_item_credential.to_owned())

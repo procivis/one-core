@@ -36,8 +36,8 @@ pub(crate) fn get_credential_offer_url(
 ) -> Result<String, IssuanceProtocolError> {
     Ok(format!(
         "{protocol_base_url}/{}/offer/{}",
-        credential.schema.id(),
-        credential.id
+        credential.common.schema.id(),
+        credential.common.id
     ))
 }
 

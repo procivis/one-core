@@ -27,7 +27,8 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+    GetCredentialList,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -177,19 +178,9 @@ async fn generic_credential() -> Credential {
         claim_mappings: Default::default(),
     };
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential_id,
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
@@ -221,36 +212,7 @@ async fn generic_credential() -> Credential {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: (backfill_default_translations(
-            CredentialSchema {
-                expiration: None,
-                ecosystem: None,
-                batch_size: None,
-                allow_revocation: false,
-                id: credential_schema_id,
-                deleted_at: None,
-                imported_source_url: "CORE_URL".to_string(),
-                created_date: now,
-                last_modified: now,
-                name: "schema".to_string(),
-                wallet_attestation: Default::default(),
-                claim_schemas: vec![claim_schema].into(),
-                organisation: organisation.into(),
-                layout_properties: None,
-                allow_suspension: true,
-                transaction_code: None,
-                translations: Default::default(),
-                embedded_disclosure_policy: None,
-                formats: vec![format.clone()].into(),
-            },
-            "en",
-        )
-        .await
-        .unwrap())
-        .into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -258,6 +220,47 @@ async fn generic_credential() -> Credential {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            schema: (backfill_default_translations(
+                CredentialSchema {
+                    expiration: None,
+                    ecosystem: None,
+                    batch_size: None,
+                    allow_revocation: false,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    imported_source_url: "CORE_URL".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    wallet_attestation: Default::default(),
+                    claim_schemas: vec![claim_schema].into(),
+                    organisation: organisation.into(),
+                    layout_properties: None,
+                    allow_suspension: true,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    embedded_disclosure_policy: None,
+                    formats: vec![format.clone()].into(),
+                },
+                "en",
+            )
+            .await
+            .unwrap())
+            .into(),
+            interaction: None,
+            profile: None,
+        },
         format: Some(format.into()),
     }
 }
@@ -277,19 +280,50 @@ async fn generic_credential_list_entity() -> Credential {
         claim_mappings: Default::default(),
     };
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            schema: (backfill_default_translations(
+                CredentialSchema {
+                    expiration: None,
+                    ecosystem: None,
+                    batch_size: None,
+                    allow_revocation: false,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    imported_source_url: "CORE_URL".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    wallet_attestation: Default::default(),
+                    formats: vec![format.clone()].into(),
+                    claim_schemas: Default::default(),
+                    organisation: dummy_organisation(None).into(),
+                    layout_properties: None,
+                    allow_suspension: true,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    embedded_disclosure_policy: None,
+                },
+                "en",
+            )
+            .await
+            .unwrap())
+            .into(),
+            interaction: None,
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Default::default(),
         issuer_identifier: Some(
@@ -328,36 +362,7 @@ async fn generic_credential_list_entity() -> Credential {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: (backfill_default_translations(
-            CredentialSchema {
-                expiration: None,
-                ecosystem: None,
-                batch_size: None,
-                allow_revocation: false,
-                id: credential_schema_id,
-                deleted_at: None,
-                imported_source_url: "CORE_URL".to_string(),
-                created_date: now,
-                last_modified: now,
-                name: "schema".to_string(),
-                wallet_attestation: Default::default(),
-                formats: vec![format.clone()].into(),
-                claim_schemas: Default::default(),
-                organisation: dummy_organisation(None).into(),
-                layout_properties: None,
-                allow_suspension: true,
-                transaction_code: None,
-                translations: Default::default(),
-                embedded_disclosure_policy: None,
-            },
-            "en",
-        )
-        .await
-        .unwrap())
-        .into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -375,7 +380,7 @@ async fn test_delete_credential_success() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let credential = generic_credential().await;
-    let credential_id = credential.id;
+    let credential_id = credential.common.id;
     credential_repository
         .expect_get_credential()
         .once()
@@ -429,7 +434,7 @@ async fn test_delete_credential_failed_credential_missing() {
     });
 
     let result = service
-        .delete_credential(&generic_credential().await.id)
+        .delete_credential(&generic_credential().await.common.id)
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0001);
 }
@@ -439,8 +444,14 @@ async fn test_delete_credential_incorrect_state() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    credential.schema.as_mut().await.unwrap().allow_revocation = true;
-    credential.state = CredentialStateEnum::Accepted;
+    credential
+        .common
+        .schema
+        .as_mut()
+        .await
+        .unwrap()
+        .allow_revocation = true;
+    credential.common.state = CredentialStateEnum::Accepted;
     credential.role = CredentialRole::Issuer;
 
     let copy = credential.clone();
@@ -454,7 +465,7 @@ async fn test_delete_credential_incorrect_state() {
         ..Default::default()
     });
 
-    let result = service.delete_credential(&credential.id).await;
+    let result = service.delete_credential(&credential.common.id).await;
     assert!(matches!(
         result,
         Err(CredentialServiceError::InvalidState(_))
@@ -480,7 +491,7 @@ async fn test_delete_credential_invalid_type() {
         ..Default::default()
     });
 
-    let result = service.delete_credential(&credential.id).await;
+    let result = service.delete_credential(&credential.common.id).await;
     assert!(matches!(
         result,
         Err(CredentialServiceError::InvalidType(_))
@@ -491,7 +502,7 @@ async fn test_delete_credential_invalid_type() {
 async fn test_get_credential_list_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut c = generic_credential_list_entity().await;
-    c.state = CredentialStateEnum::Revoked;
+    c.common.state = CredentialStateEnum::Revoked;
 
     let credentials = GetCredentialList {
         values: vec![generic_credential_list_entity().await, c],
@@ -564,7 +575,7 @@ async fn test_get_credential_list_success() {
     assert_eq!(2, result.total_items);
     assert_eq!(1, result.total_pages);
     assert_eq!(2, result.values.len());
-    assert_eq!(credentials.values[0].id, result.values[0].id);
+    assert_eq!(credentials.values[0].common.id, result.values[0].id);
     assert_eq!(None, result.values[0].revocation_date);
     assert_ne!(None, result.values[1].revocation_date);
 }
@@ -579,7 +590,7 @@ async fn test_get_credential_success() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -599,11 +610,11 @@ async fn test_get_credential_success() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await;
+    let result = service.get_credential(&credential.common.id).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(credential.id, result.id);
+    assert_eq!(credential.common.id, result.id);
     assert_eq!(None, result.revocation_date);
 }
 
@@ -614,7 +625,7 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let mut credential = generic_credential().await;
     let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
-    credential.state = CredentialStateEnum::Suspended;
+    credential.common.state = CredentialStateEnum::Suspended;
     credential.suspend_end_date = Some(suspend_end_date);
 
     {
@@ -622,7 +633,7 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -642,11 +653,11 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await;
+    let result = service.get_credential(&credential.common.id).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(credential.id, result.id);
+    assert_eq!(credential.common.id, result.id);
     assert_eq!(None, result.revocation_date);
     assert_eq!(super::dto::CredentialStateEnum::Suspended, result.state);
     assert_eq!(Some(suspend_end_date), result.suspend_end_date);
@@ -656,16 +667,22 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
 async fn test_get_credential_deleted() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let credential = Credential {
-        deleted_at: Some(crate::clock::now_utc()),
-        ..generic_credential().await
+    let credential = {
+        let base_credential = generic_credential().await;
+        Credential {
+            common: CredentialCommon {
+                deleted_at: Some(crate::clock::now_utc()),
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
     {
         let clone = credential.clone();
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -675,7 +692,7 @@ async fn test_get_credential_deleted() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await;
+    let result = service.get_credential(&credential.common.id).await;
 
     assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::NotFound(_))));
 }
@@ -685,7 +702,7 @@ async fn test_get_revoked_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    credential.state = CredentialStateEnum::Revoked;
+    credential.common.state = CredentialStateEnum::Revoked;
     credential.suspend_end_date = None;
 
     {
@@ -693,7 +710,7 @@ async fn test_get_revoked_credential_success() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -713,11 +730,11 @@ async fn test_get_revoked_credential_success() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await;
+    let result = service.get_credential(&credential.common.id).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(credential.id, result.id);
+    assert_eq!(credential.common.id, result.id);
     assert_ne!(None, result.revocation_date);
 }
 
@@ -757,7 +774,7 @@ async fn test_share_credential_success() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -774,7 +791,7 @@ async fn test_share_credential_success() {
         .expect_update_credential()
         .once()
         .withf(move |id, update| {
-            id == &credential.id && update.state == Some(CredentialStateEnum::Pending)
+            id == &credential.common.id && update.state == Some(CredentialStateEnum::Pending)
         })
         .returning(|_, _| Ok(()));
 
@@ -786,7 +803,7 @@ async fn test_share_credential_success() {
         ..Default::default()
     });
 
-    let result = service.share_credential(&credential.id).await;
+    let result = service.share_credential(&credential.common.id).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -799,13 +816,13 @@ async fn test_share_credential_failed_invalid_state() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    credential.state = CredentialStateEnum::Accepted;
+    credential.common.state = CredentialStateEnum::Accepted;
     {
         let clone = credential.clone();
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -815,7 +832,7 @@ async fn test_share_credential_failed_invalid_state() {
         ..Default::default()
     });
 
-    let result = service.share_credential(&credential.id).await;
+    let result = service.share_credential(&credential.common.id).await;
     assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::InvalidState(_))));
 }
 
@@ -830,7 +847,7 @@ async fn test_share_credential_failed_invalid_type() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -840,7 +857,7 @@ async fn test_share_credential_failed_invalid_type() {
         ..Default::default()
     });
 
-    let result = service.share_credential(&credential.id).await;
+    let result = service.share_credential(&credential.common.id).await;
     assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::InvalidType(_))));
 }
 
@@ -862,7 +879,7 @@ async fn test_share_credential_failed_inactive_identifier() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -872,7 +889,7 @@ async fn test_share_credential_failed_inactive_identifier() {
         ..Default::default()
     });
 
-    let result = service.share_credential(&credential.id).await;
+    let result = service.share_credential(&credential.common.id).await;
     assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::IdentifierIsDeactivated(_))));
 }
 
@@ -899,7 +916,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
     {
         let clone = credential.clone();
         let issuer_did = issuer_identifier_did.clone();
-        let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
         identifier_repository
             .expect_get_from_did_id()
@@ -918,7 +935,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
         credential_repository
             .expect_create_credential()
             .times(1)
-            .returning(move |_| Ok(clone.id));
+            .returning(move |_| Ok(clone.common.id));
     }
 
     let mut formatter = MockCredentialFormatter::default();
@@ -932,6 +949,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -964,7 +982,14 @@ async fn test_create_credential_based_on_issuer_did_success() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: None,
@@ -1013,7 +1038,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
             .await
             .unwrap()
             .to_owned();
-        let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
         identifier_repository
             .expect_get()
@@ -1027,7 +1052,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
         credential_repository
             .expect_create_credential()
             .times(1)
-            .returning(move |_| Ok(clone.id));
+            .returning(move |_| Ok(clone.common.id));
     }
 
     let mut formatter = MockCredentialFormatter::default();
@@ -1041,6 +1066,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -1073,7 +1099,14 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: Some(credential.issuer_identifier.as_ref().unwrap().id()),
             issuer_did: None,
             issuer_key: None,
@@ -1111,7 +1144,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
     let mut identifier_repository = MockIdentifierRepository::default();
 
     let Credential {
-        schema,
+        common: CredentialCommon { schema, .. },
         claims,
         issuer_identifier,
         ..
@@ -1189,7 +1222,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
     );
     {
         let issuer_did = issuer_identifier_did.clone();
-        let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
         credential_schema_repository
             .expect_get_credential_schema()
@@ -1220,6 +1253,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -1251,7 +1285,14 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: None,
@@ -1307,7 +1348,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
     );
     {
         let issuer_did = issuer_identifier_did.clone();
-        let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
         credential_schema_repository
             .expect_get_credential_schema()
@@ -1338,6 +1379,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -1369,7 +1411,14 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: None,
@@ -1435,7 +1484,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         });
 
     let credential = generic_credential().await;
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     credential_schema_repository
         .expect_get_credential_schema()
         .returning(move |_| Ok(credential_schema.clone()));
@@ -1451,6 +1500,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -1547,7 +1597,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
             },
         ]
         .into(),
-        ..credential.schema.as_ref().await.unwrap().to_owned()
+        ..credential.common.schema.as_ref().await.unwrap().to_owned()
     };
 
     {
@@ -1562,7 +1612,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         credential_repository
             .expect_create_credential()
             .times(1)
-            .returning(move |_| Ok(clone.id));
+            .returning(move |_| Ok(clone.common.id));
 
         identifier_repository
             .expect_get_from_did_id()
@@ -1608,7 +1658,14 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
     let required_claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     let create_request_template = CreateCredentialRequestDTO {
-        credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+        credential_schema_id: credential
+            .common
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .id
+            .to_owned(),
         issuer: None,
         issuer_did: Some(issuer_identifier_did.id()),
         issuer_key: None,
@@ -1684,7 +1741,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             },
         ]
         .into(),
-        ..credential.schema.as_ref().await.unwrap().to_owned()
+        ..credential.common.schema.as_ref().await.unwrap().to_owned()
     };
 
     {
@@ -1738,7 +1795,14 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 
     let optional_claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
     let create_request_template = CreateCredentialRequestDTO {
-        credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+        credential_schema_id: credential
+            .common
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .id
+            .to_owned(),
         issuer: None,
         issuer_did: Some(issuer_identifier_did.id()),
         issuer_key: None,
@@ -1795,7 +1859,7 @@ async fn test_create_credential_namespace_optional() {
 
     let claim_schema_id = Uuid::new_v4().into();
     let credential_schema = {
-        let schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let schema = credential.common.schema.as_ref().await.unwrap().to_owned();
         let format_id = Uuid::new_v4().into();
         CredentialSchema {
             claim_schemas: vec![ClaimSchema {
@@ -1889,7 +1953,7 @@ async fn test_create_credential_namespace_optional() {
             assert_eq!(claim.schema.id(), claim_schema_id);
             true
         })
-        .returning(|request| Ok(request.id));
+        .returning(|request| Ok(request.common.id));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -1979,7 +2043,7 @@ async fn test_create_credential_schema_deleted() {
     );
     let credential_schema = CredentialSchema {
         deleted_at: Some(crate::clock::now_utc()),
-        ..credential.schema.as_ref().await.unwrap().to_owned()
+        ..credential.common.schema.as_ref().await.unwrap().to_owned()
     };
 
     {
@@ -2035,7 +2099,14 @@ async fn test_create_credential_schema_deleted() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: None,
@@ -2083,7 +2154,7 @@ async fn test_create_credential_key_with_issuer_key() {
             .to_owned()
     );
     let issuer_did = issuer_identifier_did.clone();
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
     identifier_repository.expect_get_from_did_id().return_once({
         let issuer_did = issuer_did.clone();
@@ -2105,7 +2176,7 @@ async fn test_create_credential_key_with_issuer_key() {
         .times(1)
         .returning({
             let credential = credential.clone();
-            move |_| Ok(credential.id)
+            move |_| Ok(credential.common.id)
         });
 
     let mut formatter = MockCredentialFormatter::default();
@@ -2119,6 +2190,7 @@ async fn test_create_credential_key_with_issuer_key() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2151,7 +2223,14 @@ async fn test_create_credential_key_with_issuer_key() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: Some(
@@ -2253,7 +2332,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .into(),
         ..issuer_identifier_did.as_ref().await.unwrap().clone()
     };
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
     identifier_repository
         .expect_get_from_did_id()
@@ -2274,7 +2353,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .times(1)
         .returning({
             let credential = credential.clone();
-            move |_| Ok(credential.id)
+            move |_| Ok(credential.common.id)
         });
 
     let mut formatter = MockCredentialFormatter::default();
@@ -2288,6 +2367,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2320,7 +2400,14 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: Some(key_id.into()),
@@ -2392,7 +2479,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         ..issuer_identifier_did.as_ref().await.unwrap().clone()
     };
 
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
     identifier_repository
         .expect_get_from_did_id()
@@ -2419,6 +2506,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2450,7 +2538,14 @@ async fn test_fail_to_create_credential_no_assertion_key() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: None,
@@ -2502,7 +2597,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             .to_owned()
     );
     let issuer_did = issuer_identifier_did.clone();
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
     identifier_repository
         .expect_get_from_did_id()
@@ -2529,6 +2624,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2560,7 +2656,14 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: Some(Uuid::new_v4().into()),
@@ -2632,7 +2735,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .into(),
         ..issuer_identifier_did.as_ref().await.unwrap().clone()
     };
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
     identifier_repository
         .expect_get_from_did_id()
@@ -2659,6 +2762,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2690,7 +2794,14 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: Some(key_id.into()),
@@ -2762,7 +2873,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .into(),
         ..issuer_identifier_did.as_ref().await.unwrap().clone()
     };
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
     identifier_repository
         .expect_get_from_did_id()
@@ -2789,6 +2900,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2820,7 +2932,14 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: Some(key_id.into()),
@@ -2872,7 +2991,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             .to_owned()
     );
     {
-        let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
@@ -2903,6 +3022,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2934,7 +3054,14 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: None,
@@ -2989,7 +3116,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             .to_owned()
     );
     let issuer_did = issuer_identifier_did.clone();
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
     identifier_repository.expect_get_from_did_id().return_once({
         let issuer_did = issuer_did.clone();
@@ -3017,6 +3144,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -3048,7 +3176,14 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: None,
             issuer_did: Some(issuer_identifier_did.id()),
             issuer_key: Some(
@@ -3109,7 +3244,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
             .await
             .unwrap()
             .to_owned();
-        let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+        let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
 
         identifier_repository
             .expect_get()
@@ -3132,6 +3267,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
         .expect_get_credential_formatter()
         .once()
         .with(eq(credential
+            .common
             .schema
             .as_ref()
             .await
@@ -3163,7 +3299,14 @@ async fn test_create_credential_fail_webhook_not_allowed() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: credential.schema.as_ref().await.unwrap().id.to_owned(),
+            credential_schema_id: credential
+                .common
+                .schema
+                .as_ref()
+                .await
+                .unwrap()
+                .id
+                .to_owned(),
             issuer: Some(credential.issuer_identifier.as_ref().unwrap().id()),
             issuer_did: None,
             issuer_key: None,
@@ -3595,11 +3738,16 @@ async fn test_get_credential_success_with_non_required_nested_object() {
 
     let mut credential = generic_credential().await;
 
-    credential.schema.as_mut().await.unwrap().claim_schemas =
-        vec![location_claim_schema, location_x_claim_schema.to_owned()].into();
+    credential
+        .common
+        .schema
+        .as_mut()
+        .await
+        .unwrap()
+        .claim_schemas = vec![location_claim_schema, location_x_claim_schema.to_owned()].into();
 
-    let updated_schema = credential.schema.as_ref().await.unwrap().to_owned();
-    credential.schema = backfill_default_translations(updated_schema, "en")
+    let updated_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
+    credential.common.schema = backfill_default_translations(updated_schema, "en")
         .await
         .unwrap()
         .into();
@@ -3618,7 +3766,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -3638,8 +3786,8 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await.unwrap();
-    assert_eq!(credential.id, result.id);
+    let result = service.get_credential(&credential.common.id).await.unwrap();
+    assert_eq!(credential.common.id, result.id);
     assert_eq!(None, result.revocation_date);
     assert_eq!(1, result.claims.len());
     assert_eq!("location", result.claims[0].schema.key);
@@ -3745,19 +3893,9 @@ async fn test_get_credential_success_array_complex_nested_all() {
         claim_mappings: Default::default(),
     };
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id,
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: claims.to_owned().into(),
         issuer_identifier: Some(
@@ -3812,36 +3950,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: (backfill_default_translations(
-            CredentialSchema {
-                expiration: None,
-                ecosystem: None,
-                batch_size: None,
-                allow_revocation: false,
-                id: credential_schema_id,
-                deleted_at: None,
-                created_date: now,
-                imported_source_url: "CORE_URL".to_string(),
-                last_modified: now,
-                name: "schema".to_string(),
-                wallet_attestation: Default::default(),
-                formats: vec![format.clone()].into(),
-                claim_schemas: claim_schemas.into(),
-                organisation: organisation.into(),
-                layout_properties: None,
-                allow_suspension: true,
-                transaction_code: None,
-                translations: Default::default(),
-                embedded_disclosure_policy: None,
-            },
-            "en",
-        )
-        .await
-        .unwrap())
-        .into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -3849,6 +3958,47 @@ async fn test_get_credential_success_array_complex_nested_all() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id,
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            schema: (backfill_default_translations(
+                CredentialSchema {
+                    expiration: None,
+                    ecosystem: None,
+                    batch_size: None,
+                    allow_revocation: false,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    created_date: now,
+                    imported_source_url: "CORE_URL".to_string(),
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    wallet_attestation: Default::default(),
+                    formats: vec![format.clone()].into(),
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_properties: None,
+                    allow_suspension: true,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    embedded_disclosure_policy: None,
+                },
+                "en",
+            )
+            .await
+            .unwrap())
+            .into(),
+            interaction: None,
+            profile: None,
+        },
         format: Some(format.into()),
     };
 
@@ -3857,7 +4007,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -3877,7 +4027,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await.unwrap();
+    let result = service.get_credential(&credential.common.id).await.unwrap();
 
     let expected_claims = json!([
       {
@@ -4533,19 +4683,9 @@ async fn test_get_credential_success_array_index_sorting() {
         claim_mappings: Default::default(),
     };
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id,
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: claims.to_owned().into(),
         issuer_identifier: Some(
@@ -4600,36 +4740,7 @@ async fn test_get_credential_success_array_index_sorting() {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: (backfill_default_translations(
-            CredentialSchema {
-                expiration: None,
-                ecosystem: None,
-                batch_size: None,
-                allow_revocation: false,
-                id: credential_schema_id,
-                imported_source_url: "CORE_URL".to_string(),
-                deleted_at: None,
-                created_date: now,
-                last_modified: now,
-                name: "schema".to_string(),
-                wallet_attestation: Default::default(),
-                formats: vec![format.clone()].into(),
-                claim_schemas: claim_schemas.into(),
-                organisation: organisation.into(),
-                layout_properties: None,
-                allow_suspension: true,
-                transaction_code: None,
-                translations: Default::default(),
-                embedded_disclosure_policy: None,
-            },
-            "en",
-        )
-        .await
-        .unwrap())
-        .into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -4637,6 +4748,47 @@ async fn test_get_credential_success_array_index_sorting() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id,
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            schema: (backfill_default_translations(
+                CredentialSchema {
+                    expiration: None,
+                    ecosystem: None,
+                    batch_size: None,
+                    allow_revocation: false,
+                    id: credential_schema_id,
+                    imported_source_url: "CORE_URL".to_string(),
+                    deleted_at: None,
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    wallet_attestation: Default::default(),
+                    formats: vec![format.clone()].into(),
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_properties: None,
+                    allow_suspension: true,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    embedded_disclosure_policy: None,
+                },
+                "en",
+            )
+            .await
+            .unwrap())
+            .into(),
+            interaction: None,
+            profile: None,
+        },
         format: Some(format.into()),
     };
 
@@ -4645,7 +4797,7 @@ async fn test_get_credential_success_array_index_sorting() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -4665,7 +4817,7 @@ async fn test_get_credential_success_array_index_sorting() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await.unwrap();
+    let result = service.get_credential(&credential.common.id).await.unwrap();
     let expected_claims = json!([
       {
         "path": "str",
@@ -4958,19 +5110,9 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         claim_mappings: Default::default(),
     };
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id,
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: claims.to_owned().into(),
         issuer_identifier: Some(
@@ -5025,36 +5167,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: (backfill_default_translations(
-            CredentialSchema {
-                expiration: None,
-                ecosystem: None,
-                batch_size: None,
-                allow_revocation: false,
-                id: credential_schema_id,
-                deleted_at: None,
-                imported_source_url: "CORE_URL".to_string(),
-                created_date: now,
-                last_modified: now,
-                name: "schema".to_string(),
-                wallet_attestation: Default::default(),
-                formats: vec![format.clone()].into(),
-                claim_schemas: claim_schemas.into(),
-                organisation: organisation.into(),
-                layout_properties: None,
-                allow_suspension: true,
-                transaction_code: None,
-                translations: Default::default(),
-                embedded_disclosure_policy: None,
-            },
-            "en",
-        )
-        .await
-        .unwrap())
-        .into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -5062,6 +5175,47 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id,
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            schema: (backfill_default_translations(
+                CredentialSchema {
+                    expiration: None,
+                    ecosystem: None,
+                    batch_size: None,
+                    allow_revocation: false,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    imported_source_url: "CORE_URL".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    wallet_attestation: Default::default(),
+                    formats: vec![format.clone()].into(),
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_properties: None,
+                    allow_suspension: true,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    embedded_disclosure_policy: None,
+                },
+                "en",
+            )
+            .await
+            .unwrap())
+            .into(),
+            interaction: None,
+            profile: None,
+        },
         format: Some(format.into()),
     };
 
@@ -5070,7 +5224,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -5090,7 +5244,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await.unwrap();
+    let result = service.get_credential(&credential.common.id).await.unwrap();
     let expected_claims = json!([
       {
         "path": "root",
@@ -5226,19 +5380,9 @@ async fn test_get_credential_success_array_single_element() {
         claim_mappings: Default::default(),
     };
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id,
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: claims.to_owned().into(),
         issuer_identifier: Some(
@@ -5293,36 +5437,7 @@ async fn test_get_credential_success_array_single_element() {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: (backfill_default_translations(
-            CredentialSchema {
-                expiration: None,
-                ecosystem: None,
-                batch_size: None,
-                allow_revocation: false,
-                id: credential_schema_id,
-                deleted_at: None,
-                created_date: now,
-                last_modified: now,
-                imported_source_url: "CORE_URL".to_string(),
-                name: "schema".to_string(),
-                wallet_attestation: Default::default(),
-                formats: vec![format.clone()].into(),
-                claim_schemas: claim_schemas.into(),
-                organisation: organisation.into(),
-                layout_properties: None,
-                allow_suspension: true,
-                transaction_code: None,
-                translations: Default::default(),
-                embedded_disclosure_policy: None,
-            },
-            "en",
-        )
-        .await
-        .unwrap())
-        .into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -5330,6 +5445,47 @@ async fn test_get_credential_success_array_single_element() {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id,
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            schema: (backfill_default_translations(
+                CredentialSchema {
+                    expiration: None,
+                    ecosystem: None,
+                    batch_size: None,
+                    allow_revocation: false,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    created_date: now,
+                    last_modified: now,
+                    imported_source_url: "CORE_URL".to_string(),
+                    name: "schema".to_string(),
+                    wallet_attestation: Default::default(),
+                    formats: vec![format.clone()].into(),
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_properties: None,
+                    allow_suspension: true,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    embedded_disclosure_policy: None,
+                },
+                "en",
+            )
+            .await
+            .unwrap())
+            .into(),
+            interaction: None,
+            profile: None,
+        },
         format: Some(format.into()),
     };
 
@@ -5338,7 +5494,7 @@ async fn test_get_credential_success_array_single_element() {
         credential_repository
             .expect_get_credential()
             .times(1)
-            .with(eq(clone.id))
+            .with(eq(clone.common.id))
             .returning(move |_| Ok(clone.clone()));
     }
 
@@ -5358,7 +5514,7 @@ async fn test_get_credential_success_array_single_element() {
         ..Default::default()
     });
 
-    let result = service.get_credential(&credential.id).await.unwrap();
+    let result = service.get_credential(&credential.common.id).await.unwrap();
 
     let expected_claims = json!([
       {
@@ -5803,7 +5959,7 @@ async fn test_create_credential_session_org_mismatch() {
         .expect_get()
         .return_once(|_| Ok(issuer_identifier));
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let credential_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     credential_schema_repository
         .expect_get_credential_schema()
         .return_once(move |_| Ok(credential_schema));
@@ -6226,7 +6382,7 @@ async fn trust_information_of(
 ) -> Option<TrustInformation> {
     let mut credential = generic_credential().await;
     credential.role = role;
-    credential.ecosystem = ecosystem.map(EcosystemId::from);
+    credential.common.ecosystem = ecosystem.map(EcosystemId::from);
 
     get_credential_trust_information(
         &credential,
@@ -6306,7 +6462,7 @@ fn trusted_by(ecosystem: &str) -> EcosystemOutcomes {
 async fn test_the_verifier_sees_the_issuer_by_name() {
     let mut credential = generic_credential().await;
     credential.role = CredentialRole::Verifier;
-    credential.ecosystem = Some(EcosystemId::from("EUDI"));
+    credential.common.ecosystem = Some(EcosystemId::from("EUDI"));
     credential.issuer_certificate = Some(dummy_certificate(Uuid::new_v4().into()).into());
 
     let trust_information = get_credential_trust_information(
@@ -6326,7 +6482,7 @@ async fn test_the_verifier_sees_the_issuer_by_name() {
 async fn test_the_issuer_sees_the_wallet_by_name() {
     let mut credential = generic_credential().await;
     credential.role = CredentialRole::Issuer;
-    credential.ecosystem = Some(EcosystemId::from("EUDI"));
+    credential.common.ecosystem = Some(EcosystemId::from("EUDI"));
 
     let trust_information = get_credential_trust_information(
         &credential,
@@ -6348,7 +6504,7 @@ async fn test_the_issuer_sees_the_wallet_by_name() {
 async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
     let mut credential = generic_credential().await;
     credential.role = CredentialRole::Holder;
-    credential.ecosystem = Some(EcosystemId::from("EUDI"));
+    credential.common.ecosystem = Some(EcosystemId::from("EUDI"));
 
     let mut ecosystem_provider = MockEcosystemDirectory::new();
     ecosystem_provider.expect_get().returning(|_| {
@@ -6378,12 +6534,12 @@ async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
 #[tokio::test]
 async fn test_a_batch_item_reads_the_ecosystem_history_of_its_batch() {
     let batch = generic_credential().await;
-    let batch_id = batch.id;
+    let batch_id = batch.common.id;
     let mut item = generic_credential().await;
     item.role = CredentialRole::Holder;
     item.r#type = CredentialType::BatchItem;
     item.parent = Some(batch.into());
-    item.ecosystem = Some(EcosystemId::from("EUDI"));
+    item.common.ecosystem = Some(EcosystemId::from("EUDI"));
 
     let mut outcomes = untrusted_by("LITHUANIA_SANDBOX");
     outcomes.record(EcosystemId::from("EUDI"), Ok(()));

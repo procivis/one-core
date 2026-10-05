@@ -34,7 +34,9 @@ use crate::config::core_config::{
     RevocationType, VerificationProtocolType,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
@@ -400,21 +402,25 @@ impl CredentialFormatter for SDJWTFormatter {
         )?;
 
         Ok(Credential {
-            expires_at: parsed_credential.payload.expires_at,
-            ecosystem: None,
-            id: credential_id,
-            created_date: now,
-            issuance_date: parsed_credential.payload.issued_at,
-            last_modified: now,
-            deleted_at: None,
+            common: CredentialCommon {
+                expires_at: parsed_credential.payload.expires_at,
+                ecosystem: None,
+                id: credential_id,
+                created_date: now,
+                issuance_date: parsed_credential.payload.issued_at,
+                last_modified: now,
+                deleted_at: None,
+                protocol: "".to_string(),
+                redirect_uri: None,
+                state: CredentialStateEnum::Accepted,
+                profile: None,
+                schema: schema.into(),
+                interaction: None,
+            },
             consumed_at: None,
-            protocol: "".to_string(),
-            redirect_uri: None,
             role: CredentialRole::Holder,
             r#type: CredentialType::Single,
-            state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
-            profile: None,
             credential_blob_id: None,
             wallet_key_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
@@ -422,8 +428,6 @@ impl CredentialFormatter for SDJWTFormatter {
             issuer_certificate: first_certificate(&issuer_identifier).await?.map(Into::into),
             issuer_identifier: Some(issuer_identifier.into()),
             holder_identifier: holder_identifier.map(Into::into),
-            schema: schema.into(),
-            interaction: None,
             key: None,
             webhook_url: None,
             parent: None,

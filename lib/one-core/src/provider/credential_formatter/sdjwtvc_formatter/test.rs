@@ -1749,7 +1749,7 @@ async fn test_parse_credential_eudi() {
     );
 
     // Verify claim_schemas were populated and deduplicated
-    let schema = result.schema.as_ref().await.unwrap();
+    let schema = result.common.schema.as_ref().await.unwrap();
     let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
 
     assert_eq!(claim_schemas.len(), 14);
@@ -1916,7 +1916,7 @@ async fn test_parse_credential() {
     assert_eq!(claims.len(), 10);
 
     assert_eq!(
-        result.expires_at.unwrap(),
+        result.common.expires_at.unwrap(),
         datetime!(2029-09-01 23:33:20 UTC)
     );
 
@@ -2009,7 +2009,7 @@ async fn test_parse_credential() {
     );
 
     // Verify claim_schemas were populated
-    let schema = result.schema.as_ref().await.unwrap();
+    let schema = result.common.schema.as_ref().await.unwrap();
     let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
 
     assert_eq!(claim_schemas.len(), 10);

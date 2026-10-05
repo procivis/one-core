@@ -135,14 +135,14 @@ pub(crate) async fn unsigned_credential(
     match format_type {
         FormatType::Mdoc => Ok(UnsignedCredential::Mdoc(MdocCredential {
             doctype: ecosystem_schema_id,
-            valid_until: credential.expires_at,
+            valid_until: credential.common.expires_at,
             credential_status,
             claims,
         })),
         FormatType::SdJwtVc => Ok(UnsignedCredential::SdJwtVc(SdJwtVcCredential {
             vct: ecosystem_schema_id,
             issuer: issuer_url_for_credential(credential, core_base_url).await?,
-            valid_until: credential.expires_at,
+            valid_until: credential.common.expires_at,
             credential_status,
             claims,
         })),
@@ -180,10 +180,14 @@ pub(crate) async fn unsigned_credential(
                 .add_credential_schema(vcdm_schema);
             // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
             if format_type == FormatType::JsonLdBbsPlus {
-                vcdm.id = Some(Urn::from_uuid(credential.id.into()).to_string().parse()?);
+                vcdm.id = Some(
+                    Urn::from_uuid(credential.common.id.into())
+                        .to_string()
+                        .parse()?,
+                );
             }
             vcdm.credential_status = credential_status;
-            vcdm.valid_until = credential.expires_at;
+            vcdm.valid_until = credential.common.expires_at;
             Ok(UnsignedCredential::Vcdm(vcdm))
         }
     }
@@ -422,8 +426,8 @@ async fn issuer_url_for_credential(
 
     Ok(format!(
         "{core_base_url}/ssi/openid4vci/{}/{issuer_identifier_id}/{}",
-        credential.protocol,
-        credential.schema.id()
+        credential.common.protocol,
+        credential.common.schema.id()
     )
     .parse()?)
 }

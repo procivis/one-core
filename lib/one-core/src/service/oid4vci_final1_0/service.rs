@@ -52,7 +52,8 @@ use crate::mapper::exchange::{
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::LockType;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialStateEnum, CredentialType,
+    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -297,7 +298,7 @@ impl OID4VCIFinal1_0Service {
 
         if credential.r#type == CredentialType::BatchItem {
             return Err(OID4VCIFinal1_0ServiceError::UnsupportedCredentialType {
-                id: credential.id,
+                id: credential.common.id,
                 r#type: credential.r#type,
             });
         }
@@ -305,20 +306,21 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.protocol,
+            &credential.common.protocol,
         )
         .error_while("validating protocol type")?;
 
         throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
             .map_err(|_| OpenID4VCIError::InvalidRequest)?;
 
-        let credential_schema = credential.schema.as_ref().await?;
+        let credential_schema = credential.common.schema.as_ref().await?;
 
         if credential_schema.id != credential_schema_id {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
         let interaction = credential
+            .common
             .interaction
             .as_ref()
             .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
@@ -329,7 +331,9 @@ impl OID4VCIFinal1_0Service {
         let interaction_data = interaction_data_to_dto(&interaction)?;
         let formats = offered_formats(&credential_schema, &interaction_data).await?;
 
-        let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
+        let issuance_protocol = self
+            .protocol_provider
+            .get_protocol(&credential.common.protocol)?;
         let protocol_base_url = issuance_protocol.protocol_base_url().ok_or(
             OID4VCIFinal1_0ServiceError::MappingError("Missing base_url".to_owned()),
         )?;
@@ -344,7 +348,7 @@ impl OID4VCIFinal1_0Service {
 
         Ok(create_credential_offer(
             &protocol_base_url,
-            &credential.protocol,
+            &credential.common.protocol,
             &interaction.id.to_string(),
             &credential_schema,
             &formats,
@@ -387,7 +391,7 @@ impl OID4VCIFinal1_0Service {
 
         let Some(credential) = credentials.iter().find(|credential| {
             credential.r#type != CredentialType::BatchItem
-                && credential.schema.id() == *credential_schema_id
+                && credential.common.schema.id() == *credential_schema_id
         }) else {
             return Err(
                 OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
@@ -399,14 +403,14 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.protocol,
+            &credential.common.protocol,
         )
         .error_while("validating protocol type")?;
 
         let params: OpenID4VCIFinal1Params = self
             .config
             .issuance_protocol
-            .get(&credential.protocol)
+            .get(&credential.common.protocol)
             .error_while("getting protocol params")?;
 
         // decrypting needs the issuer identity, so it can only happen once the access token
@@ -424,7 +428,9 @@ impl OID4VCIFinal1_0Service {
             return Err(OpenID4VCIError::UnsupportedCredentialType.into());
         }
 
-        let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
+        let issuance_protocol = self
+            .protocol_provider
+            .get_protocol(&credential.common.protocol)?;
         validate_response_encryption(
             request.credential_response_encryption.as_ref(),
             &params,
@@ -494,18 +500,18 @@ impl OID4VCIFinal1_0Service {
 
         match result {
             Ok(result) => {
-                tracing::info!("Issued credential {}", credential.id);
+                tracing::info!("Issued credential {}", credential.common.id);
                 // errors stay plain JSON, only the successful response is encrypted
                 self.encrypt_credential_response(result, request.credential_response_encryption)
                     .await
             }
             Err(error) => {
                 let error = error.error_while("issuing credential");
-                if credential.state == CredentialStateEnum::Offered {
+                if credential.common.state == CredentialStateEnum::Offered {
                     // issuance failed, mark as Error
                     self.credential_repository
                         .update_credential(
-                            credential.id,
+                            credential.common.id,
                             UpdateCredentialRequest {
                                 state: Some(CredentialStateEnum::Error),
                                 error_info: Some((&error).into()),
@@ -752,7 +758,7 @@ impl OID4VCIFinal1_0Service {
                                 jwt: &ka,
                             },
                             requirements: &schema.wallet_attestation,
-                            credential_id: credential.id,
+                            credential_id: credential.common.id,
                         }],
                         None,
                     )
@@ -856,15 +862,23 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting interaction")?;
         let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
-        let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
+        let issuance_protocol = self
+            .protocol_provider
+            .get_protocol(&credential.common.protocol)?;
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&format.format)?;
         let format_default_expiration = formatter.get_default_expiration();
 
         let now = crate::clock::now_utc();
-        let expires_at = credential.expires_at;
-        let is_batch = credential.schema.as_ref().await?.batch_size.is_some();
+        let expires_at = credential.common.expires_at;
+        let is_batch = credential
+            .common
+            .schema
+            .as_ref()
+            .await?
+            .batch_size
+            .is_some();
         let format_type = self
             .config
             .format
@@ -889,7 +903,7 @@ impl OID4VCIFinal1_0Service {
                 vec![
                     self.issue_single_credential(
                         holder_identifier,
-                        credential.id,
+                        credential.common.id,
                         format.id,
                         issuance_protocol.as_ref(),
                         now,
@@ -899,15 +913,21 @@ impl OID4VCIFinal1_0Service {
             }
             CredentialType::BatchParent => {
                 let batch_item_template = self
-                    .prepare_batch_item(credential.id, batch_item_expires_at, &format)
+                    .prepare_batch_item(credential.common.id, batch_item_expires_at, &format)
                     .await?;
                 let mut credentials = vec![];
                 for holder_identifier in holder_identifiers {
                     let batch_item_id = self
                         .credential_repository
-                        .create_credential(Credential {
-                            id: Uuid::new_v4().into(),
-                            ..batch_item_template.clone()
+                        .create_credential({
+                            let base_credential = batch_item_template.clone();
+                            Credential {
+                                common: CredentialCommon {
+                                    id: Uuid::new_v4().into(),
+                                    ..base_credential.common
+                                },
+                                ..base_credential
+                            }
                         })
                         .await
                         .error_while("creating batch item copy")?;
@@ -924,10 +944,10 @@ impl OID4VCIFinal1_0Service {
                     );
                 }
 
-                if credential.state == CredentialStateEnum::Offered {
+                if credential.common.state == CredentialStateEnum::Offered {
                     self.credential_repository
                         .update_credential(
-                            credential.id,
+                            credential.common.id,
                             UpdateCredentialRequest {
                                 state: Some(CredentialStateEnum::Accepted),
                                 issuance_date: Some(now),
@@ -982,7 +1002,7 @@ impl OID4VCIFinal1_0Service {
         };
 
         Ok(OpenID4VCICredentialResponseDTO {
-            redirect_uri: credential.redirect_uri.to_owned(),
+            redirect_uri: credential.common.redirect_uri.to_owned(),
             standard: CredentialResponse {
                 credentials: Some(credentials),
                 transaction_id: None,
@@ -1126,7 +1146,7 @@ impl OID4VCIFinal1_0Service {
 
         let credentials: Vec<_> = credentials
             .into_iter()
-            .filter(|credential| credential.schema.id() == credential_schema_id)
+            .filter(|credential| credential.common.schema.id() == credential_schema_id)
             .collect();
         if credentials.is_empty() {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
@@ -1136,7 +1156,7 @@ impl OID4VCIFinal1_0Service {
             "Processed notification event `{}`, description: `{:?}`, for credentials: [{}]",
             request.event,
             request.event_description,
-            credentials.iter().map(|c| c.id).join(", ")
+            credentials.iter().map(|c| c.common.id).join(", ")
         );
 
         for credential in credentials {
@@ -1184,7 +1204,7 @@ impl OID4VCIFinal1_0Service {
         // if it's the case, then any other credential related to specified interaction cannot be issued, or token cannot be refreshed
         if credentials
             .iter()
-            .any(|c| c.state == CredentialStateEnum::Expiring)
+            .any(|c| c.common.state == CredentialStateEnum::Expiring)
         {
             return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
                 CredentialStateEnum::Expiring,
@@ -1198,14 +1218,14 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.protocol,
+            &credential.common.protocol,
         )
         .error_while("validating protocol type")?;
 
         let params: OpenID4VCIFinal1Params = self
             .config
             .issuance_protocol
-            .get(&credential.protocol)
+            .get(&credential.common.protocol)
             .error_while("getting protocol params")?;
 
         let issuer_identifier_id = if params.swiyu_mode {
@@ -1242,14 +1262,16 @@ impl OID4VCIFinal1_0Service {
             ))
         };
 
-        let pre_authorization_expires_in =
-            get_issuance_param_pre_authorization_expires_in(&self.config, &credential.protocol)
-                .error_while("getting issuance params")?;
+        let pre_authorization_expires_in = get_issuance_param_pre_authorization_expires_in(
+            &self.config,
+            &credential.common.protocol,
+        )
+        .error_while("getting issuance params")?;
         let access_token_expires_in =
-            get_issuance_param_token_expires_in(&self.config, &credential.protocol)
+            get_issuance_param_token_expires_in(&self.config, &credential.common.protocol)
                 .error_while("getting issuance params")?;
         let refresh_token_expires_in =
-            get_issuance_param_refresh_token_expires_in(&self.config, &credential.protocol)
+            get_issuance_param_refresh_token_expires_in(&self.config, &credential.common.protocol)
                 .error_while("getting issuance params")?;
 
         let tx: BoxFuture<Result<_, OID4VCIFinal1_0ServiceError>> = async {
@@ -1313,7 +1335,7 @@ impl OID4VCIFinal1_0Service {
                     || state_update.state.is_some()
                 {
                     self.credential_repository
-                        .update_credential(credential.id, state_update)
+                        .update_credential(credential.common.id, state_update)
                         .await
                         .error_while("updating credential")?;
                 }
@@ -1374,7 +1396,7 @@ impl OID4VCIFinal1_0Service {
                 for credential in &credentials {
                     self.credential_repository
                         .update_credential(
-                            credential.id,
+                            credential.common.id,
                             UpdateCredentialRequest {
                                 state: Some(CredentialStateEnum::Error),
                                 error_info: Some(HistoryErrorMetadata {
@@ -1398,7 +1420,7 @@ impl OID4VCIFinal1_0Service {
 
         tracing::info!(
             "Issued access token for issuance of credential {}",
-            credential.id
+            credential.common.id
         );
         Ok(result)
     }
@@ -1458,11 +1480,13 @@ impl OID4VCIFinal1_0Service {
 
         // Validate proof of possession
         let expected_audience = {
-            let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
+            let issuance_protocol = self
+                .protocol_provider
+                .get_protocol(&credential.common.protocol)?;
             let base_url = issuance_protocol.protocol_base_url().ok_or(
                 OID4VCIFinal1_0ServiceError::MappingError("missing protocol_base_url".to_string()),
             )?;
-            let protocol_id = &credential.protocol;
+            let protocol_id = &credential.common.protocol;
             let credential_schema_id = credential_schema.id;
             if let Some(issuer_identifier_id) = issuer_identifier_id {
                 format!("{base_url}/{protocol_id}/{issuer_identifier_id}/{credential_schema_id}")
@@ -1478,7 +1502,7 @@ impl OID4VCIFinal1_0Service {
         )?;
         self.validate_pop_challenge(
             &proof_of_key_possession.payload.custom,
-            &credential.protocol,
+            &credential.common.protocol,
             &interaction_id,
         )
         .await?;
@@ -1508,7 +1532,7 @@ impl OID4VCIFinal1_0Service {
                             jwt: &wallet_instance_attestation,
                         },
                         requirements: &credential_schema.wallet_attestation,
-                        credential_id: credential.id,
+                        credential_id: credential.common.id,
                     }],
                     None,
                 )
@@ -1606,29 +1630,32 @@ impl OID4VCIFinal1_0Service {
             .format_already_issued(parent_credential_id, format.id)
             .await?
         {
-            parent_credential.state
+            parent_credential.common.state
         } else {
             CredentialStateEnum::Offered
         };
 
         Ok(Credential {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            issuance_date: Some(now),
+            common: CredentialCommon {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                issuance_date: Some(now),
+                interaction: None,
+                expires_at,
+                state,
+                // last_modified is reused from the parent credential,
+                // so that it can be checked in the issuance protocol (e.g. MSO refresh rate limiting)
+                // it will be updated inside the issuance protocol logic
+                ..parent_credential.common
+            },
             r#type: CredentialType::BatchItem,
             parent: Some(Related::new(
                 parent_credential_id,
                 self.credential_repository.clone(),
             )),
             webhook_url: None,
-            interaction: None,
             claims: Default::default(),
-            expires_at,
             format: Some(format.to_owned().into()),
-            state,
-            // last_modified is reused from the parent credential,
-            // so that it can be checked in the issuance protocol (e.g. MSO refresh rate limiting)
-            // it will be updated inside the issuance protocol logic
             ..parent_credential
         })
     }
@@ -1642,11 +1669,11 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.protocol,
+            &credential.common.protocol,
         )
         .error_while("validating protocol type")?;
 
-        match (credential.state, &notification.event) {
+        match (credential.common.state, &notification.event) {
             (
                 CredentialStateEnum::Accepted
                 | CredentialStateEnum::Suspended
@@ -1708,7 +1735,7 @@ impl OID4VCIFinal1_0Service {
         error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         let (affected, others): (Vec<_>, Vec<_>) = self
-            .get_batch_items(parent.id)
+            .get_batch_items(parent.common.id)
             .await?
             .into_iter()
             .partition(|item| item.format.as_ref().is_some_and(|f| f.id() == format_id));
@@ -1721,7 +1748,7 @@ impl OID4VCIFinal1_0Service {
         };
 
         for item in affected {
-            if item.state != new_state {
+            if item.common.state != new_state {
                 self.update_notified_credential(item, new_state, error_info.clone())
                     .await?;
             }
@@ -1729,14 +1756,14 @@ impl OID4VCIFinal1_0Service {
 
         let other_format_active = others.iter().any(|item| {
             matches!(
-                item.state,
+                item.common.state,
                 CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
             )
         });
-        if !other_format_active && parent.state != new_state {
+        if !other_format_active && parent.common.state != new_state {
             self.credential_repository
                 .update_credential(
-                    parent.id,
+                    parent.common.id,
                     UpdateCredentialRequest {
                         state: Some(new_state),
                         error_info,
@@ -1756,12 +1783,12 @@ impl OID4VCIFinal1_0Service {
         new_state: CredentialStateEnum,
         error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
-        if credential.state == new_state {
+        if credential.common.state == new_state {
             // nothing to do
             return Ok(());
         }
 
-        let schema = credential.schema.as_ref().await?;
+        let schema = credential.common.schema.as_ref().await?;
 
         let format = credential.credential_format().await?;
         let revocation_method = match format {
@@ -1780,7 +1807,7 @@ impl OID4VCIFinal1_0Service {
 
         self.credential_repository
             .update_credential(
-                credential.id,
+                credential.common.id,
                 UpdateCredentialRequest {
                     state: Some(new_state),
                     error_info,
@@ -1792,7 +1819,7 @@ impl OID4VCIFinal1_0Service {
 
         // mark the credential as revoked (if supported and not done before)
         if matches!(
-            credential.state,
+            credential.common.state,
             CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
         ) && let Some(revocation_method) = revocation_method
             && revocation_method
@@ -1814,14 +1841,14 @@ impl OID4VCIFinal1_0Service {
         credential: &Credential,
         interaction: &Interaction,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
-        if credential.state.is_terminal() {
+        if credential.common.state.is_terminal() {
             return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
-                credential.state,
+                credential.common.state,
             ));
         }
-        if credential.state == CredentialStateEnum::Expiring {
+        if credential.common.state == CredentialStateEnum::Expiring {
             return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
-                credential.state,
+                credential.common.state,
             ));
         }
         if is_batch_parent_expired(credential, Some(interaction), now_utc())
@@ -1829,7 +1856,7 @@ impl OID4VCIFinal1_0Service {
         {
             self.credential_repository
                 .update_credential(
-                    credential.id,
+                    credential.common.id,
                     UpdateCredentialRequest {
                         state: Some(CredentialStateEnum::Expired),
                         ..Default::default()
@@ -1838,7 +1865,7 @@ impl OID4VCIFinal1_0Service {
                 .await
                 .error_while("updating expired credential")?;
             return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
-                credential.state,
+                credential.common.state,
             ));
         }
         Ok(())

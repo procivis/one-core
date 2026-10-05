@@ -389,7 +389,7 @@ pub(super) async fn accept_proof(
     for ((mut model_credential, _), ecosystem) in
         model_credentials.into_iter().zip(ecosystems.per_credential)
     {
-        model_credential.ecosystem = ecosystem;
+        model_credential.common.ecosystem = ecosystem;
 
         let credential = Related::from(model_credential.clone());
         proof_claims.extend(

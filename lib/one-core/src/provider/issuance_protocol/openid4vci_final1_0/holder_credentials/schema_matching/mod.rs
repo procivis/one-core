@@ -531,7 +531,7 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     claims.sort_by_key(|c| c.path.clone());
 
     let mut parsed_claim_schemas = {
-        let parsed_schema = credential.schema.as_ref().await?;
+        let parsed_schema = credential.common.schema.as_ref().await?;
         parsed_schema.claim_schemas.as_ref().await?.to_owned()
     };
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
@@ -653,7 +653,7 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     }
 
     credential.format = Some(stored_format.into());
-    credential.schema = stored_schema.clone().into();
+    credential.common.schema = stored_schema.clone().into();
     Ok(AlignmentUpdate {
         new_claim_schemas,
         new_mappings,

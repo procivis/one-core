@@ -21,7 +21,7 @@ impl EudiEcosystem {
         credential_configuration_id: &String,
         interaction: &Interaction,
     ) -> Result<(), HolderIssuanceError> {
-        let schema = credential.schema.as_ref().await?;
+        let schema = credential.common.schema.as_ref().await?;
         let schema_format = credential.format.as_required_ref().await?;
         let format = &schema_format.format;
         let formatter = self.formatter_provider.get_credential_formatter(format)?;

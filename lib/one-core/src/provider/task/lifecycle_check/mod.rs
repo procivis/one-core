@@ -66,12 +66,12 @@ impl LifecycleCheckProvider {
         for credential in &credential_list.values {
             match self
                 .credential_validity_manager
-                .change_credential_state(&credential.id, ChangeCredentialState::Accepted)
+                .change_credential_state(&credential.common.id, ChangeCredentialState::Accepted)
                 .await
             {
-                Ok(()) => reactivated_ids.push(credential.id),
+                Ok(()) => reactivated_ids.push(credential.common.id),
                 Err(error) => {
-                    tracing::warn!(%error, "failed to reactivate credential {}", credential.id)
+                    tracing::warn!(%error, "failed to reactivate credential {}", credential.common.id)
                 }
             }
         }
@@ -140,16 +140,16 @@ impl LifecycleCheckProvider {
 
         for credential in stale_credentials.values {
             match self.expire_if_stale(&credential, now).await {
-                Ok(true) => expired_ids.push(credential.id),
+                Ok(true) => expired_ids.push(credential.common.id),
                 Ok(false) => {}
                 Err(error) => {
-                    tracing::warn!(%error, "failed to expire credential {}", credential.id)
+                    tracing::warn!(%error, "failed to expire credential {}", credential.common.id)
                 }
             }
         }
 
         if !batch_parents.values.is_empty() {
-            let parent_ids = batch_parents.values.iter().map(|c| c.id).collect();
+            let parent_ids = batch_parents.values.iter().map(|c| c.common.id).collect();
 
             // any item already in a terminal state - `Expired` (just now or in a previous run),
             // but also e.g. `Revoked`/`Rejected` - is done and can't block the parent, so it's
@@ -178,19 +178,20 @@ impl LifecycleCheckProvider {
                 .collect();
 
             for credential in batch_parents.values {
-                let all_items_expired = !parents_with_remaining_items.contains(&credential.id);
+                let all_items_expired =
+                    !parents_with_remaining_items.contains(&credential.common.id);
 
                 match self
                     .expire_batch_parent_if_stale(&credential, all_items_expired, now)
                     .await
                 {
-                    Ok(true) => expired_ids.push(credential.id),
+                    Ok(true) => expired_ids.push(credential.common.id),
                     Ok(false) => {}
                     Err(error) => {
                         tracing::warn!(
                             %error,
                             "failed to expire batch parent credential {}",
-                            credential.id
+                            credential.common.id
                         )
                     }
                 }
@@ -210,11 +211,11 @@ impl LifecycleCheckProvider {
         all_items_expired: bool,
         now: OffsetDateTime,
     ) -> Result<bool, ServiceError> {
-        if !all_items_expired || credential.state.is_terminal() {
+        if !all_items_expired || credential.common.state.is_terminal() {
             return Ok(false);
         }
 
-        let interaction = match credential.interaction.as_ref() {
+        let interaction = match credential.common.interaction.as_ref() {
             Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
             None => None,
         };
@@ -227,7 +228,7 @@ impl LifecycleCheckProvider {
 
         self.credential_repository
             .update_credential(
-                credential.id,
+                credential.common.id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Expired),
                     ..Default::default()
@@ -244,11 +245,12 @@ impl LifecycleCheckProvider {
         credential: &Credential,
         now: OffsetDateTime,
     ) -> Result<bool, ServiceError> {
-        if credential.state.is_terminal() {
+        if credential.common.state.is_terminal() {
             return Ok(false);
         }
 
         if credential
+            .common
             .expires_at
             .is_none_or(|expires_at| expires_at >= now)
         {
@@ -257,7 +259,7 @@ impl LifecycleCheckProvider {
 
         self.credential_repository
             .update_credential(
-                credential.id,
+                credential.common.id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Expired),
                     ..Default::default()

@@ -11,7 +11,9 @@ use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
@@ -61,21 +63,67 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
     };
     UnexportableEntities {
         credentials: vec![Credential {
-            expires_at: None,
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            issuance_date: None,
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
+            common: CredentialCommon {
+                expires_at: None,
+                ecosystem: None,
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                issuance_date: None,
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                protocol: "foo".into(),
+                redirect_uri: None,
+                state: CredentialStateEnum::Created,
+                profile: None,
+                schema: backfill_default_translations(
+                    CredentialSchema {
+                        expiration: None,
+                        ecosystem: None,
+                        batch_size: None,
+                        allow_revocation: true,
+                        id: credential_schema_id,
+                        deleted_at: None,
+                        imported_source_url: "CORE_URL".to_string(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        wallet_attestation: WalletAttestation {
+                            require_instance_attestation: false,
+                            key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                            preferred_key_storage_attestation_lifetime: None,
+                            preferred_instance_attestation_lifetime: None,
+                        },
+                        name: "name".into(),
+                        formats: vec![format.clone()].into(),
+                        claim_schemas: vec![ClaimSchema {
+                            id: claim_schema_id,
+                            key: "key".into(),
+                            data_type: "STRING".into(),
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            array: false,
+                            metadata: false,
+                            required: false,
+                            translations: Default::default(),
+                        }]
+                        .into(),
+                        organisation: dummy_organisation(None).into(),
+                        layout_properties: None,
+                        allow_suspension: true,
+                        transaction_code: None,
+                        translations: Default::default(),
+                        embedded_disclosure_policy: None,
+                    },
+                    "en",
+                )
+                .await
+                .unwrap()
+                .into(),
+                interaction: None,
+            },
             consumed_at: None,
-            protocol: "foo".into(),
-            redirect_uri: None,
             role: CredentialRole::Holder,
             r#type: CredentialType::Single,
-            state: CredentialStateEnum::Created,
             suspend_end_date: None,
-            profile: None,
             claims: vec![Claim {
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
@@ -100,50 +148,6 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
             issuer_identifier: None,
             issuer_certificate: None,
             holder_identifier: None,
-            schema: backfill_default_translations(
-                CredentialSchema {
-                    expiration: None,
-                    ecosystem: None,
-                    batch_size: None,
-                    allow_revocation: true,
-                    id: credential_schema_id,
-                    deleted_at: None,
-                    imported_source_url: "CORE_URL".to_string(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    wallet_attestation: WalletAttestation {
-                        require_instance_attestation: false,
-                        key_storage_security_level: Some(KeyStorageSecurity::Basic),
-                        preferred_key_storage_attestation_lifetime: None,
-                        preferred_instance_attestation_lifetime: None,
-                    },
-                    name: "name".into(),
-                    formats: vec![format.clone()].into(),
-                    claim_schemas: vec![ClaimSchema {
-                        id: claim_schema_id,
-                        key: "key".into(),
-                        data_type: "STRING".into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        array: false,
-                        metadata: false,
-                        required: false,
-                        translations: Default::default(),
-                    }]
-                    .into(),
-                    organisation: dummy_organisation(None).into(),
-                    layout_properties: None,
-                    allow_suspension: true,
-                    transaction_code: None,
-                    translations: Default::default(),
-                    embedded_disclosure_policy: None,
-                },
-                "en",
-            )
-            .await
-            .unwrap()
-            .into(),
-            interaction: None,
             key: None,
             credential_blob_id: None,
             wallet_key_attestation_blob_id: None,

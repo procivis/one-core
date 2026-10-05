@@ -249,7 +249,7 @@ impl CredentialService {
             formats,
             &self.config,
         )?;
-        credential.interaction = convert_inner(interaction);
+        credential.common.interaction = convert_inner(interaction);
 
         if let Some(ecosystem) = &ecosystem {
             let ecosystem = self.ecosystem_provider.get(ecosystem)?;
@@ -284,7 +284,7 @@ impl CredentialService {
             .await
             .error_while("getting credential")?;
 
-        let schema = credential.schema.as_ref().await?;
+        let schema = credential.common.schema.as_ref().await?;
         throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
@@ -355,7 +355,7 @@ impl CredentialService {
             .await
             .error_while("checking session")?;
 
-        if credential.deleted_at.is_some() {
+        if credential.common.deleted_at.is_some() {
             return Err(CredentialServiceError::NotFound(*credential_id));
         }
 
@@ -597,10 +597,11 @@ impl CredentialService {
     ) -> Result<ShareCredentialResponseDTO, CredentialServiceError> {
         let credential = self.get_credential_with_state(credential_id).await?;
 
-        if credential.deleted_at.is_some() {
+        if credential.common.deleted_at.is_some() {
             return Err(CredentialServiceError::NotFound(*credential_id));
         }
         let credential_schema = credential
+            .common
             .schema
             .as_ref()
             .await
@@ -616,12 +617,14 @@ impl CredentialService {
         }
 
         if !matches!(
-            credential.state,
+            credential.common.state,
             CredentialStateEnum::Created
                 | CredentialStateEnum::Pending
                 | CredentialStateEnum::InteractionExpired
         ) {
-            return Err(CredentialServiceError::InvalidState(credential.state));
+            return Err(CredentialServiceError::InvalidState(
+                credential.common.state,
+            ));
         }
 
         let Some(issuer_identifier) = credential.issuer_identifier.as_ref() else {
@@ -635,7 +638,7 @@ impl CredentialService {
             ));
         }
 
-        let credential_exchange = &credential.protocol;
+        let credential_exchange = &credential.common.protocol;
         let exchange = self.protocol_provider.get_protocol(credential_exchange)?;
 
         let ShareResponse {
@@ -656,7 +659,7 @@ impl CredentialService {
             credential_schema.organisation.to_owned(),
             InteractionType::Issuance,
             expires_at,
-            credential.ecosystem,
+            credential.common.ecosystem,
         )
         .await
         .error_while("adding interaction")?;
@@ -664,7 +667,7 @@ impl CredentialService {
             .update_credential(
                 *credential_id,
                 UpdateCredentialRequest {
-                    state: (credential.state != CredentialStateEnum::Pending)
+                    state: (credential.common.state != CredentialStateEnum::Pending)
                         .then_some(CredentialStateEnum::Pending),
                     interaction: Some(interaction_id),
                     ..Default::default()
@@ -674,7 +677,7 @@ impl CredentialService {
             .error_while("updating credential")?;
         clear_previous_interaction(
             &*self.interaction_repository,
-            credential.interaction.id_opt_ref(),
+            credential.common.interaction.id_opt_ref(),
         )
         .await
         .error_while("clearing interaction")?;
@@ -715,7 +718,7 @@ impl CredentialService {
             ..Default::default()
         };
 
-        if let Some(ecosystem_id) = credential.ecosystem {
+        if let Some(ecosystem_id) = credential.common.ecosystem {
             let ecosystem = self.ecosystem_provider.get(&ecosystem_id)?;
             let issuer = ecosystem
                 .issuer_trust_details(&history_id)

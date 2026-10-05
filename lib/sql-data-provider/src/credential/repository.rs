@@ -4,8 +4,8 @@ use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::credential::{
-    Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
-    GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialListIncludeEntityTypeEnum,
+    CredentialListQuery, GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
@@ -41,21 +41,28 @@ impl CredentialProvider {
         format: impl AsyncModelLoader<CredentialSchemaFormat> + 'static,
     ) -> Credential {
         Credential {
+            common: CredentialCommon {
+                id: credential.id,
+                created_date: credential.created_date,
+                issuance_date: credential.issuance_date,
+                expires_at: credential.expires_at,
+                last_modified: credential.last_modified,
+                deleted_at: credential.deleted_at,
+                protocol: credential.protocol,
+                redirect_uri: credential.redirect_uri,
+                state: credential.state.into(),
+                profile: credential.profile,
+                schema: Related::new(credential.credential_schema_id, schema),
+                interaction: credential
+                    .interaction_id
+                    .map(|id| Related::new(id, self.interaction_repository.clone())),
+                ecosystem: credential.ecosystem,
+            },
             claims: credential_claims(credential.id, &self.claim_repository),
-            id: credential.id,
-            created_date: credential.created_date,
-            issuance_date: credential.issuance_date,
-            expires_at: credential.expires_at,
-            last_modified: credential.last_modified,
-            deleted_at: credential.deleted_at,
             consumed_at: credential.consumed_at,
-            protocol: credential.protocol,
-            redirect_uri: credential.redirect_uri,
             role: credential.role.into(),
             r#type: credential.r#type.into(),
-            state: credential.state.into(),
             suspend_end_date: credential.suspend_end_date,
-            profile: credential.profile,
             issuer_identifier: credential
                 .issuer_identifier_id
                 .map(|id| Related::new(id, issuer)),
@@ -65,10 +72,6 @@ impl CredentialProvider {
             holder_identifier: credential
                 .holder_identifier_id
                 .map(|id| Related::new(id, self.identifier_repository.clone())),
-            schema: Related::new(credential.credential_schema_id, schema),
-            interaction: credential
-                .interaction_id
-                .map(|id| Related::new(id, self.interaction_repository.clone())),
             key: credential
                 .key_id
                 .map(|id| Related::new(id, self.key_repository.clone())),
@@ -78,7 +81,6 @@ impl CredentialProvider {
             webhook_url: credential.webhook_url,
             embedded_disclosure_policy: credential.embedded_disclosure_policy,
             subscriber_information: credential.subscriber_information,
-            ecosystem: credential.ecosystem,
             parent: credential
                 .parent_id
                 .map(|id| Related::new(id, self.cloned())),
@@ -282,7 +284,7 @@ fn with_credential_list_query(
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let id = request.id;
+        let id = request.common.id;
         self.create_credentials(vec![request]).await?;
         Ok(id)
     }
@@ -294,7 +296,7 @@ impl CredentialRepository for CredentialProvider {
         if requests.is_empty() {
             return Ok(vec![]);
         }
-        let ids = requests.iter().map(|request| request.id).collect();
+        let ids = requests.iter().map(|request| request.common.id).collect();
         let credentials = prepare_credentials(requests).await?;
         self.db
             .tx_with_config(
@@ -308,7 +310,7 @@ impl CredentialRepository for CredentialProvider {
     }
 
     async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
-        let ids: Vec<_> = credentials.iter().map(|c| c.id).collect();
+        let ids: Vec<_> = credentials.iter().map(|c| c.common.id).collect();
         credential::Entity::update_many()
             .filter(credential::Column::Id.is_in(ids))
             .set(credential::ActiveModel {

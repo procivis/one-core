@@ -97,9 +97,9 @@ async fn test_issuance_reject_subset_of_multi_format_offer() {
     // THEN
     assert_eq!(resp.status(), 204);
     let first = context.db.credentials.get(&first_credential_id).await;
-    assert_eq!(CredentialStateEnum::Accepted, first.state);
+    assert_eq!(CredentialStateEnum::Accepted, first.common.state);
     let second = context.db.credentials.get(&second_credential_id).await;
-    assert_eq!(CredentialStateEnum::Rejected, second.state);
+    assert_eq!(CredentialStateEnum::Rejected, second.common.state);
 }
 
 #[tokio::test]
@@ -170,7 +170,7 @@ async fn check_reject_batch_parent(include_item: bool) {
                 TestingCredentialParams {
                     id: Some(item_id),
                     r#type: Some(CredentialType::BatchItem),
-                    parent_id: Some(parent.id),
+                    parent_id: Some(parent.common.id),
                     key: Some(key.clone()),
                     ..Default::default()
                 },
@@ -179,7 +179,7 @@ async fn check_reject_batch_parent(include_item: bool) {
     }
 
     // WHEN
-    let mut selected = vec![parent.id];
+    let mut selected = vec![parent.common.id];
     if include_item {
         selected.push(item_ids[0]);
     }
@@ -191,11 +191,11 @@ async fn check_reject_batch_parent(include_item: bool) {
 
     // THEN
     assert_eq!(resp.status(), 204);
-    let parent = context.db.credentials.get(&parent.id).await;
-    assert_eq!(CredentialStateEnum::Rejected, parent.state);
+    let parent = context.db.credentials.get(&parent.common.id).await;
+    assert_eq!(CredentialStateEnum::Rejected, parent.common.state);
     for item_id in item_ids {
         let item = context.db.credentials.get(&item_id).await;
-        assert_eq!(CredentialStateEnum::Rejected, item.state);
+        assert_eq!(CredentialStateEnum::Rejected, item.common.state);
     }
 }
 
@@ -247,8 +247,8 @@ async fn test_issuance_reject_openid4vci_notification_not_supported_by_issuer() 
 
     // THEN
     assert_eq!(resp.status(), 204);
-    let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(CredentialStateEnum::Rejected, credential.state);
+    let credential = context.db.credentials.get(&credential.common.id).await;
+    assert_eq!(CredentialStateEnum::Rejected, credential.common.state);
 }
 
 #[tokio::test]
@@ -317,8 +317,8 @@ async fn test_issuance_reject_openid4vci_with_notification() {
 
     // THEN
     assert_eq!(resp.status(), 204);
-    let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(CredentialStateEnum::Rejected, credential.state);
+    let credential = context.db.credentials.get(&credential.common.id).await;
+    assert_eq!(CredentialStateEnum::Rejected, credential.common.state);
 }
 
 #[tokio::test]
@@ -510,7 +510,7 @@ async fn check_batch_item_rejection(
                     },
                 )
                 .await;
-            ids.push(item.id);
+            ids.push(item.common.id);
         }
     }
     // Another batch of the same format must neither be selectable through this
@@ -539,7 +539,7 @@ async fn check_batch_item_rejection(
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
-                parent_id: Some(other_parent.id),
+                parent_id: Some(other_parent.common.id),
                 format: Some(formats[0].clone()),
                 ..Default::default()
             },
@@ -548,11 +548,17 @@ async fn check_batch_item_rejection(
     let resp = context
         .api
         .interactions
-        .issuance_reject(interaction.id, Some(vec![other_item.id]))
+        .issuance_reject(interaction.id, Some(vec![other_item.common.id]))
         .await;
     assert_eq!(resp.status(), 400);
     assert_eq!(
-        context.db.credentials.get(&other_item.id).await.state,
+        context
+            .db
+            .credentials
+            .get(&other_item.common.id)
+            .await
+            .common
+            .state,
         CredentialStateEnum::Accepted
     );
 
@@ -591,13 +597,13 @@ async fn check_batch_item_rejection(
         );
     }
     assert_eq!(
-        context.db.credentials.get(&parent_id).await.state,
+        context.db.credentials.get(&parent_id).await.common.state,
         CredentialStateEnum::Accepted
     );
     for (index, ids) in item_ids.iter().enumerate() {
         for (item_index, id) in ids.iter().enumerate() {
             assert_eq!(
-                context.db.credentials.get(id).await.state,
+                context.db.credentials.get(id).await.common.state,
                 if index == 0 && item_index < rejected_count {
                     CredentialStateEnum::Rejected
                 } else {
@@ -639,7 +645,7 @@ async fn check_batch_item_rejection(
         for id in ids {
             let item = context.db.credentials.get(&id.parse()).await;
             assert_eq!(item.parent.as_ref().unwrap().id(), parent_id);
-            assert_eq!(item.state, CredentialStateEnum::Accepted);
+            assert_eq!(item.common.state, CredentialStateEnum::Accepted);
             let format_id = item.format.as_ref().unwrap().id();
             counts[formats
                 .iter()

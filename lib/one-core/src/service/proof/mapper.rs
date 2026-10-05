@@ -224,7 +224,7 @@ pub(super) async fn get_verifier_proof_detail(
     let mut credential_for_schema_model: HashMap<CredentialSchemaId, Credential> = HashMap::new();
     for proof_claim in &claims {
         let credential = proof_claim.credential.as_ref().await?.to_owned();
-        credential_for_schema_model.insert(credential.schema.id(), credential);
+        credential_for_schema_model.insert(credential.common.schema.id(), credential);
     }
 
     for (credential_schema_id, credential) in credential_for_schema_model {
@@ -617,9 +617,9 @@ pub(super) async fn get_holder_proof_detail(
     let proof_claims = proof.claims.as_ref().await?;
     for proof_claim in &proof_claims {
         let credential = proof_claim.credential.as_ref().await?;
-        let credential_schema = credential.schema.as_ref().await?.to_owned();
+        let credential_schema = credential.common.schema.as_ref().await?.to_owned();
 
-        match submitted_credentials.entry(credential.id) {
+        match submitted_credentials.entry(credential.common.id) {
             Entry::Occupied(mut entry) => {
                 entry.get_mut().0.push(proof_claim.clone());
             }

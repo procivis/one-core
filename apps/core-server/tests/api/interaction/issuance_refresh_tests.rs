@@ -54,9 +54,9 @@ async fn test_issuance_refresh_without_refresh_token_returns_not_supported() {
     for id in credential_ids {
         let credential = context.db.credentials.get(&id.parse()).await;
         assert_eq!(credential.r#type, CredentialType::Single);
-        assert_eq!(credential.state, CredentialStateEnum::Accepted);
+        assert_eq!(credential.common.state, CredentialStateEnum::Accepted);
         assert_eq!(
-            credential.interaction.as_ref().unwrap().id(),
+            credential.common.interaction.as_ref().unwrap().id(),
             interaction_id
         );
     }
@@ -74,11 +74,11 @@ async fn test_issuance_refresh_without_refresh_token_returns_not_supported() {
     assert_eq!(response.json_value().await["code"], "BR_0452");
     for id in credential_ids {
         let credential = context.db.credentials.get(&id.parse()).await;
-        assert_eq!(credential.state, CredentialStateEnum::Accepted);
+        assert_eq!(credential.common.state, CredentialStateEnum::Accepted);
         let history = context
             .db
             .histories
-            .get_by_entity_id(&credential.id.into())
+            .get_by_entity_id(&credential.common.id.into())
             .await;
         assert!(
             history
@@ -336,7 +336,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         for id in ids {
             let credential = context.db.credentials.get(&id.parse()).await;
             assert_eq!(credential.r#type, CredentialType::Single);
-            assert!(credential.expires_at.is_none());
+            assert!(credential.common.expires_at.is_none());
             assert!(credential.parent.is_none());
         }
         let response = context
@@ -382,7 +382,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
                 .id,
         );
         if let Some(expires) = offer.fixed_identifier_expiry {
-            assert_eq!(item.expires_at.is_some(), expires);
+            assert_eq!(item.common.expires_at.is_some(), expires);
             assert_eq!(
                 item.holder_identifier.as_ref().unwrap().id(),
                 holder_identifier.id
@@ -512,7 +512,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
                 .unwrap()["id"]
                     == "policy-1"
             })
-            .map(|item| item.id)
+            .map(|item| item.common.id)
             .collect::<std::collections::HashSet<_>>();
         let original_ids = items
             .iter()
@@ -523,7 +523,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
                 .unwrap()["id"]
                     == "policy-1"
             })
-            .map(|item| item.id)
+            .map(|item| item.common.id)
             .collect::<std::collections::HashSet<_>>();
         assert_eq!(refused_ids, original_ids);
     }

@@ -39,18 +39,19 @@ impl CredentialNotificationDecorator {
         let params: CommonParams = self
             .config
             .issuance_protocol
-            .get(&stored.protocol)
+            .get(&stored.common.protocol)
             .error_while("parsing config")?;
 
         let Some(task_id) = params.webhook_task else {
             return Err(ValidationError::NotificationsNotAllowed {
-                protocol: stored.protocol.to_owned(),
+                protocol: stored.common.protocol.to_owned(),
             }
             .error_while("getting webhook task")
             .into());
         };
 
         let organisation_id = stored
+            .common
             .schema
             .as_ref()
             .await

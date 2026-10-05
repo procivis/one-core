@@ -23,8 +23,8 @@ use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
-    ExactCredentialFilterColumn,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialRole, CredentialStateEnum,
+    CredentialType, ExactCredentialFilterColumn,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -66,7 +66,7 @@ pub(crate) async fn credential_detail_response_from_model(
     formatter_provider: &dyn CredentialFormatterProvider,
     blob_storage_provider: Option<&dyn BlobStorageProvider>,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
-    let schema_model = value.schema.as_ref().await?;
+    let schema_model = value.common.schema.as_ref().await?;
 
     let schema_dto: DetailCredentialSchemaResponseDTO =
         to_credential_schema_detail_response(schema_model.clone(), config, formatter_provider)
@@ -80,7 +80,7 @@ pub(crate) async fn credential_detail_response_from_model(
         }
     }
     let claims = filtered_claims;
-    let state = value.state;
+    let state = value.common.state;
 
     let credential_format = value.credential_format().await?;
     // Batch parents have no concrete format and therefore no MDOC validity.
@@ -95,18 +95,20 @@ pub(crate) async fn credential_detail_response_from_model(
             CredentialStateEnum::Suspended,
             CredentialStateEnum::Revoked,
         ]
-        .contains(&value.state)
+        .contains(&value.common.state)
     {
         let params = config
             .format
             .get::<mdoc_formatter::Params, _>(credential_format)
             .error_while("parsing formatter params")?;
         let issuance_date_with_expiry = value
+            .common
             .issuance_date
-            .map(|i| (i, value.expires_at))
+            .map(|i| (i, value.common.expires_at))
             // Legacy singles may predate the issuance date field.
             .or_else(|| {
-                (value.r#type == CredentialType::Single).then_some((value.last_modified, None))
+                (value.r#type == CredentialType::Single)
+                    .then_some((value.common.last_modified, None))
             });
         issuance_date_with_expiry.map(|(issuance_date, expiry)| MdocMsoValidityResponseDTO {
             expiration: expiry.unwrap_or(issuance_date + params.expiration_seconds),
@@ -157,28 +159,28 @@ pub(crate) async fn credential_detail_response_from_model(
     let credential_type = value.r#type;
 
     Ok(CredentialDetailResponseDTO {
-        id: value.id,
-        created_date: value.created_date,
-        issuance_date: value.issuance_date,
-        revocation_date: get_revocation_date(&state, &value.last_modified),
-        expires_at: value.expires_at,
+        id: value.common.id,
+        created_date: value.common.created_date,
+        issuance_date: value.common.issuance_date,
+        revocation_date: get_revocation_date(&state, &value.common.last_modified),
+        expires_at: value.common.expires_at,
         consumed_at: value.consumed_at,
         state: state.into(),
-        last_modified: value.last_modified,
+        last_modified: value.common.last_modified,
         claims: from_vec_claim(claims, &schema_model, config).await?,
         schema: schema_dto,
         issuer,
-        redirect_uri: value.redirect_uri,
+        redirect_uri: value.common.redirect_uri,
         role: value.role.into(),
         r#type: credential_type.into(),
         format: credential_format,
-        interaction_id: value.interaction.map(|i| i.id()),
+        interaction_id: value.common.interaction.map(|i| i.id()),
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
         holder,
-        protocol: value.protocol,
+        protocol: value.common.protocol,
         issuer_certificate,
-        profile: value.profile,
+        profile: value.common.profile,
         wallet_instance_attestation: attestation
             .wallet_instance_attestation_blob
             .map(TryInto::try_into)
@@ -192,7 +194,7 @@ pub(crate) async fn credential_detail_response_from_model(
         remaining_batch_item_count,
         parent_id: value.parent.map(|parent| parent.id()),
         subscriber_information: value.subscriber_information,
-        ecosystem: value.ecosystem,
+        ecosystem: value.common.ecosystem,
         offered_formats,
     })
 }
@@ -433,12 +435,12 @@ async fn get_offered_formats(
 ) -> Result<Option<Vec<OfferedFormatDTO>>, CredentialServiceError> {
     if value.role != CredentialRole::Issuer
         || value.r#type == CredentialType::BatchItem
-        || value.state == CredentialStateEnum::Error
+        || value.common.state == CredentialStateEnum::Error
     {
         return Ok(None);
     }
 
-    let schema = value.schema.as_ref().await?;
+    let schema = value.common.schema.as_ref().await?;
     let mut formats = schema.formats.as_ref().await?.to_vec();
 
     if value.r#type == CredentialType::Single {
@@ -448,12 +450,12 @@ async fn get_offered_formats(
 
         // single credential based on a multi-format schema (by selecting only one format for issuance)
         let Some(format) = &value.format else {
-            tracing::error!("Single credential without format set: {}", value.id);
+            tracing::error!("Single credential without format set: {}", value.common.id);
             return Ok(None);
         };
 
         let format = format.as_ref().await?;
-        let state = match value.state {
+        let state = match value.common.state {
             CredentialStateEnum::Created
             | CredentialStateEnum::Pending
             | CredentialStateEnum::Offered
@@ -473,7 +475,7 @@ async fn get_offered_formats(
     }
 
     // batch parent credential
-    if let Some(interaction) = &value.interaction {
+    if let Some(interaction) = &value.common.interaction {
         let interaction = interaction.as_ref().await?;
         let data: OpenID4VCIIssuerInteractionDataDTO =
             deserialize_interaction_data(interaction.data.as_ref())
@@ -485,7 +487,7 @@ async fn get_offered_formats(
 
     let mut result = vec![];
     for format in formats {
-        let state = match value.state {
+        let state = match value.common.state {
             CredentialStateEnum::Created
             | CredentialStateEnum::Pending
             | CredentialStateEnum::Offered
@@ -501,7 +503,7 @@ async fn get_offered_formats(
                     .get_credential_list(ListQuery {
                         include_count: false,
                         filtering: Some(
-                            CredentialFilterValue::ParentCredential(value.id).condition()
+                            CredentialFilterValue::ParentCredential(value.common.id).condition()
                                 & CredentialFilterValue::FormatIds(vec![format.id]),
                         ),
                         ..Default::default()
@@ -514,7 +516,7 @@ async fn get_offered_formats(
                     OfferedFormatStateEnum::Pending
                 } else if items
                     .iter()
-                    .all(|item| item.state == CredentialStateEnum::Rejected)
+                    .all(|item| item.common.state == CredentialStateEnum::Rejected)
                 {
                     OfferedFormatStateEnum::Rejected
                 } else {
@@ -538,7 +540,7 @@ pub(super) async fn to_credential_list_response(
     config: &CoreConfig,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
-    let schema = credential.schema.as_ref().await?.to_owned();
+    let schema = credential.common.schema.as_ref().await?.to_owned();
     let credential_type = credential.r#type;
     let credential_format = match credential_type {
         CredentialType::Single | CredentialType::BatchItem => {
@@ -553,15 +555,18 @@ pub(super) async fn to_credential_list_response(
     };
 
     Ok(CredentialListItemResponseDTO {
-        id: credential.id,
-        created_date: credential.created_date,
-        issuance_date: credential.issuance_date,
-        revocation_date: get_revocation_date(&credential.state, &credential.last_modified),
-        expires_at: credential.expires_at,
+        id: credential.common.id,
+        created_date: credential.common.created_date,
+        issuance_date: credential.common.issuance_date,
+        revocation_date: get_revocation_date(
+            &credential.common.state,
+            &credential.common.last_modified,
+        ),
+        expires_at: credential.common.expires_at,
         consumed_at: credential.consumed_at,
-        state: credential.state.into(),
+        state: credential.common.state.into(),
         format: credential_format,
-        last_modified: credential.last_modified,
+        last_modified: credential.common.last_modified,
         schema: to_credential_schema_list_v2_response(
             schema,
             include_translations,
@@ -573,12 +578,12 @@ pub(super) async fn to_credential_list_response(
         role: credential.role.into(),
         r#type: credential_type.into(),
         suspend_end_date: credential.suspend_end_date,
-        protocol: credential.protocol,
-        profile: credential.profile,
+        protocol: credential.common.protocol,
+        profile: credential.common.profile,
         webhook_destination_url: credential.webhook_url,
         parent_id: credential.parent.map(|parent| parent.id()),
-        redirect_uri: credential.redirect_uri,
-        ecosystem: credential.ecosystem,
+        redirect_uri: credential.common.redirect_uri,
+        ecosystem: credential.common.ecosystem,
     })
 }
 
@@ -628,26 +633,29 @@ pub(super) fn from_create_request(
     let expires_at = schema.expiration.map(|e| now + e);
 
     Ok(Credential {
-        id: credential_id,
-        created_date: now,
-        issuance_date: None,
-        expires_at,
-        state: CredentialStateEnum::Created,
+        common: CredentialCommon {
+            id: credential_id,
+            created_date: now,
+            issuance_date: None,
+            expires_at,
+            state: CredentialStateEnum::Created,
+            last_modified: now,
+            deleted_at: None,
+            protocol: request.protocol,
+            schema: schema.into(),
+            interaction: None,
+            redirect_uri: request.redirect_uri,
+            profile: request.profile,
+            ecosystem: request.ecosystem,
+        },
         suspend_end_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: request.protocol,
         claims: claims.into(),
         issuer_identifier: Some(issuer_identifier.into()),
         issuer_certificate: issuer_certificate.map(Into::into),
         holder_identifier: None,
-        schema: schema.into(),
-        interaction: None,
         key: Some(key.into()),
-        redirect_uri: request.redirect_uri,
         role: CredentialRole::Issuer,
-        profile: request.profile,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -656,7 +664,6 @@ pub(super) fn from_create_request(
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: request.subscriber_information,
-        ecosystem: request.ecosystem,
         format: convert_inner(format),
     })
 }
@@ -1013,7 +1020,7 @@ pub(crate) async fn get_remaining_batch_item_count(
         .get_credential_list(ListQuery {
             include_count: false,
             filtering: Some(
-                CredentialFilterValue::ParentCredential(credential.id).condition()
+                CredentialFilterValue::ParentCredential(credential.common.id).condition()
                     & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
                     & CredentialFilterValue::Deleted(false)
                     & CredentialFilterValue::States(vec![
@@ -1037,12 +1044,12 @@ pub(crate) async fn get_remaining_batch_item_count(
             .as_ref()
             .ok_or(CredentialServiceError::MappingError(format!(
                 "Missing format on batch_item credential {}",
-                item.id
+                item.common.id
             )))?
             .as_ref()
             .await?;
         let entry = counts.entry(format.format.to_owned()).or_insert(0);
-        if item.state == CredentialStateEnum::Accepted && item.consumed_at.is_none() {
+        if item.common.state == CredentialStateEnum::Accepted && item.consumed_at.is_none() {
             *entry += 1;
         }
     }
@@ -1066,17 +1073,23 @@ pub(crate) async fn get_credential_trust_information(
                 return Ok(None);
             }
             Ok(Some(TrustInformation {
-                received_at: credential.issuance_date.unwrap_or(credential.last_modified),
+                received_at: credential
+                    .common
+                    .issuance_date
+                    .unwrap_or(credential.common.last_modified),
                 name: wallet_name,
-                result: resolution(&credential.ecosystem),
+                result: resolution(&credential.common.ecosystem),
                 ecosystem_errors,
             }))
         }
         // The holder records trust info related to the issuer
         CredentialRole::Holder => {
-            let Some(ecosystem_id) = &credential.ecosystem else {
+            let Some(ecosystem_id) = &credential.common.ecosystem else {
                 return Ok(Some(TrustInformation {
-                    received_at: credential.issuance_date.unwrap_or(credential.last_modified),
+                    received_at: credential
+                        .common
+                        .issuance_date
+                        .unwrap_or(credential.common.last_modified),
                     name: None,
                     result: TrustResolutionResult::Untrusted,
                     ecosystem_errors,
@@ -1094,9 +1107,12 @@ pub(crate) async fn get_credential_trust_information(
                     (details.received_at, Some(info.name))
                 }
                 Err(err) => {
-                    tracing::warn!(%err, "failed to get the issuer trust detail of credential {}", credential.id);
+                    tracing::warn!(%err, "failed to get the issuer trust detail of credential {}", credential.common.id);
                     (
-                        credential.issuance_date.unwrap_or(credential.last_modified),
+                        credential
+                            .common
+                            .issuance_date
+                            .unwrap_or(credential.common.last_modified),
                         None,
                     )
                 }
@@ -1110,13 +1126,13 @@ pub(crate) async fn get_credential_trust_information(
         }
         // The verifier records trust info about the issuer of received credentials
         CredentialRole::Verifier => {
-            if credential.ecosystem.is_none() && ecosystem_errors.is_empty() {
+            if credential.common.ecosystem.is_none() && ecosystem_errors.is_empty() {
                 return Ok(None);
             }
             Ok(Some(TrustInformation {
-                received_at: credential.created_date,
+                received_at: credential.common.created_date,
                 name: issuer_name(credential).await?,
-                result: resolution(&credential.ecosystem),
+                result: resolution(&credential.common.ecosystem),
                 ecosystem_errors,
             }))
         }

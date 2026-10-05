@@ -22,7 +22,8 @@ use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+    GetCredentialList,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -337,28 +338,32 @@ fn dummy_credential(
     r#type: CredentialType,
 ) -> Credential {
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: protocol.to_string(),
+            redirect_uri: None,
+            state,
+            schema: schema.into(),
+            interaction: Some(
+                dummy_interaction(None, pre_authorized_code, None, None, None).into(),
+            ),
+            profile: None,
+        },
         consumed_at: None,
-        protocol: protocol.to_string(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type,
-        state,
         suspend_end_date: None,
         claims: Default::default(),
         issuer_identifier: Some(dummy_identifier().into()),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: schema.into(),
-        interaction: Some(dummy_interaction(None, pre_authorized_code, None, None, None).into()),
         key: None,
-        profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -1303,8 +1308,9 @@ async fn test_create_token() {
         schema.clone(),
         CredentialType::Single,
     );
-    let interaction_id = credential.interaction.as_ref().unwrap().id();
+    let interaction_id = credential.common.interaction.as_ref().unwrap().id();
     let interaction = credential
+        .common
         .interaction
         .as_ref()
         .unwrap()
@@ -1429,6 +1435,7 @@ async fn test_create_token_pre_authorized_code_used() {
         CredentialType::Single,
     );
     let interaction = credential
+        .common
         .interaction
         .as_ref()
         .unwrap()
@@ -1498,6 +1505,7 @@ async fn test_create_token_wrong_credential_state() {
         CredentialType::Single,
     );
     let interaction = credential
+        .common
         .interaction
         .as_ref()
         .unwrap()
@@ -1680,7 +1688,7 @@ async fn test_create_credential_success() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id
+                *id == credential.common.id
                     && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
             })
             .returning(move |_, _| Ok(()));
@@ -1884,7 +1892,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id
+                *id == credential.common.id
                     && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
             })
             .returning(move |_, _| Ok(()));
@@ -2100,7 +2108,7 @@ async fn test_create_credential_success_mdoc() {
         credential_repository
             .expect_update_credential()
             .once()
-            .with(eq(credential.id), always())
+            .with(eq(credential.common.id), always())
             .withf(|_, request| request.state == Some(CredentialStateEnum::Accepted))
             .returning(|_, _| Ok(()));
 
@@ -2122,9 +2130,9 @@ async fn test_create_credential_success_mdoc() {
             .once()
             .withf(move |request| {
                 request.r#type == CredentialType::BatchItem
-                    && request.state == CredentialStateEnum::Offered
+                    && request.common.state == CredentialStateEnum::Offered
                     && request.format.as_ref().map(|f| f.id()) == Some(format_id)
-                    && request.expires_at.is_some()
+                    && request.common.expires_at.is_some()
             })
             .returning(move |_| Ok(batch_item_credential_id));
         credential_repository
@@ -2682,7 +2690,7 @@ async fn test_create_credential_issuer_failed() {
             .expect_update_credential()
             .once()
             .withf(move |id, request| {
-                *id == credential.id
+                *id == credential.common.id
                     && request.state == Some(CredentialStateEnum::Error)
                     && request.error_info.as_ref().is_some_and(|error| {
                         error.error_code == ErrorCode::BR_0062
@@ -2991,8 +2999,9 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         schema.clone(),
         CredentialType::Single,
     );
-    let interaction_id = credential.interaction.as_ref().unwrap().id();
+    let interaction_id = credential.common.interaction.as_ref().unwrap().id();
     let interaction = credential
+        .common
         .interaction
         .as_ref()
         .unwrap()
@@ -3088,15 +3097,21 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
         Some(refresh_token),
         Some(refresh_token_expires_at),
     );
-    let credential = Credential {
-        interaction: Some(interaction.clone().into()),
-        ..dummy_credential(
+    let credential = {
+        let base_credential = dummy_credential(
             "OPENID4VCI_FINAL1",
             CredentialStateEnum::Accepted,
             false,
             schema.clone(),
             CredentialType::Single,
-        )
+        );
+        Credential {
+            common: CredentialCommon {
+                interaction: Some(interaction.clone().into()),
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
 
     credential_repository
@@ -3183,15 +3198,21 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
         Some(refresh_token),
         Some(refresh_token_expires_at),
     );
-    let credential = Credential {
-        interaction: Some(interaction.clone().into()),
-        ..dummy_credential(
+    let credential = {
+        let base_credential = dummy_credential(
             "OPENID4VCI_FINAL1",
             CredentialStateEnum::Accepted,
             false,
             schema.clone(),
             CredentialType::Single,
-        )
+        );
+        Credential {
+            common: CredentialCommon {
+                interaction: Some(interaction.clone().into()),
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
 
     interaction_repository

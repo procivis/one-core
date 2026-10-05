@@ -25,7 +25,7 @@ pub(crate) fn throw_if_credential_state_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), CredentialServiceError> {
-    let current_state = credential.state;
+    let current_state = credential.common.state;
     if current_state == state {
         return Err(CredentialServiceError::InvalidState(
             current_state.to_owned(),

@@ -5,7 +5,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 
-use one_core::model::credential::{Credential, CredentialStateEnum};
+use one_core::model::credential::{Credential, CredentialCommon, CredentialStateEnum};
 use one_core::model::organisation::Organisation;
 use one_core::model::relation::Related;
 use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -146,27 +146,29 @@ pub async fn insert_credential(
     .await?;
 
     Ok(Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential.id,
-        created_date: credential.created_date,
-        issuance_date: credential.issuance_date,
-        last_modified: credential.last_modified,
-        deleted_at: credential.deleted_at,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential.id,
+            created_date: credential.created_date,
+            issuance_date: credential.issuance_date,
+            last_modified: credential.last_modified,
+            deleted_at: credential.deleted_at,
+            protocol: credential.protocol,
+            redirect_uri: credential.redirect_uri,
+            state: credential.state.into(),
+            profile: credential.profile,
+            schema: Related::new(*credential_schema_id, credential_schema_repository(db)),
+            interaction: None,
+        },
         consumed_at: credential.consumed_at,
-        protocol: credential.protocol,
-        redirect_uri: credential.redirect_uri,
         role: credential.role.into(),
         r#type: credential.r#type.into(),
-        state: credential.state.into(),
         suspend_end_date: credential.suspend_end_date,
-        profile: credential.profile,
         claims: Default::default(),
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: Related::new(*credential_schema_id, credential_schema_repository(db)),
-        interaction: None,
         key: None,
         credential_blob_id: credential.credential_blob_id,
         wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,

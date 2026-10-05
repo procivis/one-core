@@ -641,7 +641,7 @@ async fn test_get_proof_with_array() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.id,
+            credential.common.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -924,7 +924,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.id,
+            credential.common.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1062,7 +1062,7 @@ async fn test_get_proof_with_credentials() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.id,
+            credential.common.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1077,7 +1077,7 @@ async fn test_get_proof_with_credentials() {
     assert!(resp["profile"].is_null());
 
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
-    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
+    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.common.id);
     assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
     assert!(resp["proofInputs"][0]["credential"]["profile"].is_null());
     resp["proofInputs"][0]["credential"]["trustInformation"]["result"]
@@ -1186,7 +1186,7 @@ async fn test_get_proof_with_deleted_credential() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.id,
+            credential.common.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1199,7 +1199,7 @@ async fn test_get_proof_with_deleted_credential() {
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&proof.id);
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
-    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
+    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -1484,7 +1484,7 @@ async fn test_get_proof_with_deleted_claims() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.id,
+            credential.common.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1582,7 +1582,7 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.id,
+            credential.common.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1725,7 +1725,7 @@ async fn test_get_proof_with_credentials_returns_profiles() {
         .proofs
         .set_proof_claims(
             &proof.id,
-            credential.id,
+            credential.common.id,
             credential.claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
@@ -1740,7 +1740,7 @@ async fn test_get_proof_with_credentials_returns_profiles() {
     assert_eq!(resp["profile"], test_profile);
 
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
-    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
+    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.common.id);
     assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
     assert!(resp["proofInputs"][0]["credential"]["profile"].is_null());
 }

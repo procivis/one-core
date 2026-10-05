@@ -14,7 +14,9 @@ use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, P
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -74,42 +76,48 @@ async fn test_issuer_submit_succeeds() {
         organisation: dummy_organisation(None).into(),
     };
 
-    let credential = Credential {
-        state: CredentialStateEnum::Offered,
-        suspend_end_date: None,
-        holder_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did((dummy_did()).into()),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        issuer_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        keys: vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: key.to_owned(),
-                            reference: "1".to_string(),
-                        }]
+    let credential = {
+        let base_credential = dummy_credential().await;
+        Credential {
+            common: CredentialCommon {
+                state: CredentialStateEnum::Offered,
+                ..base_credential.common
+            },
+            suspend_end_date: None,
+            holder_identifier: Some(
+                Identifier {
+                    data: IdentifierData::Did((dummy_did()).into()),
+                    ..dummy_identifier()
+                }
+                .into(),
+            ),
+            issuer_identifier: Some(
+                Identifier {
+                    data: IdentifierData::Did(
+                        (Did {
+                            keys: vec![RelatedKey {
+                                role: KeyRole::AssertionMethod,
+                                key: key.to_owned(),
+                                reference: "1".to_string(),
+                            }]
+                            .into(),
+                            ..dummy_did()
+                        })
                         .into(),
-                        ..dummy_did()
-                    })
-                    .into(),
-                ),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        key: Some(key.into()),
-        ..dummy_credential().await
+                    ),
+                    ..dummy_identifier()
+                }
+                .into(),
+            ),
+            key: Some(key.into()),
+            ..base_credential
+        }
     };
 
     let credential_copy = credential.clone();
     let updated_schema = crate::model::credential_schema::CredentialSchema {
         organisation: dummy_organisation(None).into(),
-        ..credential.schema.as_ref().await.unwrap().to_owned()
+        ..credential.common.schema.as_ref().await.unwrap().to_owned()
     };
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -121,7 +129,7 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .return_once(move |_| {
             let mut credential = credential_copy;
-            credential.schema = updated_schema.into();
+            credential.common.schema = updated_schema.into();
             Ok(credential)
         });
 
@@ -231,6 +239,7 @@ async fn test_issuer_submit_succeeds() {
     .unwrap();
 
     let format_id = credential
+        .common
         .schema
         .as_ref()
         .await
@@ -261,7 +270,7 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
 async fn generic_credential_with_format(state: CredentialStateEnum, format: &str) -> Credential {
     let key = dummy_key();
     let credential = dummy_credential().await;
-    let dummy_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let dummy_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     let dummy_format = dummy_schema
         .formats
         .as_ref()
@@ -290,7 +299,11 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         .first()
         .cloned();
     Credential {
-        state,
+        common: CredentialCommon {
+            state,
+            schema: credential_schema.into(),
+            ..credential.common
+        },
         suspend_end_date: None,
         holder_identifier: Some(
             Identifier {
@@ -318,7 +331,6 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
             .into(),
         ),
         key: Some(key.into()),
-        schema: credential_schema.into(),
         format: credential_format.map(Into::into),
         ..credential
     }
@@ -334,7 +346,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
     let credential_copy = credential.clone();
     let updated_schema = CredentialSchema {
         organisation: dummy_organisation(None).into(),
-        ..credential.schema.as_ref().await.unwrap().to_owned()
+        ..credential.common.schema.as_ref().await.unwrap().to_owned()
     };
     credential_repository
         .expect_get_credential()
@@ -345,7 +357,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         .once()
         .return_once(move |_| {
             let mut credential = credential_copy;
-            credential.schema = updated_schema.into();
+            credential.common.schema = updated_schema.into();
             Ok(credential)
         });
 
@@ -429,6 +441,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
     .unwrap();
 
     let format_id = credential
+        .common
         .schema
         .as_ref()
         .await
@@ -457,14 +470,20 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
     let format = CredentialFormat::from("MDOC");
 
     let old_last_modified = crate::clock::now_utc() - Duration::days(5);
-    let credential = Credential {
-        last_modified: old_last_modified,
-        ..generic_mdoc_credential(CredentialStateEnum::Accepted).await
+    let credential = {
+        let base_credential = generic_mdoc_credential(CredentialStateEnum::Accepted).await;
+        Credential {
+            common: CredentialCommon {
+                last_modified: old_last_modified,
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
     let credential_copy = credential.clone();
     let updated_schema = CredentialSchema {
         organisation: dummy_organisation(None).into(),
-        ..credential.schema.as_ref().await.unwrap().to_owned()
+        ..credential.common.schema.as_ref().await.unwrap().to_owned()
     };
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -476,7 +495,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         .times(2)
         .returning(move |_| {
             let mut credential = credential_copy.clone();
-            credential.schema = updated_schema.clone().into();
+            credential.common.schema = updated_schema.clone().into();
             Ok(credential)
         });
 
@@ -583,6 +602,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
     .unwrap();
 
     let format_id = credential
+        .common
         .schema
         .as_ref()
         .await
@@ -689,6 +709,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     .unwrap();
 
     let format_id = credential
+        .common
         .schema
         .as_ref()
         .await
@@ -789,6 +810,7 @@ async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
     .unwrap();
 
     let format_id = credential
+        .common
         .schema
         .as_ref()
         .await
@@ -879,19 +901,79 @@ async fn dummy_credential() -> Credential {
         .into(),
     };
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential_id,
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: "protocol".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Pending,
+            schema: backfill_default_translations(
+                CredentialSchema {
+                    expiration: None,
+                    ecosystem: None,
+                    batch_size: None,
+                    allow_revocation: true,
+                    id: credential_schema_id,
+                    imported_source_url: "CORE_URL".to_string(),
+                    deleted_at: None,
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    wallet_attestation: WalletAttestation {
+                        require_instance_attestation: false,
+                        key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                        preferred_key_storage_attestation_lifetime: None,
+                        preferred_instance_attestation_lifetime: None,
+                    },
+                    name: "schema".to_string(),
+                    formats: vec![format.clone()].into(),
+                    claim_schemas: vec![ClaimSchema {
+                        id: claim_schema_id,
+                        key: "key".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        array: false,
+                        metadata: false,
+                        required: true,
+                        translations: Default::default(),
+                    }]
+                    .into(),
+                    layout_properties: None,
+                    organisation: dummy_organisation(None).into(),
+                    allow_suspension: true,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    embedded_disclosure_policy: None,
+                },
+                "en",
+            )
+            .await
+            .unwrap()
+            .into(),
+            interaction: Some(
+                Interaction {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    data: Some(b"interaction data".to_vec()),
+                    last_modified: crate::clock::now_utc(),
+                    organisation: dummy_organisation(None).into(),
+                    interaction_type: InteractionType::Issuance,
+                    expires_at: None,
+                    ecosystem: None,
+                    ecosystem_data: Default::default(),
+                }
+                .into(),
+            ),
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "protocol".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Pending,
         suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
@@ -917,65 +999,7 @@ async fn dummy_credential() -> Credential {
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: backfill_default_translations(
-            CredentialSchema {
-                expiration: None,
-                ecosystem: None,
-                batch_size: None,
-                allow_revocation: true,
-                id: credential_schema_id,
-                imported_source_url: "CORE_URL".to_string(),
-                deleted_at: None,
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                wallet_attestation: WalletAttestation {
-                    require_instance_attestation: false,
-                    key_storage_security_level: Some(KeyStorageSecurity::Basic),
-                    preferred_key_storage_attestation_lifetime: None,
-                    preferred_instance_attestation_lifetime: None,
-                },
-                name: "schema".to_string(),
-                formats: vec![format.clone()].into(),
-                claim_schemas: vec![ClaimSchema {
-                    id: claim_schema_id,
-                    key: "key".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    array: false,
-                    metadata: false,
-                    required: true,
-                    translations: Default::default(),
-                }]
-                .into(),
-                layout_properties: None,
-                organisation: dummy_organisation(None).into(),
-                allow_suspension: true,
-                transaction_code: None,
-                translations: Default::default(),
-                embedded_disclosure_policy: None,
-            },
-            "en",
-        )
-        .await
-        .unwrap()
-        .into(),
-        interaction: Some(
-            Interaction {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                data: Some(b"interaction data".to_vec()),
-                last_modified: crate::clock::now_utc(),
-                organisation: dummy_organisation(None).into(),
-                interaction_type: InteractionType::Issuance,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: Default::default(),
-            }
-            .into(),
-        ),
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,

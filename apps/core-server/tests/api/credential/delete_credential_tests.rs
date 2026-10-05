@@ -25,14 +25,26 @@ async fn test_delete_credential_success() {
         )
         .await;
 
-    let deleted_at = context.db.credentials.get(&credential.id).await.deleted_at;
+    let deleted_at = context
+        .db
+        .credentials
+        .get(&credential.common.id)
+        .await
+        .common
+        .deleted_at;
     assert_eq!(None, deleted_at);
 
     // WHEN
-    let resp = context.api.credentials.delete(&credential.id).await;
+    let resp = context.api.credentials.delete(&credential.common.id).await;
 
     // THEN
     assert_eq!(204, resp.status());
-    let deleted_at = context.db.credentials.get(&credential.id).await.deleted_at;
+    let deleted_at = context
+        .db
+        .credentials
+        .get(&credential.common.id)
+        .await
+        .common
+        .deleted_at;
     assert!(deleted_at.is_some());
 }

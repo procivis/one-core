@@ -51,7 +51,7 @@ async fn holder_batch_parent_claims(
         .get_credential_list(ListQuery {
             include_count: false,
             filtering: Some(
-                CredentialFilterValue::ParentCredential(credential.id).condition()
+                CredentialFilterValue::ParentCredential(credential.common.id).condition()
                     & CredentialFilterValue::Deleted(false),
             ),
             sorting: Some(ListSorting {

@@ -443,7 +443,7 @@ fn history_entity(artifact: &ProtocolArtifact<'_>) -> Option<(EntityId, HistoryE
             Some(((*credential_id).into(), HistoryEntityType::Credential))
         }
         ProtocolArtifact::VerifierSubmission { credential, .. } => {
-            Some((credential.id.into(), HistoryEntityType::Credential))
+            Some((credential.common.id.into(), HistoryEntityType::Credential))
         }
     }
 }

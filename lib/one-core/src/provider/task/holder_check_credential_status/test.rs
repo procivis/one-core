@@ -11,8 +11,8 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
-    UpdateCredentialRequest,
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+    GetCredentialList, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -94,10 +94,16 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
-    let credential = Credential {
-        state: CredentialStateEnum::Accepted,
-        suspend_end_date: None,
-        ..generic_credential()
+    let credential = {
+        let base_credential = generic_credential();
+        Credential {
+            common: CredentialCommon {
+                state: CredentialStateEnum::Accepted,
+                ..base_credential.common
+            },
+            suspend_end_date: None,
+            ..base_credential
+        }
     };
 
     let credential_clone = credential.clone();
@@ -252,19 +258,9 @@ fn generic_credential() -> Credential {
         claim_mappings: Default::default(),
     };
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential_id,
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
@@ -296,36 +292,7 @@ fn generic_credential() -> Credential {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: now,
-            last_modified: now,
-            name: "schema".to_string(),
-            wallet_attestation: WalletAttestation {
-                require_instance_attestation: false,
-                key_storage_security_level: Some(KeyStorageSecurity::Basic),
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
-            },
-            formats: vec![format.clone()].into(),
-            claim_schemas: vec![claim_schema].into(),
-            organisation: organisation.into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        }
-        .into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -333,6 +300,47 @@ fn generic_credential() -> Credential {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            schema: CredentialSchema {
+                expiration: None,
+                ecosystem: None,
+                batch_size: None,
+                allow_revocation: false,
+                id: credential_schema_id,
+                deleted_at: None,
+                imported_source_url: "CORE_URL".to_string(),
+                created_date: now,
+                last_modified: now,
+                name: "schema".to_string(),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
+                formats: vec![format.clone()].into(),
+                claim_schemas: vec![claim_schema].into(),
+                organisation: organisation.into(),
+                layout_properties: None,
+                allow_suspension: true,
+                transaction_code: None,
+                translations: Default::default(),
+                embedded_disclosure_policy: None,
+            }
+            .into(),
+            interaction: None,
+            profile: None,
+        },
         format: Some(format.into()),
     }
 }

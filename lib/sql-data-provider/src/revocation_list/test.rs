@@ -401,5 +401,5 @@ async fn create_dummy_credential(
     .await
     .unwrap();
 
-    credential.id
+    credential.common.id
 }

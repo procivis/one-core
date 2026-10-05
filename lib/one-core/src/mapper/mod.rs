@@ -14,7 +14,9 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError}
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
@@ -205,26 +207,28 @@ pub(crate) fn extracted_credential_to_model(
     };
 
     Ok(Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential_id,
-        created_date: now,
-        issuance_date,
-        last_modified: now,
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: now,
+            issuance_date,
+            last_modified: now,
+            deleted_at: None,
+            protocol: exchange,
+            state: CredentialStateEnum::Accepted,
+            profile: None,
+            schema: credential_schema.into(),
+            redirect_uri: None,
+            interaction: None,
+        },
         consumed_at: None,
-        protocol: exchange,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
-        profile: None,
         claims: model_claims.into(),
         issuer_identifier: Some(issuer_identifier.into()),
         issuer_certificate,
         holder_identifier: holder_identifier.map(Into::into),
-        schema: credential_schema.into(),
         format: format.map(|format| format.to_owned().into()),
-        redirect_uri: None,
-        interaction: None,
         key: None,
         role: CredentialRole::Verifier,
         credential_blob_id: None,
@@ -633,6 +637,6 @@ mod tests {
                 .any(|claim| claim.schema.id() == element_claim_schema.id
                     && claim.value == Some("Test".to_string()))
         );
-        assert_eq!(credential.issuance_date, Some(issuance_date));
+        assert_eq!(credential.common.issuance_date, Some(issuance_date));
     }
 }

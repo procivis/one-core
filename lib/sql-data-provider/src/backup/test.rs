@@ -688,7 +688,7 @@ async fn test_fetch_unexportable_credentials_local() {
     );
 
     assert_eq_unordered(
-        unexportable.credentials.iter().map(|item| item.id),
+        unexportable.credentials.iter().map(|item| item.common.id),
         unexportable_credentials_setup.unexportable_ids,
     );
 
@@ -700,6 +700,7 @@ async fn test_fetch_unexportable_credentials_local() {
         .expect("claim schema present");
 
     let schema = unexportable.credentials[0]
+        .common
         .schema
         .as_ref()
         .await
@@ -853,11 +854,12 @@ async fn test_fetch_unexportable_credentials_dump() {
         unexportable_credentials_setup.unexportable_ids.len()
     );
     assert_eq_unordered(
-        unexportable.credentials.iter().map(|item| item.id),
+        unexportable.credentials.iter().map(|item| item.common.id),
         unexportable_credentials_setup.unexportable_ids,
     );
 
     let schema = unexportable.credentials[0]
+        .common
         .schema
         .as_ref()
         .await
@@ -1202,7 +1204,7 @@ async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
     let parent = backup
         .credentials
         .iter()
-        .find(|credential| credential.id == parent_id)
+        .find(|credential| credential.common.id == parent_id)
         .unwrap();
     let claims = parent.claims.as_ref().await.unwrap();
     assert_eq!(claims.len(), 1);

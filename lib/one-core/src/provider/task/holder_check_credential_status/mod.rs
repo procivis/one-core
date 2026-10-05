@@ -78,7 +78,7 @@ impl Task for HolderCheckCredentialStatus {
 
         for credential in credentials.values.iter() {
             self.credential_validity_manager
-                .check_holder_credential_validity(credential.id, params.force_refresh)
+                .check_holder_credential_validity(credential.common.id, params.force_refresh)
                 .await
                 .error_while("checking credential validity")?;
         }

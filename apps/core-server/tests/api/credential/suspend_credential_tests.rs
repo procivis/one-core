@@ -47,7 +47,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
     context
         .db
         .revocation_lists
-        .create_credential_entry(revocation_list.id, credential.id, 0)
+        .create_credential_entry(revocation_list.id, credential.common.id, 0)
         .await;
 
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
@@ -56,18 +56,30 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
     let resp = context
         .api
         .credentials
-        .suspend(&credential.id, Some(suspend_end_date_str.to_string()))
+        .suspend(
+            &credential.common.id,
+            Some(suspend_end_date_str.to_string()),
+        )
         .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = context.db.credentials.get(&credential.id).await;
+    let credential = context.db.credentials.get(&credential.common.id).await;
 
-    assert_eq!(CredentialStateEnum::Suspended, credential.state.clone());
+    assert_eq!(
+        CredentialStateEnum::Suspended,
+        credential.common.state.clone()
+    );
 
     assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
-    assert_history_count(&context, &credential.id.into(), HistoryAction::Suspended, 1).await;
+    assert_history_count(
+        &context,
+        &credential.common.id.into(),
+        HistoryAction::Suspended,
+        1,
+    )
+    .await;
 
     let revocation_list_entry = context
         .db
@@ -111,7 +123,11 @@ async fn test_suspend_credential_with_none_fails() {
         .await;
     context.db.revocation_lists.create(identifier, None).await;
     // WHEN
-    let resp = context.api.credentials.suspend(&credential.id, None).await;
+    let resp = context
+        .api
+        .credentials
+        .suspend(&credential.common.id, None)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
@@ -148,7 +164,10 @@ async fn test_suspend_credential_fails_credential_deleted() {
     let resp = context
         .api
         .credentials
-        .suspend(&credential.id, Some(suspend_end_date_str.to_string()))
+        .suspend(
+            &credential.common.id,
+            Some(suspend_end_date_str.to_string()),
+        )
         .await;
 
     // THEN
@@ -178,13 +197,17 @@ async fn test_suspend_credential_fails_when_expired() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.suspend(&credential.id, None).await;
+    let resp = context
+        .api
+        .credentials
+        .suspend(&credential.common.id, None)
+        .await;
 
     // THEN - same error as suspending an already REVOKED credential (invalid state transition)
     assert_eq!(resp.status(), 400);
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0366");
 
-    let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(CredentialStateEnum::Expired, credential.state);
+    let credential = context.db.credentials.get(&credential.common.id).await;
+    assert_eq!(CredentialStateEnum::Expired, credential.common.state);
 }

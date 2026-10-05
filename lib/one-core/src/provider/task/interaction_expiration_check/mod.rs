@@ -62,7 +62,7 @@ impl Task for InteractionExpirationCheckProvider {
                 .error_while("getting credential")?;
 
             let target = target_from_credential(&credential);
-            let schema = credential.schema.as_ref().await?.to_owned();
+            let schema = credential.common.schema.as_ref().await?.to_owned();
 
             self.history_repository
                 .create_history(History {

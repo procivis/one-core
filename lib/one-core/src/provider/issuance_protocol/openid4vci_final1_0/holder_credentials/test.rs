@@ -12,6 +12,7 @@ use super::{
 };
 use crate::clock::now_utc;
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::CredentialCommon;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -49,11 +50,17 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
     assert_eq!(mandatory_claim_ids, vec![claim_id]);
     assert!(!schema.claim_schemas.as_ref().await.unwrap()[0].required);
 
-    let credential = crate::model::credential::Credential {
-        schema: schema.clone().into(),
-        format: Some(schema.formats.as_ref().await.unwrap()[0].clone().into()),
-        claims: vec![].into(),
-        ..dummy_credential()
+    let credential = {
+        let base_credential = dummy_credential();
+        crate::model::credential::Credential {
+            common: CredentialCommon {
+                schema: schema.clone().into(),
+                ..base_credential.common
+            },
+            format: Some(schema.formats.as_ref().await.unwrap()[0].clone().into()),
+            claims: vec![].into(),
+            ..base_credential
+        }
     };
     let error = ensure_required_claims(&schema, &credential, &issuer_claim_metadata)
         .await

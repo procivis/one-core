@@ -19,7 +19,9 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::value_to_model_claims;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -106,27 +108,29 @@ pub(crate) fn extracted_credential_to_model(
 
     Ok(ProvedCredential {
         credential: Credential {
-            expires_at: None,
-            ecosystem: None,
-            id: credential_id,
-            created_date: now,
-            issuance_date,
-            last_modified: now,
-            deleted_at: None,
+            common: CredentialCommon {
+                expires_at: None,
+                ecosystem: None,
+                id: credential_id,
+                created_date: now,
+                issuance_date,
+                last_modified: now,
+                deleted_at: None,
+                protocol: verification_protocol.to_string(),
+                state: CredentialStateEnum::Accepted,
+                profile: profile.clone(),
+                schema: credential_schema.into(),
+                redirect_uri: None,
+                interaction: None,
+            },
             consumed_at: None,
-            protocol: verification_protocol.to_string(),
-            state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
-            profile: profile.clone(),
             claims: model_claims.to_owned().into(),
             issuer_identifier: None,
             issuer_certificate: None,
             holder_identifier: None,
-            schema: credential_schema.into(),
-            redirect_uri: None,
             key: None,
             role: CredentialRole::Verifier,
-            interaction: None,
             credential_blob_id: None,
             wallet_key_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,

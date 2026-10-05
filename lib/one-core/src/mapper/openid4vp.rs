@@ -3,7 +3,7 @@ use one_dto_mapper::convert_inner;
 use crate::config::core_config::FormatType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::RemoteIdentifierRelation;
-use crate::model::credential::{Credential, CredentialType};
+use crate::model::credential::{Credential, CredentialCommon, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
@@ -47,37 +47,40 @@ pub(crate) async fn credential_from_proved(
         .error_while("creating remote holder identifier")?;
 
     Ok(Credential {
-        expires_at: None,
-        ecosystem: proved_credential.credential.ecosystem,
-        id: proved_credential.credential.id,
-        created_date: proved_credential.credential.created_date,
-        issuance_date: proved_credential.credential.issuance_date,
-        last_modified: proved_credential.credential.last_modified,
-        deleted_at: proved_credential.credential.deleted_at,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: proved_credential.credential.common.ecosystem,
+            id: proved_credential.credential.common.id,
+            created_date: proved_credential.credential.common.created_date,
+            issuance_date: proved_credential.credential.common.issuance_date,
+            last_modified: proved_credential.credential.common.last_modified,
+            deleted_at: proved_credential.credential.common.deleted_at,
+            protocol: proved_credential.credential.common.protocol,
+            redirect_uri: proved_credential.credential.common.redirect_uri,
+            state: proved_credential.credential.common.state,
+            schema: from_provider_schema(
+                proved_credential
+                    .credential
+                    .common
+                    .schema
+                    .as_ref()
+                    .await?
+                    .to_owned(),
+                organisation.to_owned(),
+            )
+            .into(),
+            interaction: None,
+            profile: proved_credential.credential.common.profile,
+        },
         consumed_at: None,
-        protocol: proved_credential.credential.protocol,
-        redirect_uri: proved_credential.credential.redirect_uri,
         role: proved_credential.credential.role,
         r#type: CredentialType::Single,
-        state: proved_credential.credential.state,
         claims: proved_credential.credential.claims,
         issuer_identifier: Some(issuer_identifier.into()),
         issuer_certificate,
         holder_identifier: Some(holder_identifier.into()),
-        schema: from_provider_schema(
-            proved_credential
-                .credential
-                .schema
-                .as_ref()
-                .await?
-                .to_owned(),
-            organisation.to_owned(),
-        )
-        .into(),
-        interaction: None,
         key: proved_credential.credential.key,
         suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
-        profile: proved_credential.credential.profile,
         credential_blob_id: proved_credential.credential.credential_blob_id,
         wallet_key_attestation_blob_id: proved_credential.credential.wallet_key_attestation_blob_id,
         wallet_instance_attestation_blob_id: proved_credential

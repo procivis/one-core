@@ -1004,7 +1004,7 @@ async fn test_parse_credential() {
     assert!(!claims.is_empty());
 
     assert_eq!(
-        result.expires_at.unwrap(),
+        result.common.expires_at.unwrap(),
         datetime!(2027-10-15 15:14:37 UTC)
     );
 
@@ -1042,7 +1042,7 @@ async fn test_parse_credential() {
     );
 
     // Verify credential schema
-    let schema = result.schema.as_ref().await.unwrap();
+    let schema = result.common.schema.as_ref().await.unwrap();
     assert_eq!(schema.name, "ArraysAndObjects");
     assert_eq!(
         schema.schema_id().await.unwrap(),

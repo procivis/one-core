@@ -26,7 +26,9 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -528,19 +530,24 @@ async fn test_get_proof_with_array_holder() {
     .unwrap();
 
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: "".into(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            schema: credential_schema.clone().into(),
+            interaction: None,
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "".into(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: vec![
             Claim {
@@ -575,10 +582,7 @@ async fn test_get_proof_with_array_holder() {
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: credential_schema.clone().into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -772,19 +776,24 @@ async fn test_get_proof_with_array_in_object_holder() {
     .unwrap();
 
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: "".into(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            schema: credential_schema.clone().into(),
+            interaction: None,
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "".into(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: vec![
             Claim {
@@ -828,10 +837,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: credential_schema.clone().into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -1030,19 +1036,24 @@ async fn test_get_proof_with_object_array_holder() {
     .unwrap();
 
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: "".into(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            schema: credential_schema.clone().into(),
+            interaction: None,
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "".into(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: vec![
             Claim {
@@ -1095,10 +1106,7 @@ async fn test_get_proof_with_object_array_holder() {
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: credential_schema.clone().into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -1292,19 +1300,24 @@ async fn test_get_proof_with_array() {
     .unwrap();
 
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: "".into(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            schema: credential_schema.clone().into(),
+            interaction: None,
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "".into(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: vec![
             Claim {
@@ -1339,10 +1352,7 @@ async fn test_get_proof_with_array() {
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: credential_schema.clone().into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -1546,19 +1556,24 @@ async fn test_get_proof_with_array_in_object() {
     .unwrap();
 
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: "".into(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            schema: credential_schema.clone().into(),
+            interaction: None,
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "".into(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: vec![
             Claim {
@@ -1602,10 +1617,7 @@ async fn test_get_proof_with_array_in_object() {
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: credential_schema.clone().into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -1815,19 +1827,24 @@ async fn test_get_proof_with_object_array() {
     .unwrap();
 
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: "".into(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            schema: credential_schema.clone().into(),
+            interaction: None,
+            profile: None,
+        },
         consumed_at: None,
-        protocol: "".into(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: vec![
             Claim {
@@ -1880,10 +1897,7 @@ async fn test_get_proof_with_object_array() {
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: credential_schema.clone().into(),
-        interaction: None,
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,

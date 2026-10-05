@@ -148,11 +148,11 @@ impl RevocationMethod for BitstringStatusList {
             .as_ref()
             .await?;
 
-        let credential_schema = credential.schema.as_ref().await?;
+        let credential_schema = credential.common.schema.as_ref().await?;
 
         let mut revocation_infos = vec![
             self.create_credential_entry(
-                credential.id,
+                credential.common.id,
                 &issuer_identifier,
                 RevocationListPurpose::Revocation,
             )
@@ -162,7 +162,7 @@ impl RevocationMethod for BitstringStatusList {
         if credential_schema.allow_suspension {
             revocation_infos.push(
                 self.create_credential_entry(
-                    credential.id,
+                    credential.common.id,
                     &issuer_identifier,
                     RevocationListPurpose::Suspension,
                 )
@@ -204,13 +204,13 @@ impl RevocationMethod for BitstringStatusList {
             .await
             .error_while("getting revocation list")?
             .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
-                credential.id,
+                credential.common.id,
                 issuer_identifier.id,
             ))?;
 
         self.revocation_list_repository
             .update_entry(
-                UpdateRevocationListEntryId::Credential(credential.id),
+                UpdateRevocationListEntryId::Credential(credential.common.id),
                 UpdateRevocationListEntryRequest {
                     state: Some(new_state.into()),
                 },

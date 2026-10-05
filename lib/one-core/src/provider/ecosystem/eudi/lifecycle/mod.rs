@@ -102,7 +102,7 @@ impl EudiEcosystem {
                     None => credential,
                 };
 
-                let wia_revoked = match cached_wia_status.get(&main_credential.id) {
+                let wia_revoked = match cached_wia_status.get(&main_credential.common.id) {
                     Some(revoked) => *revoked,
                     None => {
                         let revoked = self
@@ -113,7 +113,7 @@ impl EudiEcosystem {
                                 AttestationType::WalletInstanceAttestation,
                             )
                             .await?;
-                        cached_wia_status.insert(main_credential.id, revoked);
+                        cached_wia_status.insert(main_credential.common.id, revoked);
 
                         if revoked {
                             self.revoke_pid(
@@ -163,17 +163,17 @@ impl EudiEcosystem {
     ) {
         let Err(error) = self
             .credential_validity_manager
-            .change_credential_state(&credential.id, ChangeCredentialState::Revoked)
+            .change_credential_state(&credential.common.id, ChangeCredentialState::Revoked)
             .await
         else {
-            result.revoked_credential_ids.push(credential.id);
+            result.revoked_credential_ids.push(credential.common.id);
             return;
         };
 
-        result.failed_credential_ids.push(credential.id);
+        result.failed_credential_ids.push(credential.common.id);
 
         if error.error_code() == ErrorCode::BR_0098 {
-            let schema_id = credential.schema.id();
+            let schema_id = credential.common.schema.id();
             if schemas_without_revocation.insert(schema_id) {
                 tracing::warn!(
                     "PIDs of credential schema {schema_id} cannot be revoked because the schema does \
@@ -181,7 +181,7 @@ impl EudiEcosystem {
                 );
             }
         } else {
-            tracing::warn!("Failed to revoke PID `{}`: {error}", credential.id);
+            tracing::warn!("Failed to revoke PID `{}`: {error}", credential.common.id);
         }
 
         if credential.r#type != CredentialType::BatchParent {
@@ -191,12 +191,12 @@ impl EudiEcosystem {
 
         if let Err(error) = self
             .credential_validity_manager
-            .change_credential_state(&credential.id, ChangeCredentialState::Expiring)
+            .change_credential_state(&credential.common.id, ChangeCredentialState::Expiring)
             .await
         {
             tracing::warn!(
                 "Failed to flag PID `{}` as expiring: {error}",
-                credential.id
+                credential.common.id
             );
         }
     }
@@ -246,7 +246,7 @@ impl EudiEcosystem {
                 tracing::warn!(
                     "Could not check {} status of credential `{}`: {error}",
                     r#type,
-                    credential.id
+                    credential.common.id
                 );
                 Ok(false)
             }

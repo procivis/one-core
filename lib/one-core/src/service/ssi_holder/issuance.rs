@@ -25,7 +25,8 @@ use crate::config::core_config::{BlobStorageType, FormatType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialStateEnum, CredentialType,
+    UpdateCredentialRequest,
 };
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
@@ -232,9 +233,9 @@ impl SSIHolderService {
 
         let mut issued = result.issued;
         for (issuer_response, ecosystem) in issued.iter_mut().zip(ecosystems.per_credential) {
-            issuer_response.main_credential.credential.ecosystem = ecosystem.to_owned();
+            issuer_response.main_credential.credential.common.ecosystem = ecosystem.to_owned();
             for item in &mut issuer_response.batch_items {
-                item.credential.ecosystem = ecosystem.to_owned();
+                item.credential.common.ecosystem = ecosystem.to_owned();
             }
         }
 
@@ -243,7 +244,7 @@ impl SSIHolderService {
         let mut credential_ids = vec![];
         let mut credentials = vec![];
         for issuer_response in issued {
-            credential_ids.push(issuer_response.main_credential.credential.id);
+            credential_ids.push(issuer_response.main_credential.credential.common.id);
             // the batch parent must exist before the batch items are created
             credentials.push(issuer_response.main_credential);
             credentials.extend(issuer_response.batch_items);
@@ -324,7 +325,11 @@ impl SSIHolderService {
                 }
             }
             claims.sort_unstable();
-            let key = (credential.schema.id(), credential.ecosystem.clone(), claims);
+            let key = (
+                credential.common.schema.id(),
+                credential.common.ecosystem.clone(),
+                claims,
+            );
             let Some(group) = batch_groups
                 .get(&key)
                 .and_then(|&index| groups.get_mut(index))
@@ -333,7 +338,7 @@ impl SSIHolderService {
                 groups.push(response);
                 continue;
             };
-            let parent_id = group.main_credential.credential.id;
+            let parent_id = group.main_credential.credential.common.id;
             configuration_parents.insert(response.credential_configuration_id, parent_id);
             for item in &mut response.batch_items {
                 item.credential.parent =
@@ -431,7 +436,10 @@ impl SSIHolderService {
         };
 
         Ok(Credential {
-            state: CredentialStateEnum::Accepted,
+            common: CredentialCommon {
+                state: CredentialStateEnum::Accepted,
+                ..credential.common
+            },
             credential_blob_id,
             ..credential
         })
@@ -477,7 +485,7 @@ impl SSIHolderService {
         let credential_ids: Vec<_> = refreshed
             .iter()
             .flat_map(|response| &response.credentials)
-            .map(|credential| credential.id)
+            .map(|credential| credential.common.id)
             .collect();
 
         if interaction.ecosystem.is_some() {
@@ -493,7 +501,7 @@ impl SSIHolderService {
 
                 let batch_item = self
                     .credential_repository
-                    .get_credential(&batch_item.id)
+                    .get_credential(&batch_item.common.id)
                     .await
                     .error_while("getting batch credential")?;
                 let blob = db_blob_storage
@@ -547,9 +555,9 @@ impl SSIHolderService {
                 .iter()
                 .filter(|credential| {
                     credential.r#type == CredentialType::BatchParent
-                        && !ids.contains(&credential.id)
+                        && !ids.contains(&credential.common.id)
                 })
-                .map(|credential| credential.id)
+                .map(|credential| credential.common.id)
                 .collect();
             if !parent_ids.is_empty() {
                 credentials.extend(
@@ -574,7 +582,7 @@ impl SSIHolderService {
             .filter(|credential| {
                 credential_ids
                     .as_ref()
-                    .is_none_or(|ids| ids.contains(&credential.id))
+                    .is_none_or(|ids| ids.contains(&credential.common.id))
             })
             .collect();
 
@@ -594,7 +602,7 @@ impl SSIHolderService {
 
                 let protocol = self
                     .issuance_protocol_provider
-                    .get_protocol(&credential.protocol)?;
+                    .get_protocol(&credential.common.protocol)?;
 
                 if !protocol
                     .get_capabilities()
@@ -638,7 +646,7 @@ impl SSIHolderService {
                 .error_while("updating credential")?;
         }
 
-        let credential_id = credential.id;
+        let credential_id = credential.common.id;
         if let Err(error) = protocol.holder_reject_credential(credential).await {
             tracing::warn!(
                 "Failed to notify the issuer about rejected credential {credential_id}: {error}"
@@ -659,7 +667,8 @@ impl SSIHolderService {
                     .get_credential_list(ListQuery {
                         include_count: false,
                         filtering: Some(
-                            CredentialFilterValue::ParentCredential(credential.id).condition(),
+                            CredentialFilterValue::ParentCredential(credential.common.id)
+                                .condition(),
                         ),
                         ..Default::default()
                     })
@@ -669,8 +678,8 @@ impl SSIHolderService {
             }
             _ => vec![],
         };
-        Ok(std::iter::once(credential.id)
-            .chain(batch_items.into_iter().map(|item| item.id))
+        Ok(std::iter::once(credential.common.id)
+            .chain(batch_items.into_iter().map(|item| item.common.id))
             .collect())
     }
 

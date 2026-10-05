@@ -126,7 +126,7 @@ pub(crate) async fn get_presentation_definition_v2(
         .await?;
 
         let mut filtered_credential_candidates = vec![];
-        for candidate in credential_candidates.into_iter().unique_by(|c| c.id) {
+        for candidate in credential_candidates.into_iter().unique_by(|c| c.common.id) {
             let format = candidate.format.as_required_ref().await?;
             if !format_matches(&query.format, &format.format, config)
                 || !credential_filters.iter().any(|filter| {
@@ -232,7 +232,7 @@ pub(crate) async fn get_presentation_definition_v2(
             let credential_schema = match invalid_credentials.into_iter().next() {
                 None => None,
                 Some(cred) => {
-                    let schema = cred.schema.as_ref().await?.to_owned();
+                    let schema = cred.common.schema.as_ref().await?.to_owned();
                     Some(
                         schema_to_detail_v1_response_dto(schema, config, formatter_provider)
                             .await
@@ -256,7 +256,7 @@ pub(crate) async fn get_presentation_definition_v2(
         // if none of the candidates is applicable, use this schema for the failure hint.
         let failure_hint_schema = match candidates.first() {
             None => None,
-            Some(cred) => Some(cred.schema.as_ref().await?.to_owned()),
+            Some(cred) => Some(cred.common.schema.as_ref().await?.to_owned()),
         };
         let mut applicable_credentials: Vec<ApplicableCredential> = vec![];
         for candidate in candidates {
@@ -630,7 +630,7 @@ async fn select_claims(
 
     let mut missing_claims = vec![];
 
-    let credential_schema = credential.schema.as_ref().await?;
+    let credential_schema = credential.common.schema.as_ref().await?;
     let format = credential.format.as_required_ref().await?;
     let mappings = format.claim_mappings.as_ref().await?;
     let mappings_by_schema_id = mappings
@@ -1226,8 +1226,8 @@ mod test {
         let claim = item.claims.as_ref().await.unwrap()[0].clone();
         format.claim_mappings = vec![CredentialSchemaFormatClaimSchema {
             id: Uuid::new_v4().into(),
-            created_date: item.created_date,
-            last_modified: item.last_modified,
+            created_date: item.common.created_date,
+            last_modified: item.common.last_modified,
             credential_schema_format_id: format.id,
             claim_schema_id: claim.schema.id(),
             technical_key: "renamed".into(),
@@ -1235,9 +1235,9 @@ mod test {
         }]
         .into();
         // The credential uses the second schema format, with a different name and namespace.
-        let mut schema = item.schema.as_ref().await.unwrap().to_owned();
+        let mut schema = item.common.schema.as_ref().await.unwrap().to_owned();
         schema.formats.as_mut().await.unwrap().push(format.clone());
-        item.schema = schema.into();
+        item.common.schema = schema.into();
         item.format = Some(format.into());
         item.claims.as_mut().await.unwrap()[0].selectively_disclosable = true;
         let query: DcqlQuery = serde_json::from_value(serde_json::json!({

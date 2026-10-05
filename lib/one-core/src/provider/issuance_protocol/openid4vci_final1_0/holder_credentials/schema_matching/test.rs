@@ -11,7 +11,9 @@ use crate::clock::now_utc;
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{CredentialSchema, GetCredentialSchemaList};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -1808,21 +1810,25 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         formats.first().unwrap().clone()
     };
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            profile: None,
+            schema: parsed_schema.into(),
+            interaction: None,
+        },
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -1832,8 +1838,6 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
-        schema: parsed_schema.into(),
-        interaction: None,
         key: None,
         parent: None,
         subscriber_information: None,

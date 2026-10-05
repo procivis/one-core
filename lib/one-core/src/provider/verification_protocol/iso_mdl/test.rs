@@ -19,7 +19,8 @@ use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+    GetCredentialList,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -562,26 +563,28 @@ async fn test_get_presentation_definition_v2() {
     ];
 
     let credential = Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential_id,
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        protocol: "ISO_MDL".to_string(),
-        schema: credential_schema.into(),
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            protocol: "ISO_MDL".to_string(),
+            schema: credential_schema.into(),
+            deleted_at: None,
+            redirect_uri: None,
+            state: CredentialStateEnum::Accepted,
+            interaction: None,
+            profile: None,
+        },
         role: CredentialRole::Holder,
-        deleted_at: None,
-        redirect_uri: None,
-        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: claims.into(),
         issuer_identifier: None,
         issuer_certificate: None,
         holder_identifier: None,
         key: None,
-        interaction: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,

@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::error::IssuanceProtocolError;
-use crate::model::credential::{Credential, CredentialType};
+use crate::model::credential::{Credential, CredentialCommon, CredentialType};
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 
@@ -101,25 +101,31 @@ pub(crate) struct CredentialWithBlob {
 impl CredentialWithBlob {
     pub fn batch_parent(&self, refreshable: bool) -> Self {
         Self {
-            credential: Credential {
-                id: Uuid::new_v4().into(),
-                r#type: CredentialType::BatchParent,
-                embedded_disclosure_policy: None,
-                format: None,
-                credential_blob_id: None,
-                wallet_instance_attestation_blob_id: None,
-                wallet_key_attestation_blob_id: None,
-                issuer_identifier: None,
-                issuer_certificate: None,
-                holder_identifier: None,
-                key: None,
-                claims: Default::default(),
-                expires_at: if refreshable {
-                    None
-                } else {
-                    self.credential.expires_at
-                },
-                ..self.credential.clone()
+            credential: {
+                let base_credential = self.credential.clone();
+                Credential {
+                    common: CredentialCommon {
+                        id: Uuid::new_v4().into(),
+                        expires_at: if refreshable {
+                            None
+                        } else {
+                            self.credential.common.expires_at
+                        },
+                        ..base_credential.common
+                    },
+                    r#type: CredentialType::BatchParent,
+                    embedded_disclosure_policy: None,
+                    format: None,
+                    credential_blob_id: None,
+                    wallet_instance_attestation_blob_id: None,
+                    wallet_key_attestation_blob_id: None,
+                    issuer_identifier: None,
+                    issuer_certificate: None,
+                    holder_identifier: None,
+                    key: None,
+                    claims: Default::default(),
+                    ..base_credential
+                }
             },
             serialized: None,
         }

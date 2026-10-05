@@ -53,7 +53,7 @@ pub(crate) async fn persist_accepted_proof(
                         .create_credential(credential.clone())
                         .await
                         .error_while("crating credential")?;
-                    credential_relations.insert(credential.id, credential.into());
+                    credential_relations.insert(credential.common.id, credential.into());
                 }
 
                 proof_repository

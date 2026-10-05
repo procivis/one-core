@@ -68,7 +68,7 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.id);
+        .assert_eq(&credential.common.id);
     assert_eq!(
         body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["format"],
         "SD_JWT_VC"
@@ -178,7 +178,7 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.id);
+        .assert_eq(&credential.common.id);
     body["credentialQueries"]["test_query_id"]["purpose"]["en"]
         .assert_eq(&"Test trust purpose".to_string());
 }
@@ -238,7 +238,7 @@ async fn test_get_presentation_definition_2_claim_filtering_success() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.id);
+        .assert_eq(&credential.common.id);
     let claims = body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["claims"]
         .as_array()
         .unwrap();
@@ -314,7 +314,7 @@ async fn test_get_presentation_definition_2_claim_non_sd_extra_claim() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.id);
+        .assert_eq(&credential.common.id);
     let claims = body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["claims"]
         .as_array()
         .unwrap();
@@ -409,7 +409,7 @@ async fn test_get_presentation_definition_2_with_user_selection() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.id);
+        .assert_eq(&credential.common.id);
     let claims = body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["claims"]
         .as_array()
         .unwrap();
@@ -519,7 +519,7 @@ async fn test_get_presentation_definition_2_with_user_selection_nesting_mixed_sd
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.id);
+        .assert_eq(&credential.common.id);
     let claims = body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["claims"]
         .as_array()
         .unwrap();
@@ -748,7 +748,7 @@ async fn test_get_presentation_definition_2_nested_array_element_selection() {
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
-        .assert_eq(&credential.id);
+        .assert_eq(&credential.common.id);
     let root_obj_array =
         &body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["claims"][0];
     root_obj_array["userSelection"].assert_eq(&false);
@@ -1092,14 +1092,14 @@ async fn test_get_presentation_definition_2_batch_credential_success() {
     let items = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .list(CredentialFilterValue::ParentCredential(credential.common.id).condition())
         .await;
     assert!(
         items
             .iter()
-            .any(|item| applicable_creds[0]["id"] == item.id.to_string())
+            .any(|item| applicable_creds[0]["id"] == item.common.id.to_string())
     );
-    applicable_creds[0]["parentId"].assert_eq(&credential.id);
+    applicable_creds[0]["parentId"].assert_eq(&credential.common.id);
     assert_eq!(applicable_creds[0]["type"], "BATCH_ITEM");
     assert_eq!(applicable_creds[0]["format"], "SD_JWT_VC");
     assert_eq!(applicable_creds[0]["claims"][0]["value"], "value");
@@ -1203,13 +1203,13 @@ async fn test_get_presentation_definition_2_consumed_batch() {
     let items = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .list(CredentialFilterValue::ParentCredential(credential.common.id).condition())
         .await;
     context
         .db
         .credentials
         .update(
-            items[0].id,
+            items[0].common.id,
             UpdateCredentialRequest {
                 consumed_at: Clearable::ForceSet(Some(now_utc())),
                 ..Default::default()
@@ -1281,13 +1281,13 @@ async fn test_get_presentation_definition_2_mixed_batch() {
     let items = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .list(CredentialFilterValue::ParentCredential(credential.common.id).condition())
         .await;
     context
         .db
         .credentials
         .update(
-            items[0].id,
+            items[0].common.id,
             UpdateCredentialRequest {
                 consumed_at: Clearable::ForceSet(Some(now_utc())),
                 ..Default::default()
@@ -1321,8 +1321,8 @@ async fn test_get_presentation_definition_2_mixed_batch() {
         .as_array()
         .unwrap();
     assert_eq!(applicable_creds.len(), 1);
-    applicable_creds[0]["id"].assert_eq(&items[1].id);
-    applicable_creds[0]["parentId"].assert_eq(&credential.id);
+    applicable_creds[0]["id"].assert_eq(&items[1].common.id);
+    applicable_creds[0]["parentId"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -1395,7 +1395,7 @@ async fn test_get_presentation_definition_2_disclosure_policy_violation() {
     let body = resp.json_value().await;
     let applicable_credentials =
         &body["credentialQueries"]["test_query_id"]["applicableCredentials"];
-    applicable_credentials[0]["id"].assert_eq(&credential.id);
+    applicable_credentials[0]["id"].assert_eq(&credential.common.id);
     applicable_credentials[0]["embeddedDisclosurePolicyViolation"].assert_eq(&serde_json::json!({
         "id": "policy-id",
         "description": "description",
@@ -1480,7 +1480,7 @@ async fn test_get_presentation_definition_2_disclosure_policy_no_violation() {
     let body = resp.json_value().await;
     let applicable_credentials =
         &body["credentialQueries"]["test_query_id"]["applicableCredentials"];
-    applicable_credentials[0]["id"].assert_eq(&credential.id);
+    applicable_credentials[0]["id"].assert_eq(&credential.common.id);
     assert!(
         !applicable_credentials[0]
             .as_object()
@@ -1536,7 +1536,7 @@ async fn test_get_presentation_definition_2_batch_disclosure_policy_per_format()
                 TestingCredentialParams {
                     role: Some(CredentialRole::Holder),
                     r#type: Some(CredentialType::BatchItem),
-                    parent_id: Some(parent.id),
+                    parent_id: Some(parent.common.id),
                     format: Some(format.clone()),
                     embedded_disclosure_policy: policy,
                     ..Default::default()
@@ -1584,8 +1584,8 @@ async fn test_get_presentation_definition_2_batch_disclosure_policy_per_format()
     let mdoc = &body["credentialQueries"]["mdoc"]["applicableCredentials"];
     assert_eq!(sd_jwt.as_array().unwrap().len(), 1);
     assert_eq!(mdoc.as_array().unwrap().len(), 1);
-    sd_jwt[0]["parentId"].assert_eq(&parent.id);
-    mdoc[0]["parentId"].assert_eq(&parent.id);
+    sd_jwt[0]["parentId"].assert_eq(&parent.common.id);
+    mdoc[0]["parentId"].assert_eq(&parent.common.id);
     assert_eq!(sd_jwt[0]["type"], "BATCH_ITEM");
     assert_eq!(mdoc[0]["type"], "BATCH_ITEM");
     assert_ne!(sd_jwt[0]["id"], mdoc[0]["id"]);
@@ -1773,7 +1773,7 @@ async fn test_get_presentation_definition_2_batch_items_per_parent_and_format() 
                         TestingCredentialParams {
                             role: Some(CredentialRole::Holder),
                             r#type: Some(CredentialType::BatchItem),
-                            parent_id: Some(parent.id),
+                            parent_id: Some(parent.common.id),
                             format: Some(format.clone()),
                             expires_at: Some(expiry + time::Duration::days(days)),
                             embedded_disclosure_policy: Some(
@@ -1789,7 +1789,7 @@ async fn test_get_presentation_definition_2_batch_items_per_parent_and_format() 
                     )
                     .await;
                 if days == 0 {
-                    expected.push((format.format.to_string(), item.id, parent.id));
+                    expected.push((format.format.to_string(), item.common.id, parent.common.id));
                 }
             }
         }

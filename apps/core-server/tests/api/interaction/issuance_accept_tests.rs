@@ -219,7 +219,7 @@ async fn test_issuance_accept_openid4vc() {
         .unwrap();
     let_assert!(IdentifierData::Did(credential_holder_did) = &holder_identifier.data);
     assert_eq!(holder_did.id, credential_holder_did.id());
-    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
 
     let claims = credential.claims.as_ref().await.unwrap().to_owned();
     let iss_claim = claims.iter().find(|claim| claim.path == "iss").unwrap();
@@ -237,7 +237,7 @@ async fn test_issuance_accept_openid4vc() {
     let history = context
         .db
         .histories
-        .get_by_entity_id(&credential.id.into())
+        .get_by_entity_id(&credential.common.id.into())
         .await;
     assert_eq!(history.values.len(), 2); // Accepted + Issued
     let actions = HashSet::from_iter(history.values.iter().map(|value| value.action));
@@ -646,7 +646,11 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
             },
         )
         .await;
-    let share = context.api.credentials.share(&issuer_credential.id).await;
+    let share = context
+        .api
+        .credentials
+        .share(&issuer_credential.common.id)
+        .await;
     assert_eq!(share.status(), 201);
     let offer_url = share.json_value().await["url"].as_str().unwrap().to_owned();
     let invitation = context
@@ -681,12 +685,12 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
         .unwrap();
     assert_eq!(mdoc_parent.role, CredentialRole::Holder);
     assert_eq!(sd_jwt_vc.role, CredentialRole::Holder);
-    assert_eq!(mdoc_parent.schema.id(), sd_jwt_vc.schema.id());
+    assert_eq!(mdoc_parent.common.schema.id(), sd_jwt_vc.common.schema.id());
 
     let mdoc_items = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(mdoc_parent.id).condition())
+        .list(CredentialFilterValue::ParentCredential(mdoc_parent.common.id).condition())
         .await;
     assert_eq!(mdoc_items.len(), 1);
     assert_eq!(mdoc_items[0].r#type, CredentialType::BatchItem);
@@ -702,8 +706,8 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
             .to_string(),
         "MDOC"
     );
-    assert!(mdoc_items[0].expires_at.is_some());
-    assert!(mdoc_parent.expires_at.is_none());
+    assert!(mdoc_items[0].common.expires_at.is_some());
+    assert!(mdoc_parent.common.expires_at.is_none());
     assert!(mdoc_parent.format.is_none());
 
     assert_eq!(
@@ -718,13 +722,13 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
             .to_string(),
         "SD_JWT_VC"
     );
-    assert!(sd_jwt_vc.expires_at.is_none());
+    assert!(sd_jwt_vc.common.expires_at.is_none());
     assert!(sd_jwt_vc.parent.is_none());
     assert!(
         context
             .db
             .credentials
-            .list(CredentialFilterValue::ParentCredential(sd_jwt_vc.id).condition())
+            .list(CredentialFilterValue::ParentCredential(sd_jwt_vc.common.id).condition())
             .await
             .is_empty()
     );
@@ -773,7 +777,7 @@ async fn check_multi_configuration_issuance(
     assert_eq!(
         stored_main_credentials
             .iter()
-            .map(|credential| credential.id)
+            .map(|credential| credential.common.id)
             .collect::<HashSet<_>>(),
         main_ids.iter().map(|id| id.parse()).collect::<HashSet<_>>()
     );
@@ -788,41 +792,47 @@ async fn check_multi_configuration_issuance(
     for main_id in main_ids {
         let main = context.db.credentials.get(&main_id.parse()).await;
         assert_eq!(main.r#type, expected_type);
-        assert_eq!(main.state, CredentialStateEnum::Accepted);
-        assert_eq!(main.interaction.as_ref().unwrap().id(), interaction_id);
+        assert_eq!(main.common.state, CredentialStateEnum::Accepted);
+        assert_eq!(
+            main.common.interaction.as_ref().unwrap().id(),
+            interaction_id
+        );
         assert!(main.parent.is_none());
         let items = context
             .db
             .credentials
-            .list(CredentialFilterValue::ParentCredential(main.id).condition())
+            .list(CredentialFilterValue::ParentCredential(main.common.id).condition())
             .await;
         if expected_type == CredentialType::Single {
             assert!(items.is_empty());
             assert!(main.format.is_some());
             assert!(main.credential_blob_id.is_some());
-            assert_eq!(main.expires_at.is_none(), without_expiry);
+            assert_eq!(main.common.expires_at.is_none(), without_expiry);
         } else {
             assert!(main.format.is_none());
             assert!(main.credential_blob_id.is_none());
             assert!(main.embedded_disclosure_policy.is_none());
             assert!(main.claims.as_ref().await.unwrap().is_empty());
-            assert_eq!(main.expires_at.is_none(), refreshable || without_expiry);
+            assert_eq!(
+                main.common.expires_at.is_none(),
+                refreshable || without_expiry
+            );
             assert_eq!(
                 items.len(),
                 items_per_configuration * if schema_overlap { 2 } else { 1 }
             );
             for item in &items {
                 assert_eq!(item.r#type, CredentialType::BatchItem);
-                assert_eq!(item.state, CredentialStateEnum::Accepted);
-                assert_eq!(item.schema.id(), main.schema.id());
-                assert!(item.interaction.is_none());
+                assert_eq!(item.common.state, CredentialStateEnum::Accepted);
+                assert_eq!(item.common.schema.id(), main.common.schema.id());
+                assert!(item.common.interaction.is_none());
                 assert!(item.credential_blob_id.is_some());
                 assert!(
                     !main_ids
                         .iter()
-                        .any(|id| id.parse::<shared_types::CredentialId>() == item.id)
+                        .any(|id| id.parse::<shared_types::CredentialId>() == item.common.id)
                 );
-                assert!(all_item_ids.insert(item.id));
+                assert!(all_item_ids.insert(item.common.id));
                 let claims = item.claims.as_ref().await.unwrap();
 
                 assert!(claims.iter().any(
@@ -851,14 +861,14 @@ async fn check_multi_configuration_issuance(
             .credentials
             .get(&configuration["credential_id"].parse())
             .await;
-        assert_eq!(main.schema.id(), schema_ids[index]);
+        assert_eq!(main.common.schema.id(), schema_ids[index]);
         let concrete = if expected_type == CredentialType::Single {
             vec![main]
         } else {
             context
                 .db
                 .credentials
-                .list(CredentialFilterValue::ParentCredential(main.id).condition())
+                .list(CredentialFilterValue::ParentCredential(main.common.id).condition())
                 .await
         };
         let policy = json!({"id": format!("policy-{index}"), "policy": "none"});
@@ -1047,7 +1057,7 @@ async fn test_issuance_accept_extracts_expires_at_from_issued_credential() {
     let credential_id = resp["id"].parse();
 
     let credential = context.db.credentials.get(&credential_id).await;
-    let expires_at = credential.expires_at.unwrap();
+    let expires_at = credential.common.expires_at.unwrap();
     // the JWT `exp` claim only has whole-second precision, so the round-tripped value can be
     // up to a second below the precise `before + 10h` bound
     assert!(expires_at >= before + Duration::hours(10) - Duration::seconds(1));
@@ -1208,14 +1218,14 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
     assert!(credential.format.is_none());
     // the batch is refreshable via the OAuth refresh token, so the batch_parent's own
     // `expires_at` (which is not a real per-holder expiration) must not be set
-    assert_eq!(None, credential.expires_at);
+    assert_eq!(None, credential.common.expires_at);
 
     // each individual batch item still carries its own real expiration (parsed from its
     // signed credential's `exp`), regardless of the parent's refresh-token-governed state
     let batch_items = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .list(CredentialFilterValue::ParentCredential(credential.common.id).condition())
         .await;
     assert_eq!(2, batch_items.len());
     assert!(credential.claims.as_ref().await.unwrap().is_empty());
@@ -1241,7 +1251,7 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         assert!(has_metadata);
         assert!(claims.iter().any(|claim| claim.path == "string"));
         assert_eq!(CredentialType::BatchItem, item.r#type);
-        assert!(item.expires_at.is_some());
+        assert!(item.common.expires_at.is_some());
     }
     assert!(shared_claims > 0);
 }
@@ -1316,7 +1326,7 @@ async fn test_issuance_accept_batch_without_refresh_token_keeps_batch_parent_exp
     assert!(credential.format.is_none());
     // `w3c_jwt_vc` always signs the issued credentials with `exp` set to `now + 10 hours`;
     // the batch_parent should inherit that real value from its first batch item
-    let expires_at = credential.expires_at.unwrap();
+    let expires_at = credential.common.expires_at.unwrap();
     assert!(expires_at >= before + Duration::hours(10) - Duration::seconds(1));
     assert!(expires_at <= after + Duration::hours(10));
 
@@ -1327,17 +1337,17 @@ async fn test_issuance_accept_batch_without_refresh_token_keeps_batch_parent_exp
     let batch_items = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .list(CredentialFilterValue::ParentCredential(credential.common.id).condition())
         .await;
     assert_eq!(2, batch_items.len());
     for item in &batch_items {
         assert_eq!(CredentialType::BatchItem, item.r#type);
-        assert!(item.expires_at.is_some());
+        assert!(item.common.expires_at.is_some());
     }
     assert!(
         batch_items
             .iter()
-            .any(|item| item.expires_at == credential.expires_at)
+            .any(|item| item.common.expires_at == credential.common.expires_at)
     );
 }
 
@@ -1409,7 +1419,7 @@ async fn test_issuance_accept_batch_marks_autogenerated_holder_binding_identifie
     let batch_items = context
         .db
         .credentials
-        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .list(CredentialFilterValue::ParentCredential(credential.common.id).condition())
         .await;
     assert_eq!(2, batch_items.len());
 
@@ -1427,7 +1437,7 @@ async fn test_issuance_accept_batch_marks_autogenerated_holder_binding_identifie
         assert!(
             holder_identifier.autogenerated,
             "auto-generated holder-binding identifier for batch item {} must be flagged autogenerated",
-            item.id
+            item.common.id
         );
         autogenerated_identifier_ids.insert(holder_identifier.id);
     }
@@ -1725,7 +1735,7 @@ async fn test_issuance_accept_with_new_nested_optional_claims() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
 
     let claims = credential.claims.as_ref().await.unwrap().to_owned();
 
@@ -1923,12 +1933,12 @@ async fn test_issuance_accept_schema_name_already_exists(#[values(false, true)] 
     assert_eq!(resp.status(), 200);
     let credential_id = resp.json::<serde_json::Value>().await["id"].parse();
     let credential = context.db.credentials.get(&credential_id).await;
-    let credential_schema = credential.schema.as_ref().await.unwrap();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap();
 
     let history = context
         .db
         .histories
-        .get_by_entity_id(&credential.id.into())
+        .get_by_entity_id(&credential.common.id.into())
         .await;
     assert_eq!(history.values.len(), 2); // Accepted + Issued
     let actions = HashSet::from_iter(history.values.iter().map(|value| value.action));
@@ -2219,7 +2229,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     assert_eq!(holder_did.id, credential_holder_did.id());
     assert_eq!(key.id, credential.key.unwrap().id());
 
-    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
 }
 
 #[tokio::test]
@@ -2937,7 +2947,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     let_assert!(IdentifierData::Did(credential_holder_did) = &holder_identifier.data);
     assert_eq!(holder_did.id, credential_holder_did.id());
 
-    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.common.state);
 }
 
 #[tokio::test]

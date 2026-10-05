@@ -21,7 +21,9 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType};
@@ -297,21 +299,75 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         claim_mappings: Default::default(),
     };
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential_id,
-        created_date: crate::clock::now_utc(),
-        issuance_date: None,
-        last_modified: crate::clock::now_utc(),
-        deleted_at: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: crate::clock::now_utc(),
+            issuance_date: None,
+            last_modified: crate::clock::now_utc(),
+            deleted_at: None,
+            protocol: exchange.to_owned(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Pending,
+            profile: None,
+            schema: CredentialSchema {
+                expiration: None,
+                ecosystem: None,
+                batch_size: None,
+                allow_revocation: true,
+                id: credential_schema_id,
+                deleted_at: None,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                name: "schema".to_string(),
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
+                formats: vec![format.clone()].into(),
+                imported_source_url: "CORE_URL".to_string(),
+                claim_schemas: vec![ClaimSchema {
+                    id: claim_schema_id,
+                    key: "key".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    array: false,
+                    metadata: false,
+                    required: true,
+                    translations: Default::default(),
+                }]
+                .into(),
+                organisation: dummy_organisation(None).into(),
+                layout_properties: None,
+                allow_suspension: true,
+                transaction_code: None,
+                translations: Default::default(),
+                embedded_disclosure_policy: None,
+            }
+            .into(),
+            interaction: Some(
+                Interaction {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    data: Some(b"interaction data".to_vec()),
+                    organisation: dummy_organisation(None).into(),
+                    interaction_type: InteractionType::Issuance,
+                    expires_at: None,
+                    ecosystem: None,
+                    ecosystem_data: Default::default(),
+                }
+                .into(),
+            ),
+        },
         consumed_at: None,
-        protocol: exchange.to_owned(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Pending,
         suspend_end_date: None,
-        profile: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
             created_date: crate::clock::now_utc(),
@@ -342,58 +398,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         ),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: true,
-            id: credential_schema_id,
-            deleted_at: None,
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            name: "schema".to_string(),
-            wallet_attestation: WalletAttestation {
-                require_instance_attestation: false,
-                key_storage_security_level: Some(KeyStorageSecurity::Basic),
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
-            },
-            formats: vec![format.clone()].into(),
-            imported_source_url: "CORE_URL".to_string(),
-            claim_schemas: vec![ClaimSchema {
-                id: claim_schema_id,
-                key: "key".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                array: false,
-                metadata: false,
-                required: true,
-                translations: Default::default(),
-            }]
-            .into(),
-            organisation: dummy_organisation(None).into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        }
-        .into(),
-        interaction: Some(
-            Interaction {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                data: Some(b"interaction data".to_vec()),
-                organisation: dummy_organisation(None).into(),
-                interaction_type: InteractionType::Issuance,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: Default::default(),
-            }
-            .into(),
-        ),
         key: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,

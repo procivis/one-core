@@ -26,7 +26,7 @@ impl EudiEcosystem {
             return Err(EcosystemError::MissingIdentifier);
         };
 
-        let credential_schema = credential.schema.as_ref().await?;
+        let credential_schema = credential.common.schema.as_ref().await?;
         let (schema_format, format_type) =
             credential_schema_to_schema_format(&credential_schema, &self.config).await?;
         if !ALLOWED_FORMAT_TYPES.contains(&format_type) {

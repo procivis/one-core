@@ -1,3 +1,4 @@
+use one_core::model::credential::CredentialCommon;
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, ColumnTrait, IntoActiveModel, QueryFilter};
 use shared_types::{ClaimId, ProofId};
@@ -38,14 +39,20 @@ impl BatchSetup {
         .await
         .unwrap();
         let repositories = crate::DataLayer::build(db.clone(), vec![]);
-        let parent = Credential {
-            r#type: CredentialType::BatchParent,
-            id: Uuid::new_v4().into(),
-            ..repositories
+        let parent = {
+            let base_credential = repositories
                 .get_credential_repository()
-                .get_credential(&template.id)
+                .get_credential(&template.common.id)
                 .await
-                .unwrap()
+                .unwrap();
+            Credential {
+                common: CredentialCommon {
+                    id: Uuid::new_v4().into(),
+                    ..base_credential.common
+                },
+                r#type: CredentialType::BatchParent,
+                ..base_credential
+            }
         };
         repositories
             .get_credential_repository()
@@ -72,12 +79,18 @@ impl BatchSetup {
     }
 
     fn item(&self, claims: Vec<Claim>) -> Credential {
-        Credential {
-            id: Uuid::new_v4().into(),
-            r#type: CredentialType::BatchItem,
-            parent: Some(self.parent.clone().into()),
-            claims: claims.into(),
-            ..self.parent.clone()
+        {
+            let base_credential = self.parent.clone();
+            Credential {
+                common: CredentialCommon {
+                    id: Uuid::new_v4().into(),
+                    ..base_credential.common
+                },
+                r#type: CredentialType::BatchItem,
+                parent: Some(self.parent.clone().into()),
+                claims: claims.into(),
+                ..base_credential
+            }
         }
     }
 
@@ -162,6 +175,7 @@ async fn reuse_requires_equal_claim_contents(#[case] difference: &str, #[case] r
         "schema" => {
             second.schema = setup
                 .parent
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -199,7 +213,7 @@ async fn reuse_requires_equal_claim_contents(#[case] difference: &str, #[case] r
             .is_none(),
         reused
     );
-    assert!(setup.claim_ids(setup.parent.id).await.is_empty());
+    assert!(setup.claim_ids(setup.parent.common.id).await.is_empty());
 }
 
 #[tokio::test]
@@ -210,9 +224,15 @@ async fn claims_are_not_reused_across_batches() {
         id: Uuid::new_v4().into(),
         ..setup.claim.clone()
     };
-    let other_parent = Credential {
-        id: Uuid::new_v4().into(),
-        ..setup.parent.clone()
+    let other_parent = {
+        let base_credential = setup.parent.clone();
+        Credential {
+            common: CredentialCommon {
+                id: Uuid::new_v4().into(),
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
     setup
         .repositories
@@ -373,7 +393,7 @@ async fn reuse_does_not_hide_conflicting_requested_claim_ids() {
         id: conflicting.id,
         ..setup.claim.clone()
     }]);
-    let requested_id = request.id;
+    let requested_id = request.common.id;
     let result = setup
         .repositories
         .get_credential_repository()
@@ -411,7 +431,7 @@ async fn bulk_creation_query_count_does_not_grow_per_item(#[case] refresh: bool)
         if refresh {
             setup.create_item(vec![setup.claim.clone()]).await;
         } else {
-            setup.parent.id = Uuid::new_v4().into();
+            setup.parent.common.id = Uuid::new_v4().into();
         }
         let statements = Arc::new(Mutex::new(Vec::new()));
         let captured = statements.clone();
@@ -431,7 +451,10 @@ async fn bulk_creation_query_count_does_not_grow_per_item(#[case] refresh: bool)
             // Input order does not have to follow foreign-key dependencies.
             requests.push(setup.parent.clone());
         }
-        let expected_ids: Vec<_> = requests.iter().map(|credential| credential.id).collect();
+        let expected_ids: Vec<_> = requests
+            .iter()
+            .map(|credential| credential.common.id)
+            .collect();
         let ids = setup
             .repositories
             .get_credential_repository()
@@ -460,14 +483,14 @@ async fn bulk_creation_query_count_does_not_grow_per_item(#[case] refresh: bool)
             );
         }
         let mut claim_ids = HashSet::new();
-        for id in ids.into_iter().filter(|id| *id != setup.parent.id) {
+        for id in ids.into_iter().filter(|id| *id != setup.parent.common.id) {
             claim_ids.extend(setup.claim_ids(id).await);
         }
         assert_eq!(claim_ids.len(), 1);
         if refresh {
             assert_eq!(claim_ids, HashSet::from([setup.claim.id]));
         }
-        assert!(setup.claim_ids(setup.parent.id).await.is_empty());
+        assert!(setup.claim_ids(setup.parent.common.id).await.is_empty());
     }
     assert!(counts[0].0 > 0 && counts[0].1 > 0);
     assert_eq!(
@@ -479,7 +502,7 @@ async fn bulk_creation_query_count_does_not_grow_per_item(#[case] refresh: bool)
 #[tokio::test]
 async fn bulk_creation_crosses_all_insert_chunk_boundaries() {
     let mut setup = BatchSetup::new().await;
-    setup.parent.id = Uuid::new_v4().into();
+    setup.parent.common.id = Uuid::new_v4().into();
     let mut requests: Vec<_> = (0..65)
         .map(|index| {
             let mut claims = vec![Claim {
@@ -496,7 +519,10 @@ async fn bulk_creation_crosses_all_insert_chunk_boundaries() {
         })
         .collect();
     requests.push(setup.parent.clone());
-    let expected: Vec<_> = requests.iter().map(|credential| credential.id).collect();
+    let expected: Vec<_> = requests
+        .iter()
+        .map(|credential| credential.common.id)
+        .collect();
     let ids = setup
         .repositories
         .get_credential_repository()
@@ -505,13 +531,13 @@ async fn bulk_creation_crosses_all_insert_chunk_boundaries() {
         .unwrap();
     assert_eq!(ids, expected);
     let mut stored = HashSet::new();
-    for id in ids.into_iter().filter(|id| *id != setup.parent.id) {
+    for id in ids.into_iter().filter(|id| *id != setup.parent.common.id) {
         let claim_ids = setup.claim_ids(id).await;
         assert_eq!(claim_ids.len(), 7);
         stored.extend(claim_ids);
     }
     assert_eq!(stored.len(), 1 + 65 * 6);
-    assert!(setup.claim_ids(setup.parent.id).await.is_empty());
+    assert!(setup.claim_ids(setup.parent.common.id).await.is_empty());
 }
 
 #[rstest]
@@ -524,7 +550,7 @@ async fn bulk_creation_crosses_all_insert_chunk_boundaries() {
 #[tokio::test]
 async fn bulk_creation_failure_leaves_no_credentials_or_claims(#[case] conflict: &str) {
     let mut setup = BatchSetup::new().await;
-    setup.parent.id = Uuid::new_v4().into();
+    setup.parent.common.id = Uuid::new_v4().into();
     let first = setup.item(vec![setup.claim.clone()]);
     let mut second_claim = Claim {
         id: Uuid::new_v4().into(),
@@ -553,10 +579,13 @@ async fn bulk_creation_failure_leaves_no_credentials_or_claims(#[case] conflict:
         },
     );
     if conflict == "credential" {
-        second.id = first.id;
+        second.common.id = first.common.id;
     }
     let requests = vec![setup.parent.clone(), first, second];
-    let requested_ids: Vec<_> = requests.iter().map(|credential| credential.id).collect();
+    let requested_ids: Vec<_> = requests
+        .iter()
+        .map(|credential| credential.common.id)
+        .collect();
     assert!(
         setup
             .repositories
@@ -588,9 +617,15 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
     let mut requests = Vec::new();
     let mut groups = Vec::new();
     for _ in 0..2 {
-        let parent = Credential {
-            id: Uuid::new_v4().into(),
-            ..setup.parent.clone()
+        let parent = {
+            let base_credential = setup.parent.clone();
+            Credential {
+                common: CredentialCommon {
+                    id: Uuid::new_v4().into(),
+                    ..base_credential.common
+                },
+                ..base_credential
+            }
         };
         let mut ids = Vec::new();
         for _ in 0..2 {
@@ -599,7 +634,7 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
                 ..setup.claim.clone()
             }]);
             item.parent = Some(parent.clone().into());
-            ids.push(item.id);
+            ids.push(item.common.id);
             requests.push(item);
         }
         groups.push(ids);
@@ -611,7 +646,7 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
         parent: None,
         ..setup.item(vec![setup.claim.clone()])
     };
-    let issuer_id = issuer.id;
+    let issuer_id = issuer.common.id;
     requests.push(issuer);
     setup
         .repositories

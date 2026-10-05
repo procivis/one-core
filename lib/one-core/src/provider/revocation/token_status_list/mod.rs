@@ -235,7 +235,7 @@ impl RevocationMethod for TokenStatusList {
 
         let entry = self
             .create_entry(
-                RevocationListEntityId::Credential(credential.id),
+                RevocationListEntityId::Credential(credential.common.id),
                 &issuer_identifier,
                 issuer_certificate.as_ref(),
             )
@@ -283,13 +283,13 @@ impl RevocationMethod for TokenStatusList {
             .await
             .error_while("getting revocation list")?
             .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
-                credential.id,
+                credential.common.id,
                 issuer_identifier.id,
             ))?;
 
         self.revocation_list_repository
             .update_entry(
-                UpdateRevocationListEntryId::Credential(credential.id),
+                UpdateRevocationListEntryId::Credential(credential.common.id),
                 UpdateRevocationListEntryRequest {
                     state: Some(new_state.into()),
                 },

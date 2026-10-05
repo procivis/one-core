@@ -31,7 +31,9 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierData;
 use crate::model::organisation::Organisation;
@@ -543,21 +545,25 @@ impl CredentialFormatter for JsonLdBbsplus {
             .transpose()?;
 
         Ok(Credential {
-            expires_at: vcdm.valid_until.or(vcdm.expiration_date),
-            ecosystem: None,
-            id: credential_id,
-            created_date: now,
-            issuance_date: vcdm.issuance_date,
-            last_modified: now,
-            deleted_at: None,
+            common: CredentialCommon {
+                expires_at: vcdm.valid_until.or(vcdm.expiration_date),
+                ecosystem: None,
+                id: credential_id,
+                created_date: now,
+                issuance_date: vcdm.issuance_date,
+                last_modified: now,
+                deleted_at: None,
+                protocol: "".to_string(),
+                redirect_uri: None,
+                state: CredentialStateEnum::Accepted,
+                profile: None,
+                schema: schema.into(),
+                interaction: None,
+            },
             consumed_at: None,
-            protocol: "".to_string(),
-            redirect_uri: None,
             role: CredentialRole::Holder,
             r#type: CredentialType::Single,
-            state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
-            profile: None,
             credential_blob_id: None,
             wallet_key_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
@@ -565,8 +571,6 @@ impl CredentialFormatter for JsonLdBbsplus {
             issuer_certificate: first_certificate(&issuer_identifier).await?.map(Into::into),
             issuer_identifier: Some(issuer_identifier.into()),
             holder_identifier: holder_identifier.map(Into::into),
-            schema: schema.into(),
-            interaction: None,
             key: None,
             webhook_url: None,
             parent: None,

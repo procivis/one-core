@@ -43,8 +43,8 @@ use crate::error::ErrorCodeMixinExt;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
-    GetCredentialList,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialRole, CredentialStateEnum,
+    CredentialType, GetCredentialList,
 };
 use crate::model::credential_schema::{
     CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, UpdateCredentialSchemaRequest,
@@ -369,19 +369,9 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         claim_mappings: vec![claim_schema_mapping].into(),
     };
     Credential {
-        expires_at: None,
-        ecosystem: None,
-        id: credential_id,
-        created_date: now,
-        issuance_date: None,
-        last_modified: now,
-        deleted_at: None,
         consumed_at: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -399,51 +389,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         issuer_certificate: None,
         issuer_identifier: Some(issuer_identifier.into()),
         holder_identifier: None,
-        schema: CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: now,
-            wallet_attestation: WalletAttestation {
-                require_instance_attestation: false,
-                key_storage_security_level: Some(KeyStorageSecurity::Basic),
-                preferred_key_storage_attestation_lifetime: None,
-                preferred_instance_attestation_lifetime: None,
-            },
-            last_modified: now,
-            name: "schema".to_string(),
-            formats: vec![format.clone()].into(),
-            claim_schemas: vec![claim_schema].into(),
-            layout_properties: None,
-            organisation: dummy_organisation(None).into(),
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        }
-        .into(),
-        interaction: Some(
-            Interaction {
-                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-                    .unwrap()
-                    .into(),
-                created_date: now,
-                data: Some(vec![1, 2, 3]),
-                last_modified: now,
-                organisation: dummy_organisation(None).into(),
-                interaction_type: InteractionType::Issuance,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: Default::default(),
-            }
-            .into(),
-        ),
         key: None,
-        profile: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
@@ -451,6 +397,62 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         parent: None,
         embedded_disclosure_policy: None,
         subscriber_information: None,
+        common: CredentialCommon {
+            expires_at: None,
+            ecosystem: None,
+            id: credential_id,
+            created_date: now,
+            issuance_date: None,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            redirect_uri: None,
+            state: CredentialStateEnum::Created,
+            schema: CredentialSchema {
+                expiration: None,
+                ecosystem: None,
+                batch_size: None,
+                allow_revocation: false,
+                id: credential_schema_id,
+                deleted_at: None,
+                imported_source_url: "CORE_URL".to_string(),
+                created_date: now,
+                wallet_attestation: WalletAttestation {
+                    require_instance_attestation: false,
+                    key_storage_security_level: Some(KeyStorageSecurity::Basic),
+                    preferred_key_storage_attestation_lifetime: None,
+                    preferred_instance_attestation_lifetime: None,
+                },
+                last_modified: now,
+                name: "schema".to_string(),
+                formats: vec![format.clone()].into(),
+                claim_schemas: vec![claim_schema].into(),
+                layout_properties: None,
+                organisation: dummy_organisation(None).into(),
+                allow_suspension: true,
+                transaction_code: None,
+                translations: Default::default(),
+                embedded_disclosure_policy: None,
+            }
+            .into(),
+            interaction: Some(
+                Interaction {
+                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                        .unwrap()
+                        .into(),
+                    created_date: now,
+                    data: Some(vec![1, 2, 3]),
+                    last_modified: now,
+                    organisation: dummy_organisation(None).into(),
+                    interaction_type: InteractionType::Issuance,
+                    expires_at: None,
+                    ecosystem: None,
+                    ecosystem_data: Default::default(),
+                }
+                .into(),
+            ),
+            profile: None,
+        },
         format: Some(format.into()),
     }
 }
@@ -481,10 +483,10 @@ async fn test_generate_offer() {
     let credential = generic_credential_did();
     let issuer_identifier_id = credential.issuer_identifier.as_ref().unwrap().id();
 
-    let credential_schema = credential.schema.as_ref().await.unwrap();
+    let credential_schema = credential.common.schema.as_ref().await.unwrap();
     let offer = create_credential_offer(
         &protocol_base_url,
-        &credential.protocol,
+        &credential.common.protocol,
         &interaction_id.to_string(),
         &credential_schema,
         &credential_schema.formats.as_ref().await.unwrap(),
@@ -495,9 +497,9 @@ async fn test_generate_offer() {
     assert_eq!(
         json!(&offer),
         json!({
-            "credential_issuer": format!("BASE_URL/ssi/openid4vci/final-1.0/{}/{issuer_identifier_id}/c322aa7f-9803-410d-b891-939b279fb965", credential.protocol),
+            "credential_issuer": format!("BASE_URL/ssi/openid4vci/final-1.0/{}/{issuer_identifier_id}/c322aa7f-9803-410d-b891-939b279fb965", credential.common.protocol),
             "credential_configuration_ids" : [
-                credential.schema.as_ref().await.unwrap().schema_id().await.unwrap(),
+                credential.common.schema.as_ref().await.unwrap().schema_id().await.unwrap(),
             ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
@@ -561,7 +563,7 @@ fn test_holder_interaction_data_deserializes_legacy_single_configuration() {
 #[tokio::test]
 async fn test_generate_share_credentials() {
     let mut credential = generic_credential_did();
-    credential.interaction = None;
+    credential.common.interaction = None;
     let protocol = setup_protocol(Default::default());
 
     let result = protocol.issuer_share_credential(&credential).await.unwrap();
@@ -574,7 +576,7 @@ async fn test_generate_share_credentials() {
 #[tokio::test]
 async fn test_generate_share_credentials_offer_by_value() {
     let mut credential = generic_credential_did();
-    credential.interaction = None;
+    credential.common.interaction = None;
 
     let protocol = setup_protocol(TestInputs {
         params: Some(test_params("openid-credential-offer")),
@@ -635,6 +637,7 @@ async fn test_holder_accept_credential_success() {
         credential_response_encryption: None,
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: credential
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -678,6 +681,7 @@ async fn test_holder_accept_credential_success() {
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -758,7 +762,7 @@ async fn test_holder_accept_credential_success() {
         .expect_get_formatter_by_type()
         .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
-    let mut schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let mut schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     // Keep the stored claims independent from the formatter's parsed schema.
     let claim_schemas = schema.claim_schemas.as_ref().await.unwrap().to_owned();
     schema.claim_schemas = claim_schemas.into();
@@ -896,12 +900,12 @@ async fn test_holder_accept_credential_success() {
     assert!(issuer_response.batch_items.is_empty());
 
     let single_credential = issuer_response.main_credential.credential;
-    assert_eq!(single_credential.id, credential.id);
+    assert_eq!(single_credential.common.id, credential.common.id);
     assert_eq!(
         single_credential.issuer_identifier.as_ref().unwrap().id(),
         identifier.id
     );
-    let accepted_schema = single_credential.schema.as_ref().await.unwrap();
+    let accepted_schema = single_credential.common.schema.as_ref().await.unwrap();
     let schema_translations = accepted_schema.translations.as_ref().await.unwrap();
     assert_eq!(schema_translations.len(), 2);
     let claim_schemas = accepted_schema.claim_schemas.as_ref().await.unwrap();
@@ -947,6 +951,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         credential_response_encryption: None,
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: credential
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -974,6 +979,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -1042,7 +1048,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .expect_get_formatter_by_type()
         .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     credential_schema_repository
         .expect_get_credential_schema_list()
         .once()
@@ -1183,7 +1189,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     assert!(issuer_response.batch_items.is_empty());
 
     let single_credential = issuer_response.main_credential.credential;
-    assert_eq!(single_credential.id, credential.id);
+    assert_eq!(single_credential.common.id, credential.common.id);
 }
 
 #[tokio::test]
@@ -1223,6 +1229,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         credential_response_encryption: None,
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: credential
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -1250,6 +1257,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -1330,7 +1338,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .expect_get_formatter_by_type()
         .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     credential_schema_repository
         .expect_get_credential_schema_list()
         .once()
@@ -1487,7 +1495,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     assert!(issuer_response.batch_items.is_empty());
 
     let create_credential = issuer_response.main_credential.credential;
-    assert_eq!(create_credential.id, credential.id);
+    assert_eq!(create_credential.common.id, credential.common.id);
     assert_eq!(create_credential.r#type, CredentialType::Single);
     assert_eq!(
         create_credential.issuer_identifier.as_ref().unwrap().id(),
@@ -1526,6 +1534,7 @@ async fn batch_autogenerated_binding_interaction(
         credential_response_encryption: None,
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: credential
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -1553,6 +1562,7 @@ async fn batch_autogenerated_binding_interaction(
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -1649,17 +1659,23 @@ async fn batch_autogenerated_binding_inputs(
                         claim
                     })
                     .collect::<Vec<_>>();
-                Ok(Credential {
-                    id,
-                    claims: claims.into(),
-                    holder_identifier: Some(
-                        Identifier {
-                            data: IdentifierData::Key(Related::from(key)),
-                            ..dummy_identifier()
-                        }
-                        .into(),
-                    ),
-                    ..clone.clone()
+                Ok({
+                    let base_credential = clone.clone();
+                    Credential {
+                        common: CredentialCommon {
+                            id,
+                            ..base_credential.common
+                        },
+                        claims: claims.into(),
+                        holder_identifier: Some(
+                            Identifier {
+                                data: IdentifierData::Key(Related::from(key)),
+                                ..dummy_identifier()
+                            }
+                            .into(),
+                        ),
+                        ..base_credential
+                    }
                 })
             }
         });
@@ -1677,7 +1693,7 @@ async fn batch_autogenerated_binding_inputs(
 
     // the configuration is accepted once any of its credentials is issued
     let accepted_configurations = usize::from(issued_credentials > 0);
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -2123,6 +2139,7 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         .data = IdentifierData::Key(Related::from(key.clone()));
 
     let credential_configuration_id = credential
+        .common
         .schema
         .as_ref()
         .await
@@ -2176,6 +2193,7 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -2275,7 +2293,7 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         .expect_get_formatter_by_type()
         .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     credential_schema_repository
         .expect_get_credential_schema_list()
         .once()
@@ -2446,7 +2464,7 @@ async fn test_holder_reject_credential() {
 
     let credential = {
         let mut credential = generic_credential_did();
-        credential.state = CredentialStateEnum::Accepted;
+        credential.common.state = CredentialStateEnum::Accepted;
         credential.key = Some(dummy_key().into());
 
         let interaction_data = HolderInteractionData {
@@ -2477,6 +2495,7 @@ async fn test_holder_reject_credential() {
             credential_response_encryption: None,
             credential_configurations: vec![HolderCredentialConfiguration {
                 credential_configuration_id: credential
+                    .common
                     .schema
                     .as_ref()
                     .await
@@ -2496,7 +2515,7 @@ async fn test_holder_reject_credential() {
             }],
         };
 
-        credential.interaction = Some(
+        credential.common.interaction = Some(
             Interaction {
                 id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                     .unwrap()
@@ -2643,7 +2662,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     let mock_server = MockServer::start().await;
     let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
 
-    let credential_schema_id = credential.schema.id();
+    let credential_schema_id = credential.common.schema.id();
     let credential_issuer = format!("{issuer_url}ssi/openid4vci/final-1.0/{credential_schema_id}");
 
     let mut credential_offer = json!({
@@ -2670,7 +2689,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/openid4vci/final-1.0/{}/offer/{}",
-            credential_schema_id, credential.id
+            credential_schema_id, credential.common.id
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
         .expect(1)
@@ -2756,7 +2775,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             }
         });
 
-    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Ffinal-1.0%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
+    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Ffinal-1.0%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.common.id)).unwrap();
 
     let protocol = setup_protocol(TestInputs {
         metadata_cache,
@@ -3148,7 +3167,7 @@ async fn test_continue_issuance_with_scope_and_credential_configuration_ids_succ
 async fn inner_continue_issuance_test(with_scope: bool, with_credential_configuration_ids: bool) {
     let credential = generic_credential_did();
 
-    let credential_schema_id = credential.schema.id();
+    let credential_schema_id = credential.common.schema.id();
     let credential_issuer =
         format!("http://issuer/ssi/openid4vci/final-1.0/{credential_schema_id}");
 
@@ -3319,7 +3338,7 @@ async fn test_can_handle_issuance_fail_with_custom_url_scheme() {
 #[tokio::test]
 async fn test_generate_share_credentials_custom_scheme() {
     let mut credential = generic_credential_did();
-    credential.interaction = None;
+    credential.common.interaction = None;
 
     let url_scheme = "my-custom-scheme";
     let protocol = setup_protocol(TestInputs {
@@ -3375,6 +3394,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         credential_response_encryption: None,
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: credential
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -3402,6 +3422,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -3534,6 +3555,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         credential_response_encryption: None,
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: credential
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -3561,6 +3583,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -3641,7 +3664,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         .expect_get_formatter_by_type()
         .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     credential_schema_repository
         .expect_get_credential_schema_list()
         .once()
@@ -3876,6 +3899,7 @@ async fn interaction_with_metadata(
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -4588,7 +4612,7 @@ async fn test_holder_accept_credential_updates_only_changed_translations_from_me
     // GIVEN
     let mock_server = MockServer::start().await;
     let credential = generic_credential_key();
-    let mut stored_schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let mut stored_schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     let stored_schema_id = stored_schema.id;
     let now = get_dummy_date();
     stored_schema.translations = vec![
@@ -4731,8 +4755,8 @@ async fn test_holder_accept_credential_updates_only_changed_translations_from_me
 
     // THEN
     let accepted_credential = response.issued.pop().unwrap().main_credential.credential;
-    assert_eq!(accepted_credential.schema.id(), stored_schema_id);
-    let accepted_schema = accepted_credential.schema.as_ref().await.unwrap();
+    assert_eq!(accepted_credential.common.schema.id(), stored_schema_id);
+    let accepted_schema = accepted_credential.common.schema.as_ref().await.unwrap();
     let schema_translations = accepted_schema.translations.as_ref().await.unwrap();
     assert_eq!(schema_translations.len(), 2);
     assert_eq!(schema_translations[0].value, "Updated credential name");
@@ -4849,6 +4873,7 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -5081,6 +5106,7 @@ async fn encryption_interaction_data(
         credential_response_encryption,
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: credential
+                .common
                 .schema
                 .as_ref()
                 .await
@@ -5113,6 +5139,7 @@ async fn interaction_for(
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(interaction_data).unwrap()),
         organisation: credential
+            .common
             .schema
             .as_ref()
             .await
@@ -5127,7 +5154,7 @@ async fn interaction_for(
 }
 
 async fn provider_with_encryption(credential: &Credential) -> OpenID4VCIFinal1_0 {
-    let schema = credential.schema.as_ref().await.unwrap().to_owned();
+    let schema = credential.common.schema.as_ref().await.unwrap().to_owned();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -5937,12 +5964,18 @@ fn holder_interaction_data(configurations: Value) -> HolderInteractionData {
 }
 
 fn accepted_batch_parent() -> Credential {
-    Credential {
-        id: Uuid::new_v4().into(),
-        r#type: CredentialType::BatchParent,
-        state: CredentialStateEnum::Accepted,
-        format: None,
-        ..generic_credential_did()
+    {
+        let base_credential = generic_credential_did();
+        Credential {
+            common: CredentialCommon {
+                id: Uuid::new_v4().into(),
+                state: CredentialStateEnum::Accepted,
+                ..base_credential.common
+            },
+            r#type: CredentialType::BatchParent,
+            format: None,
+            ..base_credential
+        }
     }
 }
 
@@ -5951,11 +5984,17 @@ async fn refresh_history_records_each_parent_once_per_operation() {
     let organisation = dummy_organisation(None);
     let first_parent = accepted_batch_parent();
     let second_parent = accepted_batch_parent();
-    let item = |parent: &Credential| Credential {
-        id: Uuid::new_v4().into(),
-        r#type: CredentialType::BatchItem,
-        parent: Some(parent.clone().into()),
-        ..generic_credential_did()
+    let item = |parent: &Credential| {
+        let base_credential = generic_credential_did();
+        Credential {
+            common: CredentialCommon {
+                id: Uuid::new_v4().into(),
+                ..base_credential.common
+            },
+            r#type: CredentialType::BatchItem,
+            parent: Some(parent.clone().into()),
+            ..base_credential
+        }
     };
     let refreshed = vec![
         IssuanceRefreshResponse {
@@ -6012,10 +6051,10 @@ async fn refresh_history_records_each_parent_once_per_operation() {
             .map(|history| history.entity_id)
             .collect::<Vec<_>>(),
         [
-            first_parent.id,
-            second_parent.id,
-            first_parent.id,
-            second_parent.id
+            first_parent.common.id,
+            second_parent.common.id,
+            first_parent.common.id,
+            second_parent.common.id
         ]
         .map(|id| Some(id.into()))
     );
@@ -6032,33 +6071,51 @@ async fn refresh_history_records_each_parent_once_per_operation() {
 #[tokio::test]
 async fn refresh_selects_all_refreshable_configurations() {
     let parent = accepted_batch_parent();
-    let jwt_item = Credential {
-        r#type: CredentialType::BatchItem,
-        parent: Some(parent.clone().into()),
-        key: Some(dummy_key().into()),
-        expires_at: Some(now_utc() + Duration::days(1)),
-        ..generic_credential_did_with_holder_identifier()
+    let jwt_item = {
+        let base_credential = generic_credential_did_with_holder_identifier();
+        Credential {
+            common: CredentialCommon {
+                expires_at: Some(now_utc() + Duration::days(1)),
+                ..base_credential.common
+            },
+            r#type: CredentialType::BatchItem,
+            parent: Some(parent.clone().into()),
+            key: Some(dummy_key().into()),
+            ..base_credential
+        }
     };
     let mdoc_item = generic_credential_did();
     let fixed_without_expiry = generic_credential_did_with_holder_identifier();
-    let rejected = Credential {
-        state: CredentialStateEnum::Rejected,
-        ..accepted_batch_parent()
+    let rejected = {
+        let base_credential = accepted_batch_parent();
+        Credential {
+            common: CredentialCommon {
+                state: CredentialStateEnum::Rejected,
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
-    let deleted = Credential {
-        deleted_at: Some(get_dummy_date()),
-        ..accepted_batch_parent()
+    let deleted = {
+        let base_credential = accepted_batch_parent();
+        Credential {
+            common: CredentialCommon {
+                deleted_at: Some(get_dummy_date()),
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
     let single = generic_credential_did();
     let data = holder_interaction_data(json!([
-        {"credential_configuration_id": "jwt", "format": "jwt_vc_json", "credential_id": parent.id, "credential_schema_format_id": jwt_item.format.as_ref().unwrap().id()},
-        {"credential_configuration_id": "mdoc", "format": "mso_mdoc", "credential_id": parent.id, "credential_schema_format_id": mdoc_item.format.as_ref().unwrap().id()},
-        {"credential_configuration_id": "fixed_without_expiry", "format": "jwt_vc_json", "credential_id": parent.id, "credential_schema_format_id": fixed_without_expiry.format.as_ref().unwrap().id()},
+        {"credential_configuration_id": "jwt", "format": "jwt_vc_json", "credential_id": parent.common.id, "credential_schema_format_id": jwt_item.format.as_ref().unwrap().id()},
+        {"credential_configuration_id": "mdoc", "format": "mso_mdoc", "credential_id": parent.common.id, "credential_schema_format_id": mdoc_item.format.as_ref().unwrap().id()},
+        {"credential_configuration_id": "fixed_without_expiry", "format": "jwt_vc_json", "credential_id": parent.common.id, "credential_schema_format_id": fixed_without_expiry.format.as_ref().unwrap().id()},
         {"credential_configuration_id": "failed", "format": "jwt_vc_json"},
         {"credential_configuration_id": "skipped", "format": "jwt_vc_json"},
-        {"credential_configuration_id": "rejected", "format": "jwt_vc_json", "credential_id": rejected.id},
-        {"credential_configuration_id": "deleted", "format": "jwt_vc_json", "credential_id": deleted.id},
-        {"credential_configuration_id": "single", "format": "jwt_vc_json", "credential_id": single.id}
+        {"credential_configuration_id": "rejected", "format": "jwt_vc_json", "credential_id": rejected.common.id},
+        {"credential_configuration_id": "deleted", "format": "jwt_vc_json", "credential_id": deleted.common.id},
+        {"credential_configuration_id": "single", "format": "jwt_vc_json", "credential_id": single.common.id}
     ]));
     let interaction = interaction_for(&parent, &data).await;
     let mut repository = MockCredentialRepository::new();
@@ -6117,12 +6174,18 @@ async fn refresh_respects_holder_binding_and_item_expiry(
     #[values(true, false)] has_format_id: bool,
 ) {
     let parent = accepted_batch_parent();
-    let mut item = Credential {
-        r#type: CredentialType::BatchItem,
-        parent: Some(parent.clone().into()),
-        expires_at: expiry.map(|duration| now_utc() + duration),
-        key: Some(dummy_key().into()),
-        ..generic_credential_did_with_holder_identifier()
+    let mut item = {
+        let base_credential = generic_credential_did_with_holder_identifier();
+        Credential {
+            common: CredentialCommon {
+                expires_at: expiry.map(|duration| now_utc() + duration),
+                ..base_credential.common
+            },
+            r#type: CredentialType::BatchItem,
+            parent: Some(parent.clone().into()),
+            key: Some(dummy_key().into()),
+            ..base_credential
+        }
     };
     item.holder_identifier
         .as_mut()
@@ -6136,7 +6199,7 @@ async fn refresh_respects_holder_binding_and_item_expiry(
     let format_id = item.format.as_ref().unwrap().id();
     let data = holder_interaction_data(json!([{
         "credential_configuration_id": "jwt", "format": "jwt_vc_json",
-        "credential_id": has_format_id.then_some(parent.id),
+        "credential_id": has_format_id.then_some(parent.common.id),
         "credential_schema_format_id": has_format_id.then_some(format_id),
     }]));
     let interaction = interaction_for(&parent, &data).await;
@@ -6196,19 +6259,25 @@ async fn mso_refresh_selects_the_configuration_matching_the_items_format_id(
     #[case] state: CredentialStateEnum,
 ) {
     let parent = accepted_batch_parent();
-    let mut item = Credential {
-        id: Uuid::new_v4().into(),
-        r#type: CredentialType::BatchItem,
-        state,
-        parent: Some(parent.clone().into()),
-        key: Some(dummy_key().into()),
-        ..generic_credential_did_with_holder_identifier()
+    let mut item = {
+        let base_credential = generic_credential_did_with_holder_identifier();
+        Credential {
+            common: CredentialCommon {
+                id: Uuid::new_v4().into(),
+                state,
+                ..base_credential.common
+            },
+            r#type: CredentialType::BatchItem,
+            parent: Some(parent.clone().into()),
+            key: Some(dummy_key().into()),
+            ..base_credential
+        }
     };
     item.format.as_mut().unwrap().as_mut().await.unwrap().format = "MDOC".into();
     let format_id = item.format.as_ref().unwrap().id();
     let data = holder_interaction_data(json!([
-        {"credential_configuration_id": "other", "format": "mso_mdoc", "credential_id": parent.id, "credential_schema_format_id": Uuid::new_v4()},
-        {"credential_configuration_id": "selected", "format": "mso_mdoc", "credential_id": parent.id, "credential_schema_format_id": format_id}
+        {"credential_configuration_id": "other", "format": "mso_mdoc", "credential_id": parent.common.id, "credential_schema_format_id": Uuid::new_v4()},
+        {"credential_configuration_id": "selected", "format": "mso_mdoc", "credential_id": parent.common.id, "credential_schema_format_id": format_id}
     ]));
     let interaction = interaction_for(&parent, &data).await;
     let protocol = setup_protocol(TestInputs::default());
@@ -6262,17 +6331,23 @@ async fn refresh_resolves_the_issued_format_independently_of_schema_order(
     let mut unrelated_format = issued_format.clone();
     unrelated_format.id = Uuid::new_v4().into();
     unrelated_format.format = "MDOC".into();
-    let mut schema = item.schema.as_ref().await.unwrap().to_owned();
+    let mut schema = item.common.schema.as_ref().await.unwrap().to_owned();
     // The first schema format is deliberately not the issued format.
     schema.formats = vec![unrelated_format, issued_format.clone()].into();
-    let parent = Credential {
-        schema: schema.into(),
-        ..accepted_batch_parent()
+    let parent = {
+        let base_credential = accepted_batch_parent();
+        Credential {
+            common: CredentialCommon {
+                schema: schema.into(),
+                ..base_credential.common
+            },
+            ..base_credential
+        }
     };
     item.parent = Some(parent.clone().into());
     let configuration: HolderCredentialConfiguration = serde_json::from_value(json!({
         "credential_configuration_id": "jwt", "format": "jwt_vc_json",
-        "credential_id": parent.id,
+        "credential_id": parent.common.id,
         "credential_schema_format_id": has_format_id.then_some(issued_format.id),
     }))
     .unwrap();
@@ -6311,8 +6386,8 @@ async fn rejection_notifies_every_associated_configuration(#[case] first_status:
     let server = MockServer::start().await;
     let mut parent = accepted_batch_parent();
     let mut data = holder_interaction_data(json!([
-        {"credential_configuration_id": "first", "format": "jwt_vc_json", "credential_id": parent.id, "notification_id": "first"},
-        {"credential_configuration_id": "second", "format": "mso_mdoc", "credential_id": parent.id, "notification_id": "second"},
+        {"credential_configuration_id": "first", "format": "jwt_vc_json", "credential_id": parent.common.id, "notification_id": "first"},
+        {"credential_configuration_id": "second", "format": "mso_mdoc", "credential_id": parent.common.id, "notification_id": "second"},
         {"credential_configuration_id": "failed", "format": "jwt_vc_json", "notification_id": "failed"},
         {"credential_configuration_id": "other", "format": "jwt_vc_json", "credential_id": Uuid::new_v4(), "notification_id": "other"}
     ]));
@@ -6324,7 +6399,7 @@ async fn rejection_notifies_every_associated_configuration(#[case] first_status:
         )
         .unwrap(),
     );
-    parent.interaction = Some(interaction_for(&parent, &data).await.into());
+    parent.common.interaction = Some(interaction_for(&parent, &data).await.into());
     for (id, status) in [("first", first_status), ("second", 204)] {
         Mock::given(method(Method::POST))
             .and(path("/notification"))

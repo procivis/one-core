@@ -59,7 +59,9 @@ use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64}
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier;
@@ -678,29 +680,31 @@ impl CredentialFormatter for MdocFormatter {
         )?;
 
         Ok(Credential {
-            expires_at: Some(mso.validity_info.valid_until.into()),
-            ecosystem: None,
-            id: credential_id,
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            issuance_date: Some(mso.validity_info.signed.into()),
-            deleted_at: None,
+            common: CredentialCommon {
+                expires_at: Some(mso.validity_info.valid_until.into()),
+                ecosystem: None,
+                id: credential_id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                issuance_date: Some(mso.validity_info.signed.into()),
+                deleted_at: None,
+                protocol: "".to_string(),
+                redirect_uri: None,
+                state: CredentialStateEnum::Accepted,
+                profile: None,
+                schema: credential_schema.into(),
+                interaction: None,
+            },
             consumed_at: None,
-            protocol: "".to_string(),
-            redirect_uri: None,
             role: CredentialRole::Holder,
             r#type: CredentialType::Single,
-            state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
-            profile: None,
             credential_blob_id: None,
             wallet_key_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             issuer_certificate: first_certificate(&issuer_identifier).await?.map(Into::into),
             issuer_identifier: Some(issuer_identifier.into()),
             holder_identifier: Some(holder_identifier.into()),
-            schema: credential_schema.into(),
-            interaction: None,
             key: None,
             claims: claims.into(),
             webhook_url: None,

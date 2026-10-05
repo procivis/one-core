@@ -311,9 +311,9 @@ async fn test_parse_credential() {
         .unwrap();
 
     assert_eq!(credential.role, CredentialRole::Holder);
-    assert!(credential.issuance_date.is_none());
+    assert!(credential.common.issuance_date.is_none());
     assert_eq!(
-        credential.expires_at.unwrap(),
+        credential.common.expires_at.unwrap(),
         datetime!(2028-02-19 09:18:33.007487222 UTC)
     );
 
@@ -348,7 +348,7 @@ async fn test_parse_credential() {
         "did:key:zDnaeQtSJWkb9qaCu3imWNh6HZqVdcDESDNGnZjMqFZykv3m5"
     );
 
-    let schema = credential.schema.as_ref().await.unwrap();
+    let schema = credential.common.schema.as_ref().await.unwrap();
     assert_eq!(schema.allow_revocation, true);
     assert_eq!(schema.name, "8761JsonLd");
     assert_eq!(

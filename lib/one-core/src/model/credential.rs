@@ -23,21 +23,12 @@ use crate::model::relation::{Related, RelatedVec};
 #[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Credential {
-    #[model(id)]
-    pub id: CredentialId,
-    pub created_date: OffsetDateTime,
-    pub issuance_date: Option<OffsetDateTime>,
-    pub expires_at: Option<OffsetDateTime>,
-    pub last_modified: OffsetDateTime,
-    pub deleted_at: Option<OffsetDateTime>,
+    #[model(nested)]
+    pub common: CredentialCommon,
     pub consumed_at: Option<OffsetDateTime>,
-    pub protocol: String,
-    pub redirect_uri: Option<String>,
     pub role: CredentialRole,
     pub r#type: CredentialType,
-    pub state: CredentialStateEnum,
     pub suspend_end_date: Option<OffsetDateTime>,
-    pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
@@ -45,18 +36,34 @@ pub struct Credential {
     /// Holder configuration policy, stored on singles and batch items, not batch parents.
     pub embedded_disclosure_policy: Option<String>,
     pub subscriber_information: Option<String>,
-    pub ecosystem: Option<EcosystemId>,
 
     // Relations:
     pub claims: RelatedVec<Claim>,
     pub issuer_identifier: Option<Related<Identifier>>,
     pub issuer_certificate: Option<Related<Certificate>>,
     pub holder_identifier: Option<Related<Identifier>>,
-    pub schema: Related<CredentialSchema>,
     pub format: Option<Related<CredentialSchemaFormat>>,
-    pub interaction: Option<Related<Interaction>>,
     pub key: Option<Related<Key>>,
     pub parent: Option<Related<Credential>>,
+}
+
+#[derive(Clone, Debug, Model)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
+pub struct CredentialCommon {
+    #[model(id)]
+    pub id: CredentialId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
+    pub issuance_date: Option<OffsetDateTime>,
+    pub expires_at: Option<OffsetDateTime>,
+    pub protocol: String,
+    pub interaction: Option<Related<Interaction>>,
+    pub redirect_uri: Option<String>,
+    pub profile: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
+    pub schema: Related<CredentialSchema>,
+    pub state: CredentialStateEnum,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Display)]
@@ -81,18 +88,19 @@ impl Credential {
         self.parent
             .as_ref()
             .map(|parent| parent.id())
-            .unwrap_or(self.id)
+            .unwrap_or(self.common.id)
     }
 
     pub(crate) fn is_available_for_presentation(&self, now: OffsetDateTime) -> bool {
-        if self.deleted_at.is_some() || self.state != CredentialStateEnum::Accepted {
+        if self.common.deleted_at.is_some() || self.common.state != CredentialStateEnum::Accepted {
             return false;
         }
         match self.r#type {
             CredentialType::Single => true,
             CredentialType::BatchParent => false,
             CredentialType::BatchItem => {
-                self.consumed_at.is_none() && self.expires_at.is_none_or(|expiry| expiry > now)
+                self.consumed_at.is_none()
+                    && self.common.expires_at.is_none_or(|expiry| expiry > now)
             }
         }
     }

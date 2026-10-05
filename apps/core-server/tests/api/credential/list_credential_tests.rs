@@ -291,7 +291,7 @@ async fn test_get_list_credential_filter_by_name() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential.id);
+    credentials["values"][0]["id"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -319,7 +319,7 @@ async fn test_get_list_credential_filter_by_ids() {
             )
             .await;
 
-        credentials.push(credential.id);
+        credentials.push(credential.common.id);
     }
 
     // WHEN
@@ -526,7 +526,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential.id);
+    credentials["values"][0]["id"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -643,7 +643,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential.id);
+    credentials["values"][0]["id"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -686,7 +686,7 @@ async fn test_get_list_credential_search_claim_name_sorted_by_schema_name_pagina
                 },
             )
             .await;
-        credentials.push((schema_name, credential.id));
+        credentials.push((schema_name, credential.common.id));
     }
 
     // WHEN
@@ -839,7 +839,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential.id);
+    credentials["values"][0]["id"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -965,9 +965,9 @@ async fn test_get_list_credential_filter_by_everything() {
     assert_eq!(
         ids,
         HashSet::from_iter([
-            credential1.id.to_string(),
-            credential2.id.to_string(),
-            credential3.id.to_string(),
+            credential1.common.id.to_string(),
+            credential2.common.id.to_string(),
+            credential3.common.id.to_string(),
         ])
     );
 }
@@ -1024,7 +1024,7 @@ async fn test_get_list_credential_filter_by_formats() {
                 },
             )
             .await;
-        credentials.push((format.format.to_string(), credential.id.to_string()));
+        credentials.push((format.format.to_string(), credential.common.id.to_string()));
     }
 
     let format_id = formats[0].id.to_string();
@@ -1151,7 +1151,7 @@ async fn test_get_list_credential_filter_by_profiles() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential_with_profile_1.id);
+    credentials["values"][0]["id"].assert_eq(&credential_with_profile_1.common.id);
     credentials["values"][0]["profile"].assert_eq(&profile_1.to_string());
 
     // WHEN - Filter without profile
@@ -1240,7 +1240,7 @@ async fn test_get_list_credential_filter_by_date() {
         )
         .await;
 
-    let pivot_date = accepted_credential.created_date;
+    let pivot_date = accepted_credential.common.created_date;
 
     // matches all credentials
     let resp = context
@@ -1287,7 +1287,7 @@ async fn test_get_list_credential_filter_by_date() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(
         credentials["values"][0]["id"],
-        accepted_credential.id.to_string()
+        accepted_credential.common.id.to_string()
     );
 
     // matches only revoked
@@ -1312,7 +1312,7 @@ async fn test_get_list_credential_filter_by_date() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(
         credentials["values"][0]["id"],
-        revoked_credential.id.to_string()
+        revoked_credential.common.id.to_string()
     );
 }
 
@@ -1378,7 +1378,7 @@ async fn test_get_list_credential_filter_by_expires_at() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(
         credentials["values"][0]["id"],
-        expiring_credential.id.to_string()
+        expiring_credential.common.id.to_string()
     );
     let returned_expires_at = OffsetDateTime::parse(
         credentials["values"][0]["expiresAt"].as_str().unwrap(),
@@ -1416,7 +1416,7 @@ async fn test_get_list_credential_sort_by_expires_at() {
                 },
             )
             .await;
-        credential_ids.push(credential.id);
+        credential_ids.push(credential.common.id);
     }
 
     // WHEN
@@ -1554,7 +1554,7 @@ async fn test_get_list_credential_filter_by_schema_ids() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential.id);
+    credentials["values"][0]["id"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -1593,7 +1593,7 @@ async fn test_get_list_credential_sorted_by_issuer_paginated() {
                 Default::default(),
             )
             .await;
-        credentials.push((issuer_name, credential.id));
+        credentials.push((issuer_name, credential.common.id));
     }
 
     // WHEN
@@ -1698,7 +1698,7 @@ async fn test_get_list_credential_filter_by_issuers() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential.id);
+    credentials["values"][0]["id"].assert_eq(&credential.common.id);
 }
 
 #[tokio::test]
@@ -1777,7 +1777,7 @@ async fn test_get_list_credential_filter_by_states() {
     assert_eq!(credentials["totalItems"], 1);
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
-    credentials["values"][0]["id"].assert_eq(&credential_with_created_state.id);
+    credentials["values"][0]["id"].assert_eq(&credential_with_created_state.common.id);
     credentials["values"][0]["state"].assert_eq(&"CREATED".to_string());
 
     // WHEN - Filter by multiple states - ACCEPTED, PENDING

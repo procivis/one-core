@@ -480,11 +480,11 @@ impl SSIHolderService {
             });
         }
         let consumed_item = (presented_credential.r#type == CredentialType::BatchItem)
-            .then_some(presented_credential.id);
+            .then_some(presented_credential.common.id);
         let blob_id = presented_credential.credential_blob_id.ok_or_else(|| {
             HolderServiceError::MappingError(format!(
                 "Missing blob id on credential `{}`",
-                presented_credential.id
+                presented_credential.common.id
             ))
         })?;
         let credential_blob = blob_storage

@@ -108,7 +108,7 @@ pub(crate) fn throw_if_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), OpenIDIssuanceError> {
-    let current_state = &credential.state;
+    let current_state = &credential.common.state;
     if *current_state != state {
         return Err(OpenIDIssuanceError::InvalidCredentialState {
             state: current_state.to_owned(),
@@ -277,7 +277,7 @@ pub(super) async fn validate_batch_consistency(
 async fn single_schema_format(
     credential: &Credential,
 ) -> Result<CredentialSchemaFormat, IssuanceProtocolError> {
-    let schema = credential.schema.as_ref().await?;
+    let schema = credential.common.schema.as_ref().await?;
     let schema_format = schema.formats.as_ref().await?;
     if schema_format.len() > 1 {
         return Err(IssuanceProtocolError::Failed(
