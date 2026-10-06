@@ -21,7 +21,7 @@ use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, Local
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
-use crate::service::test_utilities::dummy_organisation;
+use crate::service::test_utilities::{CredentialBuilder, dummy_organisation};
 
 #[rstest]
 #[case::stored_requirements(true)]
@@ -1461,7 +1461,7 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
 }
 
 #[tokio::test]
-async fn errors_when_parsed_format_missing() {
+async fn rejects_holder_batch_parent() {
     let parsed_schema = credential_schema(
         Uuid::new_v4().into(),
         Uuid::new_v4().into(),
@@ -1479,7 +1479,9 @@ async fn errors_when_parsed_format_missing() {
     );
 
     let mut credential = credential(parsed_schema, vec![]).await;
-    *credential.format_mut().unwrap() = None;
+    credential = Credential::HolderBatchParent {
+        common: credential.common().clone(),
+    };
 
     let result =
         align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
@@ -1809,7 +1811,7 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         let formats = parsed_schema.formats.as_ref().await.unwrap();
         formats.first().unwrap().clone()
     };
-    Credential::Generic {
+    CredentialBuilder {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1843,6 +1845,7 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         subscriber_information: None,
         format: Some(format.into()),
     }
+    .build()
 }
 
 #[tokio::test]

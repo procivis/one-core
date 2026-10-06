@@ -9,6 +9,8 @@ use crate::model::relation::{Related, RelatedVec};
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::error::EcosystemError;
+#[cfg(test)]
+use crate::service::test_utilities::CredentialBuilder;
 
 impl EudiEcosystem {
     pub(super) async fn resolve_verifier_submission(
@@ -87,7 +89,11 @@ mod test {
         selected.ecosystem_schema_id = "mdoc-pid".into();
         schema.formats = vec![first, selected.clone()].into();
         credential.common_mut().schema = schema.into();
-        *credential.format_mut().unwrap() = Some(selected.clone().into());
+        credential = CredentialBuilder {
+            format: Some(selected.clone().into()),
+            ..credential.into()
+        }
+        .build();
 
         let mut formatter = MockCredentialFormatter::new();
         formatter

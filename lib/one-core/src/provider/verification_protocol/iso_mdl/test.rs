@@ -19,8 +19,7 @@ use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
-    GetCredentialList,
+    CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -48,7 +47,8 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::service::test_utilities::{
-    dummy_certificate, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    CredentialBuilder, dummy_certificate, dummy_identifier, dummy_key, dummy_organisation,
+    generic_config,
 };
 
 #[tokio::test]
@@ -562,7 +562,7 @@ async fn test_get_presentation_definition_v2() {
         },
     ];
 
-    let credential = Credential::Generic {
+    let credential = CredentialBuilder {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -595,7 +595,8 @@ async fn test_get_presentation_definition_v2() {
         embedded_disclosure_policy: None,
         subscriber_information: None,
         format: Some(format.into()),
-    };
+    }
+    .build();
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository

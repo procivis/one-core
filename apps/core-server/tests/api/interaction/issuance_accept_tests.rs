@@ -823,7 +823,7 @@ async fn check_multi_configuration_issuance(
             assert!(main.format().is_none());
             assert!(main.credential_blob_id().is_none());
             assert!(main.embedded_disclosure_policy().is_none());
-            assert!(main.claims().unwrap().as_ref().await.unwrap().is_empty());
+            assert!(main.claims().is_err());
             assert_eq!(
                 main.common().expires_at.is_none(),
                 refreshable || without_expiry
@@ -1239,15 +1239,7 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         .list(CredentialFilterValue::ParentCredential(credential.common().id).condition())
         .await;
     assert_eq!(2, batch_items.len());
-    assert!(
-        credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .is_empty()
-    );
+    assert!(credential.claims().is_err());
     let mut canonical_claim_ids = std::collections::HashMap::new();
     let mut shared_claims = 0;
     for item in batch_items {

@@ -79,7 +79,7 @@ use crate::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
 use crate::service::oid4vci_final1_0::resolver::MockIssuerMetadataFetcher;
-use crate::service::test_utilities::*;
+use crate::service::test_utilities::{CredentialBuilder, *};
 
 #[derive(Default)]
 struct Mocks {
@@ -337,7 +337,7 @@ fn dummy_credential(
     schema: CredentialSchema,
     r#type: CredentialType,
 ) -> Credential {
-    let credential = Credential::Generic {
+    let credential = CredentialBuilder {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -372,7 +372,8 @@ fn dummy_credential(
         embedded_disclosure_policy: None,
         subscriber_information: None,
         format: None,
-    };
+    }
+    .build();
     if r#type == CredentialType::BatchParent {
         crate::service::test_utilities::issuer_credential(credential).unwrap()
     } else {

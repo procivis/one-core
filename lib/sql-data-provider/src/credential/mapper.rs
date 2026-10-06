@@ -437,71 +437,53 @@ pub(super) fn credential_from_model(
             credential::CredentialType::BatchParent => unreachable!(),
         });
     }
-    if credential.role == credential::CredentialRole::Holder
-        && credential.r#type == credential::CredentialType::Single
-    {
-        let binding = match (credential.holder_identifier_id, credential.key_id) {
-            (Some(identifier), Some(key)) => Some(HolderBinding {
-                identifier: Related::new(identifier, repositories.identifier_repository.clone()),
-                key: Related::new(key, repositories.key_repository.clone()),
-            }),
-            (None, None) => None,
-            _ => return Err(DataLayerError::MappingError),
-        };
-        return Ok(Credential::HolderSingle {
-            common,
-            credential: HolderCredentialData {
-                issuer: IssuerIdentity {
-                    identifier: Related::new(
-                        credential
-                            .issuer_identifier_id
-                            .ok_or(DataLayerError::MappingError)?,
-                        issuer,
-                    ),
-                    certificate: credential
-                        .issuer_certificate_id
-                        .map(|id| Related::new(id, repositories.certificate_repository.clone())),
-                },
-                format: Related::new(
-                    credential.format.ok_or(DataLayerError::MappingError)?,
-                    format,
-                ),
-                claims: credential_claims(credential.id, repositories.claim_repository),
-                binding,
-                credential_blob_id: credential.credential_blob_id,
-                embedded_disclosure_policy: credential.embedded_disclosure_policy,
-            },
-        });
+    if credential.r#type == credential::CredentialType::BatchParent {
+        return Ok(Credential::HolderBatchParent { common });
     }
-    Ok(Credential::Generic {
-        common,
+    let binding = match (credential.holder_identifier_id, credential.key_id) {
+        (Some(identifier), Some(key)) => Some(HolderBinding {
+            identifier: Related::new(identifier, repositories.identifier_repository.clone()),
+            key: Related::new(key, repositories.key_repository.clone()),
+        }),
+        (None, None) => None,
+        _ => return Err(DataLayerError::MappingError),
+    };
+    let data = HolderCredentialData {
+        issuer: IssuerIdentity {
+            identifier: Related::new(
+                credential
+                    .issuer_identifier_id
+                    .ok_or(DataLayerError::MappingError)?,
+                issuer,
+            ),
+            certificate: credential
+                .issuer_certificate_id
+                .map(|id| Related::new(id, repositories.certificate_repository.clone())),
+        },
+        format: Related::new(
+            credential.format.ok_or(DataLayerError::MappingError)?,
+            format,
+        ),
         claims: credential_claims(credential.id, repositories.claim_repository),
-        consumed_at: credential.consumed_at,
-        role: credential.role.into(),
-        r#type: credential.r#type.into(),
-        suspend_end_date: credential.suspend_end_date,
-        issuer_identifier: credential
-            .issuer_identifier_id
-            .map(|id| Related::new(id, issuer)),
-        issuer_certificate: credential
-            .issuer_certificate_id
-            .map(|id| Related::new(id, repositories.certificate_repository.clone())),
-        holder_identifier: credential
-            .holder_identifier_id
-            .map(|id| Related::new(id, repositories.identifier_repository.clone())),
-        key: credential
-            .key_id
-            .map(|id| Related::new(id, repositories.key_repository.clone())),
+        binding,
         credential_blob_id: credential.credential_blob_id,
-        wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
-        wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
-        webhook_url: credential.webhook_url,
         embedded_disclosure_policy: credential.embedded_disclosure_policy,
-        subscriber_information: credential.subscriber_information,
-        parent: credential
-            .parent_id
-            .map(|id| Related::new(id, repositories.credential_repository)),
-        format: credential.format.map(|id| Related::new(id, format)),
+    };
+    Ok(match credential.r#type {
+        credential::CredentialType::Single => Credential::HolderSingle {
+            common,
+            credential: data,
+        },
+        credential::CredentialType::BatchItem => Credential::HolderBatchItem {
+            common,
+            credential: data,
+            parent: Related::new(
+                credential.parent_id.ok_or(DataLayerError::MappingError)?,
+                repositories.credential_repository,
+            ),
+            consumed_at: credential.consumed_at,
+        },
+        credential::CredentialType::BatchParent => unreachable!(),
     })
 }
 

@@ -3,14 +3,13 @@
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
+#[cfg(test)]
 use std::sync::Arc;
 
-use one_core::model::credential::{Credential, CredentialCommon, CredentialStateEnum};
+use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::organisation::Organisation;
-use one_core::model::relation::Related;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
-use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
@@ -65,19 +64,6 @@ pub fn track_count_queries(db: &mut DatabaseConnection) -> Arc<std::sync::atomic
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 UTC)
-}
-
-fn credential_schema_repository(db: &DatabaseConnection) -> Arc<dyn CredentialSchemaRepository> {
-    let transaction_manager = crate::transaction_context::TransactionManagerImpl::new(db.clone());
-    Arc::new(crate::credential_schema::CredentialSchemaProvider {
-        db: transaction_manager.clone(),
-        organisation_repository: Arc::new(crate::organisation::OrganisationProvider {
-            db: transaction_manager.clone(),
-        }),
-        localized_text_repository: Arc::new(crate::localized_text::LocalizedTextProvider {
-            db: transaction_manager,
-        }),
-    })
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -159,40 +145,12 @@ pub async fn insert_credential(
     .insert(db)
     .await?;
 
-    Ok(Credential::Generic {
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id: credential.id,
-            created_date: credential.created_date,
-            issuance_date: credential.issuance_date,
-            last_modified: credential.last_modified,
-            deleted_at: credential.deleted_at,
-            protocol: credential.protocol,
-            redirect_uri: credential.redirect_uri,
-            state: credential.state.into(),
-            profile: credential.profile,
-            schema: Related::new(*credential_schema_id, credential_schema_repository(db)),
-            interaction: None,
-        },
-        consumed_at: credential.consumed_at,
-        role: credential.role.into(),
-        r#type: credential.r#type.into(),
-        suspend_end_date: credential.suspend_end_date,
-        claims: Default::default(),
-        issuer_identifier: None,
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: credential.credential_blob_id,
-        wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
-        wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
-        webhook_url: credential.webhook_url,
-        embedded_disclosure_policy: credential.embedded_disclosure_policy,
-        subscriber_information: credential.subscriber_information,
-        parent: None,
-        format: None,
-    })
+    use one_core::repository::DataRepository;
+    DataLayer::build(db.clone(), vec![])
+        .get_credential_repository()
+        .get_credential(&credential.id)
+        .await
+        .map_err(|err| DbErr::Custom(err.to_string()))
 }
 
 pub async fn update_credential_state(

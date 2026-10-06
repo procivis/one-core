@@ -39,7 +39,9 @@ use crate::provider::task::Task;
 use crate::provider::task::holder_check_credential_status::HolderCheckCredentialStatus;
 use crate::provider::task::holder_check_credential_status::dto::HolderCheckCredentialStatusResultDTO;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
+use crate::service::test_utilities::{
+    CredentialBuilder, dummy_organisation, generic_config, get_dummy_date,
+};
 
 #[tokio::test]
 async fn test_task_holder_check_credential_status_being_revoked() {
@@ -97,7 +99,6 @@ async fn test_task_holder_check_credential_status_being_revoked() {
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
-        *updated_credential.suspend_end_date_mut().unwrap() = None;
         updated_credential
     };
 
@@ -252,7 +253,7 @@ fn generic_credential() -> Credential {
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     };
-    Credential::Generic {
+    CredentialBuilder {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
@@ -338,4 +339,5 @@ fn generic_credential() -> Credential {
         },
         format: Some(format.into()),
     }
+    .build()
 }

@@ -32,7 +32,7 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::credential::dto::{WalletInstanceAttestationDTO, WalletUnitAttestationDTO};
-use crate::service::test_utilities::dummy_credential;
+use crate::service::test_utilities::{CredentialBuilder, dummy_credential};
 
 const WUA_TOKEN: &str = "wua.token";
 const OTHER_WUA_TOKEN: &str = "other.wua.token";
@@ -205,8 +205,12 @@ fn batch_item(
 ) -> Credential {
     {
         let mut updated_credential = accepted_pid(wua_blob_id, wia_blob_id);
-        *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
-        *updated_credential.parent_mut().unwrap() = Some(parent.clone().into());
+        updated_credential = CredentialBuilder {
+            r#type: CredentialType::BatchItem,
+            parent: Some(parent.clone().into()),
+            ..updated_credential.into()
+        }
+        .build();
         updated_credential
     }
 }
@@ -215,7 +219,11 @@ fn batch_parent() -> Credential {
     {
         let mut updated_credential = dummy_credential();
         updated_credential.common_mut().id = Uuid::new_v4().into();
-        *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
+        updated_credential = CredentialBuilder {
+            r#type: CredentialType::BatchParent,
+            ..updated_credential.into()
+        }
+        .build();
         updated_credential
     }
 }

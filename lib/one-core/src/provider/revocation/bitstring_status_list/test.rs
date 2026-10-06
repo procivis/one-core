@@ -19,7 +19,9 @@ use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
 use crate::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
 use crate::provider::revocation::model::CredentialRevocationInfo;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
-use crate::service::test_utilities::{dummy_credential, dummy_did, dummy_identifier};
+use crate::service::test_utilities::{
+    CredentialBuilder, dummy_credential, dummy_did, dummy_identifier,
+};
 
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer_suspension_allowed() {
@@ -105,7 +107,11 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
     .unwrap();
 
     let mut credential = dummy_credential();
-    *credential.issuer_identifier_mut().unwrap() = Some(issuer_identifier.into());
+    credential = CredentialBuilder {
+        issuer_identifier: Some(issuer_identifier.into()),
+        ..credential.into()
+    }
+    .build();
     {
         let mut schema = credential.common_mut().schema.as_mut().await.unwrap();
         schema.allow_suspension = suspension;

@@ -8,15 +8,19 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::relation::OptionalRelatedRefExt;
 use crate::repository::credential_repository::CredentialRepository;
+#[cfg(test)]
+use crate::service::test_utilities::CredentialBuilder;
 
 /// Returns stored claims, resolving parent-owned claims for non-holder batch items.
-/// Holder items carry their own claims, including metadata. Batch parents return their claims
-/// relation unchanged: empty for holder parents unless already populated by the caller
-/// (as in backup snapshots). This never loads child claims;
+/// Holder items carry their own claims, including metadata. Holder parents own no claims.
+/// This never loads child claims;
 /// use [`detail_claims`] to derive a holder batch parent's summary from its newest item.
 pub(crate) async fn stored_credential_claims(
     credential: &Credential,
 ) -> Result<Vec<Claim>, NestedError> {
+    if matches!(credential, Credential::HolderBatchParent { .. }) {
+        return Ok(vec![]);
+    }
     if credential.r#type() != CredentialType::BatchItem
         || credential.role() == CredentialRole::Holder
     {
@@ -90,9 +94,13 @@ mod test {
         let parent_claim_id = parent.claims().unwrap().as_ref().await.unwrap()[0].id;
         let mut item = {
             let mut updated_credential = dummy_credential();
-            *updated_credential.role_mut().unwrap() = CredentialRole::Holder;
-            *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
-            *updated_credential.parent_mut().unwrap() = Some(parent.into());
+            updated_credential = CredentialBuilder {
+                role: CredentialRole::Holder,
+                r#type: CredentialType::BatchItem,
+                parent: Some(parent.into()),
+                ..updated_credential.into()
+            }
+            .build();
             updated_credential
         };
         item.claims_mut().unwrap().as_mut().await.unwrap()[0].selectively_disclosable = true;
@@ -104,12 +112,20 @@ mod test {
         assert!(own[0].selectively_disclosable);
         assert_ne!(own[0].id, parent_claim_id);
 
-        *item.role_mut().unwrap() = CredentialRole::Issuer;
+        item = CredentialBuilder {
+            role: CredentialRole::Issuer,
+            ..item.into()
+        }
+        .build();
         assert_eq!(
             stored_credential_claims(&item).await.unwrap()[0].id,
             parent_claim_id
         );
-        *item.role_mut().unwrap() = CredentialRole::Holder;
+        item = CredentialBuilder {
+            role: CredentialRole::Holder,
+            ..item.into()
+        }
+        .build();
         *item.claims_mut().unwrap() = Default::default();
         assert!(stored_credential_claims(&item).await.unwrap().is_empty());
     }
@@ -117,10 +133,14 @@ mod test {
     #[tokio::test]
     async fn parent_details_use_only_newest_item_claims() {
         for (has_item, has_item_claims) in [(true, true), (true, false), (false, false)] {
-            let mut parent = {
+            let parent = {
                 let mut updated_credential = dummy_credential();
-                *updated_credential.role_mut().unwrap() = CredentialRole::Holder;
-                *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
+                updated_credential = CredentialBuilder {
+                    role: CredentialRole::Holder,
+                    r#type: CredentialType::BatchParent,
+                    ..updated_credential.into()
+                }
+                .build();
                 updated_credential
             };
             let mut item = dummy_credential();
@@ -149,7 +169,7 @@ mod test {
             } else {
                 assert!(claims.is_empty());
             }
-            *parent.claims_mut().unwrap() = Default::default();
+            assert!(parent.claims().is_err());
             assert_eq!(
                 detail_claims(&parent, &repository)
                     .await

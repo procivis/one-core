@@ -68,9 +68,9 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::{
-    claim_schema as generate_claim_schema, claim_with_schema, credential_with_claims,
-    dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
-    generic_formatter_capabilities, get_dummy_date,
+    CredentialBuilder, claim_schema as generate_claim_schema, claim_with_schema,
+    credential_with_claims, dummy_certificate, dummy_did, dummy_identifier, dummy_key,
+    dummy_organisation, generic_config, generic_formatter_capabilities, get_dummy_date,
 };
 
 #[derive(Default)]
@@ -180,7 +180,7 @@ async fn generic_credential() -> Credential {
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     };
-    Credential::Generic {
+    CredentialBuilder {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
@@ -266,6 +266,7 @@ async fn generic_credential() -> Credential {
         },
         format: Some(format.into()),
     }
+    .build()
 }
 
 async fn generic_credential_list_entity() -> Credential {
@@ -282,7 +283,7 @@ async fn generic_credential_list_entity() -> Credential {
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     };
-    Credential::Generic {
+    CredentialBuilder {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -375,6 +376,7 @@ async fn generic_credential_list_entity() -> Credential {
         subscriber_information: None,
         format: Some(format.into()),
     }
+    .build()
 }
 
 #[tokio::test]
@@ -455,7 +457,11 @@ async fn test_delete_credential_incorrect_state() {
         .unwrap()
         .allow_revocation = true;
     credential.common_mut().state = CredentialStateEnum::Accepted;
-    *credential.role_mut().unwrap() = CredentialRole::Issuer;
+    credential = CredentialBuilder {
+        role: CredentialRole::Issuer,
+        ..credential.into()
+    }
+    .build();
 
     let copy = credential.clone();
     credential_repository
@@ -480,8 +486,12 @@ async fn test_delete_credential_invalid_type() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    *credential.type_mut().unwrap() = CredentialType::BatchItem;
-    *credential.role_mut().unwrap() = CredentialRole::Issuer;
+    credential = CredentialBuilder {
+        r#type: CredentialType::BatchItem,
+        role: CredentialRole::Issuer,
+        ..credential.into()
+    }
+    .build();
 
     let copy = credential.clone();
     credential_repository
@@ -625,7 +635,8 @@ async fn test_get_credential_success() {
 async fn test_get_credential_success_suspended_credential_with_end_date() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential().await;
+    let mut credential =
+        crate::service::test_utilities::issuer_credential(generic_credential().await).unwrap();
     let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
     credential.common_mut().state = CredentialStateEnum::Suspended;
@@ -701,7 +712,6 @@ async fn test_get_revoked_credential_success() {
 
     let mut credential = generic_credential().await;
     credential.common_mut().state = CredentialStateEnum::Revoked;
-    *credential.suspend_end_date_mut().unwrap() = None;
 
     {
         let clone = credential.clone();
@@ -840,7 +850,11 @@ async fn test_share_credential_failed_invalid_type() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    *credential.type_mut().unwrap() = CredentialType::BatchItem;
+    credential = CredentialBuilder {
+        r#type: CredentialType::BatchItem,
+        ..credential.into()
+    }
+    .build();
     {
         let clone = credential.clone();
         credential_repository
@@ -865,15 +879,13 @@ async fn test_share_credential_failed_inactive_identifier() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    credential
-        .issuer_identifier_mut()
-        .unwrap()
-        .as_mut()
-        .unwrap()
-        .as_mut()
-        .await
-        .unwrap()
-        .state = IdentifierState::Deactivated;
+    let Credential::HolderSingle {
+        credential: data, ..
+    } = &mut credential
+    else {
+        panic!("expected holder single")
+    };
+    data.issuer.identifier.as_mut().await.unwrap().state = IdentifierState::Deactivated;
     {
         let clone = credential.clone();
         credential_repository
@@ -1158,15 +1170,10 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let Credential::Generic {
-        common: CredentialCommon { schema, .. },
-        claims,
-        issuer_identifier,
-        ..
-    } = generic_credential().await
-    else {
-        panic!("expected generic credential")
-    };
+    let credential = generic_credential().await;
+    let schema = &credential.common().schema;
+    let claims = credential.claims().unwrap();
+    let issuer_identifier = credential.issuer_identifier().cloned();
 
     let mut schema = schema.as_ref().await.unwrap().to_owned();
     let claims = claims.as_ref().await.unwrap().to_owned();
@@ -4070,7 +4077,11 @@ async fn trust_information_of(
     outcomes: EcosystemOutcomes,
 ) -> Option<TrustInformation> {
     let mut credential = generic_credential().await;
-    *credential.role_mut().unwrap() = role;
+    credential = CredentialBuilder {
+        role,
+        ..credential.into()
+    }
+    .build();
     let mut credential = if role == CredentialRole::Verifier {
         crate::service::test_utilities::verifier_credential(credential).unwrap()
     } else {
@@ -4157,7 +4168,8 @@ async fn test_the_verifier_sees_the_issuer_by_name() {
     let mut credential =
         crate::service::test_utilities::verifier_credential(generic_credential().await).unwrap();
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
-    *credential.issuer_certificate_mut() = Some(dummy_certificate(Uuid::new_v4().into()).into());
+    *credential.issuer_certificate_mut().unwrap() =
+        Some(dummy_certificate(Uuid::new_v4().into()).into());
 
     let trust_information = get_credential_trust_information(
         &credential,
@@ -4175,7 +4187,11 @@ async fn test_the_verifier_sees_the_issuer_by_name() {
 #[tokio::test]
 async fn test_the_issuer_sees_the_wallet_by_name() {
     let mut credential = generic_credential().await;
-    *credential.role_mut().unwrap() = CredentialRole::Issuer;
+    credential = CredentialBuilder {
+        role: CredentialRole::Issuer,
+        ..credential.into()
+    }
+    .build();
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
 
     let trust_information = get_credential_trust_information(
@@ -4197,7 +4213,11 @@ async fn test_the_issuer_sees_the_wallet_by_name() {
 #[tokio::test]
 async fn test_a_holder_credential_stays_readable_without_its_trust_detail() {
     let mut credential = generic_credential().await;
-    *credential.role_mut().unwrap() = CredentialRole::Holder;
+    credential = CredentialBuilder {
+        role: CredentialRole::Holder,
+        ..credential.into()
+    }
+    .build();
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
 
     let mut ecosystem_provider = MockEcosystemDirectory::new();
@@ -4230,9 +4250,13 @@ async fn test_a_batch_item_reads_the_ecosystem_history_of_its_batch() {
     let batch = generic_credential().await;
     let batch_id = batch.common().id;
     let mut item = generic_credential().await;
-    *item.role_mut().unwrap() = CredentialRole::Holder;
-    *item.type_mut().unwrap() = CredentialType::BatchItem;
-    *item.parent_mut().unwrap() = Some(batch.into());
+    item = CredentialBuilder {
+        role: CredentialRole::Holder,
+        r#type: CredentialType::BatchItem,
+        parent: Some(batch.into()),
+        ..item.into()
+    }
+    .build();
     item.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
 
     let mut outcomes = untrusted_by("LITHUANIA_SANDBOX");

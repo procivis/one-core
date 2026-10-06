@@ -60,6 +60,8 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaListIncludeEntityTypeEnum,
 };
 use crate::service::credential_schema::mapper::schema_to_detail_v1_response_dto;
+#[cfg(test)]
+use crate::service::test_utilities::CredentialBuilder;
 
 #[expect(clippy::too_many_arguments)]
 pub(crate) async fn get_presentation_definition_v2(
@@ -1218,7 +1220,6 @@ mod test {
 
     use super::*;
     use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
-    use crate::model::relation::OptionalRelatedExt;
     use crate::provider::credential_formatter::MockCredentialFormatter;
     use crate::service::test_utilities::dummy_credential;
 
@@ -1244,7 +1245,11 @@ mod test {
         let mut schema = item.common().schema.as_ref().await.unwrap().to_owned();
         schema.formats.as_mut().await.unwrap().push(format.clone());
         item.common_mut().schema = schema.into();
-        *item.format_mut().unwrap() = Some(format.into());
+        item = CredentialBuilder {
+            format: Some(format.into()),
+            ..item.into()
+        }
+        .build();
         item.claims_mut().unwrap().as_mut().await.unwrap()[0].selectively_disclosable = true;
         let query: DcqlQuery = serde_json::from_value(serde_json::json!({
             "credentials": [{
@@ -1280,7 +1285,7 @@ mod test {
         *item.claims_mut().unwrap() = vec![claim].into();
         item.format_mut()
             .unwrap()
-            .as_required_mut()
+            .as_mut()
             .await
             .unwrap()
             .ecosystem_schema_id = "different-doctype".into();

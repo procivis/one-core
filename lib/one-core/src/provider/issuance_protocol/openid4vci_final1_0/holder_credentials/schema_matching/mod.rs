@@ -528,15 +528,10 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     format_id: Option<shared_types::CredentialSchemaFormatId>,
 ) -> Result<AlignmentUpdate, IssuanceProtocolError> {
     let (common, claims, format) = match credential {
-        Credential::HolderSingle { common, credential } => {
-            (common, &mut credential.claims, &mut credential.format)
-        }
-        Credential::Generic {
-            common,
-            claims,
-            format: Some(format),
-            ..
-        } => (common, claims, format),
+        Credential::HolderSingle { common, credential }
+        | Credential::HolderBatchItem {
+            common, credential, ..
+        } => (common, &mut credential.claims, &mut credential.format),
         _ => {
             return Err(IssuanceProtocolError::Failed(
                 "Expected a holder credential with a format".into(),

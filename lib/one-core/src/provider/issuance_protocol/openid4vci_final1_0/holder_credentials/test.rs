@@ -15,7 +15,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
-use crate::service::test_utilities::{dummy_credential, dummy_organisation};
+use crate::service::test_utilities::{CredentialBuilder, dummy_credential, dummy_organisation};
 
 #[tokio::test]
 async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
@@ -52,8 +52,11 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
     let credential = {
         let mut updated_credential = dummy_credential();
         updated_credential.common_mut().schema = schema.clone().into();
-        *updated_credential.format_mut().unwrap() =
-            Some(schema.formats.as_ref().await.unwrap()[0].clone().into());
+        updated_credential = CredentialBuilder {
+            format: Some(schema.formats.as_ref().await.unwrap()[0].clone().into()),
+            ..updated_credential.into()
+        }
+        .build();
         *updated_credential.claims_mut().unwrap() = vec![].into();
         updated_credential
     };

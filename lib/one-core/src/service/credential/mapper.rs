@@ -148,11 +148,12 @@ pub(crate) async fn credential_detail_response_from_model(
         value.subscriber_information().clone()
     };
     let common = match value {
-        Credential::Generic { common, .. }
-        | Credential::IssuerSingle { common, .. }
+        Credential::IssuerSingle { common, .. }
         | Credential::IssuerBatchParent { common, .. }
         | Credential::IssuerBatchItem { common, .. }
         | Credential::HolderSingle { common, .. }
+        | Credential::HolderBatchParent { common, .. }
+        | Credential::HolderBatchItem { common, .. }
         | Credential::Verifier { common, .. } => common,
     };
 
@@ -566,11 +567,12 @@ pub(super) async fn to_credential_list_response(
     let webhook_url = credential.webhook_url().to_owned();
     let parent_id = credential.parent().map(|parent| parent.id());
     let common = match credential {
-        Credential::Generic { common, .. }
-        | Credential::IssuerSingle { common, .. }
+        Credential::IssuerSingle { common, .. }
         | Credential::IssuerBatchParent { common, .. }
         | Credential::IssuerBatchItem { common, .. }
         | Credential::HolderSingle { common, .. }
+        | Credential::HolderBatchParent { common, .. }
+        | Credential::HolderBatchItem { common, .. }
         | Credential::Verifier { common, .. } => common,
     };
 
@@ -1095,17 +1097,6 @@ pub(crate) async fn get_credential_trust_information(
     ecosystem_provider: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {
-    if matches!(
-        credential,
-        Credential::Generic {
-            role: CredentialRole::Verifier,
-            ..
-        }
-    ) {
-        return Err(CredentialServiceError::MappingError(
-            "Expected a verifier credential".into(),
-        ));
-    }
     let ecosystem_errors =
         recorded_ecosystem_outcomes(credential.ecosystem_history_id().into(), history_repository)
             .await?;

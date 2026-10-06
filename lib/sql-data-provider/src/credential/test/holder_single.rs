@@ -191,34 +191,3 @@ async fn invalid_holder_single_rows_return_mapping_errors(
         Err(DataLayerError::MappingError)
     ));
 }
-
-#[tokio::test]
-async fn generic_holder_single_credentials_cannot_be_persisted() {
-    let setup = setup_with_credential().await;
-    let repository = credential_repository(setup.db.clone(), None);
-    let mut request = insert_credential(
-        &setup.db,
-        &setup.credential_schema.id,
-        CredentialStateEnum::Accepted,
-        "OPENID4VCI_FINAL1",
-        setup.identifier.id,
-        None,
-        None,
-        Uuid::new_v4().into(),
-        credential::CredentialRole::Holder,
-    )
-    .await
-    .unwrap();
-    request.common_mut().id = Uuid::new_v4().into();
-    assert!(matches!(
-        repository.create_credential(request.clone()).await,
-        Err(DataLayerError::MappingError)
-    ));
-    assert!(
-        credential::Entity::find_by_id(request.common().id)
-            .one(&setup.db)
-            .await
-            .unwrap()
-            .is_none()
-    );
-}

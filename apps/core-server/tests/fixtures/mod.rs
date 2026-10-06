@@ -36,6 +36,7 @@ use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use one_core::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::DataRepository;
+use one_core::service::test_utilities::CredentialBuilder;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
@@ -816,7 +817,7 @@ pub async fn create_credential(
         .first()
         .cloned();
 
-    let credential = Credential::Generic {
+    let credential = CredentialBuilder {
         common: CredentialCommon {
             expires_at: params.expires_at,
             ecosystem: params.ecosystem,

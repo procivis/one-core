@@ -30,8 +30,7 @@ use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, CredentialType, HolderCredentialData,
-    IssuerIdentity,
+    Credential, CredentialStateEnum, CredentialType, HolderCredentialData, IssuerIdentity,
 };
 use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -145,39 +144,21 @@ impl OpenID4VCIFinal1_0 {
         credential: &mut Credential,
         parent_id: CredentialId,
     ) -> Result<(), IssuanceProtocolError> {
-        if let Credential::HolderSingle {
+        let Credential::HolderSingle {
             common,
             credential: data,
         } = credential
-        {
-            *credential = Credential::Generic {
-                common: common.clone(),
-                role: CredentialRole::Holder,
-                r#type: CredentialType::BatchItem,
-                consumed_at: None,
-                suspend_end_date: None,
-                credential_blob_id: data.credential_blob_id,
-                wallet_key_attestation_blob_id: None,
-                wallet_instance_attestation_blob_id: None,
-                webhook_url: None,
-                embedded_disclosure_policy: data.embedded_disclosure_policy.clone(),
-                subscriber_information: None,
-                claims: data.claims.clone(),
-                issuer_identifier: Some(data.issuer.identifier.clone()),
-                issuer_certificate: data.issuer.certificate.clone(),
-                holder_identifier: data
-                    .binding
-                    .as_ref()
-                    .map(|binding| binding.identifier.clone()),
-                format: Some(data.format.clone()),
-                key: data.binding.as_ref().map(|binding| binding.key.clone()),
-                parent: Some(Related::new(parent_id, self.credential_repository.clone())),
-            };
-        } else {
-            *credential.type_mut()? = CredentialType::BatchItem;
-            *credential.parent_mut()? =
-                Some(Related::new(parent_id, self.credential_repository.clone()));
-        }
+        else {
+            return Err(IssuanceProtocolError::Failed(
+                "Expected a holder single credential".into(),
+            ));
+        };
+        *credential = Credential::HolderBatchItem {
+            common: common.clone(),
+            credential: data.clone(),
+            parent: Related::new(parent_id, self.credential_repository.clone()),
+            consumed_at: None,
+        };
         credential.common_mut().interaction = None;
         Ok(())
     }

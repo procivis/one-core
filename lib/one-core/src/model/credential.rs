@@ -24,32 +24,6 @@ use crate::repository::error::DataLayerError;
 #[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub enum Credential {
-    /// TODO ONE-11429: Temporary shim until the credential model has been fully refactored into
-    /// role and type specific variants.
-    Generic {
-        #[model(nested)]
-        common: CredentialCommon,
-        consumed_at: Option<OffsetDateTime>,
-        role: CredentialRole,
-        r#type: CredentialType,
-        suspend_end_date: Option<OffsetDateTime>,
-        credential_blob_id: Option<BlobId>,
-        wallet_key_attestation_blob_id: Option<BlobId>,
-        wallet_instance_attestation_blob_id: Option<BlobId>,
-        webhook_url: Option<String>,
-        /// Holder configuration policy, stored on singles and batch items, not batch parents.
-        embedded_disclosure_policy: Option<String>,
-        subscriber_information: Option<String>,
-
-        // Relations:
-        claims: RelatedVec<Claim>,
-        issuer_identifier: Option<Related<Identifier>>,
-        issuer_certificate: Option<Related<Certificate>>,
-        holder_identifier: Option<Related<Identifier>>,
-        format: Option<Related<CredentialSchemaFormat>>,
-        key: Option<Related<Key>>,
-        parent: Option<Related<Credential>>,
-    },
     IssuerSingle {
         #[model(nested)]
         common: CredentialCommon,
@@ -83,6 +57,17 @@ pub enum Credential {
         #[model(nested)]
         common: CredentialCommon,
         credential: HolderCredentialData,
+    },
+    HolderBatchParent {
+        #[model(nested)]
+        common: CredentialCommon,
+    },
+    HolderBatchItem {
+        #[model(nested)]
+        common: CredentialCommon,
+        parent: Related<Credential>,
+        credential: HolderCredentialData,
+        consumed_at: Option<OffsetDateTime>,
     },
     Verifier {
         #[model(nested)]
@@ -183,44 +168,48 @@ pub enum CredentialStateEnum {
 impl Credential {
     pub fn common(&self) -> &CredentialCommon {
         match self {
-            Self::Generic { common, .. }
-            | Self::IssuerSingle { common, .. }
+            Self::IssuerSingle { common, .. }
             | Self::IssuerBatchParent { common, .. }
             | Self::IssuerBatchItem { common, .. }
             | Self::HolderSingle { common, .. }
+            | Self::HolderBatchParent { common, .. }
+            | Self::HolderBatchItem { common, .. }
             | Self::Verifier { common, .. } => common,
         }
     }
 
     pub fn common_mut(&mut self) -> &mut CredentialCommon {
         match self {
-            Self::Generic { common, .. }
-            | Self::IssuerSingle { common, .. }
+            Self::IssuerSingle { common, .. }
             | Self::IssuerBatchParent { common, .. }
             | Self::IssuerBatchItem { common, .. }
             | Self::HolderSingle { common, .. }
+            | Self::HolderBatchParent { common, .. }
+            | Self::HolderBatchItem { common, .. }
             | Self::Verifier { common, .. } => common,
         }
     }
 
     pub fn consumed_at(&self) -> Option<OffsetDateTime> {
         match self {
-            Self::Generic { consumed_at, .. } => *consumed_at,
+            Self::HolderBatchItem { consumed_at, .. } => *consumed_at,
             Self::IssuerSingle { .. }
             | Self::IssuerBatchParent { .. }
             | Self::IssuerBatchItem { .. }
             | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
             | Self::Verifier { .. } => None,
         }
     }
 
     pub fn consumed_at_mut(&mut self) -> Result<&mut Option<OffsetDateTime>, NestedError> {
         match self {
-            Self::Generic { consumed_at, .. } => Ok(consumed_at),
+            Self::HolderBatchItem { consumed_at, .. } => Ok(consumed_at),
             Self::IssuerSingle { .. }
             | Self::IssuerBatchParent { .. }
             | Self::IssuerBatchItem { .. }
             | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
             | Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on this credential variant")),
         }
@@ -228,122 +217,100 @@ impl Credential {
 
     pub fn role(&self) -> CredentialRole {
         match self {
-            Self::Generic { role, .. } => *role,
             Self::IssuerSingle { .. }
             | Self::IssuerBatchParent { .. }
             | Self::IssuerBatchItem { .. } => CredentialRole::Issuer,
-            Self::HolderSingle { .. } => CredentialRole::Holder,
+            Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. } => CredentialRole::Holder,
             Self::Verifier { .. } => CredentialRole::Verifier,
-        }
-    }
-
-    pub fn role_mut(&mut self) -> Result<&mut CredentialRole, NestedError> {
-        match self {
-            Self::Generic { role, .. } => Ok(role),
-            Self::IssuerSingle { .. }
-            | Self::IssuerBatchParent { .. }
-            | Self::IssuerBatchItem { .. }
-            | Self::HolderSingle { .. }
-            | Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn r#type(&self) -> CredentialType {
         match self {
-            Self::Generic { r#type, .. } => *r#type,
             Self::IssuerSingle { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
                 CredentialType::Single
             }
-            Self::IssuerBatchParent { .. } => CredentialType::BatchParent,
-            Self::IssuerBatchItem { .. } => CredentialType::BatchItem,
-        }
-    }
-
-    pub fn type_mut(&mut self) -> Result<&mut CredentialType, NestedError> {
-        match self {
-            Self::Generic { r#type, .. } => Ok(r#type),
-            Self::IssuerSingle { .. }
-            | Self::IssuerBatchParent { .. }
-            | Self::IssuerBatchItem { .. }
-            | Self::HolderSingle { .. }
-            | Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on this credential variant")),
+            Self::IssuerBatchParent { .. } | Self::HolderBatchParent { .. } => {
+                CredentialType::BatchParent
+            }
+            Self::IssuerBatchItem { .. } | Self::HolderBatchItem { .. } => {
+                CredentialType::BatchItem
+            }
         }
     }
 
     pub fn suspend_end_date(&self) -> Option<OffsetDateTime> {
         match self {
-            Self::Generic {
-                suspend_end_date, ..
-            }
-            | Self::IssuerBatchParent {
-                suspend_end_date, ..
-            } => *suspend_end_date,
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 credential.suspend_end_date
             }
-            Self::HolderSingle { .. } | Self::Verifier { .. } => None,
+            Self::IssuerBatchParent {
+                suspend_end_date, ..
+            } => *suspend_end_date,
+            Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => None,
         }
     }
 
     pub fn suspend_end_date_mut(&mut self) -> Result<&mut Option<OffsetDateTime>, NestedError> {
         match self {
-            Self::Generic {
-                suspend_end_date, ..
-            }
-            | Self::IssuerBatchParent {
-                suspend_end_date, ..
-            } => Ok(suspend_end_date),
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 Ok(&mut credential.suspend_end_date)
             }
-            Self::HolderSingle { .. } | Self::Verifier { .. } => Err(DataLayerError::MappingError
+            Self::IssuerBatchParent {
+                suspend_end_date, ..
+            } => Ok(suspend_end_date),
+            Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn credential_blob_id(&self) -> Option<BlobId> {
         match self {
-            Self::HolderSingle { credential, .. } => credential.credential_blob_id,
-            Self::Generic {
-                credential_blob_id, ..
-            } => *credential_blob_id,
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 credential.credential_blob_id
             }
-            Self::IssuerBatchParent { .. } | Self::Verifier { .. } => None,
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                credential.credential_blob_id
+            }
+            Self::IssuerBatchParent { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::Verifier { .. } => None,
         }
     }
 
     pub fn credential_blob_id_mut(&mut self) -> Result<&mut Option<BlobId>, NestedError> {
         match self {
-            Self::HolderSingle { credential, .. } => Ok(&mut credential.credential_blob_id),
-            Self::Generic {
-                credential_blob_id, ..
-            } => Ok(credential_blob_id),
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 Ok(&mut credential.credential_blob_id)
             }
-            Self::IssuerBatchParent { .. } | Self::Verifier { .. } => {
-                Err(DataLayerError::MappingError
-                    .error_while("accessing a field unavailable on this credential variant"))
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Ok(&mut credential.credential_blob_id)
             }
+            Self::IssuerBatchParent { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn wallet_key_attestation_blob_id(&self) -> Option<BlobId> {
         match self {
-            Self::Generic {
-                wallet_key_attestation_blob_id,
-                ..
-            } => *wallet_key_attestation_blob_id,
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 credential.wallet_key_attestation_blob_id
             }
-            Self::IssuerBatchParent { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
-                None
-            }
+            Self::IssuerBatchParent { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => None,
         }
     }
 
@@ -351,32 +318,28 @@ impl Credential {
         &mut self,
     ) -> Result<&mut Option<BlobId>, NestedError> {
         match self {
-            Self::Generic {
-                wallet_key_attestation_blob_id,
-                ..
-            } => Ok(wallet_key_attestation_blob_id),
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 Ok(&mut credential.wallet_key_attestation_blob_id)
             }
-            Self::IssuerBatchParent { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
-                Err(DataLayerError::MappingError
-                    .error_while("accessing a field unavailable on this credential variant"))
-            }
+            Self::IssuerBatchParent { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn wallet_instance_attestation_blob_id(&self) -> Option<BlobId> {
         match self {
-            Self::Generic {
-                wallet_instance_attestation_blob_id,
-                ..
-            } => *wallet_instance_attestation_blob_id,
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 credential.wallet_instance_attestation_blob_id
             }
-            Self::IssuerBatchParent { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
-                None
-            }
+            Self::IssuerBatchParent { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => None,
         }
     }
 
@@ -384,67 +347,65 @@ impl Credential {
         &mut self,
     ) -> Result<&mut Option<BlobId>, NestedError> {
         match self {
-            Self::Generic {
-                wallet_instance_attestation_blob_id,
-                ..
-            } => Ok(wallet_instance_attestation_blob_id),
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 Ok(&mut credential.wallet_instance_attestation_blob_id)
             }
-            Self::IssuerBatchParent { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
-                Err(DataLayerError::MappingError
-                    .error_while("accessing a field unavailable on this credential variant"))
-            }
+            Self::IssuerBatchParent { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn webhook_url(&self) -> &Option<String> {
         match self {
-            Self::Generic { webhook_url, .. }
-            | Self::IssuerSingle { webhook_url, .. }
+            Self::IssuerSingle { webhook_url, .. }
             | Self::IssuerBatchParent { webhook_url, .. } => webhook_url,
-            Self::IssuerBatchItem { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
-                &None
-            }
+            Self::IssuerBatchItem { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => &None,
         }
     }
 
     pub fn webhook_url_mut(&mut self) -> Result<&mut Option<String>, NestedError> {
         match self {
-            Self::Generic { webhook_url, .. }
-            | Self::IssuerSingle { webhook_url, .. }
+            Self::IssuerSingle { webhook_url, .. }
             | Self::IssuerBatchParent { webhook_url, .. } => Ok(webhook_url),
-            Self::IssuerBatchItem { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
-                Err(DataLayerError::MappingError
-                    .error_while("accessing a field unavailable on this credential variant"))
-            }
+            Self::IssuerBatchItem { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn embedded_disclosure_policy(&self) -> &Option<String> {
         match self {
-            Self::HolderSingle { credential, .. } => &credential.embedded_disclosure_policy,
-            Self::Generic {
-                embedded_disclosure_policy,
-                ..
-            } => embedded_disclosure_policy,
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                &credential.embedded_disclosure_policy
+            }
             Self::IssuerSingle { .. }
             | Self::IssuerBatchParent { .. }
             | Self::IssuerBatchItem { .. }
+            | Self::HolderBatchParent { .. }
             | Self::Verifier { .. } => &None,
         }
     }
 
     pub fn embedded_disclosure_policy_mut(&mut self) -> Result<&mut Option<String>, NestedError> {
         match self {
-            Self::HolderSingle { credential, .. } => Ok(&mut credential.embedded_disclosure_policy),
-            Self::Generic {
-                embedded_disclosure_policy,
-                ..
-            } => Ok(embedded_disclosure_policy),
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Ok(&mut credential.embedded_disclosure_policy)
+            }
             Self::IssuerSingle { .. }
             | Self::IssuerBatchParent { .. }
             | Self::IssuerBatchItem { .. }
+            | Self::HolderBatchParent { .. }
             | Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on this credential variant")),
         }
@@ -452,11 +413,7 @@ impl Credential {
 
     pub fn subscriber_information(&self) -> &Option<String> {
         match self {
-            Self::Generic {
-                subscriber_information,
-                ..
-            }
-            | Self::IssuerSingle {
+            Self::IssuerSingle {
                 subscriber_information,
                 ..
             }
@@ -464,106 +421,102 @@ impl Credential {
                 subscriber_information,
                 ..
             } => subscriber_information,
-            Self::IssuerBatchItem { .. } | Self::HolderSingle { .. } | Self::Verifier { .. } => {
-                &None
-            }
+            Self::IssuerBatchItem { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. }
+            | Self::Verifier { .. } => &None,
         }
     }
 
-    /// Locally owned claims. Issuer batch items resolve claims through their parent.
+    /// Locally owned claims. Issuer batch items inherit claims; holder batch parents own none.
     pub fn claims(&self) -> Result<&RelatedVec<Claim>, NestedError> {
         match self {
-            Self::HolderSingle { credential, .. } => Ok(&credential.claims),
-            Self::Generic { claims, .. }
-            | Self::IssuerSingle { claims, .. }
-            | Self::IssuerBatchParent { claims, .. } => Ok(claims),
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Ok(&credential.claims)
+            }
+            Self::IssuerSingle { claims, .. } | Self::IssuerBatchParent { claims, .. } => {
+                Ok(claims)
+            }
             Self::Verifier { verifier_data, .. } => Ok(&verifier_data.claims),
-            Self::IssuerBatchItem { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing claims owned by the issuer batch parent")),
+            Self::IssuerBatchItem { .. } | Self::HolderBatchParent { .. } => {
+                Err(DataLayerError::MappingError
+                    .error_while("accessing a field unavailable on this credential variant"))
+            }
         }
     }
 
     pub fn claims_mut(&mut self) -> Result<&mut RelatedVec<Claim>, NestedError> {
         match self {
-            Self::HolderSingle { credential, .. } => Ok(&mut credential.claims),
-            Self::Generic { claims, .. }
-            | Self::IssuerSingle { claims, .. }
-            | Self::IssuerBatchParent { claims, .. } => Ok(claims),
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Ok(&mut credential.claims)
+            }
+            Self::IssuerSingle { claims, .. } | Self::IssuerBatchParent { claims, .. } => {
+                Ok(claims)
+            }
             Self::Verifier { verifier_data, .. } => Ok(&mut verifier_data.claims),
-            Self::IssuerBatchItem { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing claims owned by the issuer batch parent")),
+            Self::IssuerBatchItem { .. } | Self::HolderBatchParent { .. } => {
+                Err(DataLayerError::MappingError
+                    .error_while("accessing a field unavailable on this credential variant"))
+            }
         }
     }
 
     pub fn issuer_identifier(&self) -> Option<&Related<Identifier>> {
         match self {
-            Self::HolderSingle { credential, .. } => Some(&credential.issuer.identifier),
-            Self::Generic {
-                issuer_identifier, ..
-            } => issuer_identifier.as_ref(),
             Self::IssuerSingle { issuer, .. }
             | Self::IssuerBatchParent { issuer, .. }
             | Self::IssuerBatchItem { issuer, .. } => Some(&issuer.identifier),
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Some(&credential.issuer.identifier)
+            }
             Self::Verifier { verifier_data, .. } => Some(&verifier_data.issuer.identifier),
-        }
-    }
-
-    pub fn issuer_identifier_mut(
-        &mut self,
-    ) -> Result<&mut Option<Related<Identifier>>, NestedError> {
-        match self {
-            Self::Generic {
-                issuer_identifier, ..
-            } => Ok(issuer_identifier),
-            Self::IssuerSingle { .. }
-            | Self::IssuerBatchParent { .. }
-            | Self::IssuerBatchItem { .. }
-            | Self::HolderSingle { .. }
-            | Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on this credential variant")),
+            Self::HolderBatchParent { .. } => None,
         }
     }
 
     pub fn issuer_certificate(&self) -> &Option<Related<Certificate>> {
         match self {
-            Self::HolderSingle { credential, .. } => &credential.issuer.certificate,
-            Self::Generic {
-                issuer_certificate, ..
-            } => issuer_certificate,
             Self::IssuerSingle { issuer, .. }
             | Self::IssuerBatchParent { issuer, .. }
             | Self::IssuerBatchItem { issuer, .. } => &issuer.certificate,
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                &credential.issuer.certificate
+            }
             Self::Verifier { verifier_data, .. } => &verifier_data.issuer.certificate,
+            Self::HolderBatchParent { .. } => &None,
         }
     }
 
-    pub fn issuer_certificate_mut(&mut self) -> &mut Option<Related<Certificate>> {
+    pub fn issuer_certificate_mut(
+        &mut self,
+    ) -> Result<&mut Option<Related<Certificate>>, NestedError> {
         match self {
-            Self::HolderSingle { credential, .. } => &mut credential.issuer.certificate,
-            Self::Generic {
-                issuer_certificate, ..
-            } => issuer_certificate,
             Self::IssuerSingle { issuer, .. }
             | Self::IssuerBatchParent { issuer, .. }
-            | Self::IssuerBatchItem { issuer, .. } => &mut issuer.certificate,
-            Self::Verifier { verifier_data, .. } => &mut verifier_data.issuer.certificate,
+            | Self::IssuerBatchItem { issuer, .. } => Ok(&mut issuer.certificate),
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Ok(&mut credential.issuer.certificate)
+            }
+            Self::Verifier { verifier_data, .. } => Ok(&mut verifier_data.issuer.certificate),
+            Self::HolderBatchParent { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
         }
     }
 
     pub fn holder_identifier(&self) -> Option<&Related<Identifier>> {
         match self {
-            Self::Generic {
-                holder_identifier, ..
-            } => holder_identifier.as_ref(),
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 credential.holder_identifier.as_ref()
             }
-            Self::HolderSingle { credential, .. } => credential
-                .binding
-                .as_ref()
-                .map(|binding| &binding.identifier),
-            Self::IssuerBatchParent { .. } => None,
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                credential
+                    .binding
+                    .as_ref()
+                    .map(|binding| &binding.identifier)
+            }
             Self::Verifier { verifier_data, .. } => verifier_data.holder_identifier.as_ref(),
+            Self::IssuerBatchParent { .. } | Self::HolderBatchParent { .. } => None,
         }
     }
 
@@ -571,94 +524,85 @@ impl Credential {
         &mut self,
     ) -> Result<&mut Option<Related<Identifier>>, NestedError> {
         match self {
-            Self::Generic {
-                holder_identifier, ..
-            } => Ok(holder_identifier),
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
                 Ok(&mut credential.holder_identifier)
             }
             Self::Verifier { verifier_data, .. } => Ok(&mut verifier_data.holder_identifier),
-            Self::IssuerBatchParent { .. } | Self::HolderSingle { .. } => {
+            Self::IssuerBatchParent { .. }
+            | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
+            | Self::HolderBatchItem { .. } => Err(DataLayerError::MappingError
+                .error_while("accessing a field unavailable on this credential variant")),
+        }
+    }
+
+    pub fn format(&self) -> Option<&Related<CredentialSchemaFormat>> {
+        match self {
+            Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
+                Some(&credential.format)
+            }
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Some(&credential.format)
+            }
+            Self::Verifier { verifier_data, .. } => Some(&verifier_data.format),
+            Self::IssuerBatchParent { .. } | Self::HolderBatchParent { .. } => None,
+        }
+    }
+
+    pub fn format_mut(&mut self) -> Result<&mut Related<CredentialSchemaFormat>, NestedError> {
+        match self {
+            Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
+                Ok(&mut credential.format)
+            }
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Ok(&mut credential.format)
+            }
+            Self::Verifier { verifier_data, .. } => Ok(&mut verifier_data.format),
+            Self::IssuerBatchParent { .. } | Self::HolderBatchParent { .. } => {
                 Err(DataLayerError::MappingError
                     .error_while("accessing a field unavailable on this credential variant"))
             }
         }
     }
 
-    pub fn format(&self) -> Option<&Related<CredentialSchemaFormat>> {
-        match self {
-            Self::HolderSingle { credential, .. } => Some(&credential.format),
-            Self::Generic { format, .. } => format.as_ref(),
-            Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
-                Some(&credential.format)
-            }
-            Self::IssuerBatchParent { .. } => None,
-            Self::Verifier { verifier_data, .. } => Some(&verifier_data.format),
-        }
-    }
-
-    pub fn format_mut(
-        &mut self,
-    ) -> Result<&mut Option<Related<CredentialSchemaFormat>>, NestedError> {
-        match self {
-            Self::Generic { format, .. } => Ok(format),
-            Self::IssuerSingle { .. }
-            | Self::IssuerBatchParent { .. }
-            | Self::IssuerBatchItem { .. }
-            | Self::HolderSingle { .. }
-            | Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on this credential variant")),
-        }
-    }
-
     pub fn key(&self) -> Option<&Related<Key>> {
         match self {
-            Self::HolderSingle { credential, .. } => {
-                credential.binding.as_ref().map(|binding| &binding.key)
-            }
-            Self::Generic { key, .. } => key.as_ref(),
             Self::IssuerSingle { issuer, .. }
             | Self::IssuerBatchParent { issuer, .. }
             | Self::IssuerBatchItem { issuer, .. } => Some(&issuer.signing_key),
-            Self::Verifier { .. } => None,
-        }
-    }
-
-    pub fn key_mut(&mut self) -> Result<&mut Option<Related<Key>>, NestedError> {
-        match self {
-            Self::Generic { key, .. } => Ok(key),
-            Self::IssuerSingle { .. }
-            | Self::IssuerBatchParent { .. }
-            | Self::IssuerBatchItem { .. }
-            | Self::HolderSingle { .. }
-            | Self::Verifier { .. } => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on this credential variant")),
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                credential.binding.as_ref().map(|binding| &binding.key)
+            }
+            Self::HolderBatchParent { .. } | Self::Verifier { .. } => None,
         }
     }
 
     pub fn parent(&self) -> Option<&Related<Credential>> {
         match self {
-            Self::Generic { parent, .. } => parent.as_ref(),
-            Self::IssuerBatchItem { parent, .. } => Some(parent),
+            Self::IssuerBatchItem { parent, .. } | Self::HolderBatchItem { parent, .. } => {
+                Some(parent)
+            }
             Self::IssuerSingle { .. }
             | Self::IssuerBatchParent { .. }
             | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
             | Self::Verifier { .. } => None,
         }
     }
 
-    pub fn parent_mut(&mut self) -> Result<&mut Option<Related<Credential>>, NestedError> {
+    pub fn parent_mut(&mut self) -> Result<&mut Related<Credential>, NestedError> {
         match self {
-            Self::Generic { parent, .. } => Ok(parent),
+            Self::IssuerBatchItem { parent, .. } | Self::HolderBatchItem { parent, .. } => {
+                Ok(parent)
+            }
             Self::IssuerSingle { .. }
             | Self::IssuerBatchParent { .. }
-            | Self::IssuerBatchItem { .. }
             | Self::HolderSingle { .. }
+            | Self::HolderBatchParent { .. }
             | Self::Verifier { .. } => Err(DataLayerError::MappingError
                 .error_while("accessing a field unavailable on this credential variant")),
         }
     }
-
     /// The credential that holds the relevant ecosystem history events.
     /// Points to the batch parent for credentials of type [CredentialType::BatchItem]
     pub(crate) fn ecosystem_history_id(&self) -> CredentialId {

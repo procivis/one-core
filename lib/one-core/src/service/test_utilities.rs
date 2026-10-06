@@ -298,7 +298,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: Default::default(),
     };
-    Credential::Generic {
+    CredentialBuilder {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -408,6 +408,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         subscriber_information: None,
         format: Some(format.into()),
     }
+    .build()
 }
 
 pub fn dummy_blob() -> Blob {
@@ -661,7 +662,7 @@ pub async fn credential_with_claims(
     common.schema = schema.into();
     common.interaction = None;
     *credential.claims_mut().unwrap() = claims.into();
-    *credential.format_mut().unwrap() = Some(format.into());
+    *credential.format_mut().unwrap() = format.into();
     credential
 }
 
@@ -780,161 +781,228 @@ pub fn dummy_trust_list_publication() -> TrustListPublication {
     }
 }
 
-/// Construct a verifier fixture from a generic credential fixture.
+/// Build a verifier fixture from an existing credential.
 pub fn verifier_credential(
     credential: Credential,
 ) -> Result<Credential, crate::repository::error::DataLayerError> {
-    let Credential::Generic {
-        common,
-        claims,
-        issuer_identifier,
-        issuer_certificate,
-        holder_identifier,
-        format,
-        ..
-    } = credential
-    else {
-        return Err(crate::repository::error::DataLayerError::MappingError);
-    };
-    Ok(Credential::Verifier {
-        common,
-        verifier_data: crate::model::credential::VerifierCredentialData {
-            issuer: crate::model::credential::IssuerIdentity {
-                identifier: issuer_identifier
-                    .ok_or(crate::repository::error::DataLayerError::MappingError)?,
-                certificate: issuer_certificate,
-            },
-            claims,
-            holder_identifier,
-            format: format.ok_or(crate::repository::error::DataLayerError::MappingError)?,
-        },
-    })
+    Ok(CredentialBuilder {
+        role: CredentialRole::Verifier,
+        r#type: CredentialType::Single,
+        ..credential.into()
+    }
+    .build())
 }
 
-/// Construct an issuer fixture from a generic credential fixture.
 pub fn issuer_credential(
     credential: Credential,
 ) -> Result<Credential, crate::repository::error::DataLayerError> {
-    use crate::model::credential::{IssuerCredentialData, IssuerData};
-    use crate::repository::error::DataLayerError;
-
-    let Credential::Generic {
-        common,
-        r#type,
-        parent,
-        claims,
-        issuer_identifier,
-        issuer_certificate,
-        holder_identifier,
-        key,
-        format,
-        suspend_end_date,
-        credential_blob_id,
-        wallet_key_attestation_blob_id,
-        wallet_instance_attestation_blob_id,
-        webhook_url,
-        subscriber_information,
-        ..
-    } = credential
-    else {
-        return Err(DataLayerError::MappingError);
-    };
-    let issuer = IssuerData {
-        identifier: issuer_identifier.ok_or(DataLayerError::MappingError)?,
-        certificate: issuer_certificate,
-        signing_key: key.ok_or(DataLayerError::MappingError)?,
-    };
-    if r#type == CredentialType::BatchParent {
-        return Ok(Credential::IssuerBatchParent {
-            common,
-            issuer,
-            claims,
-            webhook_url,
-            subscriber_information,
-            suspend_end_date,
-        });
+    Ok(CredentialBuilder {
+        role: CredentialRole::Issuer,
+        ..credential.into()
     }
-    let credential = IssuerCredentialData {
-        suspend_end_date,
-        format: format.ok_or(DataLayerError::MappingError)?,
-        holder_identifier,
-        credential_blob_id,
-        wallet_key_attestation_blob_id,
-        wallet_instance_attestation_blob_id,
-    };
-    Ok(if r#type == CredentialType::BatchItem {
-        Credential::IssuerBatchItem {
-            common,
-            issuer,
-            credential,
-            parent: parent.ok_or(DataLayerError::MappingError)?,
-        }
-    } else {
-        Credential::IssuerSingle {
-            common,
-            issuer,
-            credential,
-            claims,
-            webhook_url,
-            subscriber_information,
-        }
-    })
+    .build())
 }
 
-/// Construct a holder-single fixture from a generic credential fixture.
 pub fn holder_single_credential(
     credential: Credential,
 ) -> Result<Credential, crate::repository::error::DataLayerError> {
-    use crate::model::credential::{HolderBinding, HolderCredentialData, IssuerIdentity};
-    use crate::repository::error::DataLayerError;
+    Ok(CredentialBuilder {
+        role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
+        ..credential.into()
+    }
+    .build())
+}
 
-    let Credential::Generic {
-        common,
-        claims,
-        issuer_identifier,
-        issuer_certificate,
-        holder_identifier,
-        key,
-        format,
-        credential_blob_id,
-        embedded_disclosure_policy,
-        ..
-    } = credential
-    else {
-        return Err(DataLayerError::MappingError);
-    };
-    let binding = match (holder_identifier, key) {
-        (Some(identifier), Some(key)) => Some(HolderBinding { identifier, key }),
-        (None, None) => None,
-        _ => return Err(DataLayerError::MappingError),
-    };
-    Ok(Credential::HolderSingle {
-        common,
-        credential: HolderCredentialData {
-            issuer: IssuerIdentity {
-                identifier: issuer_identifier.ok_or(DataLayerError::MappingError)?,
-                certificate: issuer_certificate,
-            },
-            format: format.ok_or(DataLayerError::MappingError)?,
-            claims,
-            binding,
-            credential_blob_id,
-            embedded_disclosure_policy,
-        },
-    })
+/// Shared fixture inputs for constructing the different credential variants.
+/// Missing required relations receive dummy values for unit tests; persistence fixtures
+/// must supply relations that exist in their database.
+#[derive(Clone, Debug)]
+pub struct CredentialBuilder {
+    pub common: CredentialCommon,
+    pub claims: crate::model::relation::RelatedVec<Claim>,
+    pub consumed_at: Option<OffsetDateTime>,
+    pub role: CredentialRole,
+    pub r#type: CredentialType,
+    pub suspend_end_date: Option<OffsetDateTime>,
+    pub issuer_identifier: Option<crate::model::relation::Related<Identifier>>,
+    pub issuer_certificate: Option<crate::model::relation::Related<Certificate>>,
+    pub holder_identifier: Option<crate::model::relation::Related<Identifier>>,
+    pub key: Option<crate::model::relation::Related<Key>>,
+    pub credential_blob_id: Option<shared_types::BlobId>,
+    pub wallet_key_attestation_blob_id: Option<shared_types::BlobId>,
+    pub wallet_instance_attestation_blob_id: Option<shared_types::BlobId>,
+    pub webhook_url: Option<String>,
+    pub embedded_disclosure_policy: Option<String>,
+    pub subscriber_information: Option<String>,
+    pub parent: Option<crate::model::relation::Related<Credential>>,
+    pub format: Option<crate::model::relation::Related<CredentialSchemaFormat>>,
+}
+
+impl From<Credential> for CredentialBuilder {
+    fn from(value: Credential) -> Self {
+        Self {
+            common: value.common().clone(),
+            claims: value.claims().cloned().unwrap_or_default(),
+            consumed_at: value.consumed_at(),
+            role: value.role(),
+            r#type: value.r#type(),
+            suspend_end_date: value.suspend_end_date(),
+            issuer_identifier: value.issuer_identifier().cloned(),
+            issuer_certificate: value.issuer_certificate().clone(),
+            holder_identifier: value.holder_identifier().cloned(),
+            key: value.key().cloned(),
+            credential_blob_id: value.credential_blob_id(),
+            wallet_key_attestation_blob_id: value.wallet_key_attestation_blob_id(),
+            wallet_instance_attestation_blob_id: value.wallet_instance_attestation_blob_id(),
+            webhook_url: value.webhook_url().clone(),
+            embedded_disclosure_policy: value.embedded_disclosure_policy().clone(),
+            subscriber_information: value.subscriber_information().clone(),
+            parent: value.parent().cloned(),
+            format: value.format().cloned(),
+        }
+    }
+}
+
+impl CredentialBuilder {
+    pub fn build(self) -> Credential {
+        use crate::model::credential::{
+            HolderBinding, HolderCredentialData, IssuerCredentialData, IssuerData, IssuerIdentity,
+            VerifierCredentialData,
+        };
+        if self.role == CredentialRole::Holder && self.r#type == CredentialType::BatchParent {
+            return Credential::HolderBatchParent {
+                common: self.common,
+            };
+        }
+        let issuer = IssuerIdentity {
+            identifier: self
+                .issuer_identifier
+                .unwrap_or_else(|| dummy_identifier().into()),
+            certificate: self.issuer_certificate,
+        };
+        if self.role == CredentialRole::Issuer && self.r#type == CredentialType::BatchParent {
+            return Credential::IssuerBatchParent {
+                common: self.common,
+                issuer: IssuerData {
+                    identifier: issuer.identifier,
+                    certificate: issuer.certificate,
+                    signing_key: self.key.unwrap_or_else(|| dummy_key().into()),
+                },
+                claims: self.claims,
+                webhook_url: self.webhook_url,
+                subscriber_information: self.subscriber_information,
+                suspend_end_date: self.suspend_end_date,
+            };
+        }
+        let format = self.format.unwrap_or_else(|| {
+            CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: self.common.created_date,
+                last_modified: self.common.last_modified,
+                credential_schema_id: self.common.schema.id(),
+                format: "JWT".into(),
+                ecosystem_schema_id: "test".into(),
+                claim_mappings: Default::default(),
+            }
+            .into()
+        });
+        if self.role == CredentialRole::Verifier {
+            assert!(
+                self.r#type == CredentialType::Single,
+                "verifier fixtures must be single credentials"
+            );
+            return Credential::Verifier {
+                common: self.common,
+                verifier_data: VerifierCredentialData {
+                    issuer,
+                    format,
+                    claims: self.claims,
+                    holder_identifier: self.holder_identifier,
+                },
+            };
+        }
+        let parent = self.parent.unwrap_or_else(|| {
+            let mut common = self.common.clone();
+            common.id = Uuid::new_v4().into();
+            Credential::HolderBatchParent { common }.into()
+        });
+        if self.role == CredentialRole::Holder {
+            let binding = match (self.holder_identifier, self.key) {
+                (None, None) => None,
+                (identifier, key) => Some(HolderBinding {
+                    identifier: identifier.unwrap_or_else(|| dummy_identifier().into()),
+                    key: key.unwrap_or_else(|| dummy_key().into()),
+                }),
+            };
+            let credential = HolderCredentialData {
+                issuer,
+                format,
+                claims: self.claims,
+                binding,
+                credential_blob_id: self.credential_blob_id,
+                embedded_disclosure_policy: self.embedded_disclosure_policy,
+            };
+            if self.r#type == CredentialType::BatchItem {
+                Credential::HolderBatchItem {
+                    common: self.common,
+                    credential,
+                    parent,
+                    consumed_at: self.consumed_at,
+                }
+            } else {
+                Credential::HolderSingle {
+                    common: self.common,
+                    credential,
+                }
+            }
+        } else {
+            let issuer = IssuerData {
+                identifier: issuer.identifier,
+                certificate: issuer.certificate,
+                signing_key: self.key.unwrap_or_else(|| dummy_key().into()),
+            };
+            let credential = IssuerCredentialData {
+                format,
+                holder_identifier: self.holder_identifier,
+                credential_blob_id: self.credential_blob_id,
+                wallet_key_attestation_blob_id: self.wallet_key_attestation_blob_id,
+                wallet_instance_attestation_blob_id: self.wallet_instance_attestation_blob_id,
+                suspend_end_date: self.suspend_end_date,
+            };
+            if self.r#type == CredentialType::BatchItem {
+                Credential::IssuerBatchItem {
+                    common: self.common,
+                    issuer,
+                    credential,
+                    parent,
+                }
+            } else {
+                Credential::IssuerSingle {
+                    common: self.common,
+                    issuer,
+                    credential,
+                    claims: self.claims,
+                    webhook_url: self.webhook_url,
+                    subscriber_information: self.subscriber_information,
+                }
+            }
+        }
+    }
 }
 
 pub fn parsed_credential(
     value: Credential,
 ) -> crate::provider::credential_formatter::model::ParsedCredential {
+    let value = CredentialBuilder::from(value);
     crate::provider::credential_formatter::model::ParsedCredential {
-        common: value.common().clone(),
+        common: value.common,
         issuer: crate::model::credential::IssuerIdentity {
-            identifier: value.issuer_identifier().unwrap().clone(),
-            certificate: value.issuer_certificate().clone(),
+            identifier: value.issuer_identifier.unwrap(),
+            certificate: value.issuer_certificate,
         },
-        holder_identifier: value.holder_identifier().cloned(),
-        format: value.format().unwrap().clone(),
-        claims: value.claims().unwrap().clone(),
+        holder_identifier: value.holder_identifier,
+        format: value.format.unwrap(),
+        claims: value.claims,
     }
 }

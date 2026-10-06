@@ -26,7 +26,7 @@ use crate::provider::ecosystem::model::{IssuerMetadataRepresentation, WalletAtte
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::managed_instance::dto::WalletInstanceAttestationClaims;
-use crate::service::test_utilities::{dummy_credential, dummy_organisation};
+use crate::service::test_utilities::{CredentialBuilder, dummy_credential, dummy_organisation};
 
 fn issued_credential() -> CredentialId {
     Uuid::from_u128(1).into()
@@ -1260,7 +1260,12 @@ async fn test_an_issued_batch_item_records_on_its_batch() {
     let batch = dummy_credential();
     let item = {
         let mut updated_credential = dummy_credential();
-        *updated_credential.parent_mut().unwrap() = Some(batch.to_owned().into());
+        updated_credential = CredentialBuilder {
+            r#type: crate::model::credential::CredentialType::BatchItem,
+            parent: Some(batch.to_owned().into()),
+            ..updated_credential.into()
+        }
+        .build();
         updated_credential
     };
     let (interaction_id, interaction_repository, _) = interaction_under_test(

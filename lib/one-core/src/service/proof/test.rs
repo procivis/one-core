@@ -86,16 +86,13 @@ use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::proof::dto::CreateProofRequestTransactionDataDTO;
 use crate::service::test_utilities::{
-    claim_schema, claim_with_schema, credential_with_claims, dummy_identifier, dummy_organisation,
-    generic_config, get_dummy_date,
+    CredentialBuilder, claim_schema, claim_with_schema, credential_with_claims, dummy_identifier,
+    dummy_organisation, generic_config, get_dummy_date,
 };
 
 #[rstest]
 #[case::holder_single(CredentialRole::Holder, CredentialType::Single)]
 #[case::issuer_single(CredentialRole::Issuer, CredentialType::Single)]
-#[case::generic_verifier_single(CredentialRole::Verifier, CredentialType::Single)]
-#[case::verifier_parent(CredentialRole::Verifier, CredentialType::BatchParent)]
-#[case::verifier_item(CredentialRole::Verifier, CredentialType::BatchItem)]
 #[tokio::test]
 async fn verifier_proof_rejects_unexpected_credential_variants(
     #[case] role: CredentialRole,
@@ -106,8 +103,12 @@ async fn verifier_proof_rejects_unexpected_credential_variants(
 
     let mut invalid = dummy_credential();
     let valid = verifier_credential(invalid.clone()).unwrap();
-    *invalid.role_mut().unwrap() = role;
-    *invalid.type_mut().unwrap() = credential_type;
+    invalid = CredentialBuilder {
+        role,
+        r#type: credential_type,
+        ..invalid.into()
+    }
+    .build();
     let claim = invalid.claims().unwrap().as_ref().await.unwrap()[0].clone();
     let mut credentials = vec![valid, invalid];
     if invalid_first {
@@ -529,7 +530,12 @@ async fn proof_detail_with_claims(
     let mut credential = credential_with_claims("JWT", claim_schemas, claims.clone()).await;
     credential.common_mut().state = CredentialStateEnum::Accepted;
     credential.common_mut().protocol = String::new();
-    *credential.role_mut().unwrap() = CredentialRole::Holder;
+    credential = CredentialBuilder {
+        role: CredentialRole::Holder,
+        key: None,
+        ..credential.into()
+    }
+    .build();
     let credential_schema = credential.common().schema.as_ref().await.unwrap().clone();
     let organisation = credential_schema.organisation.clone();
 
@@ -544,7 +550,6 @@ async fn proof_detail_with_claims(
     );
     match role {
         ProofRole::Holder => {
-            *credential.issuer_identifier_mut().unwrap() = None;
             proof.schema = None;
             proof.interaction = Some(
                 Interaction {

@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::error::IssuanceProtocolError;
-use crate::model::credential::{Credential, CredentialRole, CredentialType};
+use crate::model::credential::Credential;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 
@@ -101,7 +101,7 @@ pub(crate) struct CredentialWithBlob {
 impl CredentialWithBlob {
     pub fn batch_parent(&self, refreshable: bool) -> Result<Self, IssuanceProtocolError> {
         Ok(Self {
-            credential: Credential::Generic {
+            credential: Credential::HolderBatchParent {
                 common: {
                     let mut common = self.credential.common().clone();
                     common.id = Uuid::new_v4().into();
@@ -110,23 +110,6 @@ impl CredentialWithBlob {
                     }
                     common
                 },
-                role: CredentialRole::Holder,
-                r#type: CredentialType::BatchParent,
-                consumed_at: None,
-                suspend_end_date: None,
-                credential_blob_id: None,
-                wallet_key_attestation_blob_id: None,
-                wallet_instance_attestation_blob_id: None,
-                webhook_url: None,
-                embedded_disclosure_policy: None,
-                subscriber_information: None,
-                claims: Default::default(),
-                issuer_identifier: None,
-                issuer_certificate: None,
-                holder_identifier: None,
-                format: None,
-                key: None,
-                parent: None,
             },
             serialized: None,
         })

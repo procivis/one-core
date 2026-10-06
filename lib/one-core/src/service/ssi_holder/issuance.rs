@@ -345,7 +345,7 @@ impl SSIHolderService {
             configuration_parents.insert(response.credential_configuration_id, parent_id);
             for item in &mut response.batch_items {
                 *item.credential.parent_mut()? =
-                    Some(Related::new(parent_id, self.credential_repository.clone()));
+                    Related::new(parent_id, self.credential_repository.clone());
             }
             group.batch_items.append(&mut response.batch_items);
         }
@@ -426,7 +426,13 @@ impl SSIHolderService {
             serialized,
         } = credential;
 
-        let credential_blob_id = if let Some(token) = serialized {
+        credential.common_mut().state = CredentialStateEnum::Accepted;
+        if matches!(credential, Credential::HolderBatchParent { .. }) && serialized.is_none() {
+            return Ok(credential);
+        }
+
+        let credential_blob_id = credential.credential_blob_id_mut()?;
+        *credential_blob_id = if let Some(token) = serialized {
             let blob = Blob::new(token.as_ref(), BlobType::Credential);
             let blob_id = blob.id;
             db_blob_storage
@@ -438,8 +444,6 @@ impl SSIHolderService {
             None
         };
 
-        credential.common_mut().state = CredentialStateEnum::Accepted;
-        *credential.credential_blob_id_mut()? = credential_blob_id;
         Ok(credential)
     }
 

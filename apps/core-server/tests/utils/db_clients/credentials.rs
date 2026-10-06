@@ -11,9 +11,9 @@ use one_core::model::identifier::{Identifier, IdentifierData};
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::Related;
 use one_core::repository::credential_repository::CredentialRepository;
+use one_core::service::test_utilities::CredentialBuilder;
 use one_dto_mapper::convert_inner;
 use shared_types::CredentialId;
-use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -174,7 +174,7 @@ impl CredentialsDB {
             .first()
             .cloned();
 
-        let credential = Credential::Generic {
+        let credential = CredentialBuilder {
             common: CredentialCommon {
                 expires_at: params.expires_at,
                 ecosystem: params.ecosystem,
@@ -236,7 +236,11 @@ impl CredentialsDB {
         credential_schema
             .batch_size
             .expect("schema batch size is required to create credential batch");
-        params.r#type = Some(CredentialType::BatchParent);
+        params.r#type = Some(if params.role == Some(CredentialRole::Holder) {
+            CredentialType::Single
+        } else {
+            CredentialType::BatchParent
+        });
         let key = if params.role == Some(CredentialRole::Holder) {
             params.key.take()
         } else {
@@ -273,6 +277,19 @@ impl CredentialsDB {
             credential.embedded_disclosure_policy().clone()
         };
 
+        let holder_data = if let Credential::HolderSingle {
+            credential: data, ..
+        } = &credential
+        {
+            Some(data.clone())
+        } else {
+            None
+        };
+        if holder_data.is_some() {
+            credential = Credential::HolderBatchParent {
+                common: credential.common().clone(),
+            };
+        }
         let id = self
             .repository
             .create_credential(credential.to_owned())
@@ -305,18 +322,23 @@ impl CredentialsDB {
                 },
             }
         } else {
-            let mut updated_credential = credential.clone();
-            updated_credential.common_mut().interaction = None;
-            *updated_credential.claims_mut().unwrap() = Default::default();
-            *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
-            *updated_credential.embedded_disclosure_policy_mut().unwrap() =
-                embedded_disclosure_policy;
-            *updated_credential.webhook_url_mut().unwrap() = None;
-            *updated_credential.parent_mut().unwrap() =
-                Some(Related::new(id, self.repository.clone()));
-            *updated_credential.key_mut().unwrap() = key;
-            *updated_credential.holder_identifier_mut().unwrap() = holder_identifier;
-            updated_credential
+            let mut common = credential.common().clone();
+            common.interaction = None;
+            let mut data = holder_data.unwrap();
+            data.embedded_disclosure_policy = embedded_disclosure_policy;
+            data.binding = match (holder_identifier, key) {
+                (Some(identifier), Some(key)) => {
+                    Some(one_core::model::credential::HolderBinding { identifier, key })
+                }
+                (None, None) => None,
+                _ => panic!("holder identifier and key must be supplied together"),
+            };
+            Credential::HolderBatchItem {
+                common,
+                parent: Related::new(id, self.repository.clone()),
+                credential: data,
+                consumed_at: None,
+            }
         };
         for _ in 0..num_items {
             let credential_blob_id = if let Some(blob_storage) = blob_storage {
@@ -418,54 +440,44 @@ fn schema_to_dummy_value(claim_schema: &ClaimSchema, random_claims: bool) -> Opt
     Some(value)
 }
 
-pub async fn credential_fixture(mut credential: Credential) -> Credential {
-    if credential.role() == CredentialRole::Verifier {
-        assert_eq!(credential.r#type(), CredentialType::Single);
-        one_core::service::test_utilities::verifier_credential(credential).unwrap()
-    } else if credential.role() == CredentialRole::Issuer {
-        if credential.key().is_none() {
-            let key = match &credential
-                .issuer_identifier()
+pub async fn credential_fixture(mut credential: CredentialBuilder) -> Credential {
+    if credential.role == CredentialRole::Issuer && credential.key.is_none() {
+        let key = match &credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .data
+        {
+            IdentifierData::Key(key) => key.clone(),
+            IdentifierData::Did(did) => did
+                .as_ref()
+                .await
+                .unwrap()
+                .keys
+                .as_ref()
+                .await
+                .unwrap()
+                .first()
+                .expect("issuer requires a signing key")
+                .key
+                .clone()
+                .into(),
+            IdentifierData::Certificate(_) | IdentifierData::CertificateAuthority(_) => credential
+                .issuer_certificate
+                .as_ref()
                 .unwrap()
                 .as_ref()
                 .await
                 .unwrap()
-                .data
-            {
-                IdentifierData::Key(key) => key.clone(),
-                IdentifierData::Did(did) => did
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .keys
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .first()
-                    .expect("issuer requires a signing key")
-                    .key
-                    .clone()
-                    .into(),
-                IdentifierData::Certificate(_) | IdentifierData::CertificateAuthority(_) => {
-                    credential
-                        .issuer_certificate()
-                        .as_ref()
-                        .unwrap()
-                        .as_ref()
-                        .await
-                        .unwrap()
-                        .key
-                        .as_ref()
-                        .expect("issuer certificate requires a signing key")
-                        .clone()
-                }
-            };
-            *credential.key_mut().unwrap() = Some(key);
-        }
-        one_core::service::test_utilities::issuer_credential(credential).unwrap()
-    } else if credential.r#type() == CredentialType::Single {
-        one_core::service::test_utilities::holder_single_credential(credential).unwrap()
-    } else {
-        credential
+                .key
+                .as_ref()
+                .expect("issuer certificate requires a signing key")
+                .clone(),
+        };
+        credential.key = Some(key);
     }
+    credential.build()
 }

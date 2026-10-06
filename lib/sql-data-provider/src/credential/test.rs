@@ -34,6 +34,7 @@ use one_core::repository::key_repository::{KeyRepository, MockKeyRepository};
 use one_core::repository::organisation_repository::{
     MockOrganisationRepository, OrganisationRepository,
 };
+use one_core::service::test_utilities::CredentialBuilder;
 use one_dto_mapper::convert_inner;
 use rstest::rstest;
 use sea_orm::{DatabaseConnection, EntityTrait, Set};
@@ -55,6 +56,9 @@ mod deduplication;
 
 #[path = "test/issuer_batch.rs"]
 mod issuer_batch;
+
+#[path = "test/holder_batch.rs"]
+mod holder_batch;
 
 #[path = "test/holder_single.rs"]
 mod holder_single;
@@ -1370,9 +1374,12 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     )
     .await
     .unwrap();
-    // Use the raw fixture to construct the remaining generic holder batch variants.
     let mut template = single.clone();
-    *template.issuer_identifier_mut().unwrap() = Some(identifier.into());
+    template = CredentialBuilder {
+        issuer_identifier: Some(identifier.into()),
+        ..template.into()
+    }
+    .build();
     let jwt_format = credential_schema_format_from_model(
         credential_schema_format::Entity::find()
             .one(&db)
@@ -1396,8 +1403,12 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     let new_parent = || {
         let mut updated_credential = template.clone();
         updated_credential.common_mut().id = Uuid::new_v4().into();
-        *updated_credential.type_mut().unwrap() = CredentialType::BatchParent;
-        *updated_credential.format_mut().unwrap() = None;
+        updated_credential = CredentialBuilder {
+            r#type: CredentialType::BatchParent,
+            format: None,
+            ..updated_credential.into()
+        }
+        .build();
         updated_credential
     };
     let first_parent = new_parent();
@@ -1413,9 +1424,13 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
         updated_credential.common_mut().created_date =
             get_dummy_date() - Duration::seconds(seconds);
         updated_credential.common_mut().expires_at = Some(expiry + Duration::seconds(seconds));
-        *updated_credential.type_mut().unwrap() = CredentialType::BatchItem;
-        *updated_credential.parent_mut().unwrap() = Some(parent.clone().into());
-        *updated_credential.format_mut().unwrap() = Some(format.clone().into());
+        updated_credential = CredentialBuilder {
+            r#type: CredentialType::BatchItem,
+            parent: Some(parent.clone().into()),
+            format: Some(format.clone().into()),
+            ..updated_credential.into()
+        }
+        .build();
         updated_credential
     };
 

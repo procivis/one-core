@@ -50,7 +50,7 @@ pub enum IssuerMetadataRepresentation {
 #[derive(Clone, Debug, Display)]
 #[expect(
     clippy::large_enum_variant,
-    reason = "Holder issuance still carries the transitional generic credential inline"
+    reason = "Holder issuance can carry an owned credential"
 )]
 pub enum ProtocolArtifact<'a> {
     /// As holder, protocol artifacts about the issuance & issuer

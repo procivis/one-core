@@ -55,7 +55,9 @@ use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::wallet_attestation_repository::MockWalletAttestationRepository;
-use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
+use crate::service::test_utilities::{
+    CredentialBuilder, dummy_identifier, dummy_organisation, generic_config,
+};
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -79,33 +81,36 @@ async fn test_issuer_submit_succeeds() {
     let credential = {
         let mut updated_credential = dummy_credential().await;
         updated_credential.common_mut().state = CredentialStateEnum::Offered;
-        *updated_credential.suspend_end_date_mut().unwrap() = None;
-        *updated_credential.holder_identifier_mut().unwrap() = Some(
-            Identifier {
-                data: IdentifierData::Did((dummy_did()).into()),
-                ..dummy_identifier()
-            }
-            .into(),
-        );
-        *updated_credential.issuer_identifier_mut().unwrap() = Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        keys: vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: key.to_owned(),
-                            reference: "1".to_string(),
-                        }]
+        updated_credential = CredentialBuilder {
+            holder_identifier: Some(
+                Identifier {
+                    data: IdentifierData::Did((dummy_did()).into()),
+                    ..dummy_identifier()
+                }
+                .into(),
+            ),
+            issuer_identifier: Some(
+                Identifier {
+                    data: IdentifierData::Did(
+                        (Did {
+                            keys: vec![RelatedKey {
+                                role: KeyRole::AssertionMethod,
+                                key: key.to_owned(),
+                                reference: "1".to_string(),
+                            }]
+                            .into(),
+                            ..dummy_did()
+                        })
                         .into(),
-                        ..dummy_did()
-                    })
-                    .into(),
-                ),
-                ..dummy_identifier()
-            }
-            .into(),
-        );
-        *updated_credential.key_mut().unwrap() = Some(key.into());
+                    ),
+                    ..dummy_identifier()
+                }
+                .into(),
+            ),
+            key: Some(key.into()),
+            ..updated_credential.into()
+        }
+        .build();
         crate::service::test_utilities::issuer_credential(updated_credential).unwrap()
     };
 
@@ -309,34 +314,37 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
         let mut updated_credential = credential;
         updated_credential.common_mut().state = state;
         updated_credential.common_mut().schema = credential_schema.into();
-        *updated_credential.suspend_end_date_mut().unwrap() = None;
-        *updated_credential.holder_identifier_mut().unwrap() = Some(
-            Identifier {
-                data: IdentifierData::Did((dummy_did()).into()),
-                ..dummy_identifier()
-            }
-            .into(),
-        );
-        *updated_credential.issuer_identifier_mut().unwrap() = Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        keys: vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: key.to_owned(),
-                            reference: "1".to_string(),
-                        }]
+        updated_credential = CredentialBuilder {
+            holder_identifier: Some(
+                Identifier {
+                    data: IdentifierData::Did((dummy_did()).into()),
+                    ..dummy_identifier()
+                }
+                .into(),
+            ),
+            issuer_identifier: Some(
+                Identifier {
+                    data: IdentifierData::Did(
+                        (Did {
+                            keys: vec![RelatedKey {
+                                role: KeyRole::AssertionMethod,
+                                key: key.to_owned(),
+                                reference: "1".to_string(),
+                            }]
+                            .into(),
+                            ..dummy_did()
+                        })
                         .into(),
-                        ..dummy_did()
-                    })
-                    .into(),
-                ),
-                ..dummy_identifier()
-            }
-            .into(),
-        );
-        *updated_credential.key_mut().unwrap() = Some(key.into());
-        *updated_credential.format_mut().unwrap() = credential_format.map(Into::into);
+                    ),
+                    ..dummy_identifier()
+                }
+                .into(),
+            ),
+            key: Some(key.into()),
+            format: credential_format.map(Into::into),
+            ..updated_credential.into()
+        }
+        .build();
         crate::service::test_utilities::issuer_credential(updated_credential).unwrap()
     }
 }
@@ -912,7 +920,7 @@ async fn dummy_credential() -> Credential {
         }]
         .into(),
     };
-    Credential::Generic {
+    CredentialBuilder {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1021,6 +1029,7 @@ async fn dummy_credential() -> Credential {
         subscriber_information: None,
         format: Some(format.into()),
     }
+    .build()
 }
 
 fn dummy_did() -> Did {
