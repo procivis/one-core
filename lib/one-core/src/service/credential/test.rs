@@ -68,6 +68,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::{
+    claim_schema as generate_claim_schema, claim_with_schema, credential_with_claims,
     dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
     generic_formatter_capabilities, get_dummy_date,
 };
@@ -2846,41 +2847,63 @@ async fn test_get_credential_success_with_non_required_nested_object() {
     ));
 }
 
-fn generate_claim_schema(key: &str, datatype: &str, array: bool) -> ClaimSchema {
-    let now = get_dummy_date();
-    ClaimSchema {
-        array,
-        id: Uuid::new_v4().into(),
-        key: key.to_string(),
-        data_type: datatype.to_string(),
-        created_date: now,
-        last_modified: now,
-        metadata: false,
-        required: true,
-        translations: Default::default(),
-    }
+fn generate_claim(claim_schema: &ClaimSchema, value: &str, path: &str) -> Claim {
+    claim_with_schema(claim_schema, path, Some(value))
 }
 
-fn generate_claim(claim_schema: &ClaimSchema, value: &str, path: &str) -> Claim {
-    let now = get_dummy_date();
+async fn credential_detail_with_claims(
+    format: &str,
+    state: CredentialStateEnum,
+    claim_schemas: Vec<ClaimSchema>,
+    claims: Vec<Claim>,
+) -> super::dto::CredentialDetailResponseDTO<super::dto::DetailCredentialClaimResponseDTO> {
+    let mut credential = credential_with_claims(format, claim_schemas, claims).await;
+    credential.common_mut().state = state;
+    let id = credential.common().id;
+    let mut credential_repository = MockCredentialRepository::default();
+    credential_repository
+        .expect_get_credential()
+        .times(1)
+        .with(eq(id))
+        .return_once(move |_| Ok(credential));
 
-    Claim {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-        value: Some(value.to_string()),
-        path: path.to_string(),
-        selectively_disclosable: false,
-        schema: claim_schema.to_owned().into(),
-    }
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
+    setup_service(Repositories {
+        credential_repository,
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    })
+    .get_credential(&id)
+    .await
+    .unwrap()
+}
+
+// Keep the complete serialized schema assertion, including translations and the
+// distinction between an array container and each of its non-array elements.
+fn expected_claim_schema(schema: &ClaimSchema, array: bool) -> serde_json::Value {
+    json!({
+        "id": schema.id,
+        "createdDate": "2005-04-02T21:37:00+01:00",
+        "lastModified": "2005-04-02T21:37:00+01:00",
+        "key": schema.key,
+        "datatype": schema.data_type,
+        "required": true,
+        "array": array,
+        "translations": { "name": { "en": schema.key.rsplit('/').next().unwrap() } },
+    })
 }
 
 #[tokio::test]
 async fn test_get_credential_success_array_complex_nested_all() {
-    let mut credential_repository = MockCredentialRepository::default();
-
-    let now = get_dummy_date();
-
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
     let schema_root_name = generate_claim_schema("root/name", "STRING", false);
@@ -2904,9 +2927,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
         schema_other_1.to_owned(),
         schema_str.to_owned(),
     ];
-    let organisation = dummy_organisation(None);
-
-    let id = Uuid::new_v4().into();
 
     let claims = vec![
         generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
@@ -2931,333 +2951,57 @@ async fn test_get_credential_success_array_complex_nested_all() {
         generate_claim(&schema_str, "str1", "str/2"),
     ];
 
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential = Credential::Generic {
-        consumed_at: None,
-        role: CredentialRole::Issuer,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: claims.to_owned().into(),
-        issuer_identifier: Some(
-            Identifier {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "identifier".to_string(),
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: now,
-                        last_modified: now,
-                        name: "did1".to_string(),
-                        organisation: organisation.clone().into(),
-                        did: "did:example:1".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        keys: vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: Key {
-                                autogenerated: false,
-                                id: Uuid::new_v4().into(),
-                                created_date: crate::clock::now_utc(),
-                                last_modified: crate::clock::now_utc(),
-                                public_key: vec![],
-                                name: "key_name".to_string(),
-                                key_reference: None,
-                                storage_type: "INTERNAL".to_string(),
-                                key_type: "EDDSA".to_string(),
-                                organisation: organisation.clone().into(),
-                            },
-                            reference: "1".to_string(),
-                        }]
-                        .into(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                is_remote: false,
-                state: IdentifierState::Active,
-                deleted_at: None,
-                autogenerated: false,
-                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-                trust_information: Default::default(),
-                logo: None,
-                translations: Default::default(),
-            }
-            .into(),
-        ),
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id,
-            created_date: now,
-            issuance_date: None,
-            last_modified: now,
-            deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Created,
-            schema: (backfill_default_translations(
-                CredentialSchema {
-                    expiration: None,
-                    ecosystem: None,
-                    batch_size: None,
-                    allow_revocation: false,
-                    id: credential_schema_id,
-                    deleted_at: None,
-                    created_date: now,
-                    imported_source_url: "CORE_URL".to_string(),
-                    last_modified: now,
-                    name: "schema".to_string(),
-                    wallet_attestation: Default::default(),
-                    formats: vec![format.clone()].into(),
-                    claim_schemas: claim_schemas.into(),
-                    organisation: organisation.into(),
-                    layout_properties: None,
-                    allow_suspension: true,
-                    transaction_code: None,
-                    translations: Default::default(),
-                    embedded_disclosure_policy: None,
-                },
-                "en",
-            )
-            .await
-            .unwrap())
-            .into(),
-            interaction: None,
-            profile: None,
-        },
-        format: Some(format.into()),
-    };
-
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.common().id))
-            .returning(move |_| Ok(clone.clone()));
-    }
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .return_once(|_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_revocation_method_id().return_const(None);
-            Ok(Arc::new(formatter))
-        });
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .get_credential(&credential.common().id)
-        .await
-        .unwrap();
+    let result =
+        credential_detail_with_claims("JWT", CredentialStateEnum::Created, claim_schemas, claims)
+            .await;
 
     let expected_claims = json!([
       {
         "path": "root",
-        "schema": {
-          "id": schema_root.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "root",
-          "datatype": "OBJECT",
-          "required": true,
-          "array": true,
-          "translations": {
-            "name": {
-              "en": "root"
-            }
-          }
-        },
+        "schema": expected_claim_schema(&schema_root, true),
         "value": [
           {
             "path": "root/0",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "root"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_root, false),
             "value": [
               {
                 "path": "root/0/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true,
-                  "translations": {
-                    "name": {
-                      "en": "indexlist"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_index_list, true),
                 "value": [
                   {
                     "path": "root/0/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "indexlist"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_index_list, false),
                     "value": 123
                   },
                   {
                     "path": "root/0/indexlist/1",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "indexlist"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_index_list, false),
                     "value": 123
                   }
                 ]
               },
               {
                 "path": "root/0/name",
-                "schema": {
-                  "id": schema_root_name.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/name",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false,
-                  "translations": {
-                    "name": {
-                      "en": "name"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_name, false),
                 "value": "123"
               },
               {
                 "path": "root/0/cap",
-                "schema": {
-                  "id": schema_root_cap.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/cap",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": true,
-                  "translations": {
-                    "name": {
-                      "en": "cap"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_cap, true),
                 "value": [
                   {
                     "path": "root/0/cap/0",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "cap"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_cap, false),
                     "value": "invoke"
                   },
                   {
                     "path": "root/0/cap/1",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "cap"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_cap, false),
                     "value": "revoke"
                   },
                   {
                     "path": "root/0/cap/2",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "cap"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_cap, false),
                     "value": "delete"
                   }
                 ]
@@ -3266,163 +3010,46 @@ async fn test_get_credential_success_array_complex_nested_all() {
           },
           {
             "path": "root/1",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "root"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_root, false),
             "value": [
               {
                 "path": "root/1/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true,
-                  "translations": {
-                    "name": {
-                      "en": "indexlist"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_index_list, true),
                 "value": [
                   {
                     "path": "root/1/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "indexlist"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_index_list, false),
                     "value": 456
                   },
                   {
                     "path": "root/1/indexlist/1",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "indexlist"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_index_list, false),
                     "value": 456
                   }
                 ]
               },
               {
                 "path": "root/1/name",
-                "schema": {
-                  "id": schema_root_name.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/name",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false,
-                  "translations": {
-                    "name": {
-                      "en": "name"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_name, false),
                 "value": "456"
               },
               {
                 "path": "root/1/cap",
-                "schema": {
-                  "id": schema_root_cap.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/cap",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": true,
-                  "translations": {
-                    "name": {
-                      "en": "cap"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_cap, true),
                 "value": [
                   {
                     "path": "root/1/cap/0",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "cap"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_cap, false),
                     "value": "invoke"
                   },
                   {
                     "path": "root/1/cap/1",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "cap"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_cap, false),
                     "value": "revoke"
                   },
                   {
                     "path": "root/1/cap/2",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "cap"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_cap, false),
                     "value": "delete"
                   }
                 ]
@@ -3433,108 +3060,30 @@ async fn test_get_credential_success_array_complex_nested_all() {
       },
       {
         "path": "other",
-        "schema": {
-          "id": schema_other.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "other",
-          "datatype": "OBJECT",
-          "required": true,
-          "array": false,
-          "translations": {
-            "name": {
-              "en": "other"
-            }
-          }
-        },
+        "schema": expected_claim_schema(&schema_other, false),
         "value": [
           {
             "path": "other/0",
-            "schema": {
-              "id": schema_other_0.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "other/0",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": true,
-              "translations": {
-                "name": {
-                  "en": "0"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_other_0, true),
             "value": [
               {
                 "path": "other/0/0",
-                "schema": {
-                  "id": schema_other_0.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "other/0",
-                  "datatype": "OBJECT",
-                  "required": true,
-                  "array": false,
-                  "translations": {
-                    "name": {
-                      "en": "0"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_other_0, false),
                 "value": [
                   {
                     "path": "other/0/0/name",
-                    "schema": {
-                      "id": schema_other_0_name.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "other/0/name",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "name"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_other_0_name, false),
                     "value": "name1"
                   }
                 ]
               },
               {
                 "path": "other/0/1",
-                "schema": {
-                  "id": schema_other_0.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "other/0",
-                  "datatype": "OBJECT",
-                  "required": true,
-                  "array": false,
-                  "translations": {
-                    "name": {
-                      "en": "0"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_other_0, false),
                 "value": [
                   {
                     "path": "other/0/1/name",
-                    "schema": {
-                      "id": schema_other_0_name.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "other/0/name",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "name"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_other_0_name, false),
                     "value": "name2"
                   }
                 ]
@@ -3543,73 +3092,21 @@ async fn test_get_credential_success_array_complex_nested_all() {
           },
           {
             "path": "other/1",
-            "schema": {
-              "id": schema_other_1.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "other/1",
-              "datatype": "STRING",
-              "required": true,
-              "array": true,
-              "translations": {
-                "name": {
-                  "en": "1"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_other_1, true),
             "value": [
               {
                 "path": "other/1/0",
-                "schema": {
-                  "id": schema_other_1.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "other/1",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false,
-                  "translations": {
-                    "name": {
-                      "en": "1"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_other_1, false),
                 "value": "other1"
               },
               {
                 "path": "other/1/1",
-                "schema": {
-                  "id": schema_other_1.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "other/1",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false,
-                  "translations": {
-                    "name": {
-                      "en": "1"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_other_1, false),
                 "value": "other2"
               },
               {
                 "path": "other/1/2",
-                "schema": {
-                  "id": schema_other_1.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "other/1",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false,
-                  "translations": {
-                    "name": {
-                      "en": "1"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_other_1, false),
                 "value": "other3"
               }
             ]
@@ -3618,73 +3115,21 @@ async fn test_get_credential_success_array_complex_nested_all() {
       },
       {
         "path": "str",
-        "schema": {
-          "id": schema_str.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "str",
-          "datatype": "STRING",
-          "required": true,
-          "array": true,
-          "translations": {
-            "name": {
-              "en": "str"
-            }
-          }
-        },
+        "schema": expected_claim_schema(&schema_str, true),
         "value": [
           {
             "path": "str/0",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_str, false),
             "value": "str1"
           },
           {
             "path": "str/1",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_str, false),
             "value": "str1"
           },
           {
             "path": "str/2",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_str, false),
             "value": "str1"
           }
         ]
@@ -3698,436 +3143,33 @@ async fn test_get_credential_success_array_complex_nested_all() {
 
 #[tokio::test]
 async fn test_get_credential_success_array_index_sorting() {
-    let mut credential_repository = MockCredentialRepository::default();
-
-    let now = get_dummy_date();
     let schema_str = generate_claim_schema("str", "STRING", true);
 
     let claim_schemas = vec![schema_str.to_owned()];
-    let organisation = dummy_organisation(None);
 
-    let id = Uuid::new_v4().into();
+    let claims = [2, 0, 1, 6, 7, 3, 4, 10, 11, 5, 9, 8, 12]
+        .into_iter()
+        .map(|index| generate_claim(&schema_str, "str1", &format!("str/{index}")))
+        .collect();
 
-    let claims = vec![
-        generate_claim(&schema_str, "str1", "str/2"),
-        generate_claim(&schema_str, "str1", "str/0"),
-        generate_claim(&schema_str, "str1", "str/1"),
-        generate_claim(&schema_str, "str1", "str/6"),
-        generate_claim(&schema_str, "str1", "str/7"),
-        generate_claim(&schema_str, "str1", "str/3"),
-        generate_claim(&schema_str, "str1", "str/4"),
-        generate_claim(&schema_str, "str1", "str/10"),
-        generate_claim(&schema_str, "str1", "str/11"),
-        generate_claim(&schema_str, "str1", "str/5"),
-        generate_claim(&schema_str, "str1", "str/9"),
-        generate_claim(&schema_str, "str1", "str/8"),
-        generate_claim(&schema_str, "str1", "str/12"),
-    ];
+    let result =
+        credential_detail_with_claims("JWT", CredentialStateEnum::Created, claim_schemas, claims)
+            .await;
 
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential = Credential::Generic {
-        consumed_at: None,
-        role: CredentialRole::Issuer,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: claims.to_owned().into(),
-        issuer_identifier: Some(
-            Identifier {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "identifier".to_string(),
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: now,
-                        last_modified: now,
-                        name: "did1".to_string(),
-                        organisation: organisation.clone().into(),
-                        did: "did:example:1".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        keys: vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: Key {
-                                autogenerated: false,
-                                id: Uuid::new_v4().into(),
-                                created_date: crate::clock::now_utc(),
-                                last_modified: crate::clock::now_utc(),
-                                public_key: vec![],
-                                name: "key_name".to_string(),
-                                key_reference: None,
-                                storage_type: "INTERNAL".to_string(),
-                                key_type: "EDDSA".to_string(),
-                                organisation: dummy_organisation(None).into(),
-                            },
-                            reference: "1".to_string(),
-                        }]
-                        .into(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                is_remote: false,
-                state: IdentifierState::Active,
-                deleted_at: None,
-                autogenerated: false,
-                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-                trust_information: Default::default(),
-                logo: None,
-                translations: Default::default(),
-            }
-            .into(),
-        ),
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id,
-            created_date: now,
-            issuance_date: None,
-            last_modified: now,
-            deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Created,
-            schema: (backfill_default_translations(
-                CredentialSchema {
-                    expiration: None,
-                    ecosystem: None,
-                    batch_size: None,
-                    allow_revocation: false,
-                    id: credential_schema_id,
-                    imported_source_url: "CORE_URL".to_string(),
-                    deleted_at: None,
-                    created_date: now,
-                    last_modified: now,
-                    name: "schema".to_string(),
-                    wallet_attestation: Default::default(),
-                    formats: vec![format.clone()].into(),
-                    claim_schemas: claim_schemas.into(),
-                    organisation: organisation.into(),
-                    layout_properties: None,
-                    allow_suspension: true,
-                    transaction_code: None,
-                    translations: Default::default(),
-                    embedded_disclosure_policy: None,
-                },
-                "en",
-            )
-            .await
-            .unwrap())
-            .into(),
-            interaction: None,
-            profile: None,
-        },
-        format: Some(format.into()),
-    };
-
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.common().id))
-            .returning(move |_| Ok(clone.clone()));
-    }
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .return_once(|_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_revocation_method_id().return_const(None);
-            Ok(Arc::new(formatter))
-        });
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .get_credential(&credential.common().id)
-        .await
-        .unwrap();
-    let expected_claims = json!([
-      {
+    let expected_elements = (0..=12)
+        .map(|index| {
+            json!({
+                "path": format!("str/{index}"),
+                "schema": expected_claim_schema(&schema_str, false),
+                "value": "str1",
+            })
+        })
+        .collect::<Vec<_>>();
+    let expected_claims = json!([{
         "path": "str",
-        "schema": {
-          "id": schema_str.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "str",
-          "datatype": "STRING",
-          "required": true,
-          "array": true,
-          "translations": {
-            "name": {
-              "en": "str"
-            }
-          }
-        },
-        "value": [
-          {
-            "path": "str/0",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/1",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/2",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/3",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/4",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/5",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/6",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/7",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/8",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/9",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/10",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/11",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          },
-          {
-            "path": "str/12",
-            "schema": {
-              "id": schema_str.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "str",
-              "datatype": "STRING",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "str"
-                }
-              }
-            },
-            "value": "str1"
-          }
-        ]
-      }
-    ]);
+        "schema": expected_claim_schema(&schema_str, true),
+        "value": expected_elements,
+    }]);
 
     assert_eq!(
         expected_claims,
@@ -4137,258 +3179,41 @@ async fn test_get_credential_success_array_index_sorting() {
 
 #[tokio::test]
 async fn test_get_credential_success_array_complex_nested_first_case() {
-    let mut credential_repository = MockCredentialRepository::default();
-
-    let now = get_dummy_date();
-
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
 
     let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
-    let organisation = dummy_organisation(None);
-
-    let id = Uuid::new_v4().into();
 
     let claims = vec![
         generate_claim(&schema_root_index_list, "123", "root/0/indexlist/0"),
         generate_claim(&schema_root_index_list, "123", "root/0/indexlist/1"),
     ];
 
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "MDOC".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential = Credential::Generic {
-        consumed_at: None,
-        role: CredentialRole::Issuer,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: claims.to_owned().into(),
-        issuer_identifier: Some(
-            Identifier {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "identifier".to_string(),
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: now,
-                        last_modified: now,
-                        name: "did1".to_string(),
-                        organisation: organisation.clone().into(),
-                        did: "did:example:1".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        keys: vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: Key {
-                                autogenerated: false,
-                                id: Uuid::new_v4().into(),
-                                created_date: crate::clock::now_utc(),
-                                last_modified: crate::clock::now_utc(),
-                                public_key: vec![],
-                                name: "key_name".to_string(),
-                                key_reference: None,
-                                storage_type: "INTERNAL".to_string(),
-                                key_type: "EDDSA".to_string(),
-                                organisation: dummy_organisation(None).into(),
-                            },
-                            reference: "1".to_string(),
-                        }]
-                        .into(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                is_remote: false,
-                state: IdentifierState::Active,
-                deleted_at: None,
-                autogenerated: false,
-                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-                trust_information: Default::default(),
-                logo: None,
-                translations: Default::default(),
-            }
-            .into(),
-        ),
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id,
-            created_date: now,
-            issuance_date: None,
-            last_modified: now,
-            deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Accepted,
-            schema: (backfill_default_translations(
-                CredentialSchema {
-                    expiration: None,
-                    ecosystem: None,
-                    batch_size: None,
-                    allow_revocation: false,
-                    id: credential_schema_id,
-                    deleted_at: None,
-                    imported_source_url: "CORE_URL".to_string(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "schema".to_string(),
-                    wallet_attestation: Default::default(),
-                    formats: vec![format.clone()].into(),
-                    claim_schemas: claim_schemas.into(),
-                    organisation: organisation.into(),
-                    layout_properties: None,
-                    allow_suspension: true,
-                    transaction_code: None,
-                    translations: Default::default(),
-                    embedded_disclosure_policy: None,
-                },
-                "en",
-            )
-            .await
-            .unwrap())
-            .into(),
-            interaction: None,
-            profile: None,
-        },
-        format: Some(format.into()),
-    };
+    let result =
+        credential_detail_with_claims("MDOC", CredentialStateEnum::Accepted, claim_schemas, claims)
+            .await;
 
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.common().id))
-            .returning(move |_| Ok(clone.clone()));
-    }
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .return_once(|_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_revocation_method_id().return_const(None);
-            Ok(Arc::new(formatter))
-        });
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .get_credential(&credential.common().id)
-        .await
-        .unwrap();
     let expected_claims = json!([
       {
         "path": "root",
-        "schema": {
-          "id": schema_root.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "root",
-          "datatype": "OBJECT",
-          "required": true,
-          "array": true,
-          "translations": {
-            "name": {
-              "en": "root"
-            }
-          }
-        },
+        "schema": expected_claim_schema(&schema_root, true),
         "value": [
           {
             "path": "root/0",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "root"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_root, false),
             "value": [
               {
                 "path": "root/0/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true,
-                  "translations": {
-                    "name": {
-                      "en": "indexlist"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_index_list, true),
                 "value": [
                   {
                     "path": "root/0/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "indexlist"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_index_list, false),
                     "value": 123
                   },
                   {
                     "path": "root/0/indexlist/1",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "indexlist"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_index_list, false),
                     "value": 123
                   }
                 ]
@@ -4400,7 +3225,10 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     ]);
 
     assert!(result.mdoc_mso_validity.is_some());
-    assert_eq!(now, result.mdoc_mso_validity.unwrap().last_update);
+    assert_eq!(
+        get_dummy_date(),
+        result.mdoc_mso_validity.unwrap().last_update
+    );
     assert_eq!(
         expected_claims,
         serde_json::to_value(result.claims).unwrap()
@@ -4409,17 +3237,10 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
 
 #[tokio::test]
 async fn test_get_credential_success_array_single_element() {
-    let mut credential_repository = MockCredentialRepository::default();
-
-    let now = get_dummy_date();
-
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
 
     let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
-    let organisation = dummy_organisation(None);
-
-    let id = Uuid::new_v4().into();
 
     let claims = vec![generate_claim(
         &schema_root_index_list,
@@ -4427,224 +3248,26 @@ async fn test_get_credential_success_array_single_element() {
         "root/0/indexlist/0",
     )];
 
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential = Credential::Generic {
-        consumed_at: None,
-        role: CredentialRole::Issuer,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: claims.to_owned().into(),
-        issuer_identifier: Some(
-            Identifier {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "identifier".to_string(),
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: now,
-                        last_modified: now,
-                        name: "did1".to_string(),
-                        organisation: organisation.clone().into(),
-                        did: "did:example:1".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        keys: vec![RelatedKey {
-                            role: KeyRole::AssertionMethod,
-                            key: Key {
-                                autogenerated: false,
-                                id: Uuid::new_v4().into(),
-                                created_date: crate::clock::now_utc(),
-                                last_modified: crate::clock::now_utc(),
-                                public_key: vec![],
-                                name: "key_name".to_string(),
-                                key_reference: None,
-                                storage_type: "INTERNAL".to_string(),
-                                key_type: "EDDSA".to_string(),
-                                organisation: dummy_organisation(None).into(),
-                            },
-                            reference: "1".to_string(),
-                        }]
-                        .into(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                is_remote: false,
-                state: IdentifierState::Active,
-                deleted_at: None,
-                autogenerated: false,
-                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-                trust_information: Default::default(),
-                logo: None,
-                translations: Default::default(),
-            }
-            .into(),
-        ),
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id,
-            created_date: now,
-            issuance_date: None,
-            last_modified: now,
-            deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Created,
-            schema: (backfill_default_translations(
-                CredentialSchema {
-                    expiration: None,
-                    ecosystem: None,
-                    batch_size: None,
-                    allow_revocation: false,
-                    id: credential_schema_id,
-                    deleted_at: None,
-                    created_date: now,
-                    last_modified: now,
-                    imported_source_url: "CORE_URL".to_string(),
-                    name: "schema".to_string(),
-                    wallet_attestation: Default::default(),
-                    formats: vec![format.clone()].into(),
-                    claim_schemas: claim_schemas.into(),
-                    organisation: organisation.into(),
-                    layout_properties: None,
-                    allow_suspension: true,
-                    transaction_code: None,
-                    translations: Default::default(),
-                    embedded_disclosure_policy: None,
-                },
-                "en",
-            )
-            .await
-            .unwrap())
-            .into(),
-            interaction: None,
-            profile: None,
-        },
-        format: Some(format.into()),
-    };
-
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.common().id))
-            .returning(move |_| Ok(clone.clone()));
-    }
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .return_once(|_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_revocation_method_id().return_const(None);
-            Ok(Arc::new(formatter))
-        });
-
-    let service = setup_service(Repositories {
-        credential_repository,
-        formatter_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .get_credential(&credential.common().id)
-        .await
-        .unwrap();
+    let result =
+        credential_detail_with_claims("JWT", CredentialStateEnum::Created, claim_schemas, claims)
+            .await;
 
     let expected_claims = json!([
       {
         "path": "root",
-        "schema": {
-          "id": schema_root.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "root",
-          "datatype": "OBJECT",
-          "required": true,
-          "array": true,
-          "translations": {
-            "name": {
-              "en": "root"
-            }
-          }
-        },
+        "schema": expected_claim_schema(&schema_root, true),
         "value": [
           {
             "path": "root/0",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false,
-              "translations": {
-                "name": {
-                  "en": "root"
-                }
-              }
-            },
+            "schema": expected_claim_schema(&schema_root, false),
             "value": [
               {
                 "path": "root/0/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true,
-                  "translations": {
-                    "name": {
-                      "en": "indexlist"
-                    }
-                  }
-                },
+                "schema": expected_claim_schema(&schema_root_index_list, true),
                 "value": [
                   {
                     "path": "root/0/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false,
-                      "translations": {
-                        "name": {
-                          "en": "indexlist"
-                        }
-                      }
-                    },
+                    "schema": expected_claim_schema(&schema_root_index_list, false),
                     "value": 123
                   }
                 ]

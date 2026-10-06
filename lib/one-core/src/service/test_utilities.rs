@@ -604,6 +604,67 @@ pub fn dummy_claim_schema() -> ClaimSchema {
     }
 }
 
+pub fn claim_schema(key: &str, data_type: &str, array: bool) -> ClaimSchema {
+    ClaimSchema {
+        key: key.to_owned(),
+        data_type: data_type.to_owned(),
+        array,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        ..dummy_claim_schema()
+    }
+}
+
+pub fn claim_with_schema(schema: &ClaimSchema, path: &str, value: Option<&str>) -> Claim {
+    Claim {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: value.map(str::to_owned),
+        path: path.to_owned(),
+        selectively_disclosable: false,
+        schema: schema.clone().into(),
+    }
+}
+
+/// An issuer single with loaded claims and translated schemas for detail rendering tests.
+pub async fn credential_with_claims(
+    format: &str,
+    claim_schemas: Vec<ClaimSchema>,
+    claims: Vec<Claim>,
+) -> Credential {
+    let schema = crate::mapper::credential_schema_claim::backfill_default_translations(
+        CredentialSchema {
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            claim_schemas: claim_schemas.into(),
+            allow_revocation: false,
+            ..dummy_credential_schema_with_format(format)
+        },
+        "en",
+    )
+    .await
+    .unwrap();
+    let format = schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .clone();
+    let mut credential = dummy_credential_with_exchange("OPENID4VCI_FINAL1");
+    let common = credential.common_mut();
+    common.created_date = get_dummy_date();
+    common.last_modified = get_dummy_date();
+    common.state = CredentialStateEnum::Created;
+    common.schema = schema.into();
+    common.interaction = None;
+    *credential.claims_mut().unwrap() = claims.into();
+    *credential.format_mut().unwrap() = Some(format.into());
+    credential
+}
+
 pub fn generic_formatter_capabilities() -> FormatterCapabilities {
     FormatterCapabilities {
         signing_key_algorithms: vec![KeyAlgorithmType::Eddsa],

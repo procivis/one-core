@@ -26,9 +26,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{
-    Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
-};
+use crate::model::credential::{CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, WalletAttestation};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -88,7 +86,8 @@ use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::proof::dto::CreateProofRequestTransactionDataDTO;
 use crate::service::test_utilities::{
-    dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
+    claim_schema, claim_with_schema, credential_with_claims, dummy_identifier, dummy_organisation,
+    generic_config, get_dummy_date,
 };
 
 #[rstest]
@@ -521,207 +520,88 @@ async fn test_get_proof_exists() {
     assert_eq!(result.protocol, proof.protocol);
 }
 
-#[tokio::test]
-async fn test_get_proof_with_array_holder() {
-    let mut proof_repository = MockProofRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
+async fn proof_detail_with_claims(
+    role: ProofRole,
+    claim_schemas: Vec<ClaimSchema>,
+    claims: Vec<Claim>,
+) -> super::dto::ProofDetailResponseDTO {
+    let root_schema = claim_schemas[0].clone();
+    let mut credential = credential_with_claims("JWT", claim_schemas, claims.clone()).await;
+    credential.common_mut().state = CredentialStateEnum::Accepted;
+    credential.common_mut().protocol = String::new();
+    *credential.role_mut().unwrap() = CredentialRole::Holder;
+    let credential_schema = credential.common().schema.as_ref().await.unwrap().clone();
+    let organisation = credential_schema.organisation.clone();
 
-    let organisation = dummy_organisation(None);
-    let claim_schema = ClaimSchema {
-        id: Uuid::new_v4().into(),
-        key: "key".to_string(),
-        data_type: "STRING".to_string(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        array: true,
-        metadata: false,
-        required: true,
-        translations: Default::default(),
-    };
-
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential_schema = backfill_default_translations(
-        CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: crate::clock::now_utc(),
-            wallet_attestation: Default::default(),
-            last_modified: crate::clock::now_utc(),
-            name: "credential schema".to_string(),
-            formats: vec![format.clone()].into(),
-            claim_schemas: vec![claim_schema.clone()].into(),
-            organisation: organisation.clone().into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        },
-        "en",
-    )
-    .await
-    .unwrap();
-
-    let credential = Credential::Generic {
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            issuance_date: None,
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            protocol: "".into(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Accepted,
-            schema: credential_schema.clone().into(),
-            interaction: None,
-            profile: None,
-        },
-        consumed_at: None,
-        role: CredentialRole::Holder,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: vec![
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key".into(),
-                selectively_disclosable: false,
-                schema: claim_schema.clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo1".into()),
-                path: "key/0".into(),
-                selectively_disclosable: false,
-                schema: claim_schema.clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo2".into()),
-                path: "key/1".into(),
-                selectively_disclosable: false,
-                schema: claim_schema.clone().into(),
-            },
-        ]
+    let mut proof = crate::service::test_utilities::dummy_proof_with_protocol("OPENID4VP_FINAL1");
+    proof.role = role;
+    proof.verifier_identifier = Some(
+        Identifier {
+            organisation: organisation.clone(),
+            ..dummy_identifier()
+        }
         .into(),
-        issuer_identifier: None,
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        format: Some(format.into()),
-    };
-    let credential_claims = credential
-        .claims()
-        .unwrap()
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    let proof = Proof {
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
-        state: ProofStateEnum::Created,
-        redirect_uri: None,
-        requested_date: None,
-        completed_date: None,
-        schema: None,
-        claims: credential_claims
-            .iter()
-            .map(|claim| ProofClaim {
-                claim: claim.clone(),
-                credential: credential.clone().into(),
-            })
-            .collect::<Vec<_>>()
-            .into(),
-        verifier_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        name: "did".to_string(),
-                        did: "did:example:123".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        organisation: dummy_organisation(None).into(),
-                        keys: Default::default(),
-                        deactivated: false,
-                        log: None,
-                    })
+    );
+    match role {
+        ProofRole::Holder => {
+            *credential.issuer_identifier_mut().unwrap() = None;
+            proof.schema = None;
+            proof.interaction = Some(
+                Interaction {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    data: None,
+                    organisation,
+                    interaction_type: InteractionType::Verification,
+                    expires_at: None,
+                    ecosystem: None,
+                    ecosystem_data: Default::default(),
+                }
+                .into(),
+            );
+        }
+        ProofRole::Verifier => {
+            credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
+            proof.schema = Some(
+                ProofSchema {
+                    organisation,
+                    expire_duration: 0,
+                    input_schemas: vec![ProofInputSchema {
+                        formats: vec!["JWT".into()],
+                        // Request the parent; its children must still be rendered.
+                        claim_schemas: vec![ProofInputClaimSchema {
+                            schema: root_schema,
+                            required: true,
+                            order: 0,
+                        }]
+                        .into(),
+                        credential_schema: credential_schema.into(),
+                    }]
                     .into(),
-                ),
-                organisation: organisation.clone().into(),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: Some(
-            Interaction {
-                id: Uuid::new_v4().into(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                data: None,
-                organisation: organisation.into(),
-                interaction_type: InteractionType::Verification,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: Default::default(),
-            }
-            .into(),
-        ),
-        role: ProofRole::Holder,
-        profile: None,
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
-        subscriber_information: None,
-    };
-    {
-        let res_clone = proof.clone();
-        proof_repository
-            .expect_get_proof()
-            .with(eq(proof.id.to_owned()), eq(None))
-            .returning(move |_, _| Ok(res_clone.clone()));
+                    ..crate::service::test_utilities::dummy_proof_schema()
+                }
+                .into(),
+            );
+        }
     }
+    proof.claims = claims
+        .into_iter()
+        .map(|claim| ProofClaim {
+            claim,
+            credential: credential.clone().into(),
+        })
+        .collect::<Vec<_>>()
+        .into();
 
+    let id = proof.id;
+    let mut proof_repository = MockProofRepository::default();
+    proof_repository
+        .expect_get_proof()
+        .with(eq(id), eq(None))
+        .times(1)
+        .return_once(move |_, _| Ok(proof));
+    let mut history_repository = MockHistoryRepository::default();
     history_repository.expect_get_history_list().returning(|_| {
         Ok(GetHistoryList {
             values: vec![],
@@ -729,7 +609,6 @@ async fn test_get_proof_with_array_holder() {
             total_items: Some(1),
         })
     });
-
     let service = setup_service(Repositories {
         proof_repository,
         history_repository,
@@ -737,9 +616,25 @@ async fn test_get_proof_with_array_holder() {
         credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
+    let result = service.get_proof(&id).await.unwrap();
+    assert_eq!(result.id, id);
+    assert_eq!(result.proof_inputs.len(), 1);
+    assert_eq!(result.proof_inputs[0].claims.len(), 1);
+    result
+}
 
-    let result = service.get_proof(&proof.id).await.unwrap();
-    assert_eq!(result.id, proof.id);
+#[rstest]
+#[case::holder(ProofRole::Holder)]
+#[case::verifier(ProofRole::Verifier)]
+#[tokio::test]
+async fn test_get_proof_with_array(#[case] role: ProofRole) {
+    let schema = claim_schema("key", "STRING", true);
+    let claims = vec![
+        claim_with_schema(&schema, "key", None),
+        claim_with_schema(&schema, "key/0", Some("foo1")),
+        claim_with_schema(&schema, "key/1", Some("foo2")),
+    ];
+    let result = proof_detail_with_claims(role, vec![schema], claims).await;
 
     assert_eq!(result.proof_inputs[0].claims[0].path, "key");
 
@@ -760,247 +655,20 @@ async fn test_get_proof_with_array_holder() {
     ));
 }
 
+#[rstest]
+#[case::holder(ProofRole::Holder)]
+#[case::verifier(ProofRole::Verifier)]
 #[tokio::test]
-async fn test_get_proof_with_array_in_object_holder() {
-    let mut proof_repository = MockProofRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
-
-    let organisation = dummy_organisation(None);
-    let claim_schemas = vec![
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key".to_string(),
-            data_type: "OBJECT".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: false,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key/address".to_string(),
-            data_type: "STRING".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: true,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
+async fn test_get_proof_with_array_in_object(#[case] role: ProofRole) {
+    let object = claim_schema("key", "OBJECT", false);
+    let array = claim_schema("key/address", "STRING", true);
+    let claims = vec![
+        claim_with_schema(&object, "key", None),
+        claim_with_schema(&array, "key/address", None),
+        claim_with_schema(&array, "key/address/0", Some("foo1")),
+        claim_with_schema(&array, "key/address/1", Some("foo2")),
     ];
-
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential_schema = backfill_default_translations(
-        CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: crate::clock::now_utc(),
-            wallet_attestation: Default::default(),
-            last_modified: crate::clock::now_utc(),
-            name: "credential schema".to_string(),
-            formats: vec![format.clone()].into(),
-            claim_schemas: claim_schemas.clone().into(),
-            organisation: organisation.clone().into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        },
-        "en",
-    )
-    .await
-    .unwrap();
-
-    let credential = Credential::Generic {
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            issuance_date: None,
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            protocol: "".into(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Accepted,
-            schema: credential_schema.clone().into(),
-            interaction: None,
-            profile: None,
-        },
-        consumed_at: None,
-        role: CredentialRole::Holder,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: vec![
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key/address".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo1".into()),
-                path: "key/address/0".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo2".into()),
-                path: "key/address/1".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-        ]
-        .into(),
-        issuer_identifier: None,
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        format: Some(format.into()),
-    };
-    let credential_claims = credential
-        .claims()
-        .unwrap()
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    let proof = Proof {
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
-        state: ProofStateEnum::Created,
-        redirect_uri: None,
-        requested_date: None,
-        completed_date: None,
-        schema: None,
-        claims: credential_claims
-            .iter()
-            .map(|claim| ProofClaim {
-                claim: claim.clone(),
-                credential: credential.clone().into(),
-            })
-            .collect::<Vec<_>>()
-            .into(),
-        verifier_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        name: "did".to_string(),
-                        did: "did:example:123".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        organisation: dummy_organisation(None).into(),
-                        keys: Default::default(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                organisation: organisation.clone().into(),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: Some(
-            Interaction {
-                id: Uuid::new_v4().into(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                data: None,
-                organisation: organisation.into(),
-                interaction_type: InteractionType::Verification,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: Default::default(),
-            }
-            .into(),
-        ),
-        role: ProofRole::Holder,
-        profile: None,
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
-        subscriber_information: None,
-    };
-    {
-        let res_clone = proof.clone();
-        proof_repository
-            .expect_get_proof()
-            .with(eq(proof.id.to_owned()), eq(None))
-            .returning(move |_, _| Ok(res_clone.clone()));
-    }
-
-    history_repository.expect_get_history_list().returning(|_| {
-        Ok(GetHistoryList {
-            values: vec![],
-            total_pages: Some(1),
-            total_items: Some(1),
-        })
-    });
-
-    let service = setup_service(Repositories {
-        proof_repository,
-        history_repository,
-        config: generic_config().core,
-        credential_formatter_provider: mock_formatter_provider(),
-        ..Default::default()
-    });
-
-    let result = service.get_proof(&proof.id).await.unwrap();
-    assert_eq!(result.id, proof.id);
+    let result = proof_detail_with_claims(role, vec![object, array], claims).await;
 
     assert_eq!(result.proof_inputs[0].claims[0].path, "key");
     let claims = match &result.proof_inputs[0].claims[0].value {
@@ -1026,1079 +694,21 @@ async fn test_get_proof_with_array_in_object_holder() {
     ));
 }
 
+#[rstest]
+#[case::holder(ProofRole::Holder)]
+#[case::verifier(ProofRole::Verifier)]
 #[tokio::test]
-async fn test_get_proof_with_object_array_holder() {
-    let mut proof_repository = MockProofRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
-
-    let organisation = dummy_organisation(None);
-    let claim_schemas = vec![
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key".to_string(),
-            data_type: "OBJECT".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: true,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key/address".to_string(),
-            data_type: "STRING".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: false,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
+async fn test_get_proof_with_object_array(#[case] role: ProofRole) {
+    let array = claim_schema("key", "OBJECT", true);
+    let address = claim_schema("key/address", "STRING", false);
+    let claims = vec![
+        claim_with_schema(&array, "key", None),
+        claim_with_schema(&array, "key/0", None),
+        claim_with_schema(&array, "key/1", None),
+        claim_with_schema(&address, "key/0/address", Some("foo1")),
+        claim_with_schema(&address, "key/1/address", Some("foo2")),
     ];
-
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential_schema = backfill_default_translations(
-        CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            created_date: crate::clock::now_utc(),
-            wallet_attestation: Default::default(),
-            imported_source_url: "CORE_URL".to_string(),
-            last_modified: crate::clock::now_utc(),
-            name: "credential schema".to_string(),
-            formats: vec![format.clone()].into(),
-            claim_schemas: claim_schemas.clone().into(),
-            organisation: organisation.clone().into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        },
-        "en",
-    )
-    .await
-    .unwrap();
-
-    let credential = Credential::Generic {
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            issuance_date: None,
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            protocol: "".into(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Accepted,
-            schema: credential_schema.clone().into(),
-            interaction: None,
-            profile: None,
-        },
-        consumed_at: None,
-        role: CredentialRole::Holder,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: vec![
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key/0".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key/1".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo1".into()),
-                path: "key/0/address".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo2".into()),
-                path: "key/1/address".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-        ]
-        .into(),
-        issuer_identifier: None,
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        format: Some(format.into()),
-    };
-    let credential_claims = credential
-        .claims()
-        .unwrap()
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    let proof = Proof {
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
-        state: ProofStateEnum::Created,
-        redirect_uri: None,
-        requested_date: None,
-        completed_date: None,
-        schema: None,
-        claims: credential_claims
-            .iter()
-            .map(|claim| ProofClaim {
-                claim: claim.clone(),
-                credential: credential.clone().into(),
-            })
-            .collect::<Vec<_>>()
-            .into(),
-        verifier_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        name: "did".to_string(),
-                        did: "did:example:123".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        organisation: dummy_organisation(None).into(),
-                        keys: Default::default(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                organisation: organisation.into(),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: Some(
-            Interaction {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                data: None,
-                organisation: dummy_organisation(None).into(),
-                interaction_type: InteractionType::Verification,
-                expires_at: None,
-                ecosystem: None,
-                ecosystem_data: Default::default(),
-            }
-            .into(),
-        ),
-        role: ProofRole::Holder,
-        profile: None,
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
-        subscriber_information: None,
-    };
-    {
-        let res_clone = proof.clone();
-        proof_repository
-            .expect_get_proof()
-            .with(eq(proof.id.to_owned()), eq(None))
-            .returning(move |_, _| Ok(res_clone.clone()));
-    }
-
-    history_repository.expect_get_history_list().returning(|_| {
-        Ok(GetHistoryList {
-            values: vec![],
-            total_pages: Some(1),
-            total_items: Some(1),
-        })
-    });
-
-    let service = setup_service(Repositories {
-        proof_repository,
-        history_repository,
-        config: generic_config().core,
-        credential_formatter_provider: mock_formatter_provider(),
-        ..Default::default()
-    });
-
-    let result = service.get_proof(&proof.id).await.unwrap();
-    assert_eq!(result.id, proof.id);
-
-    assert_eq!(result.proof_inputs[0].claims[0].path, "key");
-
-    let claims = match &result.proof_inputs[0].claims[0].value {
-        Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
-    };
-
-    assert_eq!(claims[0].path, "key/0");
-    let claim_0 = match &claims[0].value {
-        Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
-    };
-
-    assert_eq!(claim_0[0].path, "key/0/address");
-    assert!(matches!(
-        &claim_0[0].value,
-        Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
-    ));
-
-    assert_eq!(claims[1].path, "key/1");
-    let claim_1 = match &claims[1].value {
-        Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
-    };
-    assert_eq!(claim_1[0].path, "key/1/address");
-    assert!(matches!(
-        &claim_1[0].value,
-        Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
-    ));
-}
-
-#[tokio::test]
-async fn test_get_proof_with_array() {
-    let mut proof_repository = MockProofRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
-
-    let organisation = dummy_organisation(None);
-
-    let claim_schema = ClaimSchema {
-        id: Uuid::new_v4().into(),
-        key: "key".to_string(),
-        data_type: "STRING".to_string(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        array: true,
-        metadata: false,
-        required: true,
-        translations: Default::default(),
-    };
-
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential_schema = backfill_default_translations(
-        CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            created_date: crate::clock::now_utc(),
-            wallet_attestation: Default::default(),
-            imported_source_url: "CORE_URL".to_string(),
-            last_modified: crate::clock::now_utc(),
-            name: "credential schema".to_string(),
-            formats: vec![format.clone()].into(),
-            claim_schemas: vec![claim_schema.clone()].into(),
-            organisation: organisation.clone().into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        },
-        "en",
-    )
-    .await
-    .unwrap();
-
-    let credential = Credential::Generic {
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            issuance_date: None,
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            protocol: "".into(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Accepted,
-            schema: credential_schema.clone().into(),
-            interaction: None,
-            profile: None,
-        },
-        consumed_at: None,
-        role: CredentialRole::Holder,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: vec![
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key".into(),
-                selectively_disclosable: false,
-                schema: claim_schema.clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo1".into()),
-                path: "key/0".into(),
-                selectively_disclosable: false,
-                schema: claim_schema.clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo2".into()),
-                path: "key/1".into(),
-                selectively_disclosable: false,
-                schema: claim_schema.clone().into(),
-            },
-        ]
-        .into(),
-        issuer_identifier: Some(dummy_identifier().into()),
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        format: Some(format.into()),
-    };
-    let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
-    let credential_claims = credential
-        .claims()
-        .unwrap()
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    let proof = Proof {
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
-        state: ProofStateEnum::Created,
-        redirect_uri: None,
-        requested_date: None,
-        completed_date: None,
-        schema: Some(
-            ProofSchema {
-                ecosystem: None,
-                id: Uuid::new_v4().into(),
-                imported_source_url: Some("CORE_URL".to_string()),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                deleted_at: None,
-                name: "proof schema".to_string(),
-                expire_duration: 0,
-                organisation: organisation.clone().into(),
-                input_schemas: vec![ProofInputSchema {
-                    formats: vec!["JWT".into()],
-                    claim_schemas: vec![ProofInputClaimSchema {
-                        schema: claim_schema.clone(),
-                        required: true,
-                        order: 0,
-                    }]
-                    .into(),
-                    credential_schema: credential_schema.clone().into(),
-                }]
-                .into(),
-            }
-            .into(),
-        ),
-        claims: credential_claims
-            .iter()
-            .map(|claim| ProofClaim {
-                claim: claim.clone(),
-                credential: credential.clone().into(),
-            })
-            .collect::<Vec<_>>()
-            .into(),
-        verifier_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        name: "did".to_string(),
-                        did: "did:example:123".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        organisation: dummy_organisation(None).into(),
-                        keys: Default::default(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: None,
-        role: ProofRole::Verifier,
-        profile: None,
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
-        subscriber_information: None,
-    };
-    {
-        let res_clone = proof.clone();
-        proof_repository
-            .expect_get_proof()
-            .with(eq(proof.id.to_owned()), eq(None))
-            .returning(move |_, _| Ok(res_clone.clone()));
-    }
-
-    history_repository.expect_get_history_list().returning(|_| {
-        Ok(GetHistoryList {
-            values: vec![],
-            total_pages: Some(1),
-            total_items: Some(1),
-        })
-    });
-
-    let service = setup_service(Repositories {
-        proof_repository,
-        history_repository,
-        config: generic_config().core,
-        credential_formatter_provider: mock_formatter_provider(),
-        ..Default::default()
-    });
-
-    let result = service.get_proof(&proof.id).await.unwrap();
-    assert_eq!(result.id, proof.id);
-
-    assert_eq!(result.proof_inputs[0].claims[0].path, "key");
-
-    let claims = match &result.proof_inputs[0].claims[0].value {
-        Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
-    };
-
-    assert_eq!(claims[0].path, "key/0");
-    assert!(matches!(
-        &claims[0].value,
-        Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
-    ));
-    assert_eq!(claims[1].path, "key/1");
-    assert!(matches!(
-        &claims[1].value,
-        Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
-    ));
-}
-
-#[tokio::test]
-async fn test_get_proof_with_array_in_object() {
-    let mut proof_repository = MockProofRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
-
-    let organisation = dummy_organisation(None);
-    let claim_schemas = vec![
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key".to_string(),
-            data_type: "OBJECT".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: false,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key/address".to_string(),
-            data_type: "STRING".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: true,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
-    ];
-
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential_schema = backfill_default_translations(
-        CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: crate::clock::now_utc(),
-            wallet_attestation: Default::default(),
-            last_modified: crate::clock::now_utc(),
-            name: "credential schema".to_string(),
-            formats: vec![format.clone()].into(),
-            claim_schemas: claim_schemas.clone().into(),
-            organisation: organisation.clone().into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        },
-        "en",
-    )
-    .await
-    .unwrap();
-
-    let credential = Credential::Generic {
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            issuance_date: None,
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            protocol: "".into(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Accepted,
-            schema: credential_schema.clone().into(),
-            interaction: None,
-            profile: None,
-        },
-        consumed_at: None,
-        role: CredentialRole::Holder,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: vec![
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key/address".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo1".into()),
-                path: "key/address/0".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo2".into()),
-                path: "key/address/1".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-        ]
-        .into(),
-        issuer_identifier: Some(dummy_identifier().into()),
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        format: Some(format.into()),
-    };
-    let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
-    let credential_claims = credential
-        .claims()
-        .unwrap()
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    let proof = Proof {
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
-        state: ProofStateEnum::Created,
-        redirect_uri: None,
-        requested_date: None,
-        completed_date: None,
-        schema: Some(
-            ProofSchema {
-                ecosystem: None,
-                id: Uuid::new_v4().into(),
-                imported_source_url: Some("CORE_URL".to_string()),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                deleted_at: None,
-                name: "proof schema".to_string(),
-                expire_duration: 0,
-                organisation: organisation.clone().into(),
-                input_schemas: vec![ProofInputSchema {
-                    formats: vec!["JWT".into()],
-                    claim_schemas: vec![ProofInputClaimSchema {
-                        schema: claim_schemas[0].clone(),
-                        required: true,
-                        order: 0,
-                    }]
-                    .into(),
-                    credential_schema: credential_schema.clone().into(),
-                }]
-                .into(),
-            }
-            .into(),
-        ),
-        claims: credential_claims
-            .iter()
-            .map(|claim| ProofClaim {
-                claim: claim.clone(),
-                credential: credential.clone().into(),
-            })
-            .collect::<Vec<_>>()
-            .into(),
-        verifier_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        name: "did".to_string(),
-                        did: "did:example:123".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        organisation: dummy_organisation(None).into(),
-                        keys: Default::default(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: None,
-        role: ProofRole::Verifier,
-        profile: None,
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
-        subscriber_information: None,
-    };
-    {
-        let res_clone = proof.clone();
-        proof_repository
-            .expect_get_proof()
-            .with(eq(proof.id.to_owned()), eq(None))
-            .returning(move |_, _| Ok(res_clone.clone()));
-    }
-
-    history_repository.expect_get_history_list().returning(|_| {
-        Ok(GetHistoryList {
-            values: vec![],
-            total_pages: Some(1),
-            total_items: Some(1),
-        })
-    });
-
-    let service = setup_service(Repositories {
-        proof_repository,
-        history_repository,
-        config: generic_config().core,
-        credential_formatter_provider: mock_formatter_provider(),
-        ..Default::default()
-    });
-
-    let result = service.get_proof(&proof.id).await.unwrap();
-    assert_eq!(result.id, proof.id);
-
-    assert_eq!(result.proof_inputs[0].claims[0].path, "key");
-
-    let claims = match &result.proof_inputs[0].claims[0].value {
-        Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
-    };
-
-    assert_eq!(claims[0].path, "key/address");
-    let claims = match &claims[0].value {
-        Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
-    };
-
-    assert_eq!(claims[0].path, "key/address/0");
-    assert!(matches!(
-        &claims[0].value,
-        Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
-    ));
-    assert_eq!(claims[1].path, "key/address/1");
-    assert!(matches!(
-        &claims[1].value,
-        Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
-    ));
-}
-
-#[tokio::test]
-async fn test_get_proof_with_object_array() {
-    let mut proof_repository = MockProofRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
-
-    let organisation = dummy_organisation(None);
-    let claim_schemas = vec![
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key".to_string(),
-            data_type: "OBJECT".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: true,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
-        ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key/address".to_string(),
-            data_type: "STRING".to_string(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            array: false,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
-    ];
-
-    let credential_schema_id = Uuid::new_v4().into();
-    let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id,
-        format: "JWT".into(),
-        ecosystem_schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    };
-    let credential_schema = backfill_default_translations(
-        CredentialSchema {
-            expiration: None,
-            ecosystem: None,
-            batch_size: None,
-            allow_revocation: false,
-            id: credential_schema_id,
-            deleted_at: None,
-            created_date: crate::clock::now_utc(),
-            wallet_attestation: Default::default(),
-            imported_source_url: "CORE_URL".to_string(),
-            last_modified: crate::clock::now_utc(),
-            name: "credential schema".to_string(),
-            formats: vec![format.clone()].into(),
-            claim_schemas: claim_schemas.clone().into(),
-            organisation: organisation.clone().into(),
-            layout_properties: None,
-            allow_suspension: true,
-            transaction_code: None,
-            translations: Default::default(),
-            embedded_disclosure_policy: None,
-        },
-        "en",
-    )
-    .await
-    .unwrap();
-
-    let credential = Credential::Generic {
-        common: CredentialCommon {
-            expires_at: None,
-            ecosystem: None,
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            issuance_date: None,
-            last_modified: crate::clock::now_utc(),
-            deleted_at: None,
-            protocol: "".into(),
-            redirect_uri: None,
-            state: CredentialStateEnum::Accepted,
-            schema: credential_schema.clone().into(),
-            interaction: None,
-            profile: None,
-        },
-        consumed_at: None,
-        role: CredentialRole::Holder,
-        r#type: CredentialType::Single,
-        suspend_end_date: None,
-        claims: vec![
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key/0".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: None,
-                path: "key/1".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[0].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo1".into()),
-                path: "key/0/address".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-            Claim {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                value: Some("foo2".into()),
-                path: "key/1/address".into(),
-                selectively_disclosable: false,
-                schema: claim_schemas[1].clone().into(),
-            },
-        ]
-        .into(),
-        issuer_identifier: Some(dummy_identifier().into()),
-        issuer_certificate: None,
-        holder_identifier: None,
-        key: None,
-        credential_blob_id: None,
-        wallet_key_attestation_blob_id: None,
-        wallet_instance_attestation_blob_id: None,
-        webhook_url: None,
-        parent: None,
-        embedded_disclosure_policy: None,
-        subscriber_information: None,
-        format: Some(format.into()),
-    };
-    let credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
-    let credential_claims = credential
-        .claims()
-        .unwrap()
-        .as_ref()
-        .await
-        .unwrap()
-        .to_owned();
-
-    let proof = Proof {
-        ecosystem: None,
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
-        state: ProofStateEnum::Created,
-        redirect_uri: None,
-        requested_date: None,
-        completed_date: None,
-        schema: Some(
-            ProofSchema {
-                ecosystem: None,
-                id: Uuid::new_v4().into(),
-                imported_source_url: Some("CORE_URL".to_string()),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                deleted_at: None,
-                name: "proof schema".to_string(),
-                expire_duration: 0,
-                organisation: organisation.clone().into(),
-                input_schemas: vec![ProofInputSchema {
-                    formats: vec!["JWT".into()],
-                    claim_schemas: vec![ProofInputClaimSchema {
-                        schema: claim_schemas[0].clone(),
-                        required: true,
-                        order: 0,
-                    }]
-                    .into(),
-                    credential_schema: credential_schema.clone().into(),
-                }]
-                .into(),
-            }
-            .into(),
-        ),
-        claims: credential_claims
-            .iter()
-            .map(|claim| ProofClaim {
-                claim: claim.clone(),
-                credential: credential.clone().into(),
-            })
-            .collect::<Vec<_>>()
-            .into(),
-        verifier_identifier: Some(
-            Identifier {
-                data: IdentifierData::Did(
-                    (Did {
-                        deleted_at: None,
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        name: "did".to_string(),
-                        did: "did:example:123".parse().unwrap(),
-                        did_type: DidType::Local,
-                        did_method: "KEY".into(),
-                        organisation: dummy_organisation(None).into(),
-                        keys: Default::default(),
-                        deactivated: false,
-                        log: None,
-                    })
-                    .into(),
-                ),
-                ..dummy_identifier()
-            }
-            .into(),
-        ),
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: None,
-        role: ProofRole::Verifier,
-        profile: None,
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
-        subscriber_information: None,
-    };
-    {
-        let res_clone = proof.clone();
-        proof_repository
-            .expect_get_proof()
-            .with(eq(proof.id.to_owned()), eq(None))
-            .returning(move |_, _| Ok(res_clone.clone()));
-    }
-
-    history_repository.expect_get_history_list().returning(|_| {
-        Ok(GetHistoryList {
-            values: vec![],
-            total_pages: Some(1),
-            total_items: Some(1),
-        })
-    });
-
-    let service = setup_service(Repositories {
-        proof_repository,
-        history_repository,
-        config: generic_config().core,
-        credential_formatter_provider: mock_formatter_provider(),
-        ..Default::default()
-    });
-
-    let result = service.get_proof(&proof.id).await.unwrap();
-
-    assert_eq!(result.id, proof.id);
+    let result = proof_detail_with_claims(role, vec![array, address], claims).await;
 
     assert_eq!(result.proof_inputs[0].claims[0].path, "key");
 

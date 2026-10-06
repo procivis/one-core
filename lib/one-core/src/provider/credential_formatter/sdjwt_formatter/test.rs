@@ -237,6 +237,9 @@ async fn test_format_credential_with_array() {
         "http://base_url",
     );
 
+    let_assert!(UnsignedCredential::Vcdm(vcdm) = &credential_data.credential);
+    let expected_expires_at = vcdm.valid_until.unwrap();
+
     let mut did_method_provider = MockDidMethodProvider::new();
     let_assert!(
         Some(Identifier {
@@ -327,10 +330,9 @@ async fn test_format_credential_with_array() {
         })
     );
 
-    assert_eq!(
-        payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
-    );
+    // Expiry comes from the credential validity, independently of JWT issue time.
+    assert!(payload.issued_at.is_some());
+    assert_eq!(payload.expires_at, Some(expected_expires_at));
 
     let vc = payload.custom.vc;
 
@@ -363,6 +365,9 @@ async fn test_format_credential_with_array_sd() {
         },
         "http://base_url",
     );
+
+    let_assert!(UnsignedCredential::Vcdm(vcdm) = &credential_data.credential);
+    let expected_expires_at = vcdm.valid_until.unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
     let_assert!(
@@ -463,10 +468,9 @@ async fn test_format_credential_with_array_sd() {
         })
     );
 
-    assert_eq!(
-        payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
-    );
+    // Expiry comes from the credential validity, independently of JWT issue time.
+    assert!(payload.issued_at.is_some());
+    assert_eq!(payload.expires_at, Some(expected_expires_at));
 
     let vc = payload.custom.vc;
     assert_eq!(
@@ -867,7 +871,7 @@ fn test_get_capabilities() {
 }
 
 fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str) -> CredentialData {
-    let issuance_date = crate::clock::now_utc();
+    let issuance_date = datetime!(2025-01-01 00:00 UTC);
     let valid_for = time::Duration::days(365 * 2);
 
     let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/{}", Uuid::new_v4())
