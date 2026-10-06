@@ -46,14 +46,17 @@ impl NotificationScheduler for NotificationSchedulerImpl {
             .await
             .error_while("creating notification")?;
 
-        // Immediately send the notification to avoid delays due to task scheduling.
+        // The sender uses a separate transaction, so dispatch only once the
+        // notification and its associated state change have been committed.
         let sender = self.notification_sender.clone();
         tracing::debug!("Scheduling notification: {id}");
-        tokio::spawn(async move {
-            tracing::debug!("Sending notification: {id}");
-            let result = sender.send_notification(id, params).await;
-            tracing::debug!("Notification finished: {id}, result: {result:?}");
-        });
+        self.tx_manager.on_commit(Box::new(move || {
+            tokio::spawn(async move {
+                tracing::debug!("Sending notification: {id}");
+                let result = sender.send_notification(id, params).await;
+                tracing::debug!("Notification finished: {id}, result: {result:?}");
+            });
+        }));
 
         Ok(id)
     }

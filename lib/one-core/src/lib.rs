@@ -214,6 +214,7 @@ impl OneCore {
         let notification_scheduler = Arc::new(NotificationSchedulerImpl::new(
             data_provider.get_notification_repository(),
             notification_sender.clone(),
+            data_provider.get_tx_manager(),
             Arc::new(config.clone()),
         ));
 

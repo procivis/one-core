@@ -62,7 +62,6 @@ impl NotificationsDB {
         }
     }
 
-    #[expect(unused)]
     pub async fn list(&self, r#type: impl Into<TaskId>) -> Vec<Notification> {
         self.repository
             .list(NotificationListQuery {

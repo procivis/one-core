@@ -3,6 +3,8 @@ use std::time::Duration;
 use one_core::model::credential::{CredentialStateEnum, CredentialType};
 use one_core::model::history::HistoryAction;
 use one_core::model::revocation_list::{RevocationListEntryState, RevocationListPurpose};
+use one_core::proto::transaction_manager::IsolationLevel;
+use one_core::repository::DataRepository;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
@@ -598,8 +600,11 @@ async fn test_patch_credential_state_revoked_with_bitstring_status_list_success(
     .await;
 }
 
+#[rstest::rstest]
 #[tokio::test]
-async fn test_patch_credential_state_revoked_with_webhook() {
+async fn test_patch_credential_state_revoked_with_webhook(
+    #[values(false, true)] outer_transaction: bool,
+) {
     // GIVEN
     let (context, organisation, _issuer_did, identifier, ..) =
         TestContext::new_with_did(None).await;
@@ -635,14 +640,52 @@ async fn test_patch_credential_state_revoked_with_webhook() {
         .await;
 
     // WHEN
-    let resp = context
-        .api
-        .credentials
-        .patch_state(&credential.common().id, json!({"state": "REVOKED"}), None)
-        .await;
+    if outer_transaction {
+        let core = core_server::init::initialize_core(&context.config, context.db.db_conn.clone())
+            .await
+            .unwrap();
+        let data = sql_data_provider::DataLayer::build(context.db.db_conn.clone(), vec![]);
+        data.get_tx_manager()
+            .transaction_with_config(
+                Box::pin(async {
+                    core.credential_service
+                        .patch_credential_state(
+                            &credential.common().id,
+                            one_core::service::credential::dto::ChangeCredentialStateDTO::Revoked,
+                        )
+                        .await?;
+                    // Keep the outer transaction open after the state update's
+                    // nested transaction has finished. Delivery must wait.
+                    assert!(
+                        tokio::time::timeout(
+                            Duration::from_millis(100),
+                            webhook.wait_until_satisfied(),
+                        )
+                        .await
+                        .is_err()
+                    );
+                    assert_eq!(
+                        context.db.notifications.list("WEBHOOK_NOTIFY").await.len(),
+                        1
+                    );
+                    Ok(())
+                }),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await
+            .unwrap()
+            .unwrap();
+    } else {
+        let resp = context
+            .api
+            .credentials
+            .patch_state(&credential.common().id, json!({"state": "REVOKED"}), None)
+            .await;
+        assert_eq!(resp.status(), 204);
+    }
 
-    // THEN
-    assert_eq!(resp.status(), 204);
+    // THEN: delivered automatically, without running WEBHOOK_NOTIFY.
     tokio::time::timeout(Duration::from_secs(5), webhook.wait_until_satisfied())
         .await
         .expect("Expected REVOKED webhook within 5 seconds");

@@ -7,6 +7,19 @@ use crate::repository::error::DataLayerError;
 
 #[async_trait]
 pub trait TransactionManager: Send + Sync {
+    /// Run a callback after the outermost transaction commits successfully.
+    /// Callbacks registered in a rolled-back transaction are discarded. Outside
+    /// a transaction, the callback runs immediately. Callbacks should not block.
+    ///
+    /// Use this for background work that reads data written by the transaction.
+    /// Spawning a task inside a transaction does not inherit its transaction
+    /// context: the task uses a separate connection and can run before commit.
+    ///
+    /// A nested transaction's commit only releases its savepoint; it does not
+    /// make the writes visible to other connections. Its callbacks must therefore
+    /// wait for the outermost commit and be discarded if a parent rolls back.
+    fn on_commit(&self, callback: Box<dyn FnOnce() + Send>);
+
     async fn transaction(
         &self,
         future: Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send + 'async_trait>>,
@@ -88,6 +101,10 @@ pub struct NoTransactionManager;
 
 #[async_trait]
 impl TransactionManager for NoTransactionManager {
+    fn on_commit(&self, callback: Box<dyn FnOnce() + Send>) {
+        callback();
+    }
+
     async fn transaction_with_config(
         &self,
         future: Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send + 'async_trait>>,

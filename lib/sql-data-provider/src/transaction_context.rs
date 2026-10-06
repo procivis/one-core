@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -14,8 +15,12 @@ use sea_orm::{
 use crate::DbConn;
 use crate::mapper::{map_access_mode, map_isolation_level};
 
+#[cfg(test)]
+mod test;
+
 tokio::task_local! {
     static TX_CONTEXT: (Arc<DatabaseTransaction>, Option<sea_orm::IsolationLevel>, Option<sea_orm::AccessMode>);
+    static COMMIT_CALLBACKS: RefCell<Vec<Box<dyn FnOnce() + Send>>>;
 }
 
 #[derive(Clone)]
@@ -105,6 +110,19 @@ impl ConnectionTrait for TransactionManagerImpl {
 
 #[async_trait]
 impl TransactionManager for TransactionManagerImpl {
+    fn on_commit(&self, callback: Box<dyn FnOnce() + Send>) {
+        let mut callback = Some(callback);
+        if COMMIT_CALLBACKS
+            .try_with(|callbacks| {
+                callbacks.borrow_mut().extend(callback.take());
+            })
+            .is_err()
+            && let Some(callback) = callback
+        {
+            callback();
+        }
+    }
+
     async fn transaction_with_config(
         &self,
         future: Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send + 'async_trait>>,
@@ -150,10 +168,14 @@ impl TransactionManager for TransactionManagerImpl {
 
         let fut = TX_CONTEXT.scope(
             (Arc::new(transaction), requested_isolation, access_mode),
-            future,
+            COMMIT_CALLBACKS.scope(RefCell::default(), async move {
+                let result = future.await;
+                let callbacks = COMMIT_CALLBACKS.with(RefCell::take);
+                (result, callbacks)
+            }),
         );
         let mut pinned = Box::pin(fut);
-        let res = pinned.as_mut().await;
+        let (res, callbacks) = pinned.as_mut().await;
 
         let value = pinned
             .as_mut()
@@ -171,6 +193,11 @@ impl TransactionManager for TransactionManagerImpl {
                 tx.commit().await.map_err(|e| {
                     DataLayerError::TransactionError(format!("Failed to commit transaction: {e}"))
                 })?;
+                // A nested commit only releases a savepoint. Keep its callbacks
+                // in the parent until the outermost transaction commits.
+                for callback in callbacks {
+                    self.on_commit(callback);
+                }
             }
             Err(inner) => {
                 tx.rollback().await.map_err(|e| {
