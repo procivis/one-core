@@ -6,7 +6,7 @@ use uuid::Uuid;
 use self::dto::InteractionExpirationCheckResultDTO;
 use super::Task;
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::{Credential, CredentialRole};
+use crate::model::credential::Credential;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::credential_repository::CredentialRepository;
@@ -142,14 +142,18 @@ impl Task for InteractionExpirationCheckProvider {
 }
 
 fn target_from_credential(credential: &Credential) -> Option<String> {
-    match credential.role() {
-        CredentialRole::Holder => credential
-            .issuer_identifier()
-            .map(|identifier| identifier.id().to_string()),
-        CredentialRole::Issuer => credential
-            .holder_identifier()
+    match credential {
+        Credential::HolderSingle { credential, .. }
+        | Credential::HolderBatchItem { credential, .. } => {
+            Some(credential.issuer.identifier.id().to_string())
+        }
+        Credential::IssuerSingle { credential, .. }
+        | Credential::IssuerBatchItem { credential, .. } => credential
+            .holder_identifier
             .as_ref()
             .map(|identifier| identifier.id().to_string()),
-        CredentialRole::Verifier => None,
+        Credential::IssuerBatchParent { .. }
+        | Credential::HolderBatchParent { .. }
+        | Credential::Verifier { .. } => None,
     }
 }

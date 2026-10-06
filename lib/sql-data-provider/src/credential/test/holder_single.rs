@@ -91,8 +91,6 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
     assert_eq!(listed.values.len(), 1);
     for actual in listed.values.iter().chain([&loaded]) {
         assert!(matches!(actual, Credential::HolderSingle { .. }));
-        assert_eq!(actual.role(), CredentialRole::Holder);
-        assert_eq!(actual.r#type(), CredentialType::Single);
         assert_eq!(
             actual
                 .issuer_identifier()
@@ -128,8 +126,8 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
         }
         assert_eq!(actual.credential_blob_id(), request.credential_blob_id());
         assert_eq!(
-            actual.embedded_disclosure_policy(),
-            request.embedded_disclosure_policy()
+            actual.holder().unwrap().data.embedded_disclosure_policy,
+            request.holder().unwrap().data.embedded_disclosure_policy
         );
     }
     repository

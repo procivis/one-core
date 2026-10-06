@@ -496,11 +496,13 @@ impl CredentialValidityManagerImpl {
 
         let issuer_identifier = credential.issuer_identifier().as_required_ref().await?;
 
-        let credential_data_by_role = match credential.role() {
-            CredentialRole::Holder => {
+        let credential_data_by_role = match credential {
+            Credential::HolderSingle { .. }
+            | Credential::HolderBatchParent { .. }
+            | Credential::HolderBatchItem { .. } => {
                 Some(CredentialDataByRole::Holder(Box::new(credential.clone())))
             }
-            CredentialRole::Issuer | CredentialRole::Verifier => None,
+            _ => None,
         };
 
         let mut worst_revocation_state = RevocationState::Valid;
@@ -739,7 +741,10 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         // where the request may carry a new `suspend_end_date`, and a batch parent, whose state
         // is an aggregate of its items - items may still have to follow.
         if credential.common().state == CredentialStateEnum::from(change_credential_state)
-            && credential.r#type() != CredentialType::BatchParent
+            && !matches!(
+                credential,
+                Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. }
+            )
             && !matches!(
                 change_credential_state,
                 ChangeCredentialState::Suspended { .. }
@@ -771,11 +776,24 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 .error_while("validating credential")
                 .into());
         }
-        if credential.role() != CredentialRole::Holder {
-            return Err(Error::InvalidCredentialRole {
-                role: credential.role(),
-                credential_id,
-            });
+        match &credential {
+            Credential::IssuerSingle { .. }
+            | Credential::IssuerBatchParent { .. }
+            | Credential::IssuerBatchItem { .. } => {
+                return Err(Error::InvalidCredentialRole {
+                    role: CredentialRole::Issuer,
+                    credential_id,
+                });
+            }
+            Credential::Verifier { .. } => {
+                return Err(Error::InvalidCredentialRole {
+                    role: CredentialRole::Verifier,
+                    credential_id,
+                });
+            }
+            Credential::HolderSingle { .. }
+            | Credential::HolderBatchParent { .. }
+            | Credential::HolderBatchItem { .. } => {}
         }
 
         if let Some(result) = check_invalid_or_terminal_state(&credential) {
@@ -784,8 +802,10 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
 
         let credential_schema = credential.common().schema.as_ref().await?;
 
-        match credential.r#type() {
-            CredentialType::Single => {
+        match &credential {
+            Credential::IssuerSingle { .. }
+            | Credential::HolderSingle { .. }
+            | Credential::Verifier { .. } => {
                 let format = credential.format().as_required_ref().await?;
                 let format_type = self
                     .config
@@ -811,7 +831,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
 
                 Ok(result)
             }
-            CredentialType::BatchParent => {
+            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => {
                 let batch_items = self.batch_items(credential.common().id).await?;
 
                 if batch_items.is_empty() {
@@ -876,7 +896,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     reason: None,
                 })
             }
-            CredentialType::BatchItem => {
+            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. } => {
                 let (result, _) = self
                     .check_status_for_single_credential(
                         &credential,
@@ -888,7 +908,10 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 if result.success {
                     let parent = credential.parent().as_required_ref().await?;
 
-                    if parent.r#type() == CredentialType::BatchParent {
+                    if matches!(
+                        *parent,
+                        Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. }
+                    ) {
                         let batch_items = self.batch_items(parent.common().id).await?;
                         let item_states = item_revocation_states(&batch_items);
 

@@ -1,7 +1,8 @@
+use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::future::join_all;
 use one_core::model::certificate::CertificateRole;
-use one_core::model::credential::{Credential, CredentialStateEnum, CredentialType};
+use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
 use shared_types::CredentialId;
@@ -1529,7 +1530,13 @@ async fn test_create_credential_success_with_webhook_url() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.webhook_url().as_deref().unwrap(), webhook_url);
+    let_assert!(
+        Credential::IssuerSingle {
+            webhook_url: stored_webhook_url,
+            ..
+        } = credential
+    );
+    assert_eq!(stored_webhook_url.as_deref(), Some(webhook_url));
 }
 
 #[tokio::test]
@@ -1596,7 +1603,6 @@ async fn test_create_credential_success_with_multiformat_schema() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert!(matches!(credential, Credential::IssuerBatchParent { .. }));
-    assert_eq!(credential.r#type(), CredentialType::BatchParent);
     assert!(credential.format().is_none());
 }
 

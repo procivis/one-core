@@ -67,9 +67,13 @@ async fn required_array_child_must_exist_in_every_element(#[case] stored_require
     ];
     let incomplete = credential(schema.clone(), claims.clone()).await;
     assert_eq!(
-        missing_required_claims(&schema, &incomplete, &mandatory_claim_ids)
-            .await
-            .unwrap(),
+        missing_required_claims(
+            &schema,
+            incomplete.holder().unwrap().data,
+            &mandatory_claim_ids
+        )
+        .await
+        .unwrap(),
         vec!["degrees/1/type", "name"]
     );
 
@@ -77,10 +81,14 @@ async fn required_array_child_must_exist_in_every_element(#[case] stored_require
     claims.push(claim("name", &name));
     let complete = credential(schema.clone(), claims).await;
     assert!(
-        missing_required_claims(&schema, &complete, &mandatory_claim_ids)
-            .await
-            .unwrap()
-            .is_empty()
+        missing_required_claims(
+            &schema,
+            complete.holder().unwrap().data,
+            &mandatory_claim_ids
+        )
+        .await
+        .unwrap()
+        .is_empty()
     );
 }
 
@@ -116,7 +124,7 @@ async fn required_child_of_nested_arrays_must_exist_at_every_nested_index() {
     )
     .await;
     assert_eq!(
-        missing_required_claims(&schema, &credential, &[])
+        missing_required_claims(&schema, credential.holder().unwrap().data, &[])
             .await
             .unwrap(),
         vec!["degrees/0/courses/1/type"]
@@ -142,7 +150,7 @@ async fn required_array_child_not_mapped_to_current_format_is_ignored() {
     )
     .await;
     assert!(
-        missing_required_claims(&schema, &credential, &[])
+        missing_required_claims(&schema, credential.holder().unwrap().data, &[])
             .await
             .unwrap()
             .is_empty()
@@ -168,7 +176,7 @@ async fn required_child_is_checked_only_when_optional_parent_is_present() {
 
     let absent_parent = credential(schema.clone(), vec![]).await;
     assert!(
-        missing_required_claims(&schema, &absent_parent, &[])
+        missing_required_claims(&schema, absent_parent.holder().unwrap().data, &[])
             .await
             .unwrap()
             .is_empty()
@@ -176,7 +184,7 @@ async fn required_child_is_checked_only_when_optional_parent_is_present() {
 
     let present_parent = credential(schema.clone(), vec![claim("address", &address)]).await;
     assert_eq!(
-        missing_required_claims(&schema, &present_parent, &[])
+        missing_required_claims(&schema, present_parent.holder().unwrap().data, &[])
             .await
             .unwrap(),
         vec!["address/city"]
@@ -186,9 +194,13 @@ async fn required_child_is_checked_only_when_optional_parent_is_present() {
     required_parent_schema.claim_schemas.as_mut().await.unwrap()[0].required = true;
     let missing_required_parent = credential(required_parent_schema.clone(), vec![]).await;
     assert_eq!(
-        missing_required_claims(&required_parent_schema, &missing_required_parent, &[])
-            .await
-            .unwrap(),
+        missing_required_claims(
+            &required_parent_schema,
+            missing_required_parent.holder().unwrap().data,
+            &[]
+        )
+        .await
+        .unwrap(),
         vec!["address"]
     );
 }
@@ -224,7 +236,7 @@ async fn required_child_is_checked_only_in_array_elements_with_optional_parent()
     .await;
 
     assert_eq!(
-        missing_required_claims(&schema, &credential, &[])
+        missing_required_claims(&schema, credential.holder().unwrap().data, &[])
             .await
             .unwrap(),
         vec!["degrees/0/details/type"]
@@ -244,9 +256,10 @@ async fn missing_ancestor_claim_schema_is_an_error() {
     );
     let missing_root_credential = credential(schema.clone(), vec![]).await;
 
-    let error = missing_required_claims(&schema, &missing_root_credential, &[])
-        .await
-        .unwrap_err();
+    let error =
+        missing_required_claims(&schema, missing_root_credential.holder().unwrap().data, &[])
+            .await
+            .unwrap_err();
     assert!(
         error
             .to_string()
@@ -266,9 +279,13 @@ async fn missing_ancestor_claim_schema_is_an_error() {
         ],
     );
     let nested_credential = credential(nested_schema.clone(), vec![]).await;
-    let error = missing_required_claims(&nested_schema, &nested_credential, &[])
-        .await
-        .unwrap_err();
+    let error = missing_required_claims(
+        &nested_schema,
+        nested_credential.holder().unwrap().data,
+        &[],
+    )
+    .await
+    .unwrap_err();
     assert!(
         error
             .to_string()
@@ -326,7 +343,7 @@ async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
     let mut selected_schema = resolution.schema;
     align_format_claim_schemas_and_mappings(
         &mut selected_schema,
-        &mut parsed_credential,
+        parsed_credential.holder_mut().unwrap(),
         "en",
         None,
     )
@@ -334,9 +351,13 @@ async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
     .unwrap();
 
     assert_eq!(
-        missing_required_claims(&selected_schema, &parsed_credential, &[])
-            .await
-            .unwrap(),
+        missing_required_claims(
+            &selected_schema,
+            parsed_credential.holder().unwrap().data,
+            &[]
+        )
+        .await
+        .unwrap(),
         vec!["required"]
     );
 }
@@ -403,16 +424,20 @@ async fn formatted_key_match_with_different_namespace_does_not_satisfy_stored_re
     let mut selected_schema = resolution.schema;
     align_format_claim_schemas_and_mappings(
         &mut selected_schema,
-        &mut parsed_credential,
+        parsed_credential.holder_mut().unwrap(),
         "en",
         None,
     )
     .await
     .unwrap();
     assert_eq!(
-        missing_required_claims(&selected_schema, &parsed_credential, &[])
-            .await
-            .unwrap(),
+        missing_required_claims(
+            &selected_schema,
+            parsed_credential.holder().unwrap().data,
+            &[]
+        )
+        .await
+        .unwrap(),
         vec!["stored-city"]
     );
 }
@@ -490,17 +515,21 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
     let mut selected_schema = resolution.schema;
     align_format_claim_schemas_and_mappings(
         &mut selected_schema,
-        &mut parsed_credential,
+        parsed_credential.holder_mut().unwrap(),
         "en",
         None,
     )
     .await
     .unwrap();
     assert!(
-        missing_required_claims(&selected_schema, &parsed_credential, &[])
-            .await
-            .unwrap()
-            .is_empty()
+        missing_required_claims(
+            &selected_schema,
+            parsed_credential.holder().unwrap().data,
+            &[]
+        )
+        .await
+        .unwrap()
+        .is_empty()
     );
 }
 
@@ -721,7 +750,7 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
     let mut resolved_schema = resolution.schema;
     let alignment = align_format_claim_schemas_and_mappings(
         &mut resolved_schema,
-        &mut parsed_credential,
+        parsed_credential.holder_mut().unwrap(),
         "en",
         None,
     )
@@ -799,7 +828,7 @@ async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key(
     let mut resolved_schema = resolution.schema;
     let alignment = align_format_claim_schemas_and_mappings(
         &mut resolved_schema,
-        &mut parsed_credential,
+        parsed_credential.holder_mut().unwrap(),
         "en",
         None,
     )
@@ -1236,10 +1265,14 @@ async fn matches_existing_schema() {
 
     let mut credential = credential(parsed_schema, vec![claim("address/city", &parsed_cs)]).await;
 
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert!(alignment.new_claim_schemas.is_empty());
     assert!(alignment.new_mappings.is_empty());
@@ -1294,10 +1327,14 @@ async fn remaps_nested_and_array_claim_paths() {
     )
     .await;
 
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert!(alignment.new_claim_schemas.is_empty());
     assert!(alignment.new_mappings.is_empty());
@@ -1343,10 +1380,14 @@ async fn returns_new_claim_schemas() {
 
     let mut credential = credential(parsed_schema, vec![claim("newClaim", &parsed_cs)]).await;
 
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(alignment.new_claim_schemas.len(), 1);
     assert_eq!(alignment.new_claim_schemas[0].key, "newClaim");
@@ -1441,10 +1482,14 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
     )
     .await;
 
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(alignment.new_claim_schemas.len(), 1);
     let new_key = alignment.new_claim_schemas[0].key.to_owned();
@@ -1458,36 +1503,6 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
     let claims = credential.claims().unwrap().as_ref().await.unwrap();
     assert_eq!(claims[0].path, "stored-parent");
     assert_eq!(claims[1].path, new_key);
-}
-
-#[tokio::test]
-async fn rejects_holder_batch_parent() {
-    let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
-        "JWT",
-        vec![],
-        vec![],
-    );
-
-    let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
-        "JWT",
-        vec![],
-        vec![],
-    );
-
-    let mut credential = credential(parsed_schema, vec![]).await;
-    credential = Credential::HolderBatchParent {
-        common: credential.common().clone(),
-    };
-
-    let result =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await;
-
-    assert!(result.is_err());
 }
 
 #[tokio::test]
@@ -1511,9 +1526,13 @@ async fn errors_when_stored_format_missing() {
 
     let mut credential = credential(parsed_schema, vec![]).await;
 
-    let result =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await;
+    let result = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await;
 
     assert!(result.is_err());
 }
@@ -1540,9 +1559,13 @@ async fn errors_when_parsed_mapping_missing() {
 
     let mut credential = credential(parsed_schema, vec![]).await;
 
-    let result =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await;
+    let result = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await;
 
     assert!(result.is_err());
 }
@@ -1609,10 +1632,14 @@ async fn remaps_new_nested_and_array_claim_paths() {
     )
     .await;
 
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(alignment.new_claim_schemas.len(), 1);
     assert_eq!(alignment.new_claim_schemas[0].key, "root/nested2");
@@ -1894,10 +1921,14 @@ async fn relinks_claims_of_new_root_array_claim_schema() {
     )
     .await;
 
-    let alignment =
-        align_format_claim_schemas_and_mappings(&mut stored_schema, &mut credential, "en", None)
-            .await
-            .unwrap();
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut stored_schema,
+        credential.holder_mut().unwrap(),
+        "en",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(alignment.new_claim_schemas.len(), 2);
     let claims = credential.claims().unwrap().as_ref().await.unwrap();

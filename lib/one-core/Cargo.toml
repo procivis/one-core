@@ -67,6 +67,7 @@ serde_yaml                   = { version = "0.9" }
 sha2.workspace               = true
 shadow-rs.workspace          = true
 shared-types.workspace       = true
+similar-asserts               = { workspace = true, optional = true }
 sophia_api                   = { version = "0.9" }
 sophia_c14n                  = { version = "0.9" }
 standardized-types.workspace = true
@@ -102,7 +103,7 @@ config_env  = ["figment/env"]
 config_json = ["figment/json"]
 config_yaml = ["figment/yaml"]
 default     = ["config_yaml"]
-mock        = ["mockall", "one-crypto/mock"]
+mock        = ["mockall", "one-crypto/mock", "dep:similar-asserts"]
 
 [lints]
 workspace = true

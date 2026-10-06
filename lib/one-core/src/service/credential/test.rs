@@ -640,7 +640,11 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
     credential.common_mut().state = CredentialStateEnum::Suspended;
-    *credential.suspend_end_date_mut().unwrap() = Some(suspend_end_date);
+    credential
+        .issuer_credential_mut()
+        .unwrap()
+        .data
+        .suspend_end_date = Some(suspend_end_date);
 
     {
         let clone = credential.clone();
@@ -4168,7 +4172,7 @@ async fn test_the_verifier_sees_the_issuer_by_name() {
     let mut credential =
         crate::service::test_utilities::verifier_credential(generic_credential().await).unwrap();
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
-    *credential.issuer_certificate_mut().unwrap() =
+    credential.verifier_mut().unwrap().data.issuer.certificate =
         Some(dummy_certificate(Uuid::new_v4().into()).into());
 
     let trust_information = get_credential_trust_information(

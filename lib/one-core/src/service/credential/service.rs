@@ -289,11 +289,16 @@ impl CredentialService {
         throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
-        if credential.r#type() == CredentialType::BatchItem {
-            return Err(CredentialServiceError::InvalidType(credential.r#type()));
+        if matches!(
+            credential,
+            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
+        ) {
+            return Err(CredentialServiceError::InvalidType(
+                CredentialType::BatchItem,
+            ));
         }
 
-        let is_issuer = credential.role() == CredentialRole::Issuer;
+        let is_issuer = credential.issuer().is_ok();
         if is_issuer && schema.allow_revocation {
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
@@ -613,8 +618,13 @@ impl CredentialService {
         )
         .error_while("checking session")?;
 
-        if credential.r#type() == CredentialType::BatchItem {
-            return Err(CredentialServiceError::InvalidType(credential.r#type()));
+        if matches!(
+            credential,
+            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
+        ) {
+            return Err(CredentialServiceError::InvalidType(
+                CredentialType::BatchItem,
+            ));
         }
 
         if !matches!(

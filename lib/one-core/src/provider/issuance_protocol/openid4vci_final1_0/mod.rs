@@ -1111,7 +1111,7 @@ impl OpenID4VCIFinal1_0 {
         let mut unsupported_fixed_binding = false;
         for configuration in &data.credential_configurations {
             let Some(parent) = credentials.iter().find(|credential| {
-                credential.r#type() == CredentialType::BatchParent
+                matches!(credential, Credential::HolderBatchParent { .. })
                     && credential.common().deleted_at.is_none()
                     && credential.common().state != CredentialStateEnum::Rejected
                     && configuration
@@ -1179,9 +1179,7 @@ impl OpenID4VCIFinal1_0 {
             });
         }
         if configurations.is_empty() && unsupported_fixed_binding {
-            return Err(IssuanceProtocolError::RefreshNotSupported(
-                CredentialType::BatchParent,
-            ));
+            return Err(IssuanceProtocolError::RefreshNotSupported);
         }
         Ok(configurations)
     }
@@ -2253,8 +2251,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         credential: Credential,
     ) -> Result<(), IssuanceProtocolError> {
-        let (main_credential, rejected_format) = if credential.r#type() == CredentialType::BatchItem
-        {
+        let (main_credential, rejected_format) = if matches!(
+            credential,
+            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
+        ) {
             let parent = credential.parent().as_required_ref().await?;
             let format_id = credential.format().id_opt().ok_or_else(|| {
                 IssuanceProtocolError::Failed("Missing CredentialSchemaFormat".to_string())
@@ -2451,10 +2451,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .await
             .error_while("getting credential")?;
 
-        *credential.holder_identifier_mut()? = Some(holder_identifier.clone().into());
+        let issuer = credential.issuer_credential_mut()?;
+        issuer.data.holder_identifier = Some(holder_identifier.clone().into());
 
-        let credential_schema = credential.common().schema.as_ref().await?.to_owned();
-        let credential_state = credential.common().state;
+        let credential_schema = issuer.common.schema.as_ref().await?.to_owned();
+        let credential_state = issuer.common.state;
 
         let formats = credential_schema.formats.as_ref().await?;
         let format = formats

@@ -186,14 +186,11 @@ fn blob_storage_provider(blobs: Vec<Blob>) -> MockBlobStorageProvider {
 fn accepted_pid(wua_blob_id: Option<BlobId>, wia_blob_id: Option<BlobId>) -> Credential {
     {
         let mut updated_credential = dummy_credential();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
-        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
-        *updated_credential
-            .wallet_key_attestation_blob_id_mut()
-            .unwrap() = wua_blob_id;
-        *updated_credential
-            .wallet_instance_attestation_blob_id_mut()
-            .unwrap() = wia_blob_id;
+        let issuer = updated_credential.issuer_credential_mut().unwrap();
+        issuer.common.id = Uuid::new_v4().into();
+        issuer.common.state = CredentialStateEnum::Accepted;
+        issuer.data.wallet_key_attestation_blob_id = wua_blob_id;
+        issuer.data.wallet_instance_attestation_blob_id = wia_blob_id;
         updated_credential
     }
 }

@@ -105,7 +105,6 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
         .unwrap();
     let loaded_item = repository.get_credential(&item.common().id).await.unwrap();
     for actual in listed.values.iter().chain([&loaded_parent, &loaded_item]) {
-        assert_eq!(actual.role(), CredentialRole::Issuer);
         assert_eq!(
             actual
                 .issuer_identifier()
@@ -118,17 +117,18 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
         );
         assert!(actual.key().unwrap().as_ref().await.is_ok());
         match actual {
-            Credential::IssuerBatchParent { .. } => {
+            Credential::IssuerBatchParent {
+                webhook_url,
+                subscriber_information,
+                ..
+            } => {
                 assert_eq!(
                     actual.claims().unwrap().as_ref().await.unwrap()[0].id,
                     claim.id
                 );
                 assert_eq!(actual.suspend_end_date(), parent.suspend_end_date());
-                assert_eq!(
-                    actual.subscriber_information(),
-                    parent.subscriber_information()
-                );
-                assert_eq!(actual.webhook_url(), parent.webhook_url());
+                assert_eq!(subscriber_information.as_deref(), Some("shared metadata"));
+                assert_eq!(webhook_url.as_deref(), Some("https://example.com/webhook"));
                 assert!(actual.format().is_none());
                 assert!(actual.holder_identifier().is_none());
                 assert!(actual.credential_blob_id().is_none());
@@ -151,8 +151,6 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                     setup.identifier.id
                 );
                 assert!(actual.claims().is_err());
-                assert!(actual.webhook_url().is_none());
-                assert!(actual.subscriber_information().is_none());
             }
             _ => panic!("expected issuer batch variant"),
         }

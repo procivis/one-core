@@ -1,3 +1,4 @@
+use assert2::let_assert;
 use one_core::model::credential::{HolderBinding, HolderCredentialData, IssuerIdentity};
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, ColumnTrait, IntoActiveModel, QueryFilter};
@@ -133,9 +134,7 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
         .filter(|value| value.common().id == item_id)
         .chain([&loaded_item])
     {
-        assert!(matches!(actual, Credential::HolderBatchItem { .. }));
-        assert_eq!(actual.role(), CredentialRole::Holder);
-        assert_eq!(actual.r#type(), CredentialType::BatchItem);
+        let_assert!(Credential::HolderBatchItem { consumed_at, .. } = actual);
         assert_eq!(
             actual.parent().unwrap().as_ref().await.unwrap().common().id,
             parent_id
@@ -162,10 +161,15 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
         );
         assert_eq!(actual.credential_blob_id(), item.credential_blob_id());
         assert_eq!(
-            actual.embedded_disclosure_policy().as_deref(),
+            actual
+                .holder()
+                .unwrap()
+                .data
+                .embedded_disclosure_policy
+                .as_deref(),
             Some("batch policy")
         );
-        assert_eq!(actual.consumed_at(), Some(get_dummy_date()));
+        assert_eq!(*consumed_at, Some(get_dummy_date()));
     }
 }
 

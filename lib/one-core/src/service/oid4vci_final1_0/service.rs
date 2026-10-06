@@ -299,10 +299,13 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credential")?;
 
-        if credential.r#type() == CredentialType::BatchItem {
+        if matches!(
+            credential,
+            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
+        ) {
             return Err(OID4VCIFinal1_0ServiceError::UnsupportedCredentialType {
                 id: credential.common().id,
-                r#type: credential.r#type(),
+                r#type: CredentialType::BatchItem,
             });
         }
 
@@ -393,8 +396,10 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting credentials")?;
 
         let Some(credential) = credentials.iter().find(|credential| {
-            credential.r#type() != CredentialType::BatchItem
-                && credential.common().schema.id() == *credential_schema_id
+            !matches!(
+                credential,
+                Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
+            ) && credential.common().schema.id() == *credential_schema_id
         }) else {
             return Err(
                 OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
@@ -902,8 +907,10 @@ impl OID4VCIFinal1_0Service {
             expires_at
         };
 
-        let credentials = match credential.r#type() {
-            CredentialType::Single => {
+        let credentials = match &credential {
+            Credential::IssuerSingle { .. }
+            | Credential::HolderSingle { .. }
+            | Credential::Verifier { .. } => {
                 let holder_identifier = holder_identifiers
                     .pop()
                     .ok_or(OpenID4VCIError::InvalidOrMissingProof)?;
@@ -920,7 +927,7 @@ impl OID4VCIFinal1_0Service {
                     .await?,
                 ]
             }
-            CredentialType::BatchParent => {
+            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => {
                 let batch_item_template = self
                     .prepare_batch_item(credential.common().id, batch_item_expires_at, &format)
                     .await?;
@@ -964,7 +971,7 @@ impl OID4VCIFinal1_0Service {
 
                 credentials
             }
-            CredentialType::BatchItem => {
+            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. } => {
                 return Err(OID4VCIFinal1_0ServiceError::MappingError(
                     "Invalid credential type".to_string(),
                 ));
@@ -1803,8 +1810,11 @@ impl OID4VCIFinal1_0Service {
             }
         });
 
-        match (credential.r#type(), format_id) {
-            (CredentialType::BatchParent, Some(format_id)) => {
+        match (&credential, format_id) {
+            (
+                Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. },
+                Some(format_id),
+            ) => {
                 self.process_notification_for_batch_format(
                     credential, format_id, new_state, error_info,
                 )

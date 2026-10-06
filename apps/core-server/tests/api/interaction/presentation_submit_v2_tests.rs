@@ -239,9 +239,32 @@ async fn check_batch_presentation(submitted_type: CredentialType) {
 
     let items = batch_items(&context, credential.common().id).await;
     // Only one item consumed
-    assert!(items.iter().any(|c| c.consumed_at().is_some()));
-    assert!(items.iter().any(|c| c.consumed_at().is_none()));
-    let consumed = items.iter().find(|c| c.consumed_at().is_some()).unwrap();
+    assert!(items.iter().any(|c| matches!(
+        c,
+        Credential::HolderBatchItem {
+            consumed_at: Some(_),
+            ..
+        }
+    )));
+    assert!(items.iter().any(|c| matches!(
+        c,
+        Credential::HolderBatchItem {
+            consumed_at: None,
+            ..
+        }
+    )));
+    let consumed = items
+        .iter()
+        .find(|c| {
+            matches!(
+                c,
+                Credential::HolderBatchItem {
+                    consumed_at: Some(_),
+                    ..
+                }
+            )
+        })
+        .unwrap();
     assert_eq!(consumed.common().id, selected_id);
     assert!(
         proof
@@ -357,7 +380,15 @@ async fn check_mixed_format_batch_submission(submitted_type: CredentialType) {
     let items = batch_items(&context, batch.parent.common().id).await;
     let consumed_ids: Vec<_> = items
         .into_iter()
-        .filter(|item| item.consumed_at().is_some())
+        .filter(|item| {
+            matches!(
+                item,
+                Credential::HolderBatchItem {
+                    consumed_at: Some(_),
+                    ..
+                }
+            )
+        })
         .map(|item| item.common().id)
         .collect();
     assert_eq!(consumed_ids, vec![presented_id]);
@@ -420,15 +451,13 @@ async fn mixed_format_batch_parent_rejection() {
             .await;
         assert_eq!(response.status(), 400);
         assert_eq!(response.error_code().await, error_code);
-        assert!(
-            context
-                .db
-                .credentials
-                .get(&batch.bbs_item)
-                .await
-                .consumed_at()
-                .is_none()
-        );
+        assert!(matches!(
+            context.db.credentials.get(&batch.bbs_item).await,
+            Credential::HolderBatchItem {
+                consumed_at: None,
+                ..
+            }
+        ));
     }
 }
 
@@ -513,7 +542,13 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
     assert_eq!(
         items
             .iter()
-            .filter(|item| item.consumed_at().is_some())
+            .filter(|item| matches!(
+                item,
+                Credential::HolderBatchItem {
+                    consumed_at: Some(_),
+                    ..
+                }
+            ))
             .count(),
         if distinct_items { 2 } else { 1 }
     );
@@ -622,7 +657,13 @@ impl BatchPresentation {
         // Load by saved IDs so deleted items are checked as well.
         for item in &self.items {
             let stored = self.context.db.credentials.get(&item.common().id).await;
-            assert!(stored.consumed_at().is_none());
+            assert!(matches!(
+                stored,
+                Credential::HolderBatchItem {
+                    consumed_at: None,
+                    ..
+                }
+            ));
         }
     }
 }
@@ -1470,7 +1511,13 @@ async fn batch_parent_submission_uses_next_available_item() {
     assert_eq!(response.status(), 204);
     for item in batch_items(&batch.context, batch.parent.common().id).await {
         assert_eq!(
-            item.consumed_at().is_some(),
+            matches!(
+                item,
+                Credential::HolderBatchItem {
+                    consumed_at: Some(_),
+                    ..
+                }
+            ),
             [batch.selected_id, next_id].contains(&item.common().id)
         );
     }

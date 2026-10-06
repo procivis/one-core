@@ -5,7 +5,7 @@ use shared_types::{CredentialId, InteractionId};
 use uuid::Uuid;
 
 use crate::model::credential::{
-    Credential, CredentialListQuery, CredentialRole, CredentialStateEnum, GetCredentialList,
+    Credential, CredentialListQuery, CredentialStateEnum, GetCredentialList,
     UpdateCredentialRequest,
 };
 use crate::model::history::{
@@ -102,8 +102,12 @@ impl CredentialRepository for CredentialHistoryDecorator {
         // Creation preserves state, role and schema; history does not need to reload
         // every stored credential or inspect its canonical claim IDs.
         for credential in requests {
-            if credential.role() == CredentialRole::Holder
-                && credential.common().state == CredentialStateEnum::Accepted
+            if matches!(
+                credential,
+                Credential::HolderSingle { .. }
+                    | Credential::HolderBatchParent { .. }
+                    | Credential::HolderBatchItem { .. }
+            ) && credential.common().state == CredentialStateEnum::Accepted
             {
                 for action in [HistoryAction::Issued, HistoryAction::Accepted] {
                     self.create_history_entry_for_credential(&credential, action, None)
@@ -136,7 +140,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
         // issuer, changing interaction while pending -> repeated sharing
         if let Some(interaction_id) = update.interaction
             && stored.common().state == CredentialStateEnum::Pending
-            && stored.role() == CredentialRole::Issuer
+            && stored.issuer().is_ok()
             && update.state.is_none()
             && Some(interaction_id) != stored.common().interaction.as_ref().map(|i| i.id())
         {
@@ -155,7 +159,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
                     CredentialStateEnum::Created | CredentialStateEnum::InteractionExpired,
                     CredentialStateEnum::Pending,
                 ) => {
-                    if stored.role() == CredentialRole::Issuer {
+                    if stored.issuer().is_ok() {
                         Some(HistoryAction::Shared)
                     } else {
                         None
@@ -224,15 +228,19 @@ impl CredentialRepository for CredentialHistoryDecorator {
 }
 
 fn target_from_credential(credential: &Credential) -> Option<String> {
-    match credential.role() {
-        CredentialRole::Holder => credential
-            .issuer_identifier()
-            .map(|identifier| identifier.id().to_string()),
-        CredentialRole::Issuer => credential
-            .holder_identifier()
+    match credential {
+        Credential::HolderSingle { credential, .. }
+        | Credential::HolderBatchItem { credential, .. } => {
+            Some(credential.issuer.identifier.id().to_string())
+        }
+        Credential::IssuerSingle { credential, .. }
+        | Credential::IssuerBatchItem { credential, .. } => credential
+            .holder_identifier
             .as_ref()
             .map(|identifier| identifier.id().to_string()),
-        CredentialRole::Verifier => None,
+        Credential::IssuerBatchParent { .. }
+        | Credential::HolderBatchParent { .. }
+        | Credential::Verifier { .. } => None,
     }
 }
 

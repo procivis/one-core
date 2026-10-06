@@ -21,7 +21,7 @@ use crate::config::validator::transport::{
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
-use crate::model::credential::{Clearable, CredentialType, UpdateCredentialRequest};
+use crate::model::credential::{Clearable, Credential, UpdateCredentialRequest};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
@@ -479,7 +479,7 @@ impl SSIHolderService {
                 ),
             });
         }
-        let consumed_item = (presented_credential.r#type() == CredentialType::BatchItem)
+        let consumed_item = matches!(presented_credential, Credential::HolderBatchItem { .. })
             .then_some(presented_credential.common().id);
         let blob_id = presented_credential.credential_blob_id().ok_or_else(|| {
             HolderServiceError::MappingError(format!(

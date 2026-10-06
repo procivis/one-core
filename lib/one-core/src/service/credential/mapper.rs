@@ -35,7 +35,6 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::list_query::ListQuery;
-use crate::model::relation::OptionalRelatedRefExt;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -81,10 +80,13 @@ pub(crate) async fn credential_detail_response_from_model(
     let claims = filtered_claims;
     let state = value.common().state;
 
+    let role = value.role();
+    let credential_type = value.r#type();
+
     let credential_format = value.credential_format().await?;
     let mdoc_mso_validity = mdoc_mso_validity(
         value.common(),
-        value.r#type(),
+        credential_type,
         credential_format.as_ref(),
         config,
     )?;
@@ -108,7 +110,12 @@ pub(crate) async fn credential_detail_response_from_model(
         Some(issuer_identifier) => {
             let identifier = issuer_identifier.as_ref().await?.to_owned();
             let mut dto: GetIdentifierListItemResponseDTO = identifier.clone().into();
-            if value.role() == CredentialRole::Holder {
+            if matches!(
+                value,
+                Credential::HolderSingle { .. }
+                    | Credential::HolderBatchParent { .. }
+                    | Credential::HolderBatchItem { .. }
+            ) {
                 let texts = identifier.translations.as_ref().await?.to_owned();
                 dto.translations = Some(identifier_translations_dto(
                     &texts,
@@ -127,34 +134,52 @@ pub(crate) async fn credential_detail_response_from_model(
 
     let offered_formats = get_offered_formats(
         value.common(),
-        value.role(),
-        value.r#type(),
+        role,
+        credential_type,
         value.format(),
         credential_repository,
     )
     .await?;
-    let credential_type = value.r#type();
 
     let claims = from_vec_claim(claims, &schema_model, config).await?;
     drop(schema_model);
-    let consumed_at = value.consumed_at();
-    let role = value.role();
     let suspend_end_date = value.suspend_end_date();
-    let webhook_url = value.webhook_url().to_owned();
     let parent_id = value.parent().map(|parent| parent.id());
-    let subscriber_information = if let Credential::IssuerBatchItem { parent, .. } = &value {
-        parent.as_ref().await?.subscriber_information().clone()
-    } else {
-        value.subscriber_information().clone()
-    };
-    let common = match value {
-        Credential::IssuerSingle { common, .. }
-        | Credential::IssuerBatchParent { common, .. }
-        | Credential::IssuerBatchItem { common, .. }
-        | Credential::HolderSingle { common, .. }
+    let (common, webhook_url, consumed_at, subscriber_information) = match value {
+        Credential::IssuerSingle {
+            common,
+            webhook_url,
+            subscriber_information,
+            ..
+        }
+        | Credential::IssuerBatchParent {
+            common,
+            webhook_url,
+            subscriber_information,
+            ..
+        } => (common, webhook_url, None, subscriber_information),
+        Credential::IssuerBatchItem { common, parent, .. } => {
+            let subscriber_information = match &*parent.as_ref().await? {
+                Credential::IssuerSingle {
+                    subscriber_information,
+                    ..
+                }
+                | Credential::IssuerBatchParent {
+                    subscriber_information,
+                    ..
+                } => subscriber_information.clone(),
+                _ => None,
+            };
+            (common, None, None, subscriber_information)
+        }
+        Credential::HolderBatchItem {
+            common,
+            consumed_at,
+            ..
+        } => (common, None, consumed_at, None),
+        Credential::HolderSingle { common, .. }
         | Credential::HolderBatchParent { common, .. }
-        | Credential::HolderBatchItem { common, .. }
-        | Credential::Verifier { common, .. } => common,
+        | Credential::Verifier { common, .. } => (common, None, None, None),
     };
 
     Ok(CredentialDetailResponseDTO {
@@ -543,37 +568,37 @@ pub(super) async fn to_credential_list_response(
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
     let schema = credential.common().schema.as_ref().await?.to_owned();
-    let credential_type = credential.r#type();
-    let credential_format = match credential_type {
-        CredentialType::Single | CredentialType::BatchItem => Some(
-            credential
-                .format()
-                .as_required_ref()
-                .await?
-                .format
-                .to_owned(),
-        ),
-        CredentialType::BatchParent => None,
-    };
+    let credential_format = credential.credential_format().await?;
 
     let issuer = match &credential.issuer_identifier() {
         None => None,
         Some(issuer_identifier) => Some(issuer_identifier.as_ref().await?.to_owned().into()),
     };
 
-    let consumed_at = credential.consumed_at();
-    let role = credential.role();
     let suspend_end_date = credential.suspend_end_date();
-    let webhook_url = credential.webhook_url().to_owned();
     let parent_id = credential.parent().map(|parent| parent.id());
-    let common = match credential {
-        Credential::IssuerSingle { common, .. }
-        | Credential::IssuerBatchParent { common, .. }
-        | Credential::IssuerBatchItem { common, .. }
+    let role = credential.role();
+    let credential_type = credential.r#type();
+    let (common, webhook_url, consumed_at) = match credential {
+        Credential::IssuerSingle {
+            common,
+            webhook_url,
+            ..
+        }
+        | Credential::IssuerBatchParent {
+            common,
+            webhook_url,
+            ..
+        } => (common, webhook_url, None),
+        Credential::HolderBatchItem {
+            common,
+            consumed_at,
+            ..
+        } => (common, None, consumed_at),
+        Credential::IssuerBatchItem { common, .. }
         | Credential::HolderSingle { common, .. }
         | Credential::HolderBatchParent { common, .. }
-        | Credential::HolderBatchItem { common, .. }
-        | Credential::Verifier { common, .. } => common,
+        | Credential::Verifier { common, .. } => (common, None, None),
     };
 
     Ok(CredentialListItemResponseDTO {
@@ -1046,9 +1071,7 @@ pub(crate) async fn get_remaining_batch_item_count(
     credential: &Credential,
     credential_repository: &dyn CredentialRepository,
 ) -> Result<Option<HashMap<CredentialFormat, u32>>, CredentialServiceError> {
-    if credential.r#type() != CredentialType::BatchParent
-        || credential.role() != CredentialRole::Holder
-    {
+    if !matches!(credential, Credential::HolderBatchParent { .. }) {
         return Ok(None);
     }
 
@@ -1084,7 +1107,15 @@ pub(crate) async fn get_remaining_batch_item_count(
             .as_ref()
             .await?;
         let entry = counts.entry(format.format.to_owned()).or_insert(0);
-        if item.common().state == CredentialStateEnum::Accepted && item.consumed_at().is_none() {
+        if item.common().state == CredentialStateEnum::Accepted
+            && !matches!(
+                item,
+                Credential::HolderBatchItem {
+                    consumed_at: Some(_),
+                    ..
+                }
+            )
+        {
             *entry += 1;
         }
     }
@@ -1101,9 +1132,11 @@ pub(crate) async fn get_credential_trust_information(
         recorded_ecosystem_outcomes(credential.ecosystem_history_id().into(), history_repository)
             .await?;
 
-    match credential.role() {
+    match credential {
         // The issuer records trust info about  the Wallet Provider
-        CredentialRole::Issuer => {
+        Credential::IssuerSingle { .. }
+        | Credential::IssuerBatchParent { .. }
+        | Credential::IssuerBatchItem { .. } => {
             if ecosystem_errors.is_empty() {
                 return Ok(None);
             }
@@ -1118,7 +1151,9 @@ pub(crate) async fn get_credential_trust_information(
             }))
         }
         // The holder records trust info related to the issuer
-        CredentialRole::Holder => {
+        Credential::HolderSingle { .. }
+        | Credential::HolderBatchParent { .. }
+        | Credential::HolderBatchItem { .. } => {
             let Some(ecosystem_id) = &credential.common().ecosystem else {
                 return Ok(Some(TrustInformation {
                     received_at: credential
@@ -1160,7 +1195,7 @@ pub(crate) async fn get_credential_trust_information(
             }))
         }
         // The verifier records trust info about the issuer of received credentials
-        CredentialRole::Verifier => {
+        Credential::Verifier { .. } => {
             if credential.common().ecosystem.is_none() && ecosystem_errors.is_empty() {
                 return Ok(None);
             }

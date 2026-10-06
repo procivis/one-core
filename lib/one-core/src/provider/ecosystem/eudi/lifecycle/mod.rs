@@ -184,7 +184,10 @@ impl EudiEcosystem {
             tracing::warn!("Failed to revoke PID `{}`: {error}", credential.common().id);
         }
 
-        if credential.r#type() != CredentialType::BatchParent {
+        if !matches!(
+            credential,
+            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. }
+        ) {
             // Only batch parents can be flagged as expiring
             return;
         }

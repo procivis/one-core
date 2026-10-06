@@ -5,7 +5,7 @@ use shared_types::{CredentialFormat, CredentialSchemaId};
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::credential::{CredentialStateEnum, CredentialType};
+use crate::model::credential::CredentialStateEnum;
 
 #[derive(Debug, Error)]
 pub enum IssuanceProtocolError {
@@ -37,8 +37,8 @@ pub enum IssuanceProtocolError {
     Untrusted,
     #[error("Refresh not possible: refresh token missing or expired")]
     RefreshNotPossible,
-    #[error("Refresh not supported for credential of type `{0}`")]
-    RefreshNotSupported(CredentialType),
+    #[error("Credential refresh not supported")]
+    RefreshNotSupported,
     #[error("Refresh not supported for already issued credential format `{0}`")]
     FormatRefreshNotSupported(CredentialFormat),
     #[error("Rejection not supported")]
@@ -88,7 +88,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::Suspended | Self::RefreshTooSoon | Self::RefreshNotPossible => ErrorCode::BR_0238,
             Self::FromUtf8Error(_) | Self::TrustInformationError(_) => ErrorCode::BR_0047,
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,
-            Self::RefreshNotSupported(_) => ErrorCode::BR_0452,
+            Self::RefreshNotSupported => ErrorCode::BR_0452,
             Self::FormatRefreshNotSupported(_) => ErrorCode::BR_0483,
             Self::Nested(nested) => nested.error_code(),
         }

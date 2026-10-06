@@ -500,7 +500,10 @@ pub(super) fn request_to_active_model(
         issuance_date: Set(request.common().issuance_date),
         expires_at: Set(request.common().expires_at),
         deleted_at: Set(request.common().deleted_at),
-        consumed_at: Set(request.consumed_at()),
+        consumed_at: Set(match request {
+            Credential::HolderBatchItem { consumed_at, .. } => *consumed_at,
+            _ => None,
+        }),
         protocol: Set(request.common().protocol.to_owned()),
         redirect_uri: Set(request.common().redirect_uri.to_owned()),
         issuer_identifier_id: Set(request
@@ -520,7 +523,7 @@ pub(super) fn request_to_active_model(
             .as_ref()
             .map(|interaction| interaction.id())),
         key_id: Set(request.key().map(|key| key.id())),
-        role: Set(request.role().to_owned().into()),
+        role: Set(request.role().into()),
         state: Set(request.common().state.into()),
         suspend_end_date: Set(request.suspend_end_date()),
         profile: Set(request.common().profile.clone()),
@@ -528,9 +531,26 @@ pub(super) fn request_to_active_model(
         credential_blob_id: Set(request.credential_blob_id()),
         wallet_key_attestation_blob_id: Set(request.wallet_key_attestation_blob_id()),
         wallet_instance_attestation_blob_id: Set(request.wallet_instance_attestation_blob_id()),
-        webhook_url: Set(request.webhook_url().to_owned()),
-        embedded_disclosure_policy: Set(request.embedded_disclosure_policy().clone()),
-        subscriber_information: Set(request.subscriber_information().clone()),
+        webhook_url: Set(match request {
+            Credential::IssuerSingle { webhook_url, .. }
+            | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),
+            _ => None,
+        }),
+        embedded_disclosure_policy: Set(request
+            .holder()
+            .ok()
+            .and_then(|holder| holder.data.embedded_disclosure_policy.clone())),
+        subscriber_information: Set(match request {
+            Credential::IssuerSingle {
+                subscriber_information,
+                ..
+            }
+            | Credential::IssuerBatchParent {
+                subscriber_information,
+                ..
+            } => subscriber_information.clone(),
+            _ => None,
+        }),
         ecosystem: Set(request.common().ecosystem.clone()),
         r#type: Set(request.r#type().into()),
         format: Set(request.format().map(|format| format.id())),

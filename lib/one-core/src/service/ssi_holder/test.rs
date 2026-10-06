@@ -2056,11 +2056,11 @@ async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
             crate::service::test_utilities::dummy_credential(),
         )
         .unwrap();
-        credential.common_mut().schema = schema.clone();
-        *credential.embedded_disclosure_policy_mut().unwrap() =
-            Some(format!("{configuration_id}-policy"));
+        let holder = credential.holder_mut().unwrap();
+        holder.common.schema = schema.clone();
+        holder.data.embedded_disclosure_policy = Some(format!("{configuration_id}-policy"));
         {
-            let mut format = credential.format_mut().unwrap().as_mut().await.unwrap();
+            let mut format = holder.data.format.as_mut().await.unwrap();
             format.credential_schema_id = schema.id();
             format.format = format_name.into();
         }

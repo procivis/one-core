@@ -4,6 +4,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidValue, IdentifierId, OrganisationId};
+use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::dcql::{
     CredentialFormat, CredentialQuery, DcqlQuery, W3cVcMeta,
@@ -662,7 +663,7 @@ pub async fn credential_with_claims(
     common.schema = schema.into();
     common.interaction = None;
     *credential.claims_mut().unwrap() = claims.into();
-    *credential.format_mut().unwrap() = format.into();
+    credential.issuer_credential_mut().unwrap().data.format = format.into();
     credential
 }
 
@@ -844,7 +845,10 @@ impl From<Credential> for CredentialBuilder {
         Self {
             common: value.common().clone(),
             claims: value.claims().cloned().unwrap_or_default(),
-            consumed_at: value.consumed_at(),
+            consumed_at: match &value {
+                Credential::HolderBatchItem { consumed_at, .. } => *consumed_at,
+                _ => None,
+            },
             role: value.role(),
             r#type: value.r#type(),
             suspend_end_date: value.suspend_end_date(),
@@ -855,9 +859,26 @@ impl From<Credential> for CredentialBuilder {
             credential_blob_id: value.credential_blob_id(),
             wallet_key_attestation_blob_id: value.wallet_key_attestation_blob_id(),
             wallet_instance_attestation_blob_id: value.wallet_instance_attestation_blob_id(),
-            webhook_url: value.webhook_url().clone(),
-            embedded_disclosure_policy: value.embedded_disclosure_policy().clone(),
-            subscriber_information: value.subscriber_information().clone(),
+            webhook_url: match &value {
+                Credential::IssuerSingle { webhook_url, .. }
+                | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),
+                _ => None,
+            },
+            embedded_disclosure_policy: value
+                .holder()
+                .ok()
+                .and_then(|holder| holder.data.embedded_disclosure_policy.clone()),
+            subscriber_information: match &value {
+                Credential::IssuerSingle {
+                    subscriber_information,
+                    ..
+                }
+                | Credential::IssuerBatchParent {
+                    subscriber_information,
+                    ..
+                } => subscriber_information.clone(),
+                _ => None,
+            },
             parent: value.parent().cloned(),
             format: value.format().cloned(),
         }
@@ -908,8 +929,9 @@ impl CredentialBuilder {
             .into()
         });
         if self.role == CredentialRole::Verifier {
-            assert!(
-                self.r#type == CredentialType::Single,
+            assert_eq!(
+                self.r#type,
+                CredentialType::Single,
                 "verifier fixtures must be single credentials"
             );
             return Credential::Verifier {

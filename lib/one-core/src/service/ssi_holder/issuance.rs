@@ -311,7 +311,7 @@ impl SSIHolderService {
         let mut configuration_parents = HashMap::new();
         for mut response in issued {
             let credential = &response.main_credential.credential;
-            if credential.r#type() != CredentialType::BatchParent {
+            if !matches!(credential, Credential::HolderBatchParent { .. }) {
                 groups.push(response);
                 continue;
             }
@@ -431,8 +431,8 @@ impl SSIHolderService {
             return Ok(credential);
         }
 
-        let credential_blob_id = credential.credential_blob_id_mut()?;
-        *credential_blob_id = if let Some(token) = serialized {
+        let holder = credential.holder_mut()?;
+        holder.data.credential_blob_id = if let Some(token) = serialized {
             let blob = Blob::new(token.as_ref(), BlobType::Credential);
             let blob_id = blob.id;
             db_blob_storage
@@ -556,8 +556,10 @@ impl SSIHolderService {
             let parent_ids: Vec<_> = credentials
                 .iter()
                 .filter(|credential| {
-                    credential.r#type() == CredentialType::BatchParent
-                        && !ids.contains(&credential.common().id)
+                    matches!(
+                        credential,
+                        Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. }
+                    ) && !ids.contains(&credential.common().id)
                 })
                 .map(|credential| credential.common().id)
                 .collect();
@@ -663,8 +665,8 @@ impl SSIHolderService {
         &self,
         credential: &Credential,
     ) -> Result<Vec<CredentialId>, HolderServiceError> {
-        let batch_items = match credential.r#type() {
-            CredentialType::BatchParent => {
+        let batch_items = match credential {
+            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => {
                 self.credential_repository
                     .get_credential_list(ListQuery {
                         include_count: false,

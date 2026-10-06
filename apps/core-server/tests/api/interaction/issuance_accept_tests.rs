@@ -7,7 +7,7 @@ use one_core::mapper::x509::pem_chain_into_x5c;
 use one_core::model::certificate::Certificate;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
-    CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
+    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use one_core::model::credential_schema::KeyStorageSecurity;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
@@ -687,14 +687,12 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
     }
     let mdoc_parent = mains
         .iter()
-        .find(|credential| credential.r#type() == CredentialType::BatchParent)
+        .find(|credential| matches!(credential, Credential::HolderBatchParent { .. }))
         .unwrap();
     let sd_jwt_vc = mains
         .iter()
-        .find(|credential| credential.r#type() == CredentialType::Single)
+        .find(|credential| matches!(credential, Credential::HolderSingle { .. }))
         .unwrap();
-    assert_eq!(mdoc_parent.role(), CredentialRole::Holder);
-    assert_eq!(sd_jwt_vc.role(), CredentialRole::Holder);
     assert_eq!(
         mdoc_parent.common().schema.id(),
         sd_jwt_vc.common().schema.id()
@@ -706,7 +704,7 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
         .list(CredentialFilterValue::ParentCredential(mdoc_parent.common().id).condition())
         .await;
     assert_eq!(mdoc_items.len(), 1);
-    assert_eq!(mdoc_items[0].r#type(), CredentialType::BatchItem);
+    assert!(matches!(mdoc_items[0], Credential::HolderBatchItem { .. }));
     assert_eq!(
         mdoc_items[0]
             .format()
@@ -802,7 +800,6 @@ async fn check_multi_configuration_issuance(
     let mut all_item_ids = HashSet::new();
     for main_id in main_ids {
         let main = context.db.credentials.get(&main_id.parse()).await;
-        assert_eq!(main.r#type(), expected_type);
         assert_eq!(main.common().state, CredentialStateEnum::Accepted);
         assert_eq!(
             main.common().interaction.as_ref().unwrap().id(),
@@ -815,6 +812,7 @@ async fn check_multi_configuration_issuance(
             .list(CredentialFilterValue::ParentCredential(main.common().id).condition())
             .await;
         if expected_type == CredentialType::Single {
+            assert!(matches!(main, Credential::HolderSingle { .. }));
             assert!(items.is_empty());
             assert!(main.format().is_some());
             assert!(main.credential_blob_id().is_some());
@@ -822,7 +820,7 @@ async fn check_multi_configuration_issuance(
         } else {
             assert!(main.format().is_none());
             assert!(main.credential_blob_id().is_none());
-            assert!(main.embedded_disclosure_policy().is_none());
+            assert!(matches!(main, Credential::HolderBatchParent { .. }));
             assert!(main.claims().is_err());
             assert_eq!(
                 main.common().expires_at.is_none(),
@@ -833,7 +831,7 @@ async fn check_multi_configuration_issuance(
                 items_per_configuration * if schema_overlap { 2 } else { 1 }
             );
             for item in &items {
-                assert_eq!(item.r#type(), CredentialType::BatchItem);
+                assert!(matches!(item, Credential::HolderBatchItem { .. }));
                 assert_eq!(item.common().state, CredentialStateEnum::Accepted);
                 assert_eq!(item.common().schema.id(), main.common().schema.id());
                 assert!(item.common().interaction.is_none());
@@ -887,7 +885,12 @@ async fn check_multi_configuration_issuance(
             .iter()
             .filter(|item| {
                 serde_json::from_str::<serde_json::Value>(
-                    item.embedded_disclosure_policy().as_ref().unwrap(),
+                    item.holder()
+                        .unwrap()
+                        .data
+                        .embedded_disclosure_policy
+                        .as_ref()
+                        .unwrap(),
                 )
                 .unwrap()
                     == policy
@@ -921,7 +924,7 @@ async fn test_issuance_accept_partially_successful() {
     assert_eq!(credential_ids.len(), 1);
     assert_eq!(response["id"], credential_ids[0]);
     let credential = context.db.credentials.get(&credential_ids[0].parse()).await;
-    assert_eq!(credential.r#type(), CredentialType::Single);
+    assert!(matches!(credential, Credential::HolderSingle { .. }));
     assert!(credential.parent().is_none());
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
@@ -1225,7 +1228,7 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
 
     // THEN
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialType::BatchParent, credential.r#type());
+    assert!(matches!(credential, Credential::HolderBatchParent { .. }));
     assert!(credential.format().is_none());
     // the batch is refreshable via the OAuth refresh token, so the batch_parent's own
     // `expires_at` (which is not a real per-holder expiration) must not be set
@@ -1261,7 +1264,7 @@ async fn test_issuance_accept_batch_with_refresh_token_omits_batch_parent_expire
         }
         assert!(has_metadata);
         assert!(claims.iter().any(|claim| claim.path == "string"));
-        assert_eq!(CredentialType::BatchItem, item.r#type());
+        assert!(matches!(item, Credential::HolderBatchItem { .. }));
         assert!(item.common().expires_at.is_some());
     }
     assert!(shared_claims > 0);
@@ -1333,7 +1336,7 @@ async fn test_issuance_accept_batch_without_refresh_token_keeps_batch_parent_exp
 
     // THEN
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialType::BatchParent, credential.r#type());
+    assert!(matches!(credential, Credential::HolderBatchParent { .. }));
     assert!(credential.format().is_none());
     // `w3c_jwt_vc` always signs the issued credentials with `exp` set to `now + 10 hours`;
     // the batch_parent should inherit that real value from its first batch item
@@ -1352,7 +1355,7 @@ async fn test_issuance_accept_batch_without_refresh_token_keeps_batch_parent_exp
         .await;
     assert_eq!(2, batch_items.len());
     for item in &batch_items {
-        assert_eq!(CredentialType::BatchItem, item.r#type());
+        assert!(matches!(item, Credential::HolderBatchItem { .. }));
         assert!(item.common().expires_at.is_some());
     }
     assert!(
@@ -1424,7 +1427,7 @@ async fn test_issuance_accept_batch_marks_autogenerated_holder_binding_identifie
 
     // THEN
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(CredentialType::BatchParent, credential.r#type());
+    assert!(matches!(credential, Credential::HolderBatchParent { .. }));
     assert!(credential.format().is_none());
 
     let batch_items = context
@@ -1436,7 +1439,7 @@ async fn test_issuance_accept_batch_marks_autogenerated_holder_binding_identifie
 
     let mut autogenerated_identifier_ids = HashSet::new();
     for item in &batch_items {
-        assert_eq!(CredentialType::BatchItem, item.r#type());
+        assert!(matches!(item, Credential::HolderBatchItem { .. }));
 
         let holder_identifier = item
             .holder_identifier()

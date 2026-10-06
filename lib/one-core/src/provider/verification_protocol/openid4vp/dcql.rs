@@ -24,7 +24,7 @@ use crate::mapper::credential_schema_claim::claim_path_to_formatted_path;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialType};
+use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
@@ -161,8 +161,7 @@ pub(crate) async fn get_presentation_definition_v2(
             let Some(parent_id) = candidate.parent().map(|parent| parent.id()) else {
                 continue;
             };
-            if candidate.r#type() != CredentialType::BatchItem
-                || candidate.is_available_for_presentation(now)
+            if candidate.is_available_for_presentation(now)
                 || !submitted_credential_ids.contains(&parent_id)
                 || matching_batches_with_unavailable_items
                     .get(&query.id.to_string())
@@ -281,7 +280,10 @@ pub(crate) async fn get_presentation_definition_v2(
                 continue;
             };
             let embedded_disclosure_policy_violation = check_disclosure_policy(
-                &candidate,
+                candidate
+                    .holder()
+                    .ok()
+                    .and_then(|holder| holder.data.embedded_disclosure_policy.as_deref()),
                 &query.id,
                 verifier_details,
                 verifier_info,
@@ -1134,7 +1136,7 @@ async fn find_schema_by_schema_ids(
 }
 
 async fn check_disclosure_policy(
-    credential: &Credential,
+    disclosure_policy: Option<&str>,
     query_id: &CredentialQueryId,
     verifier_details: Option<&IdentifierDetails>,
     verifier_info: &[VerifierInfoAttestation],
@@ -1142,7 +1144,7 @@ async fn check_disclosure_policy(
 ) -> Result<Option<DisclosurePolicyViolation>, VerificationProtocolError> {
     use standardized_types::etsi_119_472::disclosure_policy::*;
 
-    let Some(disclosure_policy) = &credential.embedded_disclosure_policy() else {
+    let Some(disclosure_policy) = disclosure_policy else {
         return Ok(None);
     };
 
@@ -1283,8 +1285,10 @@ mod test {
                 .is_none()
         );
         *item.claims_mut().unwrap() = vec![claim].into();
-        item.format_mut()
+        item.issuer_credential_mut()
             .unwrap()
+            .data
+            .format
             .as_mut()
             .await
             .unwrap()

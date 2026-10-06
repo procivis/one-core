@@ -2100,8 +2100,11 @@ async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialS
     }
     .build();
     child_credential.common_mut().state = CredentialStateEnum::Suspended;
-    *child_credential.suspend_end_date_mut().unwrap() =
-        Some(crate::clock::now_utc().sub(Duration::hours(1)));
+    child_credential
+        .issuer_credential_mut()
+        .unwrap()
+        .data
+        .suspend_end_date = Some(crate::clock::now_utc().sub(Duration::hours(1)));
     child_credential = CredentialBuilder {
         r#type: CredentialType::BatchItem,
         parent: Some(parent_credential.clone().into()),
@@ -3064,7 +3067,11 @@ async fn test_suspend_batch_parent_with_already_suspended_item() {
         ],
     );
     let previous_end_date = crate::clock::now_utc().add(Duration::days(1));
-    *items[1].suspend_end_date_mut().unwrap() = Some(previous_end_date);
+    items[1]
+        .issuer_credential_mut()
+        .unwrap()
+        .data
+        .suspend_end_date = Some(previous_end_date);
 
     let new_end_date = crate::clock::now_utc().add(Duration::days(7));
     let updates = StateUpdates::default();

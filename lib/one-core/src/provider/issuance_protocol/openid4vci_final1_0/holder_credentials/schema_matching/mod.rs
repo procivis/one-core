@@ -12,13 +12,12 @@ use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::add_fallback_translation;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::Credential;
+use crate::model::credential::{CredentialViewMut, HolderCredentialData};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::localized_text::LocalizedTextField;
-use crate::model::relation::OptionalRelatedRefExt;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::provider::issuance_protocol::IssuanceProtocolError;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -243,12 +242,12 @@ async fn find_schema_by_ecosystem_schema_id(
 /// children are checked under each present parent, including every concrete array element.
 pub(super) async fn missing_required_claims(
     schema: &CredentialSchema,
-    credential: &Credential,
+    credential: &HolderCredentialData,
     mandatory_claim_ids: &[ClaimSchemaId],
 ) -> Result<Vec<String>, IssuanceProtocolError> {
-    let format = credential.format().as_required_ref().await?;
+    let format = credential.format.as_ref().await?;
     let credential_mappings = format.claim_mappings.as_ref().await?;
-    let claims = credential.claims()?.as_ref().await?;
+    let claims = credential.claims.as_ref().await?;
     let format_schema_ids = credential_mappings
         .iter()
         .map(|mapping| mapping.claim_schema_id)
@@ -523,22 +522,12 @@ pub(super) struct AlignmentUpdate {
 
 pub(super) async fn align_format_claim_schemas_and_mappings(
     stored_schema: &mut CredentialSchema,
-    credential: &mut Credential,
+    credential: CredentialViewMut<'_, HolderCredentialData>,
     default_language: &str,
     format_id: Option<shared_types::CredentialSchemaFormatId>,
 ) -> Result<AlignmentUpdate, IssuanceProtocolError> {
-    let (common, claims, format) = match credential {
-        Credential::HolderSingle { common, credential }
-        | Credential::HolderBatchItem {
-            common, credential, ..
-        } => (common, &mut credential.claims, &mut credential.format),
-        _ => {
-            return Err(IssuanceProtocolError::Failed(
-                "Expected a holder credential with a format".into(),
-            ));
-        }
-    };
-    let mut claims = claims.as_mut().await?;
+    let CredentialViewMut { common, data } = credential;
+    let mut claims = data.claims.as_mut().await?;
     claims.sort_by_key(|c| c.path.clone());
 
     let mut parsed_claim_schemas = {
@@ -548,7 +537,7 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
     let (parsed_format, parsed_mappings) = {
-        let parsed_format = format.as_ref().await?;
+        let parsed_format = data.format.as_ref().await?;
         let mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
         (parsed_format.format.clone(), mappings)
     };
@@ -663,7 +652,7 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
         stored_claim_schemas.extend(new_claim_schemas.clone());
     }
 
-    *format = stored_format.into();
+    data.format = stored_format.into();
     common.schema = stored_schema.clone().into();
     Ok(AlignmentUpdate {
         new_claim_schemas,

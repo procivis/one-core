@@ -11,11 +11,27 @@ use super::{
     map_issuer_claim_metadata,
 };
 use crate::clock::now_utc;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::service::test_utilities::{CredentialBuilder, dummy_credential, dummy_organisation};
+
+#[test]
+fn rejects_holder_batch_parent() {
+    let mut credential = crate::model::credential::Credential::HolderBatchParent {
+        common: dummy_credential().common().clone(),
+    };
+
+    let error = credential.holder_mut().unwrap_err();
+    assert_eq!(error.error_code(), ErrorCode::BR_0047);
+    assert!(
+        error
+            .to_string()
+            .contains("Expected a concrete holder credential, got HolderBatchParent")
+    );
+}
 
 #[tokio::test]
 async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
@@ -53,6 +69,7 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
         let mut updated_credential = dummy_credential();
         updated_credential.common_mut().schema = schema.clone().into();
         updated_credential = CredentialBuilder {
+            role: crate::model::credential::CredentialRole::Holder,
             format: Some(schema.formats.as_ref().await.unwrap()[0].clone().into()),
             ..updated_credential.into()
         }
@@ -60,12 +77,16 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
         *updated_credential.claims_mut().unwrap() = vec![].into();
         updated_credential
     };
-    let error = ensure_required_claims(&schema, &credential, &issuer_claim_metadata)
-        .await
-        .unwrap_err();
+    let error = ensure_required_claims(
+        &schema,
+        credential.holder().unwrap().data,
+        &issuer_claim_metadata,
+    )
+    .await
+    .unwrap_err();
     assert!(error.to_string().contains("localKey"));
     // Another issuer can omit this claim when it is not mandatory in its metadata.
-    ensure_required_claims(&schema, &credential, &[])
+    ensure_required_claims(&schema, credential.holder().unwrap().data, &[])
         .await
         .unwrap();
 }

@@ -30,7 +30,8 @@ use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialStateEnum, CredentialType, HolderCredentialData, IssuerIdentity,
+    Credential, CredentialStateEnum, CredentialView, CredentialViewMut, HolderCredentialData,
+    IssuerIdentity,
 };
 use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -39,7 +40,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
-use crate::model::relation::{OptionalRelatedRefExt, Related};
+use crate::model::relation::Related;
 use crate::proto::identifier_creator::{
     IdentifierLogo, IdentifierName, IdentifierRole, RemoteIdentifierRelation,
     issuer_display_to_identifier_translations,
@@ -96,7 +97,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction_data.issuer_display.as_deref(),
                 )
                 .await?;
-            *credential.embedded_disclosure_policy_mut()? = disclosure_policy.clone();
+            credential.holder_mut()?.data.embedded_disclosure_policy = disclosure_policy.clone();
             credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -112,7 +113,7 @@ impl OpenID4VCIFinal1_0 {
             ))?;
         let mut schema = self
             .update_credential_schema(
-                &mut first.credential,
+                first.credential.holder_mut()?,
                 organisation,
                 interaction_data,
                 configuration,
@@ -121,7 +122,7 @@ impl OpenID4VCIFinal1_0 {
         for item in credentials.iter_mut().skip(1) {
             self.align_credential_schema(
                 &mut schema,
-                &mut item.credential,
+                item.credential.holder_mut()?,
                 None,
                 configuration.credential_metadata.as_ref(),
             )
@@ -165,20 +166,21 @@ impl OpenID4VCIFinal1_0 {
 
     async fn update_credential_schema(
         &self,
-        credential: &mut Credential,
+        credential: CredentialViewMut<'_, HolderCredentialData>,
         organisation: &Organisation,
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
-        let parsed_format = credential.format().as_required_ref().await?.to_owned();
+        let CredentialViewMut { common, data } = credential;
+        let parsed_format = data.format.as_ref().await?.to_owned();
         let issuer_claim_metadata = if let Some(metadata) = &configuration.credential_metadata {
-            let schema = credential.common().schema.as_ref().await?;
+            let schema = common.schema.as_ref().await?;
             map_issuer_claim_metadata(&schema, metadata, &parsed_format).await?
         } else {
             vec![]
         };
         self.enrich_credential_schema(
-            credential.common_mut().schema.as_mut().await?.as_mut(),
+            common.schema.as_mut().await?.as_mut(),
             interaction_data,
             configuration,
             organisation,
@@ -186,9 +188,9 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        let parsed_schema = credential.common().schema.as_ref().await?.to_owned();
+        let parsed_schema = common.schema.as_ref().await?.to_owned();
         // Validate issuer requirements before import without storing them on the schema.
-        ensure_required_claims(&parsed_schema, credential, &issuer_claim_metadata).await?;
+        ensure_required_claims(&parsed_schema, data, &issuer_claim_metadata).await?;
         let CredentialSchemaResolution {
             mut schema,
             new_format,
@@ -204,7 +206,7 @@ impl OpenID4VCIFinal1_0 {
 
         self.align_credential_schema(
             &mut schema,
-            credential,
+            CredentialViewMut { common, data },
             new_format,
             configuration.credential_metadata.as_ref(),
         )
@@ -215,13 +217,14 @@ impl OpenID4VCIFinal1_0 {
     async fn align_credential_schema(
         &self,
         schema: &mut CredentialSchema,
-        credential: &mut Credential,
+        credential: CredentialViewMut<'_, HolderCredentialData>,
         new_format: Option<CredentialSchemaFormat>,
         metadata: Option<&CredentialMetadata>,
     ) -> Result<(), IssuanceProtocolError> {
+        let CredentialViewMut { common, data } = credential;
         let alignment = align_format_claim_schemas_and_mappings(
             schema,
-            credential,
+            CredentialViewMut { common, data },
             &self.config.global_settings.default_language,
             None,
         )
@@ -230,7 +233,7 @@ impl OpenID4VCIFinal1_0 {
         // Schema matching can replace the parsed schema with an existing one. Apply the issuer
         // metadata again after alignment so changed translations target the persisted schema and
         // claim IDs.
-        let current_format = credential.format().as_required_ref().await?.to_owned();
+        let current_format = data.format.as_ref().await?.to_owned();
         let issuer_claim_metadata = if let Some(metadata) = metadata {
             map_issuer_claim_metadata(schema, metadata, &current_format).await?
         } else {
@@ -244,8 +247,8 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?;
         // A reused schema may require claims that the parsed schema did not.
-        ensure_required_claims(schema, credential, &issuer_claim_metadata).await?;
-        credential.common_mut().schema = schema.clone().into();
+        ensure_required_claims(schema, data, &issuer_claim_metadata).await?;
+        common.schema = schema.clone().into();
 
         if !alignment.new_claim_schemas.is_empty()
             || new_format.is_some()
@@ -280,7 +283,8 @@ impl OpenID4VCIFinal1_0 {
         interaction: &Interaction,
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         if let Some(credential) = updated_credential {
-            self.process_mso_refresh(&credential, response).await?;
+            let holder = credential.holder()?;
+            self.process_mso_refresh(holder, response).await?;
 
             Ok(vec![credential])
         } else {
@@ -297,7 +301,7 @@ impl OpenID4VCIFinal1_0 {
 
     async fn process_mso_refresh(
         &self,
-        credential: &Credential,
+        credential: CredentialView<'_, HolderCredentialData>,
         mut response: SubmitIssuerResponse,
     ) -> Result<(), IssuanceProtocolError> {
         if response.credentials.len() != 1 {
@@ -313,13 +317,8 @@ impl OpenID4VCIFinal1_0 {
                     "Missing issued credential".to_string(),
                 ))?;
 
-        let schema = credential.common().schema.as_ref().await?;
-        let credential_format = credential
-            .format()
-            .as_required_ref()
-            .await?
-            .format
-            .to_owned();
+        let schema = credential.common.schema.as_ref().await?;
+        let credential_format = credential.data.format.as_ref().await?.format.to_owned();
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&credential_format)?;
@@ -334,7 +333,8 @@ impl OpenID4VCIFinal1_0 {
             .get_blob_storage(BlobStorageType::Db)?;
 
         let blob_id = credential
-            .credential_blob_id()
+            .data
+            .credential_blob_id
             .ok_or(IssuanceProtocolError::Failed(
                 "Missing credential blob id".to_string(),
             ))?;
@@ -366,10 +366,8 @@ impl OpenID4VCIFinal1_0 {
             .get_credential(parent_id)
             .await
             .error_while("getting batch parent")?;
-        if batch_parent.r#type() != CredentialType::BatchParent {
-            return Err(IssuanceProtocolError::RefreshNotSupported(
-                batch_parent.r#type(),
-            ));
+        if !matches!(batch_parent, Credential::HolderBatchParent { .. }) {
+            return Err(IssuanceProtocolError::RefreshNotSupported);
         }
         let mut schema = batch_parent.common().schema.as_ref().await?.to_owned();
 
@@ -407,7 +405,7 @@ impl OpenID4VCIFinal1_0 {
                     None,
                 )
                 .await?;
-            *credential.embedded_disclosure_policy_mut()? = disclosure_policy.clone();
+            credential.holder_mut()?.data.embedded_disclosure_policy = disclosure_policy.clone();
             batch_credentials.push(CredentialWithBlob {
                 credential,
                 serialized: Some(issued_credential),
@@ -421,7 +419,7 @@ impl OpenID4VCIFinal1_0 {
         for item in &mut batch_credentials {
             let alignment = align_format_claim_schemas_and_mappings(
                 &mut schema,
-                &mut item.credential,
+                item.credential.holder_mut()?,
                 &self.config.global_settings.default_language,
                 Some(config_schema_format.id),
             )
@@ -464,8 +462,9 @@ impl OpenID4VCIFinal1_0 {
                         } else {
                             None
                         };
-                        credential.common_mut().state = CredentialStateEnum::Accepted;
-                        *credential.credential_blob_id_mut()? = credential_blob_id;
+                        let holder = credential.holder_mut()?;
+                        holder.common.state = CredentialStateEnum::Accepted;
+                        holder.data.credential_blob_id = credential_blob_id;
                         result.push(credential);
                     }
                     self.credential_repository
@@ -677,7 +676,7 @@ impl OpenID4VCIFinal1_0 {
 
 async fn ensure_required_claims(
     schema: &CredentialSchema,
-    credential: &Credential,
+    credential: &HolderCredentialData,
     issuer_claim_metadata: &[IssuerClaimMetadata<'_>],
 ) -> Result<(), IssuanceProtocolError> {
     let mandatory_claim_ids = issuer_mandatory_claim_ids(issuer_claim_metadata)?;

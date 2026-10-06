@@ -49,8 +49,10 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     credential.wallet_key_attestation_blob_id = blob_id;
     credential.wallet_instance_attestation_blob_id = blob_id;
     *claims = vec![claim.clone()].into();
-    *webhook_url = Some("https://example.com/credential".into());
-    *subscriber_information = Some("opaque metadata".into());
+    let expected_webhook_url = "https://example.com/credential";
+    *webhook_url = Some(expected_webhook_url.into());
+    let expected_subscriber_information = "opaque metadata";
+    *subscriber_information = Some(expected_subscriber_information.into());
     credential.suspend_end_date = Some(get_dummy_date() + Duration::days(1));
     let id = repository.create_credential(request.clone()).await.unwrap();
 
@@ -65,10 +67,10 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     assert_eq!(row.format, Some(format_id));
     assert_eq!(row.issuer_identifier_id, Some(setup.identifier.id));
     assert_eq!(row.suspend_end_date, request.suspend_end_date());
-    assert_eq!(row.webhook_url, *request.webhook_url());
+    assert_eq!(row.webhook_url.as_deref(), Some(expected_webhook_url));
     assert_eq!(
-        row.subscriber_information,
-        *request.subscriber_information()
+        row.subscriber_information.as_deref(),
+        Some(expected_subscriber_information)
     );
     assert_eq!(row.credential_blob_id, blob_id);
     assert_eq!(row.wallet_key_attestation_blob_id, blob_id);
@@ -86,9 +88,13 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
         .unwrap();
     let loaded = repository.get_credential(&id).await.unwrap();
     for actual in listed.values.iter().chain([&loaded]) {
-        assert!(matches!(actual, Credential::IssuerSingle { .. }));
-        assert_eq!(actual.role(), CredentialRole::Issuer);
-        assert_eq!(actual.r#type(), CredentialType::Single);
+        let_assert!(
+            Credential::IssuerSingle {
+                webhook_url,
+                subscriber_information,
+                ..
+            } = actual
+        );
         assert_eq!(
             actual
                 .issuer_identifier()
@@ -120,10 +126,10 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             claim.id
         );
         assert_eq!(actual.suspend_end_date(), request.suspend_end_date());
-        assert_eq!(actual.webhook_url(), request.webhook_url());
+        assert_eq!(webhook_url.as_deref(), Some(expected_webhook_url));
         assert_eq!(
-            actual.subscriber_information(),
-            request.subscriber_information()
+            subscriber_information.as_deref(),
+            Some(expected_subscriber_information)
         );
         assert_eq!(actual.credential_blob_id(), blob_id);
         assert_eq!(actual.wallet_key_attestation_blob_id(), blob_id);

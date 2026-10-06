@@ -258,24 +258,14 @@ impl CredentialsDB {
                 params,
             )
             .await;
-        let holder_claims = if credential.role() == CredentialRole::Holder {
-            let claims = credential
-                .claims()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .to_owned();
-            *credential.claims_mut().unwrap() = Default::default();
-            Some(claims)
-        } else {
-            None
-        };
-        let embedded_disclosure_policy = if credential.role() == CredentialRole::Holder {
-            credential.embedded_disclosure_policy_mut().unwrap().take()
-        } else {
-            credential.embedded_disclosure_policy().clone()
-        };
+        let (holder_claims, embedded_disclosure_policy) =
+            if let Ok(holder) = credential.holder_mut() {
+                let claims = holder.data.claims.as_ref().await.unwrap().to_owned();
+                holder.data.claims = Default::default();
+                (Some(claims), holder.data.embedded_disclosure_policy.take())
+            } else {
+                (None, None)
+            };
 
         let holder_data = if let Credential::HolderSingle {
             credential: data, ..
@@ -370,8 +360,8 @@ impl CredentialsDB {
             let batch_item_credential = {
                 let mut updated_credential = batch_item_template.clone();
                 updated_credential.common_mut().id = item_id;
-                if updated_credential.role() == CredentialRole::Holder {
-                    *updated_credential.claims_mut().unwrap() = claims.into();
+                if let Ok(holder) = updated_credential.holder_mut() {
+                    holder.data.claims = claims.into();
                 }
                 *updated_credential.credential_blob_id_mut().unwrap() = credential_blob_id;
                 updated_credential

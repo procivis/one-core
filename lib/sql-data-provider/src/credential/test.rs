@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::ops::Add;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use one_core::clock::now_utc;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
@@ -1443,7 +1444,8 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     // An already consumed item is unavailable even though its state is Accepted.
     let consumed_jwt = {
         let mut updated_credential = new_item(&first_parent, &jwt_format, 1);
-        *updated_credential.consumed_at_mut().unwrap() = Some(get_dummy_date());
+        let_assert!(Credential::HolderBatchItem { consumed_at, .. } = &mut updated_credential);
+        *consumed_at = Some(get_dummy_date());
         updated_credential
     };
     // Deleted items must likewise be skipped even if they expire earlier.

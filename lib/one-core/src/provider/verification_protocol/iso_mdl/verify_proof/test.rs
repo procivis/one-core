@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::{ValidatedProofCredential, accept_proof};
 use crate::mapper::ValidatedProofClaim;
-use crate::model::credential::CredentialRole;
+use crate::model::credential::Credential;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier::IdentifierData;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -175,7 +175,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
         .expect_create_credential()
         .times(2)
         .returning(move |credential| {
-            assert_eq!(credential.role(), CredentialRole::Verifier);
+            assert!(matches!(credential, Credential::Verifier { .. }));
             assert_eq!(credential.common().protocol, "ISO_MDL");
             assert_eq!(
                 credential.issuer_identifier().unwrap().id(),

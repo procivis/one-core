@@ -1,5 +1,5 @@
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{CredentialStateEnum, CredentialType};
+use one_core::model::credential::{CredentialRole, CredentialStateEnum, CredentialType};
 use one_core::model::did::DidType;
 use one_core::model::interaction::InteractionType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -346,7 +346,7 @@ async fn check_batch_item_rejection(
     separate_requests: bool,
     notifications_supported: bool,
 ) {
-    let (context, organisation, _, identifier, key) = TestContext::new_with_did(Some(
+    let (context, organisation, _, identifier, _) = TestContext::new_with_did(Some(
         indoc::indoc! {r#"
             format:
               JWT_SECOND:
@@ -483,9 +483,9 @@ async fn check_batch_item_rejection(
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 id: Some(parent_id),
+                role: Some(CredentialRole::Holder),
                 r#type: Some(CredentialType::BatchParent),
                 interaction: Some(interaction.clone()),
-                key: Some(key.clone()),
                 ..Default::default()
             },
         )
@@ -502,10 +502,10 @@ async fn check_batch_item_rejection(
                     &identifier,
                     "OPENID4VCI_FINAL1",
                     TestingCredentialParams {
+                        role: Some(CredentialRole::Holder),
                         r#type: Some(CredentialType::BatchItem),
                         parent_id: Some(parent_id),
                         format: Some(format.clone()),
-                        key: Some(key.clone()),
                         ..Default::default()
                     },
                 )
@@ -524,6 +524,7 @@ async fn check_batch_item_rejection(
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 r#type: Some(CredentialType::BatchParent),
                 ..Default::default()
             },
@@ -538,6 +539,7 @@ async fn check_batch_item_rejection(
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
                 r#type: Some(CredentialType::BatchItem),
                 parent_id: Some(other_parent.common().id),
                 format: Some(formats[0].clone()),

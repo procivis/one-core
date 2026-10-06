@@ -1,5 +1,5 @@
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{CredentialFilterValue, CredentialStateEnum, CredentialType};
+use one_core::model::credential::{Credential, CredentialFilterValue, CredentialStateEnum};
 use one_core::model::did::DidType;
 use one_core::model::history::HistoryAction;
 use one_core::model::interaction::InteractionType;
@@ -53,7 +53,7 @@ async fn test_issuance_refresh_without_refresh_token_returns_not_supported() {
     assert_eq!(credential_ids.len(), 2);
     for id in credential_ids {
         let credential = context.db.credentials.get(&id.parse()).await;
-        assert_eq!(credential.r#type(), CredentialType::Single);
+        assert!(matches!(credential, Credential::HolderSingle { .. }));
         assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
         assert_eq!(
             credential.common().interaction.as_ref().unwrap().id(),
@@ -335,7 +335,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         assert_eq!(ids.len(), 2);
         for id in ids {
             let credential = context.db.credentials.get(&id.parse()).await;
-            assert_eq!(credential.r#type(), CredentialType::Single);
+            assert!(matches!(credential, Credential::HolderSingle { .. }));
             assert!(credential.common().expires_at.is_none());
             assert!(credential.parent().is_none());
         }
@@ -355,8 +355,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
 
     // Each configuration's policy belongs to its concrete items, including after refresh.
     let parent = context.db.credentials.get(&first_parent).await;
-    assert_eq!(parent.r#type(), CredentialType::BatchParent);
-    assert!(parent.embedded_disclosure_policy().is_none());
+    assert!(matches!(parent, Credential::HolderBatchParent { .. }));
     let stored = context.db.interactions.get(&interaction.id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(stored.data.as_ref().unwrap()).unwrap();
     assert_eq!(data["batch_size"], json!(offer.batch_size));
@@ -388,8 +387,15 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
                 holder_identifier.id
             );
         }
-        let policy: serde_json::Value =
-            serde_json::from_str(item.embedded_disclosure_policy().as_ref().unwrap()).unwrap();
+        let policy: serde_json::Value = serde_json::from_str(
+            item.holder()
+                .unwrap()
+                .data
+                .embedded_disclosure_policy
+                .as_ref()
+                .unwrap(),
+        )
+        .unwrap();
         let index = ["policy-0", "policy-1"]
             .into_iter()
             .position(|id| policy["id"] == id)
@@ -462,7 +468,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     let mut refreshed_policy_counts = [0, 0];
     for id in ids {
         let item = context.db.credentials.get(&id.parse()).await;
-        assert_eq!(CredentialType::BatchItem, item.r#type());
+        assert!(matches!(item, Credential::HolderBatchItem { .. }));
         assert_eq!(first_parent, item.parent().unwrap().id());
         if offer.fixed_identifier_expiry.is_some() {
             assert_eq!(
@@ -471,8 +477,15 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             );
             assert_eq!(item.key().as_ref().unwrap().id(), holder_key.id);
         }
-        let policy: serde_json::Value =
-            serde_json::from_str(item.embedded_disclosure_policy().as_ref().unwrap()).unwrap();
+        let policy: serde_json::Value = serde_json::from_str(
+            item.holder()
+                .unwrap()
+                .data
+                .embedded_disclosure_policy
+                .as_ref()
+                .unwrap(),
+        )
+        .unwrap();
         let index = ["policy-0", "policy-1"]
             .into_iter()
             .position(|id| policy["id"] == id)
@@ -507,7 +520,12 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             .iter()
             .filter(|item| {
                 serde_json::from_str::<serde_json::Value>(
-                    item.embedded_disclosure_policy().as_ref().unwrap(),
+                    item.holder()
+                        .unwrap()
+                        .data
+                        .embedded_disclosure_policy
+                        .as_ref()
+                        .unwrap(),
                 )
                 .unwrap()["id"]
                     == "policy-1"
@@ -518,7 +536,12 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             .iter()
             .filter(|item| {
                 serde_json::from_str::<serde_json::Value>(
-                    item.embedded_disclosure_policy().as_ref().unwrap(),
+                    item.holder()
+                        .unwrap()
+                        .data
+                        .embedded_disclosure_policy
+                        .as_ref()
+                        .unwrap(),
                 )
                 .unwrap()["id"]
                     == "policy-1"

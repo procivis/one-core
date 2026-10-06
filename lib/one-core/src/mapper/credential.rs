@@ -1,12 +1,9 @@
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::claim::Claim;
 use crate::model::common::SortDirection;
-use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialRole, CredentialType, SortableCredentialColumn,
-};
+use crate::model::credential::{Credential, CredentialFilterValue, SortableCredentialColumn};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
-use crate::model::relation::OptionalRelatedRefExt;
 use crate::repository::credential_repository::CredentialRepository;
 #[cfg(test)]
 use crate::service::test_utilities::CredentialBuilder;
@@ -18,22 +15,13 @@ use crate::service::test_utilities::CredentialBuilder;
 pub(crate) async fn stored_credential_claims(
     credential: &Credential,
 ) -> Result<Vec<Claim>, NestedError> {
-    if matches!(credential, Credential::HolderBatchParent { .. }) {
-        return Ok(vec![]);
+    match credential {
+        Credential::HolderBatchParent { .. } => Ok(vec![]),
+        Credential::IssuerBatchItem { parent, .. } => {
+            Ok(parent.as_ref().await?.claims()?.as_ref().await?.to_owned())
+        }
+        _ => Ok(credential.claims()?.as_ref().await?.to_owned()),
     }
-    if credential.r#type() != CredentialType::BatchItem
-        || credential.role() == CredentialRole::Holder
-    {
-        return Ok(credential.claims()?.as_ref().await?.to_owned());
-    }
-    Ok(credential
-        .parent()
-        .as_required_ref()
-        .await?
-        .claims()?
-        .as_ref()
-        .await?
-        .to_owned())
 }
 
 /// The holder's batch summary follows its newest nondeleted item.
@@ -41,9 +29,7 @@ pub(crate) async fn detail_claims(
     credential: &Credential,
     repository: &dyn CredentialRepository,
 ) -> Result<Vec<Claim>, NestedError> {
-    if credential.role() == CredentialRole::Holder
-        && credential.r#type() == CredentialType::BatchParent
-    {
+    if matches!(credential, Credential::HolderBatchParent { .. }) {
         holder_batch_parent_claims(credential, repository).await
     } else {
         stored_credential_claims(credential).await
@@ -84,7 +70,7 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::model::credential::GetCredentialList;
+    use crate::model::credential::{CredentialRole, CredentialType, GetCredentialList};
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::service::test_utilities::dummy_credential;
 
