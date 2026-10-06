@@ -547,7 +547,8 @@ async fn test_create_credential_with_issuer_key() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(credential.key().as_ref().unwrap().id(), key3.id);
+    let issuer = credential.issuer().unwrap();
+    assert_eq!(issuer.data.signing_key.id(), key3.id);
 }
 
 #[tokio::test]
@@ -733,11 +734,12 @@ async fn test_create_credential_with_certificate_identifier() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    let issuer = credential.issuer().unwrap();
     assert_eq!(
-        credential.issuer_certificate().as_ref().unwrap().id(),
+        issuer.data.certificate.as_ref().unwrap().id(),
         certificate.id
     );
-    assert_eq!(credential.key().as_ref().unwrap().id(), key.id);
+    assert_eq!(issuer.data.signing_key.id(), key.id);
 }
 
 #[tokio::test]
@@ -830,11 +832,12 @@ async fn test_create_credential_with_certificate_selection() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    let issuer = credential.issuer().unwrap();
     assert_eq!(
-        credential.issuer_certificate().as_ref().unwrap().id(),
+        issuer.data.certificate.as_ref().unwrap().id(),
         certificate.id
     );
-    assert_eq!(credential.key().as_ref().unwrap().id(), key.id);
+    assert_eq!(issuer.data.signing_key.id(), key.id);
 }
 
 #[tokio::test]

@@ -492,6 +492,8 @@ pub(super) fn request_to_active_model(
     organisation_id: OrganisationId,
 ) -> credential::ActiveModel {
     let issuer_credential = request.issuer_credential().ok();
+    let holder = request.holder().ok().map(|view| view.data);
+    let binding = holder.and_then(|holder| holder.binding.as_ref());
     credential::ActiveModel {
         id: Set(request.common().id),
         credential_schema_id: Set(request.common().schema.id()),
@@ -523,7 +525,11 @@ pub(super) fn request_to_active_model(
             .interaction
             .as_ref()
             .map(|interaction| interaction.id())),
-        key_id: Set(request.key().map(|key| key.id())),
+        key_id: Set(request
+            .issuer()
+            .ok()
+            .map(|issuer| issuer.data.signing_key.id())
+            .or_else(|| binding.map(|binding| binding.key.id()))),
         role: Set(request.role().into()),
         state: Set(request.common().state.into()),
         suspend_end_date: Set(request.suspend_end_date()),
@@ -541,10 +547,9 @@ pub(super) fn request_to_active_model(
             | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),
             _ => None,
         }),
-        embedded_disclosure_policy: Set(request
-            .holder()
-            .ok()
-            .and_then(|holder| holder.data.embedded_disclosure_policy.clone())),
+        embedded_disclosure_policy: Set(
+            holder.and_then(|holder| holder.embedded_disclosure_policy.clone())
+        ),
         subscriber_information: Set(match request {
             Credential::IssuerSingle {
                 subscriber_information,

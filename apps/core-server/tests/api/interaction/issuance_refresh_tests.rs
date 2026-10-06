@@ -470,22 +470,14 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         let item = context.db.credentials.get(&id.parse()).await;
         assert!(matches!(item, Credential::HolderBatchItem { .. }));
         assert_eq!(first_parent, item.parent().unwrap().id());
+        let holder = item.holder().unwrap();
         if offer.fixed_identifier_expiry.is_some() {
-            assert_eq!(
-                item.holder_identifier().as_ref().unwrap().id(),
-                holder_identifier.id
-            );
-            assert_eq!(item.key().as_ref().unwrap().id(), holder_key.id);
+            let binding = holder.data.binding.as_ref().unwrap();
+            assert_eq!(binding.identifier.id(), holder_identifier.id);
+            assert_eq!(binding.key.id(), holder_key.id);
         }
-        let policy: serde_json::Value = serde_json::from_str(
-            item.holder()
-                .unwrap()
-                .data
-                .embedded_disclosure_policy
-                .as_ref()
-                .unwrap(),
-        )
-        .unwrap();
+        let policy: serde_json::Value =
+            serde_json::from_str(holder.data.embedded_disclosure_policy.as_ref().unwrap()).unwrap();
         let index = ["policy-0", "policy-1"]
             .into_iter()
             .position(|id| policy["id"] == id)

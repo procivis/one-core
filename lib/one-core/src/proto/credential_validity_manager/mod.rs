@@ -11,7 +11,7 @@ use crate::error::{
 };
 use crate::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
-    CredentialType, UpdateCredentialRequest,
+    CredentialType, CredentialView, HolderCredentialData, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -23,7 +23,10 @@ use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
-use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, DetailCredential, IdentifierDetails,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
@@ -341,7 +344,8 @@ impl CredentialValidityManagerImpl {
         credential_schema: &CredentialSchema,
         revocation_state: RevocationState,
     ) -> Result<(), Error> {
-        let format = credential.format().as_required_ref().await?;
+        let issuer = credential.issuer_credential()?;
+        let format = issuer.data.format.as_ref().await?;
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&format.format)?;
@@ -360,7 +364,7 @@ impl CredentialValidityManagerImpl {
             .await
             .error_while("marking credential status")?;
 
-        self.update_credential_state(credential.common().id, revocation_state)
+        self.update_credential_state(issuer.common.id, revocation_state)
             .await?;
 
         Ok(())
@@ -418,7 +422,9 @@ impl CredentialValidityManagerImpl {
             && result.status == CredentialStateEnum::Accepted
             && format_type == FormatType::Mdoc
         {
-            return self.update_mdoc(credential, force_refresh).await;
+            return self
+                .update_single_mdoc(&holder, &schema, force_refresh)
+                .await;
         }
         Ok(result)
     }
@@ -535,14 +541,15 @@ impl CredentialValidityManagerImpl {
             return Ok((result, None));
         }
 
-        if credential
-            .common()
+        let holder = credential.holder()?;
+        let common = holder.common;
+        if common
             .expires_at
             .is_some_and(|expires_at| expires_at < crate::clock::now_utc())
         {
             self.credential_repository
                 .update_credential(
-                    credential.common().id,
+                    common.id,
                     UpdateCredentialRequest {
                         state: Some(CredentialStateEnum::Expired),
                         ..Default::default()
@@ -553,7 +560,7 @@ impl CredentialValidityManagerImpl {
 
             return Ok((
                 CredentialValidityCheckResult {
-                    credential_id: credential.common().id,
+                    credential_id: common.id,
                     status: CredentialStateEnum::Expired,
                     success: true,
                     reason: None,
@@ -562,38 +569,9 @@ impl CredentialValidityManagerImpl {
             ));
         }
 
-        let Some(credential_blob_id) = credential.credential_blob_id() else {
-            return Err(Error::MappingError("no credential blob_id".to_string()));
-        };
-
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)?;
-
-        let blob = blob_storage
-            .get(&credential_blob_id)
-            .await
-            .error_while("getting credential blob")?
-            .ok_or(Error::MappingError("credential blob is None".to_string()))?;
-
-        let credential_str = String::from_utf8(blob.value)
-            .map_err(|e| Error::MappingError(e.to_string()))?
-            .into();
-
-        let format = credential
-            .format()
-            .as_required_ref()
-            .await
-            .error_while("getting format")?
-            .format
-            .to_owned();
-
-        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
-
-        let detail_credential = formatter
-            .extract_credentials_unverified(&credential_str, Some(credential_schema))
-            .await
-            .error_while("extracting credential")?;
+        let (formatter, detail_credential) = self
+            .extract_holder_credential(&holder, credential_schema)
+            .await?;
 
         let credential_status = if !detail_credential.status.is_empty() {
             detail_credential.status
@@ -601,7 +579,7 @@ impl CredentialValidityManagerImpl {
             // no credential status -> credential is irrevocable
             return Ok((
                 CredentialValidityCheckResult {
-                    credential_id: credential.common().id,
+                    credential_id: common.id,
                     status: CredentialStateEnum::Accepted,
                     success: true,
                     reason: None,
@@ -610,7 +588,7 @@ impl CredentialValidityManagerImpl {
             ));
         };
 
-        let current_state = credential.common().state;
+        let current_state = common.state;
         let revocation_method = match credential_schema.revocation_method_id(formatter.as_ref()) {
             Some(method_id) => self
                 .revocation_method_provider
@@ -618,7 +596,7 @@ impl CredentialValidityManagerImpl {
             None => {
                 return Ok((
                     CredentialValidityCheckResult {
-                        credential_id: credential.common().id,
+                        credential_id: common.id,
                         status: current_state,
                         success: false,
                         reason: Some("No revocation method specified for credential".to_owned()),
@@ -628,23 +606,17 @@ impl CredentialValidityManagerImpl {
             }
         };
 
-        let issuer_identifier = credential.issuer_identifier().as_required_ref().await?;
-
-        let credential_data_by_role = match credential {
-            Credential::HolderSingle { .. }
-            | Credential::HolderBatchParent { .. }
-            | Credential::HolderBatchItem { .. } => {
-                Some(CredentialDataByRole::Holder(Box::new(credential.clone())))
-            }
-            _ => None,
-        };
+        let issuer_identifier = holder.data.issuer.identifier.as_ref().await?;
+        let issuer = issuer_details(&issuer_identifier).await?;
+        let credential_data_by_role =
+            Some(CredentialDataByRole::Holder(Box::new(credential.clone())));
 
         let mut worst_revocation_state = RevocationState::Valid;
         for status in credential_status {
             match revocation_method
                 .check_credential_revocation_status(
                     &status,
-                    &issuer_details(&issuer_identifier).await?,
+                    &issuer,
                     credential_data_by_role.to_owned(),
                     force_refresh,
                 )
@@ -653,7 +625,7 @@ impl CredentialValidityManagerImpl {
                 Err(error) => {
                     return Ok((
                         CredentialValidityCheckResult {
-                            credential_id: credential.common().id,
+                            credential_id: common.id,
                             status: current_state,
                             success: false,
                             reason: Some(error.to_string()),
@@ -661,16 +633,14 @@ impl CredentialValidityManagerImpl {
                         None,
                     ));
                 }
-                Ok(state) => match state {
-                    RevocationState::Valid => {}
-                    RevocationState::Revoked => {
-                        worst_revocation_state = state;
-                        break;
-                    }
-                    RevocationState::Suspended { .. } => {
-                        worst_revocation_state = state;
-                    }
-                },
+                Ok(RevocationState::Valid) => {}
+                Ok(state @ RevocationState::Revoked) => {
+                    worst_revocation_state = state;
+                    break;
+                }
+                Ok(state @ RevocationState::Suspended { .. }) => {
+                    worst_revocation_state = state;
+                }
             };
         }
 
@@ -684,7 +654,7 @@ impl CredentialValidityManagerImpl {
         if current_state != detected_state {
             self.credential_repository
                 .update_credential(
-                    credential.common().id,
+                    common.id,
                     UpdateCredentialRequest {
                         state: Some(detected_state),
                         suspend_end_date: Clearable::ForceSet(suspend_end_date),
@@ -697,13 +667,49 @@ impl CredentialValidityManagerImpl {
 
         Ok((
             CredentialValidityCheckResult {
-                credential_id: credential.common().id,
+                credential_id: common.id,
                 status: detected_state,
                 success: true,
                 reason: None,
             },
             suspend_end_date,
         ))
+    }
+
+    async fn extract_holder_credential(
+        &self,
+        holder: &CredentialView<'_, HolderCredentialData>,
+        schema: &CredentialSchema,
+    ) -> Result<(Arc<dyn CredentialFormatter>, DetailCredential), Error> {
+        let credential_blob_id = holder
+            .data
+            .credential_blob_id
+            .ok_or_else(|| Error::MappingError("no credential blob_id".to_string()))?;
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+        let blob = blob_storage
+            .get(&credential_blob_id)
+            .await
+            .error_while("getting credential blob")?
+            .ok_or_else(|| Error::MappingError("credential blob is None".to_string()))?;
+        let credential_str = String::from_utf8(blob.value)
+            .map_err(|e| Error::MappingError(e.to_string()))?
+            .into();
+        let format = holder
+            .data
+            .format
+            .as_ref()
+            .await
+            .error_while("getting format")?;
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&format.format)?;
+        let detail = formatter
+            .extract_credentials_unverified(&credential_str, Some(schema))
+            .await
+            .error_while("extracting credential")?;
+        Ok((formatter, detail))
     }
 
     async fn update_batch_parent_state(

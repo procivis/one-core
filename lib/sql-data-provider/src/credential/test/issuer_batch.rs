@@ -108,17 +108,12 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
         .unwrap();
     let loaded_item = repository.get_credential(&item.common().id).await.unwrap();
     for actual in listed.values.iter().chain([&loaded_parent, &loaded_item]) {
+        let issuer = actual.issuer().unwrap();
         assert_eq!(
-            actual
-                .issuer_identifier()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .id,
+            issuer.data.identifier.as_ref().await.unwrap().id,
             setup.identifier.id
         );
-        assert!(actual.key().unwrap().as_ref().await.is_ok());
+        assert!(issuer.data.signing_key.as_ref().await.is_ok());
         match actual {
             Credential::IssuerBatchParent {
                 webhook_url,

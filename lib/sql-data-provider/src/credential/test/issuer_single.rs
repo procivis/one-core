@@ -90,6 +90,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     for actual in listed.values.iter().chain([&loaded]) {
         let_assert!(
             Credential::IssuerSingle {
+                issuer,
                 credential,
                 webhook_url,
                 subscriber_information,
@@ -106,7 +107,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
                 .id,
             setup.identifier.id
         );
-        assert_eq!(actual.key().unwrap().as_ref().await.unwrap().id, key_id);
+        assert_eq!(issuer.signing_key.as_ref().await.unwrap().id, key_id);
         assert_eq!(
             actual.format().unwrap().as_ref().await.unwrap().id,
             format_id

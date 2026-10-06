@@ -68,6 +68,7 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
     assert_eq!(row.r#type, credential::CredentialType::Single);
     assert_eq!(row.issuer_identifier_id, Some(setup.identifier.id));
     assert_eq!(row.format, Some(format.id));
+    assert!(row.key_id.is_none());
     assert!(row.credential_blob_id.is_none());
 
     let loaded = repository.get_credential(&id).await.unwrap();

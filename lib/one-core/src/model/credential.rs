@@ -473,18 +473,6 @@ impl Credential {
         }
     }
 
-    pub fn key(&self) -> Option<&Related<Key>> {
-        match self {
-            Self::IssuerSingle { issuer, .. }
-            | Self::IssuerBatchParent { issuer, .. }
-            | Self::IssuerBatchItem { issuer, .. } => Some(&issuer.signing_key),
-            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
-                credential.binding.as_ref().map(|binding| &binding.key)
-            }
-            Self::HolderBatchParent { .. } | Self::Verifier { .. } => None,
-        }
-    }
-
     pub fn parent(&self) -> Option<&Related<Credential>> {
         match self {
             Self::IssuerBatchItem { parent, .. } | Self::HolderBatchItem { parent, .. } => {

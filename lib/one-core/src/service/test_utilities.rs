@@ -846,6 +846,8 @@ pub struct CredentialBuilder {
 impl From<Credential> for CredentialBuilder {
     fn from(value: Credential) -> Self {
         let issuer_credential = value.issuer_credential().ok();
+        let holder = value.holder().ok().map(|view| view.data);
+        let binding = holder.and_then(|holder| holder.binding.as_ref());
         Self {
             common: value.common().clone(),
             claims: value.claims().cloned().unwrap_or_default(),
@@ -859,7 +861,11 @@ impl From<Credential> for CredentialBuilder {
             issuer_identifier: value.issuer_identifier().cloned(),
             issuer_certificate: value.issuer_certificate().clone(),
             holder_identifier: value.holder_identifier().cloned(),
-            key: value.key().cloned(),
+            key: value
+                .issuer()
+                .ok()
+                .map(|issuer| issuer.data.signing_key.clone())
+                .or_else(|| binding.map(|binding| binding.key.clone())),
             credential_blob_id: value.credential_blob_id(),
             wallet_key_attestation_blob_id: issuer_credential
                 .as_ref()
@@ -871,10 +877,8 @@ impl From<Credential> for CredentialBuilder {
                 | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),
                 _ => None,
             },
-            embedded_disclosure_policy: value
-                .holder()
-                .ok()
-                .and_then(|holder| holder.data.embedded_disclosure_policy.clone()),
+            embedded_disclosure_policy: holder
+                .and_then(|holder| holder.embedded_disclosure_policy.clone()),
             subscriber_information: match &value {
                 Credential::IssuerSingle {
                     subscriber_information,

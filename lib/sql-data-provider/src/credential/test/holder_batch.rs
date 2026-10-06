@@ -39,7 +39,7 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
             .clone()
             .into(),
     };
-    let key = template.key().unwrap().clone();
+    let key = template.issuer().unwrap().data.signing_key.clone();
     let format = template.format().unwrap().clone();
     let mut common = parent.common().clone();
     common.id = Uuid::new_v4().into();
@@ -135,38 +135,29 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
         .chain([&loaded_item])
     {
         let_assert!(Credential::HolderBatchItem { consumed_at, .. } = actual);
+        let holder = actual.holder().unwrap();
+        let binding = holder.data.binding.as_ref();
         assert_eq!(
             actual.parent().unwrap().as_ref().await.unwrap().common().id,
             parent_id
         );
-        assert_eq!(actual.claims().unwrap().as_ref().await.unwrap()[0], claim);
+        assert_eq!(holder.data.claims.as_ref().await.unwrap()[0], claim);
         assert_eq!(
-            actual
-                .issuer_identifier()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .id,
+            holder.data.issuer.identifier.as_ref().await.unwrap().id,
             setup.identifier.id
         );
+        assert_eq!(holder.data.format.as_ref().await.unwrap().id, format.id());
         assert_eq!(
-            actual.format().unwrap().as_ref().await.unwrap().id,
-            format.id()
+            binding.map(|binding| binding.key.id()),
+            bound.then_some(key.id())
         );
-        assert_eq!(actual.key().map(|key| key.id()), bound.then_some(key.id()));
         assert_eq!(
-            actual.holder_identifier().map(|identifier| identifier.id()),
+            binding.map(|binding| binding.identifier.id()),
             bound.then_some(setup.identifier.id)
         );
         assert_eq!(actual.credential_blob_id(), item.credential_blob_id());
         assert_eq!(
-            actual
-                .holder()
-                .unwrap()
-                .data
-                .embedded_disclosure_policy
-                .as_deref(),
+            holder.data.embedded_disclosure_policy.as_deref(),
             Some("batch policy")
         );
         assert_eq!(*consumed_at, Some(get_dummy_date()));

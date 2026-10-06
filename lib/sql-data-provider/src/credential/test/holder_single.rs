@@ -20,7 +20,7 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
     let mut common = template.common().clone();
     common.id = Uuid::new_v4().into();
     common.state = CredentialStateEnum::Accepted;
-    let key = template.key().unwrap().clone();
+    let key = template.issuer().unwrap().data.signing_key.clone();
     let format = template.format().unwrap().clone();
     let claim = Claim {
         id: Uuid::new_v4().into(),
@@ -91,42 +91,33 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
     assert_eq!(listed.values.len(), 1);
     for actual in listed.values.iter().chain([&loaded]) {
         assert!(matches!(actual, Credential::HolderSingle { .. }));
+        let holder = actual.holder().unwrap();
+        let binding = holder.data.binding.as_ref();
         assert_eq!(
-            actual
-                .issuer_identifier()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .id,
+            holder.data.issuer.identifier.as_ref().await.unwrap().id,
             setup.identifier.id
         );
+        assert_eq!(holder.data.format.as_ref().await.unwrap().id, format.id());
+        assert_eq!(holder.data.claims.as_ref().await.unwrap()[0], claim);
         assert_eq!(
-            actual.format().unwrap().as_ref().await.unwrap().id,
-            format.id()
+            binding.map(|binding| binding.key.id()),
+            bound.then_some(key.id())
         );
-        assert_eq!(actual.claims().unwrap().as_ref().await.unwrap()[0], claim);
-        assert_eq!(actual.key().map(|key| key.id()), bound.then_some(key.id()));
         assert_eq!(
-            actual.holder_identifier().map(|identifier| identifier.id()),
+            binding.map(|binding| binding.identifier.id()),
             bound.then_some(setup.identifier.id)
         );
         if bound {
-            assert_eq!(actual.key().unwrap().as_ref().await.unwrap().id, key.id());
+            let binding = binding.unwrap();
+            assert_eq!(binding.key.as_ref().await.unwrap().id, key.id());
             assert_eq!(
-                actual
-                    .holder_identifier()
-                    .unwrap()
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id,
+                binding.identifier.as_ref().await.unwrap().id,
                 setup.identifier.id
             );
         }
         assert_eq!(actual.credential_blob_id(), request.credential_blob_id());
         assert_eq!(
-            actual.holder().unwrap().data.embedded_disclosure_policy,
+            holder.data.embedded_disclosure_policy,
             request.holder().unwrap().data.embedded_disclosure_policy
         );
     }
