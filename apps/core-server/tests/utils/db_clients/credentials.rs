@@ -362,8 +362,14 @@ impl CredentialsDB {
                 updated_credential.common_mut().id = item_id;
                 if let Ok(holder) = updated_credential.holder_mut() {
                     holder.data.claims = claims.into();
+                    holder.data.credential_blob_id = credential_blob_id;
+                } else {
+                    updated_credential
+                        .issuer_credential_mut()
+                        .unwrap()
+                        .data
+                        .credential_blob_id = credential_blob_id;
                 }
-                *updated_credential.credential_blob_id_mut().unwrap() = credential_blob_id;
                 updated_credential
             };
             self.repository

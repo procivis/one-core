@@ -55,8 +55,8 @@ use crate::mapper::exchange::{
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::LockType;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, IssuerCredentialData,
-    UpdateCredentialRequest,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialStateEnum, CredentialType,
+    IssuerCredentialData, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -722,8 +722,10 @@ impl OID4VCIFinal1_0Service {
             .await?;
 
             if schema.wallet_attestation.require_instance_attestation {
-                let Some(wallet_instance_attestation_blob_id) =
-                    credential.wallet_instance_attestation_blob_id()
+                let Some(wallet_instance_attestation_blob_id) = credential
+                    .issuer_credential()
+                    .ok()
+                    .and_then(|issuer| issuer.data.wallet_instance_attestation_blob_id)
                 else {
                     tracing::debug!(
                         "app attestation required but no wallet app attestation blob ID found"
@@ -907,19 +909,15 @@ impl OID4VCIFinal1_0Service {
             expires_at
         };
 
-        let credentials = match &credential {
-            Credential::IssuerSingle { .. }
-            | Credential::HolderSingle { .. }
-            | Credential::Verifier { .. } => {
-                let holder_identifier = holder_identifiers
+        let credentials = match credential {
+            Credential::IssuerSingle { common, .. } => {
+                let holder = holder_identifiers
                     .pop()
                     .ok_or(OpenID4VCIError::InvalidOrMissingProof)?;
-
-                // directly issue and modify this credential
                 vec![
                     self.issue_single_credential(
-                        holder_identifier,
-                        credential.common().id,
+                        holder,
+                        common.id,
                         format.id,
                         issuance_protocol.as_ref(),
                         now,
@@ -927,51 +925,18 @@ impl OID4VCIFinal1_0Service {
                     .await?,
                 ]
             }
-            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => {
-                let batch_item_template = self
-                    .prepare_batch_item(credential.common().id, batch_item_expires_at, &format)
-                    .await?;
-                let mut credentials = vec![];
-                for holder_identifier in holder_identifiers {
-                    let batch_item_id = self
-                        .credential_repository
-                        .create_credential({
-                            let mut updated_credential = batch_item_template.clone();
-                            updated_credential.common_mut().id = Uuid::new_v4().into();
-                            updated_credential
-                        })
-                        .await
-                        .error_while("creating batch item copy")?;
-
-                    credentials.push(
-                        self.issue_single_credential(
-                            holder_identifier,
-                            batch_item_id,
-                            format.id,
-                            issuance_protocol.as_ref(),
-                            now,
-                        )
-                        .await?,
-                    );
-                }
-
-                if credential.common().state == CredentialStateEnum::Offered {
-                    self.credential_repository
-                        .update_credential(
-                            credential.common().id,
-                            UpdateCredentialRequest {
-                                state: Some(CredentialStateEnum::Accepted),
-                                issuance_date: Some(now),
-                                ..Default::default()
-                            },
-                        )
-                        .await
-                        .error_while("updating parent credential")?;
-                }
-
-                credentials
+            Credential::IssuerBatchParent { common, .. } => {
+                self.issue_batch_offer(
+                    common,
+                    holder_identifiers,
+                    &format,
+                    batch_item_expires_at,
+                    issuance_protocol.as_ref(),
+                    now,
+                )
+                .await?
             }
-            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. } => {
+            _ => {
                 return Err(OID4VCIFinal1_0ServiceError::MappingError(
                     "Invalid credential type".to_string(),
                 ));
@@ -1021,6 +986,55 @@ impl OID4VCIFinal1_0Service {
                 notification_id: Some(notification_id),
             },
         })
+    }
+
+    async fn issue_batch_offer(
+        &self,
+        parent: &CredentialCommon,
+        holder_identifiers: Vec<PreparedIdentifier>,
+        format: &CredentialSchemaFormat,
+        expires_at: Option<OffsetDateTime>,
+        issuance_protocol: &dyn IssuanceProtocol,
+        now: OffsetDateTime,
+    ) -> Result<Vec<CredentialResponseEntry>, OID4VCIFinal1_0ServiceError> {
+        let template = self
+            .prepare_batch_item(parent.id, expires_at, format)
+            .await?;
+        let mut credentials = Vec::with_capacity(holder_identifiers.len());
+        for holder_identifier in holder_identifiers {
+            let mut item = template.clone();
+            item.common_mut().id = Uuid::new_v4().into();
+            let item_id = self
+                .credential_repository
+                .create_credential(item)
+                .await
+                .error_while("creating batch item copy")?;
+            credentials.push(
+                self.issue_single_credential(
+                    holder_identifier,
+                    item_id,
+                    format.id,
+                    issuance_protocol,
+                    now,
+                )
+                .await?,
+            );
+        }
+
+        if parent.state == CredentialStateEnum::Offered {
+            self.credential_repository
+                .update_credential(
+                    parent.id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Accepted),
+                        issuance_date: Some(now),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating parent credential")?;
+        }
+        Ok(credentials)
     }
 
     async fn issue_single_credential(

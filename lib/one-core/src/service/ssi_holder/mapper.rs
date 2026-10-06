@@ -2,32 +2,17 @@ use shared_types::KeyId;
 
 use super::error::HolderServiceError;
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::Credential;
+use crate::model::credential::HolderBinding;
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::key::Key;
 use crate::util::key_selection::KeyFilter;
 
-pub(super) async fn holder_did_key_jwk_from_credential(
-    credential: &Credential,
+pub(super) async fn holder_did_key_jwk_from_binding(
+    binding: &HolderBinding,
 ) -> Result<(Option<Did>, Key, Option<String>), HolderServiceError> {
-    let key = credential
-        .key()
-        .ok_or(HolderServiceError::MappingError(
-            "missing holder key".to_string(),
-        ))?
-        .as_ref()
-        .await?
-        .to_owned();
-
-    let holder_identifier = credential
-        .holder_identifier()
-        .as_ref()
-        .ok_or(HolderServiceError::MappingError(
-            "missing holder identifier".to_string(),
-        ))?
-        .as_ref()
-        .await?;
+    let key = binding.key.as_ref().await?.to_owned();
+    let holder_identifier = binding.identifier.as_ref().await?;
 
     let (holder_did, holder_jwk_key_id) =
         if let IdentifierData::Did(holder_did) = &holder_identifier.data {

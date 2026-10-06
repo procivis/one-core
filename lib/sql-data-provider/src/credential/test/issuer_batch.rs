@@ -71,7 +71,10 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
             .clone()
             .into(),
     };
-    *parent.claims_mut().unwrap() = vec![claim.clone()].into();
+    let Credential::IssuerBatchParent { claims, .. } = &mut parent else {
+        panic!("expected an issuer batch parent")
+    };
+    *claims = vec![claim.clone()].into();
     data.suspend_end_date = Some(get_dummy_date() + Duration::days(2));
     data.holder_identifier = Some(setup.identifier.clone().into());
     data.wallet_key_attestation_blob_id = data.credential_blob_id;
@@ -133,17 +136,17 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                 assert!(actual.holder_identifier().is_none());
                 assert!(actual.credential_blob_id().is_none());
             }
-            Credential::IssuerBatchItem { .. } => {
+            Credential::IssuerBatchItem { credential, .. } => {
                 assert_eq!(actual.parent().unwrap().id(), parent.common().id);
                 assert_eq!(actual.format().unwrap().id(), data.format.id());
                 assert_eq!(actual.suspend_end_date(), data.suspend_end_date);
                 assert_eq!(actual.credential_blob_id(), data.credential_blob_id);
                 assert_eq!(
-                    actual.wallet_key_attestation_blob_id(),
+                    credential.wallet_key_attestation_blob_id,
                     data.wallet_key_attestation_blob_id
                 );
                 assert_eq!(
-                    actual.wallet_instance_attestation_blob_id(),
+                    credential.wallet_instance_attestation_blob_id,
                     data.wallet_instance_attestation_blob_id
                 );
                 assert_eq!(

@@ -110,7 +110,11 @@ async fn test_check_revocation_non_revocable() {
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
-        *updated_credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+        updated_credential
+            .holder_mut()
+            .unwrap()
+            .data
+            .credential_blob_id = Some(credential_blob_id);
         updated_credential
     };
     credential_repository.expect_get_credential().returning({
@@ -239,7 +243,11 @@ async fn test_check_revocation_becoming_revoked() {
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
-        *updated_credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+        updated_credential
+            .holder_mut()
+            .unwrap()
+            .data
+            .credential_blob_id = Some(credential_blob_id);
         updated_credential
     };
     credential_repository.expect_get_credential().returning({
@@ -377,7 +385,7 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -391,7 +399,7 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -529,7 +537,7 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             // the item is itself individually expired
             credential.common_mut().expires_at = Some(crate::clock::now_utc() - Duration::days(1));
             move |_| Ok(credential.clone())
@@ -545,7 +553,7 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -719,7 +727,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -733,7 +741,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -902,7 +910,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -916,7 +924,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -1091,7 +1099,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| Ok(credential.clone())
         });
     credential_repository
@@ -1105,7 +1113,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
                 ..credential.into()
             }
             .build();
-            *credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+            credential.holder_mut().unwrap().data.credential_blob_id = Some(credential_blob_id);
             move |_| {
                 Ok(GetCredentialList {
                     values: vec![credential],
@@ -1223,7 +1231,11 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
         ..item_credential.into()
     }
     .build();
-    *item_credential.credential_blob_id_mut().unwrap() = Some(credential_blob_id);
+    item_credential
+        .holder_mut()
+        .unwrap()
+        .data
+        .credential_blob_id = Some(credential_blob_id);
     item_credential = CredentialBuilder {
         parent: Some(parent_credential.into()),
         ..item_credential.into()

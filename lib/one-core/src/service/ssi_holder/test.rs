@@ -2173,7 +2173,7 @@ async fn accept_groups_batches_by_non_metadata_claims(
     {
         let mut credential = dummy_credential(None);
         credential.common_mut().schema = schema.clone();
-        *credential.claims_mut().unwrap() = claims
+        credential.holder_mut().unwrap().data.claims = claims
             .iter()
             .map(|(path, value, metadata)| Claim {
                 id: Uuid::new_v4().into(),
@@ -2362,7 +2362,11 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
     let second = {
         let mut updated_credential = first.clone();
         updated_credential.common_mut().id = Uuid::new_v4().into();
-        *updated_credential.credential_blob_id_mut().unwrap() = Some(Uuid::new_v4().into());
+        updated_credential
+            .holder_mut()
+            .unwrap()
+            .data
+            .credential_blob_id = Some(Uuid::new_v4().into());
         updated_credential
     };
     let expected_ids = vec![first.common().id, second.common().id];

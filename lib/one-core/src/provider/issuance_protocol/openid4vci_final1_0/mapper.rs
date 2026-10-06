@@ -22,24 +22,12 @@ use super::model::{
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{IdentifierType, Params};
-use crate::model::credential::Credential;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, KeyStorageSecurity, LayoutProperties,
     LogoProperties, WalletAttestation,
 };
-use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
+use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-
-pub(crate) fn get_credential_offer_url(
-    protocol_base_url: String,
-    credential: &Credential,
-) -> Result<String, IssuanceProtocolError> {
-    Ok(format!(
-        "{protocol_base_url}/{}/offer/{}",
-        credential.common().schema.id(),
-        credential.common().id
-    ))
-}
 
 impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
     type Error = OpenID4VCIError;

@@ -2809,7 +2809,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         .await
         .unwrap()
         .into();
-    *credential.claims_mut().unwrap().as_mut().await.unwrap() = vec![Claim {
+    credential.holder_mut().unwrap().data.claims = vec![Claim {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
@@ -2817,7 +2817,8 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         path: location_x_claim_schema.key.clone(),
         selectively_disclosable: false,
         schema: location_x_claim_schema.clone().into(),
-    }];
+    }]
+    .into();
 
     {
         let clone = credential.clone();

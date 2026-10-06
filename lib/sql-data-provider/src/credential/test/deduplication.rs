@@ -78,10 +78,10 @@ impl BatchSetup {
             updated_credential = CredentialBuilder {
                 r#type: CredentialType::BatchItem,
                 parent: Some(self.parent.clone().into()),
+                claims: claims.into(),
                 ..updated_credential.into()
             }
             .build();
-            *updated_credential.claims_mut().unwrap() = claims.into();
             updated_credential
         }
     }
@@ -704,8 +704,11 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
     let issuer = {
         let mut issuer = issuer_template;
         issuer.common_mut().id = Uuid::new_v4().into();
-        *issuer.claims_mut().unwrap() = vec![setup.claim.clone()].into();
-        issuer
+        CredentialBuilder {
+            claims: vec![setup.claim.clone()].into(),
+            ..issuer.into()
+        }
+        .build()
     };
     let issuer_id = issuer.common().id;
     requests.push(issuer);

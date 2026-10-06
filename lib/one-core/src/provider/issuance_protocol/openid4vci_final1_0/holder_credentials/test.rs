@@ -74,7 +74,7 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
             ..updated_credential.into()
         }
         .build();
-        *updated_credential.claims_mut().unwrap() = vec![].into();
+        updated_credential.holder_mut().unwrap().data.claims = vec![].into();
         updated_credential
     };
     let error = ensure_required_claims(

@@ -94,6 +94,7 @@ impl EudiEcosystem {
             }
 
             for credential in &credentials.values {
+                let issuer = credential.issuer_credential()?;
                 result.total_checks += 1;
 
                 // a batch shares one WIA and is revoked as a whole, through its parent
@@ -109,7 +110,7 @@ impl EudiEcosystem {
                             .attestation_revoked(
                                 main_credential,
                                 blob_storage.as_ref(),
-                                credential.wallet_instance_attestation_blob_id(),
+                                issuer.data.wallet_instance_attestation_blob_id,
                                 AttestationType::WalletInstanceAttestation,
                             )
                             .await?;
@@ -137,7 +138,7 @@ impl EudiEcosystem {
                     .attestation_revoked(
                         credential,
                         blob_storage.as_ref(),
-                        credential.wallet_key_attestation_blob_id(),
+                        issuer.data.wallet_key_attestation_blob_id,
                         AttestationType::KeyAttestation,
                     )
                     .await?

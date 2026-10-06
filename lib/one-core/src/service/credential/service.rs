@@ -410,8 +410,11 @@ impl CredentialService {
         &self,
         credential: &Credential,
     ) -> Result<CredentialAttestationBlobs, CredentialServiceError> {
-        if credential.wallet_instance_attestation_blob_id().is_none()
-            && credential.wallet_key_attestation_blob_id().is_none()
+        let Ok(issuer) = credential.issuer_credential() else {
+            return Ok(CredentialAttestationBlobs::default());
+        };
+        if issuer.data.wallet_instance_attestation_blob_id.is_none()
+            && issuer.data.wallet_key_attestation_blob_id.is_none()
         {
             return Ok(CredentialAttestationBlobs::default());
         }
@@ -421,7 +424,7 @@ impl CredentialService {
             .get_blob_storage(BlobStorageType::Db)?;
 
         let wallet_instance_attestation_blob =
-            match &credential.wallet_instance_attestation_blob_id() {
+            match &issuer.data.wallet_instance_attestation_blob_id {
                 Some(blob_id) => Some(
                     db_blob_storage
                         .get(blob_id)
@@ -433,7 +436,7 @@ impl CredentialService {
                 ),
                 None => None,
             };
-        let wallet_key_attestation_blob = match &credential.wallet_key_attestation_blob_id() {
+        let wallet_key_attestation_blob = match &issuer.data.wallet_key_attestation_blob_id {
             Some(blob_id) => Some(
                 db_blob_storage
                     .get(blob_id)

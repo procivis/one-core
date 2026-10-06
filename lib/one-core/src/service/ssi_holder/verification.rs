@@ -12,7 +12,7 @@ use super::dto::{
     PresentationSubmitV2RequestDTO,
 };
 use super::error::HolderServiceError;
-use super::mapper::holder_did_key_jwk_from_credential;
+use super::mapper::holder_did_key_jwk_from_binding;
 use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
 use crate::config::validator::transport::{
@@ -25,7 +25,7 @@ use crate::model::credential::{Clearable, Credential, UpdateCredentialRequest};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
-use crate::model::relation::{OptionalRelatedRefExt, Related};
+use crate::model::relation::Related;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
@@ -467,7 +467,7 @@ impl SSIHolderService {
             .get_blob_storage(BlobStorageType::Db)?;
         // The definition retains the concrete item matching this query's format and
         // displayed claims. Repeated queries can reuse it until submission consumes it.
-        let mut presented_credential = self
+        let presented_credential = self
             .credential_repository
             .get_credential(&credential_id)
             .await
@@ -481,10 +481,11 @@ impl SSIHolderService {
         }
         let consumed_item = matches!(presented_credential, Credential::HolderBatchItem { .. })
             .then_some(presented_credential.common().id);
-        let blob_id = presented_credential.credential_blob_id().ok_or_else(|| {
+        let holder = presented_credential.holder()?;
+        let blob_id = holder.data.credential_blob_id.ok_or_else(|| {
             HolderServiceError::MappingError(format!(
                 "Missing blob id on credential `{}`",
-                presented_credential.common().id
+                holder.common.id
             ))
         })?;
         let credential_blob = blob_storage
@@ -499,16 +500,7 @@ impl SSIHolderService {
             .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
             .into();
 
-        // Presented credential is always a single credential or a batch item.
-        *presented_credential.claims_mut()? =
-            crate::mapper::credential::stored_credential_claims(&presented_credential)
-                .await?
-                .into();
-        let credential_format = presented_credential
-            .format()
-            .as_required_ref()
-            .await?
-            .to_owned();
+        let credential_format = holder.data.format.as_ref().await?.to_owned();
         let format = detect_format_with_crypto_suite(
             &credential_format.format,
             &credential_content,
@@ -519,19 +511,22 @@ impl SSIHolderService {
 
         let credential_presentation = CredentialPresentation {
             token: credential_content,
-            disclosed_keys: presented_paths_to_disclosed_keys(
-                &presented_paths,
-                &presented_credential,
-            )
-            .await
-            .error_while("mapping presented paths to disclosed keys")?,
+            disclosed_keys: presented_paths_to_disclosed_keys(&presented_paths, &holder)
+                .await
+                .error_while("mapping presented paths to disclosed keys")?,
         };
         let presentation = self
             .prepare_credential_presentation(credential_presentation, &*formatter)
             .await?;
 
-        let (holder_did, key, jwk_key_id) =
-            holder_did_key_jwk_from_credential(&presented_credential).await?;
+        let binding = holder
+            .data
+            .binding
+            .as_ref()
+            .ok_or(HolderServiceError::MappingError(
+                "missing holder binding".to_string(),
+            ))?;
+        let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_binding(binding).await?;
         let presentation = FormattedCredentialPresentation {
             presentation,
             credential_format,
@@ -542,8 +537,9 @@ impl SSIHolderService {
             transaction_data_ids,
         };
 
-        let claims = presented_credential
-            .claims()?
+        let claims = holder
+            .data
+            .claims
             .as_ref()
             .await?
             .iter()

@@ -491,6 +491,7 @@ pub(super) fn request_to_active_model(
     request: &Credential,
     organisation_id: OrganisationId,
 ) -> credential::ActiveModel {
+    let issuer_credential = request.issuer_credential().ok();
     credential::ActiveModel {
         id: Set(request.common().id),
         credential_schema_id: Set(request.common().schema.id()),
@@ -529,8 +530,12 @@ pub(super) fn request_to_active_model(
         profile: Set(request.common().profile.clone()),
         parent_id: Set(request.parent().map(|m| m.id())),
         credential_blob_id: Set(request.credential_blob_id()),
-        wallet_key_attestation_blob_id: Set(request.wallet_key_attestation_blob_id()),
-        wallet_instance_attestation_blob_id: Set(request.wallet_instance_attestation_blob_id()),
+        wallet_key_attestation_blob_id: Set(issuer_credential
+            .as_ref()
+            .and_then(|issuer| issuer.data.wallet_key_attestation_blob_id)),
+        wallet_instance_attestation_blob_id: Set(
+            issuer_credential.and_then(|issuer| issuer.data.wallet_instance_attestation_blob_id)
+        ),
         webhook_url: Set(match request {
             Credential::IssuerSingle { webhook_url, .. }
             | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),

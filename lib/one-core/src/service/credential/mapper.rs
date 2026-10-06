@@ -23,10 +23,12 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialCommon, CredentialFilterValue, CredentialRole, CredentialStateEnum,
-    CredentialType, ExactCredentialFilterColumn, IssuerCredentialData, IssuerData,
+    CredentialType, CredentialView, ExactCredentialFilterColumn, IssuerCredentialData, IssuerData,
+    VerifierCredentialData,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -1128,85 +1130,106 @@ pub(crate) async fn get_credential_trust_information(
     ecosystem_provider: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {
+    let history_id = credential.ecosystem_history_id();
     let ecosystem_errors =
-        recorded_ecosystem_outcomes(credential.ecosystem_history_id().into(), history_repository)
-            .await?;
+        recorded_ecosystem_outcomes(history_id.into(), history_repository).await?;
 
     match credential {
-        // The issuer records trust info about  the Wallet Provider
-        Credential::IssuerSingle { .. }
-        | Credential::IssuerBatchParent { .. }
-        | Credential::IssuerBatchItem { .. } => {
-            if ecosystem_errors.is_empty() {
-                return Ok(None);
-            }
-            Ok(Some(TrustInformation {
-                received_at: credential
-                    .common()
-                    .issuance_date
-                    .unwrap_or(credential.common().last_modified),
-                name: wallet_name,
-                result: resolution(&credential.common().ecosystem),
-                ecosystem_errors,
-            }))
-        }
-        // The holder records trust info related to the issuer
-        Credential::HolderSingle { .. }
-        | Credential::HolderBatchParent { .. }
-        | Credential::HolderBatchItem { .. } => {
-            let Some(ecosystem_id) = &credential.common().ecosystem else {
-                return Ok(Some(TrustInformation {
-                    received_at: credential
-                        .common()
-                        .issuance_date
-                        .unwrap_or(credential.common().last_modified),
-                    name: None,
-                    result: TrustResolutionResult::Untrusted,
-                    ecosystem_errors,
-                }));
-            };
-            let (received_at, name) = match issuer_trust_detail(
-                credential,
-                ecosystem_id,
-                ecosystem_provider,
-            )
-            .await
-            {
-                Ok(details) => {
-                    let TrustDetailInfo::Eudi(info) = details.info;
-                    (details.received_at, Some(info.name))
-                }
-                Err(err) => {
-                    tracing::warn!(%err, "failed to get the issuer trust detail of credential {}", credential.common().id);
-                    (
-                        credential
-                            .common()
-                            .issuance_date
-                            .unwrap_or(credential.common().last_modified),
-                        None,
-                    )
-                }
-            };
-            Ok(Some(TrustInformation {
-                received_at,
-                name,
-                result: TrustResolutionResult::Trusted,
-                ecosystem_errors,
-            }))
-        }
-        // The verifier records trust info about the issuer of received credentials
+        Credential::IssuerSingle { common, .. }
+        | Credential::IssuerBatchParent { common, .. }
+        | Credential::IssuerBatchItem { common, .. } => Ok(issuer_trust_information(
+            common,
+            wallet_name,
+            ecosystem_errors,
+        )),
+        Credential::HolderSingle { common, .. }
+        | Credential::HolderBatchParent { common, .. }
+        | Credential::HolderBatchItem { common, .. } => Ok(Some(
+            holder_trust_information(common, history_id, ecosystem_errors, ecosystem_provider)
+                .await,
+        )),
         Credential::Verifier { .. } => {
-            if credential.common().ecosystem.is_none() && ecosystem_errors.is_empty() {
-                return Ok(None);
-            }
-            Ok(Some(TrustInformation {
-                received_at: credential.common().created_date,
-                name: issuer_name(credential).await?,
-                result: resolution(&credential.common().ecosystem),
-                ecosystem_errors,
-            }))
+            verifier_trust_information(credential.verifier()?, ecosystem_errors).await
         }
     }
+}
+
+/// The issuer records trust information about the wallet provider.
+fn issuer_trust_information(
+    common: &CredentialCommon,
+    wallet_name: Option<String>,
+    ecosystem_errors: EcosystemOutcomes,
+) -> Option<TrustInformation> {
+    if ecosystem_errors.is_empty() {
+        return None;
+    }
+    Some(TrustInformation {
+        received_at: common.issuance_date.unwrap_or(common.last_modified),
+        name: wallet_name,
+        result: resolution(&common.ecosystem),
+        ecosystem_errors,
+    })
+}
+
+/// The holder records trust information about the issuer, shared by its batch.
+async fn holder_trust_information(
+    common: &CredentialCommon,
+    history_id: CredentialId,
+    ecosystem_errors: EcosystemOutcomes,
+    ecosystem_provider: &dyn EcosystemDirectory,
+) -> TrustInformation {
+    let fallback_date = common.issuance_date.unwrap_or(common.last_modified);
+    let Some(ecosystem_id) = &common.ecosystem else {
+        return TrustInformation {
+            received_at: fallback_date,
+            name: None,
+            result: TrustResolutionResult::Untrusted,
+            ecosystem_errors,
+        };
+    };
+    let (received_at, name) = match issuer_trust_detail(
+        history_id,
+        ecosystem_id,
+        ecosystem_provider,
+    )
+    .await
+    {
+        Ok(details) => {
+            let TrustDetailInfo::Eudi(info) = details.info;
+            (details.received_at, Some(info.name))
+        }
+        Err(err) => {
+            tracing::warn!(%err, "failed to get the issuer trust detail of credential {}", common.id);
+            (fallback_date, None)
+        }
+    };
+    TrustInformation {
+        received_at,
+        name,
+        result: TrustResolutionResult::Trusted,
+        ecosystem_errors,
+    }
+}
+
+/// The verifier records trust information about the issuer of a received credential.
+async fn verifier_trust_information(
+    credential: CredentialView<'_, VerifierCredentialData>,
+    ecosystem_errors: EcosystemOutcomes,
+) -> Result<Option<TrustInformation>, CredentialServiceError> {
+    let CredentialView { common, data } = credential;
+    if common.ecosystem.is_none() && ecosystem_errors.is_empty() {
+        return Ok(None);
+    }
+    let name = match &data.issuer.certificate {
+        Some(certificate) => Some(certificate.as_ref().await?.name.to_owned()),
+        None => None,
+    };
+    Ok(Some(TrustInformation {
+        received_at: common.created_date,
+        name,
+        result: resolution(&common.ecosystem),
+        ecosystem_errors,
+    }))
 }
 
 /// An ecosystem accepted the counterparty, or none did.
@@ -1218,22 +1241,15 @@ fn resolution(ecosystem: &Option<EcosystemId>) -> TrustResolutionResult {
 }
 
 async fn issuer_trust_detail(
-    credential: &Credential,
+    history_id: CredentialId,
     ecosystem_id: &EcosystemId,
     ecosystem_provider: &dyn EcosystemDirectory,
 ) -> Result<TrustDetail, CredentialServiceError> {
     Ok(ecosystem_provider
         .get(ecosystem_id)?
-        .issuer_trust_details(&credential.ecosystem_history_id())
+        .issuer_trust_details(&history_id)
         .await
         .error_while("getting trust detail")?)
-}
-
-async fn issuer_name(credential: &Credential) -> Result<Option<String>, CredentialServiceError> {
-    Ok(match &credential.issuer_certificate() {
-        Some(certificate) => Some(certificate.as_ref().await?.name.to_owned()),
-        None => None,
-    })
 }
 
 fn mdoc_mso_validity(

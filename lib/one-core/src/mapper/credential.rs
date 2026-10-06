@@ -89,7 +89,14 @@ mod test {
             .build();
             updated_credential
         };
-        item.claims_mut().unwrap().as_mut().await.unwrap()[0].selectively_disclosable = true;
+        item.holder_mut()
+            .unwrap()
+            .data
+            .claims
+            .as_mut()
+            .await
+            .unwrap()[0]
+            .selectively_disclosable = true;
         let own = stored_credential_claims(&item).await.unwrap();
         assert_eq!(
             own[0].id,
@@ -112,7 +119,7 @@ mod test {
             ..item.into()
         }
         .build();
-        *item.claims_mut().unwrap() = Default::default();
+        item.holder_mut().unwrap().data.claims = Default::default();
         assert!(stored_credential_claims(&item).await.unwrap().is_empty());
     }
 
@@ -129,10 +136,14 @@ mod test {
                 .build();
                 updated_credential
             };
-            let mut item = dummy_credential();
+            let mut item = CredentialBuilder {
+                role: CredentialRole::Holder,
+                ..dummy_credential().into()
+            }
+            .build();
             let item_claim_id = item.claims().unwrap().as_ref().await.unwrap()[0].id;
             if !has_item_claims {
-                *item.claims_mut().unwrap() = Default::default();
+                item.holder_mut().unwrap().data.claims = Default::default();
             }
             let mut repository = MockCredentialRepository::new();
             repository

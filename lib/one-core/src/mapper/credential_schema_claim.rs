@@ -12,11 +12,10 @@ use crate::mapper::{
 use crate::model::claim::Claim;
 use crate::model::claim_path::ClaimPathSegment;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::Credential;
+use crate::model::credential::{CredentialView, HolderCredentialData};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
-use crate::model::relation::OptionalRelatedRefExt;
 use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -253,10 +252,10 @@ pub(crate) fn claim_path_to_formatted_path(
 /// actual credential.
 pub(crate) async fn presented_paths_to_disclosed_keys(
     presented_paths: &[String],
-    credential: &Credential,
+    credential: &CredentialView<'_, HolderCredentialData>,
 ) -> Result<Vec<String>, ServiceError> {
-    let claims = credential.claims()?.as_ref().await?;
-    let format = credential.format().as_required_ref().await?;
+    let claims = credential.data.claims.as_ref().await?;
+    let format = credential.data.format.as_ref().await?;
     let mappings = format.claim_mappings.as_ref().await?;
     let mappings_by_schema_id: HashMap<_, _> = mappings
         .into_iter()

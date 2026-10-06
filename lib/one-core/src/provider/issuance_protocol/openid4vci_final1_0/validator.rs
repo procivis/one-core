@@ -8,7 +8,9 @@ use super::mapper::credential_config_to_holder_signing_algs_and_key_storage_secu
 use super::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::config::core_config::KeySecurityLevelType;
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::claim::Claim;
+use crate::model::credential::{Credential, CredentialStateEnum, IssuerIdentity};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::IdentifierData;
 use crate::model::instance::{
@@ -234,16 +236,24 @@ pub(super) async fn validate_has_active_wallet_instance(
 pub(super) async fn validate_batch_consistency(
     credentials: &[CredentialWithBlob],
 ) -> Result<(), IssuanceProtocolError> {
-    if credentials.len() < 2 {
-        return Ok(());
-    }
-    let Some(reference) = credentials.first() else {
+    let Some((reference, others)) = credentials.split_first() else {
         return Ok(());
     };
+    if others.is_empty() {
+        return Ok(());
+    }
 
-    let reference_schema_format = single_schema_format(&reference.credential).await?;
-    for credential in credentials.iter().skip(1) {
-        let schema_format = single_schema_format(&credential.credential).await?;
+    let reference = reference.credential.holder()?;
+    let others = others
+        .iter()
+        .map(|credential| credential.credential.holder())
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let reference_schema = reference.common.schema.as_ref().await?;
+    let reference_schema_format = single_schema_format(&reference_schema).await?;
+    for credential in &others {
+        let schema = credential.common.schema.as_ref().await?;
+        let schema_format = single_schema_format(&schema).await?;
         if schema_format.format != reference_schema_format.format
             || schema_format.ecosystem_schema_id != reference_schema_format.ecosystem_schema_id
         {
@@ -253,18 +263,19 @@ pub(super) async fn validate_batch_consistency(
         }
     }
 
-    let reference_claims = sorted_claim_entries(&reference.credential).await?;
-    for credential in credentials.iter().skip(1) {
-        if sorted_claim_entries(&credential.credential).await? != reference_claims {
+    let reference_claims = sorted_claim_entries(&reference.data.claims.as_ref().await?).await?;
+    for credential in &others {
+        if sorted_claim_entries(&credential.data.claims.as_ref().await?).await? != reference_claims
+        {
             return Err(IssuanceProtocolError::InvalidRequest(
                 "Batch credentials have inconsistent claims".to_string(),
             ));
         }
     }
 
-    let reference_issuer = comparable_issuer(&reference.credential).await?;
-    for credential in credentials.iter().skip(1) {
-        let issuer = comparable_issuer(&credential.credential).await?;
+    let reference_issuer = comparable_issuer(&reference.data.issuer).await?;
+    for credential in &others {
+        let issuer = comparable_issuer(&credential.data.issuer).await?;
         if issuer != reference_issuer {
             return Err(IssuanceProtocolError::InvalidRequest(
                 "Batch credentials have inconsistent issuers".to_string(),
@@ -275,9 +286,8 @@ pub(super) async fn validate_batch_consistency(
 }
 
 async fn single_schema_format(
-    credential: &Credential,
+    schema: &CredentialSchema,
 ) -> Result<CredentialSchemaFormat, IssuanceProtocolError> {
-    let schema = credential.common().schema.as_ref().await?;
     let schema_format = schema.formats.as_ref().await?;
     if schema_format.len() > 1 {
         return Err(IssuanceProtocolError::Failed(
@@ -301,9 +311,8 @@ struct ClaimWithType {
 }
 
 async fn sorted_claim_entries(
-    credential: &Credential,
+    claims: &[Claim],
 ) -> Result<Vec<ClaimWithType>, IssuanceProtocolError> {
-    let claims = credential.claims()?.as_ref().await?;
     let mut claims_with_types = vec![];
     for claim in claims.iter() {
         let claim_schema = claim.schema.as_ref().await?;
@@ -329,14 +338,9 @@ enum ComparableIssuer {
 }
 
 async fn comparable_issuer(
-    credential: &Credential,
+    issuer: &IssuerIdentity,
 ) -> Result<ComparableIssuer, IssuanceProtocolError> {
-    let issuer = credential
-        .issuer_identifier()
-        .ok_or(IssuanceProtocolError::Failed(
-            "missing parsed credential issuer".to_string(),
-        ))?;
-    match &issuer.as_ref().await?.data {
+    match &issuer.identifier.as_ref().await?.data {
         IdentifierData::Key(key) => Ok(ComparableIssuer::Key {
             public_key: key.as_ref().await?.public_key.clone(),
         }),
@@ -344,14 +348,13 @@ async fn comparable_issuer(
             did: did.as_ref().await?.did.clone(),
         }),
         IdentifierData::Certificate(_) | IdentifierData::CertificateAuthority(_) => {
-            // Compare via `issuer_certificate`, which holds the exact leaf certificate that signed this credential.
-            let certificate =
-                credential
-                    .issuer_certificate()
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "missing parsed credential issuer certificate".to_string(),
-                    ))?;
+            // Compare the exact leaf certificate that signed this credential.
+            let certificate = issuer
+                .certificate
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "missing parsed credential issuer certificate".to_string(),
+                ))?;
             Ok(ComparableIssuer::Certificate {
                 fingerprint: certificate.as_ref().await?.fingerprint.to_owned(),
             })

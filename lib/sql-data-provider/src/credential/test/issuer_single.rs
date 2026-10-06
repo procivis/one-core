@@ -90,6 +90,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     for actual in listed.values.iter().chain([&loaded]) {
         let_assert!(
             Credential::IssuerSingle {
+                credential,
                 webhook_url,
                 subscriber_information,
                 ..
@@ -132,8 +133,8 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             Some(expected_subscriber_information)
         );
         assert_eq!(actual.credential_blob_id(), blob_id);
-        assert_eq!(actual.wallet_key_attestation_blob_id(), blob_id);
-        assert_eq!(actual.wallet_instance_attestation_blob_id(), blob_id);
+        assert_eq!(credential.wallet_key_attestation_blob_id, blob_id);
+        assert_eq!(credential.wallet_instance_attestation_blob_id, blob_id);
     }
     repository
         .update_credential(

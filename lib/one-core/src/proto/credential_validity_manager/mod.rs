@@ -18,7 +18,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::relation::OptionalRelatedRefExt;
+use crate::model::relation::{OptionalRelatedRefExt, Related};
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
@@ -389,6 +389,140 @@ impl CredentialValidityManagerImpl {
             .await
             .error_while("updating credential")?;
         Ok(())
+    }
+
+    async fn check_holder_single_validity(
+        &self,
+        credential: &Credential,
+        force_refresh: bool,
+    ) -> Result<CredentialValidityCheckResult, Error> {
+        if let Some(result) = check_invalid_or_terminal_state(credential) {
+            return Ok(result);
+        }
+
+        let holder = credential.holder()?;
+        let schema = holder.common.schema.as_ref().await?;
+        let format = holder.data.format.as_ref().await?;
+        let format_type = self
+            .config
+            .format
+            .get_fields(&format.format)
+            .error_while("getting credential format type")?
+            .r#type;
+        let (result, _) = self
+            .check_status_for_single_credential(credential, &schema, force_refresh)
+            .await?;
+
+        // For single MDOC credentials we also update the MSO, if possible.
+        if result.success
+            && result.status == CredentialStateEnum::Accepted
+            && format_type == FormatType::Mdoc
+        {
+            return self.update_mdoc(credential, force_refresh).await;
+        }
+        Ok(result)
+    }
+
+    async fn check_holder_batch_parent_validity(
+        &self,
+        credential: &Credential,
+        force_refresh: bool,
+    ) -> Result<CredentialValidityCheckResult, Error> {
+        if let Some(result) = check_invalid_or_terminal_state(credential) {
+            return Ok(result);
+        }
+
+        let common = credential.common();
+        let schema = common.schema.as_ref().await?;
+        let batch_items = self.batch_items(common.id).await?;
+        if batch_items.is_empty() {
+            return Ok(CredentialValidityCheckResult {
+                credential_id: common.id,
+                status: common.state,
+                success: false,
+                reason: Some("No batch items found".to_owned()),
+            });
+        }
+
+        let mut item_states = vec![];
+        for batch_item in batch_items {
+            let batch_item = self
+                .credential_repository
+                .get_credential(&batch_item.common().id)
+                .await
+                .error_while("getting batch item")?;
+            let (result, suspend_end_date) = self
+                .check_status_for_single_credential(&batch_item, &schema, force_refresh)
+                .await?;
+            if !result.success {
+                return Ok(CredentialValidityCheckResult {
+                    credential_id: common.id,
+                    status: common.state,
+                    ..result
+                });
+            }
+
+            if result.status != CredentialStateEnum::Expired {
+                item_states.push(
+                    revocation_state_from_credential_state(result.status, suspend_end_date)
+                        .ok_or_else(|| {
+                            RevocationError::MappingError(format!(
+                                "Invalid credential state: {}",
+                                result.status
+                            ))
+                        })
+                        .error_while("parsing status")?,
+                );
+            }
+        }
+
+        let interaction = match &common.interaction {
+            Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
+            None => None,
+        };
+        let status = self
+            .finalize_batch_parent_state(credential, interaction.as_ref(), &item_states)
+            .await?;
+        Ok(CredentialValidityCheckResult {
+            credential_id: common.id,
+            status,
+            success: true,
+            reason: None,
+        })
+    }
+
+    async fn check_holder_batch_item_validity(
+        &self,
+        credential: &Credential,
+        parent: &Related<Credential>,
+        force_refresh: bool,
+    ) -> Result<CredentialValidityCheckResult, Error> {
+        if let Some(result) = check_invalid_or_terminal_state(credential) {
+            return Ok(result);
+        }
+
+        let common = credential.common();
+        let schema = common.schema.as_ref().await?;
+        let (result, _) = self
+            .check_status_for_single_credential(credential, &schema, force_refresh)
+            .await?;
+        if result.success {
+            let parent = parent.as_ref().await?;
+            if matches!(
+                *parent,
+                Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. }
+            ) {
+                let batch_items = self.batch_items(parent.common().id).await?;
+                let item_states = item_revocation_states(&batch_items);
+                let interaction = match &common.interaction {
+                    Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
+                    None => None,
+                };
+                self.finalize_batch_parent_state(&parent, interaction.as_ref(), &item_states)
+                    .await?;
+            }
+        }
+        Ok(result)
     }
 
     async fn check_status_for_single_credential(
@@ -777,159 +911,22 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 .into());
         }
         match &credential {
-            Credential::IssuerSingle { .. }
-            | Credential::IssuerBatchParent { .. }
-            | Credential::IssuerBatchItem { .. } => {
-                return Err(Error::InvalidCredentialRole {
-                    role: CredentialRole::Issuer,
-                    credential_id,
-                });
+            Credential::HolderSingle { .. } => {
+                self.check_holder_single_validity(&credential, force_refresh)
+                    .await
             }
-            Credential::Verifier { .. } => {
-                return Err(Error::InvalidCredentialRole {
-                    role: CredentialRole::Verifier,
-                    credential_id,
-                });
+            Credential::HolderBatchParent { .. } => {
+                self.check_holder_batch_parent_validity(&credential, force_refresh)
+                    .await
             }
-            Credential::HolderSingle { .. }
-            | Credential::HolderBatchParent { .. }
-            | Credential::HolderBatchItem { .. } => {}
-        }
-
-        if let Some(result) = check_invalid_or_terminal_state(&credential) {
-            return Ok(result);
-        }
-
-        let credential_schema = credential.common().schema.as_ref().await?;
-
-        match &credential {
-            Credential::IssuerSingle { .. }
-            | Credential::HolderSingle { .. }
-            | Credential::Verifier { .. } => {
-                let format = credential.format().as_required_ref().await?;
-                let format_type = self
-                    .config
-                    .format
-                    .get_fields(&format.format)
-                    .error_while("getting credential format type")?
-                    .r#type;
-                let (result, _) = self
-                    .check_status_for_single_credential(
-                        &credential,
-                        &credential_schema,
-                        force_refresh,
-                    )
-                    .await?;
-
-                // for Single MDOC credentials we also update MSO (if possible)
-                if result.success
-                    && result.status == CredentialStateEnum::Accepted
-                    && format_type == FormatType::Mdoc
-                {
-                    return self.update_mdoc(&credential, force_refresh).await;
-                }
-
-                Ok(result)
+            Credential::HolderBatchItem { parent, .. } => {
+                self.check_holder_batch_item_validity(&credential, parent, force_refresh)
+                    .await
             }
-            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => {
-                let batch_items = self.batch_items(credential.common().id).await?;
-
-                if batch_items.is_empty() {
-                    return Ok(CredentialValidityCheckResult {
-                        credential_id: credential.common().id,
-                        status: credential.common().state,
-                        success: false,
-                        reason: Some("No batch items found".to_owned()),
-                    });
-                }
-
-                let mut item_states = vec![];
-                for batch_item in batch_items {
-                    let batch_item = self
-                        .credential_repository
-                        .get_credential(&batch_item.common().id)
-                        .await
-                        .error_while("getting batch item")?;
-
-                    let (result, suspend_end_date) = self
-                        .check_status_for_single_credential(
-                            &batch_item,
-                            &credential_schema,
-                            force_refresh,
-                        )
-                        .await?;
-
-                    if !result.success {
-                        return Ok(CredentialValidityCheckResult {
-                            credential_id: credential.common().id,
-                            status: credential.common().state,
-                            ..result
-                        });
-                    }
-
-                    if result.status != CredentialStateEnum::Expired {
-                        item_states.push(
-                            revocation_state_from_credential_state(result.status, suspend_end_date)
-                                .ok_or_else(|| {
-                                    RevocationError::MappingError(format!(
-                                        "Invalid credential state: {}",
-                                        result.status
-                                    ))
-                                })
-                                .error_while("parsing status")?,
-                        );
-                    }
-                }
-
-                let interaction = match credential.common().interaction.as_ref() {
-                    Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
-                    None => None,
-                };
-                let status = self
-                    .finalize_batch_parent_state(&credential, interaction.as_ref(), &item_states)
-                    .await?;
-
-                Ok(CredentialValidityCheckResult {
-                    credential_id: credential.common().id,
-                    status,
-                    success: true,
-                    reason: None,
-                })
-            }
-            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. } => {
-                let (result, _) = self
-                    .check_status_for_single_credential(
-                        &credential,
-                        &credential_schema,
-                        force_refresh,
-                    )
-                    .await?;
-
-                if result.success {
-                    let parent = credential.parent().as_required_ref().await?;
-
-                    if matches!(
-                        *parent,
-                        Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. }
-                    ) {
-                        let batch_items = self.batch_items(parent.common().id).await?;
-                        let item_states = item_revocation_states(&batch_items);
-
-                        let interaction = match credential.common().interaction.as_ref() {
-                            Some(interaction) => Some(interaction.as_ref().await?.to_owned()),
-                            None => None,
-                        };
-                        self.finalize_batch_parent_state(
-                            &parent,
-                            interaction.as_ref(),
-                            &item_states,
-                        )
-                        .await?;
-                    }
-                }
-
-                Ok(result)
-            }
+            other => Err(Error::InvalidCredentialRole {
+                role: other.role(),
+                credential_id,
+            }),
         }
     }
 }

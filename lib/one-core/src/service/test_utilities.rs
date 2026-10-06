@@ -662,9 +662,12 @@ pub async fn credential_with_claims(
     common.state = CredentialStateEnum::Created;
     common.schema = schema.into();
     common.interaction = None;
-    *credential.claims_mut().unwrap() = claims.into();
-    credential.issuer_credential_mut().unwrap().data.format = format.into();
-    credential
+    CredentialBuilder {
+        claims: claims.into(),
+        format: Some(format.into()),
+        ..credential.into()
+    }
+    .build()
 }
 
 pub fn generic_formatter_capabilities() -> FormatterCapabilities {
@@ -842,6 +845,7 @@ pub struct CredentialBuilder {
 
 impl From<Credential> for CredentialBuilder {
     fn from(value: Credential) -> Self {
+        let issuer_credential = value.issuer_credential().ok();
         Self {
             common: value.common().clone(),
             claims: value.claims().cloned().unwrap_or_default(),
@@ -857,8 +861,11 @@ impl From<Credential> for CredentialBuilder {
             holder_identifier: value.holder_identifier().cloned(),
             key: value.key().cloned(),
             credential_blob_id: value.credential_blob_id(),
-            wallet_key_attestation_blob_id: value.wallet_key_attestation_blob_id(),
-            wallet_instance_attestation_blob_id: value.wallet_instance_attestation_blob_id(),
+            wallet_key_attestation_blob_id: issuer_credential
+                .as_ref()
+                .and_then(|issuer| issuer.data.wallet_key_attestation_blob_id),
+            wallet_instance_attestation_blob_id: issuer_credential
+                .and_then(|issuer| issuer.data.wallet_instance_attestation_blob_id),
             webhook_url: match &value {
                 Credential::IssuerSingle { webhook_url, .. }
                 | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),
