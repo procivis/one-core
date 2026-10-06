@@ -2,6 +2,7 @@ use std::ops::Add;
 use std::sync::{Arc, Mutex};
 
 use mockall::predicate::{always, eq};
+use rstest::rstest;
 use serde_json::json;
 use shared_types::{RevocationListId, RevocationMethodId};
 use similar_asserts::assert_eq;
@@ -141,9 +142,11 @@ async fn test_add_signature_new_list() {
     assert_eq!(crl.crl_number(), Some(&0u32.into()));
 }
 
+#[rstest]
 #[tokio::test(flavor = "multi_thread")]
-async fn test_revoke_signature() {
-    let certificate = dummy_ca_certificate(&dummy_identifier());
+async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
+    let mut certificate = dummy_ca_certificate(&dummy_identifier());
+    certificate.deleted_at = deleted.then(crate::clock::now_utc);
 
     let signature_id = Uuid::new_v4().into();
     let list_id = Uuid::new_v4().into();

@@ -1,10 +1,94 @@
-use similar_asserts::assert_eq;
+use std::sync::Arc;
 
-use crate::model::revocation_list::RevocationListEntryState;
+use rcgen::{CertificateParams, KeyPair, KeyUsagePurpose};
+use rstest::rstest;
+use similar_asserts::assert_eq;
+use uuid::Uuid;
+
+use super::format_status_list_credential;
+use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::identifier::IdentifierData;
+use crate::model::revocation_list::{RevocationListEntryState, RevocationListPurpose};
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListSubject;
+use crate::provider::credential_formatter::model::MockSignatureProvider;
+use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::token_status_list::util::{
     TokenError, extract_state_from_token, generate_token, get_most_significant_bit_index,
 };
+use crate::service::test_utilities::{
+    dummy_certificate, dummy_identifier, dummy_key, get_dummy_date,
+};
+
+#[rstest]
+#[tokio::test]
+async fn test_format_status_list_with_deleted_issuer_certificate(
+    #[values(
+        CertificateState::Active,
+        CertificateState::Expired,
+        CertificateState::Revoked
+    )]
+    state: CertificateState,
+) {
+    let mut identifier = dummy_identifier();
+    let key = dummy_key();
+    let mut params = CertificateParams::default();
+    params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+    let certificate = Certificate {
+        chain: params
+            .self_signed(&KeyPair::generate().unwrap())
+            .unwrap()
+            .pem(),
+        deleted_at: Some(get_dummy_date()),
+        state,
+        key: Some(key.clone().into()),
+        ..dummy_certificate(identifier.id)
+    };
+    // A replacement must not take over signing lists tied to the removed certificate.
+    let replacement = Certificate {
+        chain: certificate.chain.clone(),
+        key: Some(dummy_key().into()),
+        ..dummy_certificate(identifier.id)
+    };
+    identifier.data = IdentifierData::Certificate(vec![replacement, certificate.clone()].into());
+
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_signature_provider()
+        .once()
+        .withf(move |selected, _, _| selected.id == key.id)
+        .returning(|_, _, _| Ok(Box::new(MockSignatureProvider::new())));
+    let mut formatter = MockCredentialFormatter::new();
+    let certificate_id = certificate.id;
+    formatter
+        .expect_format_status_list()
+        .once()
+        .withf(move |_, selected, _, _, _, _, _| {
+            selected
+                .certificate()
+                .is_some_and(|certificate| certificate.id == certificate_id)
+        })
+        .returning(|_, _, _, _, _, _, _| Ok(b"status-list".to_vec()));
+    let key_algorithm_provider: Arc<dyn KeyAlgorithmProvider> =
+        Arc::new(MockKeyAlgorithmProvider::new());
+
+    let result = format_status_list_credential(
+        &Uuid::new_v4().into(),
+        &identifier,
+        Some(&certificate),
+        "encoded-list".to_string(),
+        &key_provider,
+        &key_algorithm_provider,
+        &Some("https://example.com".to_string()),
+        &formatter,
+        RevocationListPurpose::Revocation,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result, b"status-list");
+}
 
 fn example_token_status_list_subject_with_bit_size_1() -> (
     TokenStatusListSubject,

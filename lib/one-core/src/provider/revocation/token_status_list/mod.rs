@@ -1070,11 +1070,18 @@ async fn format_status_list_credential(
         ));
     }
 
+    let mut certificate_filter =
+        CertificateFilter::key_usage(vec![KeyUsagePurpose::DigitalSignature]).allow_all_states();
+    if let Some(certificate) = issuer_certificate {
+        // Existing lists must remain signable with their original certificate after removal.
+        certificate_filter = certificate_filter
+            .and_id(Some(certificate.id))
+            .allow_deleted();
+    }
+
     let selection = issuer_identifier
         .select_key(KeySelection {
-            certificate: CertificateFilter::key_usage(vec![KeyUsagePurpose::DigitalSignature])
-                .and_id(issuer_certificate.map(|c| c.id))
-                .allow_all_states(),
+            certificate: certificate_filter,
             key: KeyFilter::did_role(KeyRole::AssertionMethod),
             ..Default::default()
         })

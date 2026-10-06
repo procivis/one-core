@@ -10,6 +10,9 @@ use crate::model::did::{Did, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierType};
 use crate::model::key::Key;
 
+#[cfg(test)]
+mod test;
+
 #[derive(Default, Clone, Debug)]
 pub struct KeyFilter {
     id: Option<KeyId>,
@@ -98,6 +101,7 @@ pub struct CertificateFilter {
     role: Option<CertificateRole>,
     key_usage: Option<Vec<KeyUsagePurpose>>,
     allowed_states: Option<Vec<CertificateState>>,
+    allow_deleted: bool,
 }
 
 impl Default for CertificateFilter {
@@ -107,6 +111,7 @@ impl Default for CertificateFilter {
             id: None,
             role: None,
             key_usage: None,
+            allow_deleted: false,
         }
     }
 }
@@ -143,7 +148,16 @@ impl CertificateFilter {
         self
     }
 
+    /// Allows continued signing of revocation lists tied to a removed certificate.
+    pub fn allow_deleted(mut self) -> Self {
+        self.allow_deleted = true;
+        self
+    }
+
     pub fn matches_certificate(&self, certificate: &Certificate) -> bool {
+        if certificate.deleted_at.is_some() && !self.allow_deleted {
+            return false;
+        }
         if let Some(id) = self.id.as_ref()
             && id != &certificate.id
         {
