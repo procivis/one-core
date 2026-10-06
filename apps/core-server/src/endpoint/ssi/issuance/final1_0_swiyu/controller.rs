@@ -313,6 +313,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
                 request.try_into()?,
                 oauth_client_attestation,
                 oauth_client_attestation_pop,
+                None,
             )
             .await
     }
@@ -392,7 +393,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
     let result = state
         .core
         .oid4vci_final1_0_service
-        .create_credential(&credential_schema_id, access_token, request)
+        .create_credential(&credential_schema_id, access_token, None, request)
         .await;
 
     match result {
@@ -531,7 +532,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_credential_notification(
     let result = state
         .core
         .oid4vci_final1_0_service
-        .handle_notification(credential_schema_id, access_token, request)
+        .handle_notification(credential_schema_id, access_token, None, request)
         .await;
 
     match result {

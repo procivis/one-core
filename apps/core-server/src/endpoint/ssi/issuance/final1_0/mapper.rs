@@ -1,11 +1,11 @@
 use axum::Json;
-use axum::http::StatusCode;
+use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use one_core::error::ErrorCodeMixin;
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
 use one_core::service::oid4vci_final1_0::error::{
-    OID4VCIFinal1_0ServiceError, WalletAttestationError,
+    DpopProofError, OID4VCIFinal1_0ServiceError, WalletAttestationError,
 };
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use standardized_types::oauth2::token::TokenRequest;
@@ -107,9 +107,7 @@ impl From<OpenID4VCICredentialResponseDTO> for OpenID4VCIFinal1CredentialRespons
     }
 }
 
-/// Renders a wallet-attestation (WIA / KA) validation failure as an OpenID4VCI error
-/// response: HTTP 400 with the OAuth2 `error` code and the reworked message (prefixed
-/// with the stable `BR_xxxx` code) in `errorDescription`.
+/// HTTP 400 with the OAuth2 `error` and the `BR_xxxx` code in `errorDescription`.
 pub(crate) fn wallet_attestation_response(wa: &WalletAttestationError) -> Response {
     tracing::info!("Wallet attestation validation error: {wa}");
 
@@ -133,6 +131,23 @@ pub(crate) fn wallet_attestation_response(wa: &WalletAttestationError) -> Respon
         )
             .into_response(),
     }
+}
+
+pub(crate) fn dpop_proof_response(status: StatusCode, error: &DpopProofError) -> Response {
+    tracing::info!("DPoP proof validation error: {error}");
+
+    let body = Json(OpenID4VCIErrorResponseRestDTO::with_description(
+        OpenID4VCIError::InvalidDpopProof,
+        error.to_string(),
+    ));
+    if status == StatusCode::UNAUTHORIZED {
+        let challenge = [(
+            header::WWW_AUTHENTICATE,
+            r#"DPoP error="invalid_dpop_proof""#,
+        )];
+        return (status, challenge, body).into_response();
+    }
+    (status, body).into_response()
 }
 
 #[cfg(test)]

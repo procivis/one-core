@@ -25,7 +25,10 @@ impl OID4VPFinal1_0Handover {
     ) -> Result<Self, FormatterError> {
         let client_id = client_id.trim_end_matches('/');
         let response_uri = response_uri.trim_end_matches('/');
-        let jwk_thumbprint = verifier_key.map(jwk_thumbprint).transpose()?.map(Bstr);
+        let jwk_thumbprint = verifier_key
+            .map(PublicJwk::thumbprint)
+            .transpose()?
+            .map(Bstr);
 
         let openid4vp_handover_info_bytes =
             cbor!([client_id, nonce, jwk_thumbprint, response_uri])?.to_vec()?;
@@ -70,47 +73,6 @@ impl<'a> Deserialize<'a> for OID4VPFinal1_0Handover {
             openid4vp_handover_info_hash,
         })
     }
-}
-
-/// RFC7638 JWK Thumbprint
-/// <https://www.rfc-editor.org/rfc/rfc7638.html>
-///
-/// - inspired by: <https://docs.rs/biscuit/0.7.0/src/biscuit/jwk.rs.html#276>
-/// - using SHA-256 hash function
-fn jwk_thumbprint(verifier_key: &PublicJwk) -> Result<Vec<u8>, serde_json::Error> {
-    use serde::ser::SerializeMap;
-
-    let mut serializer = serde_json::Serializer::new(Vec::new());
-    let mut map = serializer.serialize_map(None)?;
-    match verifier_key {
-        PublicJwk::Ec(params) => {
-            map.serialize_entry("crv", &params.crv)?;
-            map.serialize_entry("kty", "EC")?;
-            map.serialize_entry("x", &params.x)?;
-            map.serialize_entry("y", &params.y)?;
-        }
-        PublicJwk::Rsa(params) => {
-            map.serialize_entry("e", &params.e)?;
-            map.serialize_entry("kty", "RSA")?;
-            map.serialize_entry("n", &params.n)?;
-        }
-        PublicJwk::Okp(params) => {
-            map.serialize_entry("crv", &params.crv)?;
-            map.serialize_entry("kty", "OKP")?;
-            map.serialize_entry("x", &params.x)?;
-        }
-        PublicJwk::Oct(params) => {
-            map.serialize_entry("k", &params.k)?;
-            map.serialize_entry("kty", "oct")?;
-        }
-        PublicJwk::Akp(params) => {
-            map.serialize_entry("alg", &params.alg)?;
-            map.serialize_entry("kty", "AKP")?;
-            map.serialize_entry("pub", &params.r#pub)?;
-        }
-    };
-    map.end()?;
-    Ok(Sha256::digest(serializer.into_inner()).to_vec())
 }
 
 #[cfg(test)]

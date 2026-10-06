@@ -1360,6 +1360,7 @@ async fn test_create_token() {
             },
             None,
             None,
+            None,
         )
         .await;
 
@@ -1404,6 +1405,7 @@ async fn test_create_token_empty_pre_authorized_code() {
                 pre_authorized_code: "".to_string(),
                 tx_code: None,
             },
+            None,
             None,
             None,
         )
@@ -1475,6 +1477,7 @@ async fn test_create_token_pre_authorized_code_used() {
             },
             None,
             None,
+            None,
         )
         .await;
 
@@ -1544,6 +1547,7 @@ async fn test_create_token_wrong_credential_state() {
             },
             None,
             None,
+            None,
         )
         .await;
 
@@ -1603,6 +1607,7 @@ async fn test_create_token_fails_when_related_credential_is_expiring() {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
                 tx_code: None,
             },
+            None,
             None,
             None,
         )
@@ -1794,6 +1799,7 @@ async fn test_create_credential_success() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -1998,6 +2004,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2246,6 +2253,7 @@ async fn test_create_credential_success_mdoc() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2326,6 +2334,7 @@ async fn test_create_credential_configuration_id_invalid() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     "invalid".to_string(),
@@ -2368,6 +2377,7 @@ async fn test_create_credential_format_invalid_bearer_token() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2421,6 +2431,7 @@ async fn test_create_credential_pre_authorized_code_not_used() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2474,6 +2485,7 @@ async fn test_create_credential_interaction_data_invalid() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.123",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2535,6 +2547,7 @@ async fn test_create_credential_access_token_expired() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2609,6 +2622,7 @@ async fn test_create_credential_fails_when_credential_is_expiring() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2801,6 +2815,7 @@ async fn test_create_credential_issuer_failed() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -2953,6 +2968,7 @@ async fn test_create_credential_nonce_reused() {
         .create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
                     schema.schema_id().await.unwrap().to_owned(),
@@ -3051,6 +3067,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
             },
             None,
             None,
+            None,
         )
         .await;
 
@@ -3146,6 +3163,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
             },
             None,
             None,
+            None,
         )
         .await
         .unwrap();
@@ -3237,6 +3255,7 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
             },
             None,
             None,
+            None,
         )
         .await
         .err()
@@ -3288,6 +3307,7 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
                 tx_code: None,
             },
+            None,
             None,
             None,
         )
@@ -3347,6 +3367,7 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
             },
             Some("attestation_token"),
             None,
+            None,
         )
         .await;
 
@@ -3403,6 +3424,7 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
             },
             Some("attestation_token"),
             Some("pop_token"),
+            None,
         )
         .await;
 

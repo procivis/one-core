@@ -13,6 +13,7 @@ use shared_types::{
     NonceId,
 };
 use standardized_types::iana::EncryptionKeyManagementAlgorithm;
+use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::attestation_based_client_auth::{
     ChallengeResponse, OAuthClientAttestationPopCustomClaims,
 };
@@ -24,6 +25,7 @@ use standardized_types::openid4vci::{
     NotificationEvent, NotificationRequest, Proofs, ResponseEncryption,
 };
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
@@ -33,13 +35,14 @@ use super::dto::{
     OID4VCIFinal1_0MetadataResponseTypeEnum as IssuerMetadataResponseTypeEnum,
     OpenID4VCICredentialResponseDTO,
 };
-use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
+use super::error::{DpopProofError, OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use super::mapper::{interaction_data_to_dto, offered_formats};
 use super::nonce::{Context, generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
-    validate_credential_request_format, validate_pop_audience, validate_response_encryption,
-    validate_timestamps, verify_ka_wia_issuers_match, verify_pop_signature, verify_wia_signature,
+    validate_credential_request_format, validate_dpop_proof, validate_pop_audience,
+    validate_response_encryption, validate_timestamps, verify_ka_wia_issuers_match,
+    verify_pop_signature, verify_wia_signature,
 };
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
@@ -359,6 +362,7 @@ impl OID4VCIFinal1_0Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
+        dpop_proof: Option<&str>,
         request: CredentialRequestPayload,
     ) -> Result<CredentialResponsePayload, OID4VCIFinal1_0ServiceError> {
         let schema = self
@@ -396,6 +400,13 @@ impl OID4VCIFinal1_0Service {
                 OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
             );
         };
+        self.validate_access_token_binding(
+            &interaction_data,
+            access_token,
+            dpop_proof,
+            &credential.common().protocol,
+            &format!("{credential_schema_id}/credential"),
+        )?;
 
         self.validate_credential_state(credential, &interaction)
             .await?;
@@ -1106,6 +1117,7 @@ impl OID4VCIFinal1_0Service {
         &self,
         credential_schema_id: CredentialSchemaId,
         access_token: &str,
+        dpop_proof: Option<&str>,
         request: NotificationRequest,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
         let interaction_id = parse_access_token(access_token)?;
@@ -1123,14 +1135,6 @@ impl OID4VCIFinal1_0Service {
         let interaction_data = interaction_data_to_dto(&interaction)?;
         throw_if_access_token_invalid(&interaction_data, access_token)?;
 
-        // interactions created before multi-format support have a single entry without format
-        let format_id = interaction_data
-            .notification_ids
-            .iter()
-            .find(|entry| entry.notification_id == request.notification_id)
-            .ok_or(OpenID4VCIError::InvalidNotificationId)?
-            .format;
-
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(&interaction.id)
@@ -1141,9 +1145,24 @@ impl OID4VCIFinal1_0Service {
             .into_iter()
             .filter(|credential| credential.common().schema.id() == credential_schema_id)
             .collect();
-        if credentials.is_empty() {
+        let Some(credential) = credentials.first() else {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
-        }
+        };
+        self.validate_access_token_binding(
+            &interaction_data,
+            access_token,
+            dpop_proof,
+            &credential.common().protocol,
+            &format!("{credential_schema_id}/notification"),
+        )?;
+
+        // interactions created before multi-format support have a single entry without format
+        let format_id = interaction_data
+            .notification_ids
+            .iter()
+            .find(|entry| entry.notification_id == request.notification_id)
+            .ok_or(OpenID4VCIError::InvalidNotificationId)?
+            .format;
 
         let success_log = format!(
             "Processed notification event `{}`, description: `{:?}`, for credentials: [{}]",
@@ -1167,6 +1186,7 @@ impl OID4VCIFinal1_0Service {
         request: TokenRequest,
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
+        dpop_proof: Option<&str>,
     ) -> Result<TokenResponse, OID4VCIFinal1_0ServiceError> {
         let credential_schema = self
             .credential_schema_repository
@@ -1245,6 +1265,17 @@ impl OID4VCIFinal1_0Service {
             )
             .await?;
 
+        let dpop_jkt = dpop_proof
+            .map(|proof| {
+                self.validate_endpoint_dpop_proof(
+                    proof,
+                    &credential.common().protocol,
+                    &format!("{credential_schema_id}/token"),
+                    None,
+                )
+            })
+            .transpose()?;
+
         // both refresh and access token have the same structure
         let generate_new_token = || {
             SecretString::from(format!(
@@ -1277,6 +1308,17 @@ impl OID4VCIFinal1_0Service {
                 .error_while("getting interaction")?;
             let interaction_data = interaction_data_to_dto(&interaction)?;
 
+            if request.is_refresh_token()
+                && interaction_data.dpop_jkt.is_some()
+                && interaction_data.dpop_jkt != dpop_jkt
+            {
+                return Err(match dpop_jkt {
+                    Some(_) => DpopProofError::KeyMismatch,
+                    None => DpopProofError::MissingProof,
+                }
+                .into());
+            }
+
             let mut response = oidc_issuer_create_token(
                 &interaction_data,
                 &convert_inner(credentials.to_owned()),
@@ -1286,6 +1328,9 @@ impl OID4VCIFinal1_0Service {
                 access_token_expires_in,
                 refresh_token_expires_in,
             )?;
+            if dpop_jkt.is_some() {
+                response.token_type = TokenType::DPoP;
+            }
 
             let now = crate::clock::now_utc();
 
@@ -1357,6 +1402,7 @@ impl OID4VCIFinal1_0Service {
             let mut new_interaction_data: OpenID4VCIIssuerInteractionDataDTO =
                 (&response).try_into()?;
             new_interaction_data.formats = interaction_data.formats;
+            new_interaction_data.dpop_jkt = dpop_jkt.clone();
             let data = serde_json::to_vec(&new_interaction_data)
                 .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
             interaction.data = Some(data);
@@ -1417,6 +1463,51 @@ impl OID4VCIFinal1_0Service {
             credential.common().id
         );
         Ok(result)
+    }
+
+    fn validate_endpoint_dpop_proof(
+        &self,
+        proof: &str,
+        protocol_id: &str,
+        endpoint: &str,
+        access_token: Option<&str>,
+    ) -> Result<String, OID4VCIFinal1_0ServiceError> {
+        let base_url = self
+            .protocol_provider
+            .get_protocol(protocol_id)?
+            .protocol_base_url()
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                "missing protocol_base_url".to_string(),
+            ))?;
+        let url = Url::parse(&format!("{base_url}/{endpoint}"))
+            .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
+        validate_dpop_proof(
+            proof,
+            "POST",
+            &url,
+            access_token,
+            &*self.key_algorithm_provider,
+        )
+    }
+
+    fn validate_access_token_binding(
+        &self,
+        interaction_data: &OpenID4VCIIssuerInteractionDataDTO,
+        access_token: &str,
+        dpop_proof: Option<&str>,
+        protocol_id: &str,
+        endpoint: &str,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        let Some(jkt) = &interaction_data.dpop_jkt else {
+            return Ok(());
+        };
+        let proof = dpop_proof.ok_or(DpopProofError::MissingProof)?;
+        let proof_jkt =
+            self.validate_endpoint_dpop_proof(proof, protocol_id, endpoint, Some(access_token))?;
+        if proof_jkt != *jkt {
+            return Err(DpopProofError::KeyMismatch.into());
+        }
+        Ok(())
     }
 
     #[expect(clippy::too_many_arguments)]

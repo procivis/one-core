@@ -5,8 +5,11 @@ use standardized_types::openid4vci::KeyStorageSecurityLevel;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError};
 use crate::model::credential::{CredentialStateEnum, CredentialType};
+use crate::proto::jwt::TokenError;
 use crate::provider::ecosystem::error::{EcosystemError, WalletAttestationRejection};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::validator::ecosystem::EcosystemValidationError;
 
 /// Errors surfaced to the wallet when validating wallet attestations (WIA / KA)
@@ -61,6 +64,39 @@ impl WalletAttestationError {
 }
 
 #[derive(thiserror::Error, Debug)]
+pub enum DpopProofError {
+    #[error("DPoP proof `typ` is not `dpop+jwt`")]
+    InvalidType,
+    #[error("DPoP proof has no `jwk` header")]
+    MissingJwk,
+    #[error("DPoP proof has no `iat` claim")]
+    MissingIssuedAt,
+    #[error("DPoP proof has no `jti` claim")]
+    MissingJwtId,
+    #[error("DPoP proof `htm` does not match the request method")]
+    MethodMismatch,
+    #[error("DPoP proof `htu` does not match the request URL")]
+    UrlMismatch,
+    #[error("DPoP proof `iat` is outside of the accepted time window")]
+    IssuedAtOutOfWindow,
+    #[error("DPoP proof `ath` does not match the access token")]
+    AccessTokenMismatch,
+    #[error("DPoP proof `alg` is not supported")]
+    UnsupportedAlgorithm,
+    #[error("DPoP-bound token needs the DPoP authorization scheme and a DPoP proof")]
+    MissingProof,
+    #[error("DPoP proof key is not the key the token is bound to")]
+    KeyMismatch,
+
+    #[error("DPoP proof is not a valid JWT: `{0}`")]
+    InvalidJwt(#[from] TokenError),
+    #[error("DPoP proof `jwk` is not a valid public key: `{0}`")]
+    InvalidJwk(#[from] KeyAlgorithmError),
+    #[error("DPoP proof signature is invalid: `{0}`")]
+    InvalidSignature(#[from] KeyHandleError),
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum OID4VCIFinal1_0ServiceError {
     #[error("Missing interaction for access token: {interaction_id}")]
     MissingInteractionForAccessToken { interaction_id: InteractionId },
@@ -88,6 +124,9 @@ pub enum OID4VCIFinal1_0ServiceError {
     WalletAttestation(#[from] WalletAttestationError),
 
     #[error(transparent)]
+    DpopProof(#[from] DpopProofError),
+
+    #[error(transparent)]
     Nested(#[from] NestedError),
 
     #[error("Identifier missing Authentication capable key or certificate: {0}")]
@@ -102,7 +141,7 @@ impl ErrorCodeMixin for OID4VCIFinal1_0ServiceError {
             Self::InvalidCredentialState(_) => ErrorCode::BR_0002,
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::FromUtf8Error(_) | Self::MappingError(_) => ErrorCode::BR_0047,
-            Self::OpenID4VCIError(_) => ErrorCode::BR_0048,
+            Self::OpenID4VCIError(_) | Self::DpopProof(_) => ErrorCode::BR_0048,
             Self::WalletAttestation(e) => e.error_code(),
             Self::Nested(nested) => nested.error_code(),
             Self::MissingAuthenticationCapableKey(_) => ErrorCode::BR_0418,

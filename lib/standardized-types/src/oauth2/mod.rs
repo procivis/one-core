@@ -6,6 +6,7 @@ use strum::Display;
 pub mod attestation_based_client_auth;
 pub mod authorization_request;
 pub mod authorization_server_metadata;
+pub mod dpop;
 pub mod dynamic_client_registration;
 pub mod pushed_authorization_request;
 pub mod token;
@@ -23,6 +24,7 @@ pub enum TokenType {
     /// `token_type` in the token endpoint response.
     #[default]
     Bearer,
+    DPoP,
 }
 
 impl<'de> Deserialize<'de> for TokenType {

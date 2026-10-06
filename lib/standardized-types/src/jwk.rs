@@ -1,8 +1,10 @@
 //! Spec https://datatracker.ietf.org/doc/html/rfc7517
 
 use secrecy::SecretString;
-use serde::{Deserialize, Serialize};
+use serde::ser::SerializeMap;
+use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
+use sha2::{Digest, Sha256};
 use strum::Display;
 
 use crate::mapper::secret_string;
@@ -68,6 +70,41 @@ impl PublicJwk {
             Self::Oct(val) => val.kid = Some(key_id),
             Self::Akp(val) => val.kid = Some(key_id),
         }
+    }
+
+    /// SHA-256 JWK thumbprint, <https://www.rfc-editor.org/rfc/rfc7638.html>
+    pub fn thumbprint(&self) -> Result<Vec<u8>, serde_json::Error> {
+        let mut serializer = serde_json::Serializer::new(Vec::new());
+        let mut map = serializer.serialize_map(None)?;
+        match self {
+            Self::Ec(params) => {
+                map.serialize_entry("crv", &params.crv)?;
+                map.serialize_entry("kty", "EC")?;
+                map.serialize_entry("x", &params.x)?;
+                map.serialize_entry("y", &params.y)?;
+            }
+            Self::Rsa(params) => {
+                map.serialize_entry("e", &params.e)?;
+                map.serialize_entry("kty", "RSA")?;
+                map.serialize_entry("n", &params.n)?;
+            }
+            Self::Okp(params) => {
+                map.serialize_entry("crv", &params.crv)?;
+                map.serialize_entry("kty", "OKP")?;
+                map.serialize_entry("x", &params.x)?;
+            }
+            Self::Oct(params) => {
+                map.serialize_entry("k", &params.k)?;
+                map.serialize_entry("kty", "oct")?;
+            }
+            Self::Akp(params) => {
+                map.serialize_entry("alg", &params.alg)?;
+                map.serialize_entry("kty", "AKP")?;
+                map.serialize_entry("pub", &params.r#pub)?;
+            }
+        };
+        map.end()?;
+        Ok(Sha256::digest(serializer.into_inner()).to_vec())
     }
 }
 

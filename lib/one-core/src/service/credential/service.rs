@@ -217,6 +217,7 @@ impl CredentialService {
                     notification_ids: Default::default(),
                     transaction_code: None,
                     formats: Some(formats.iter().map(|f| f.id).collect()),
+                    dpop_jkt: None,
                 })
                 .error_while("serializing interaction data")?,
             );

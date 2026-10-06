@@ -73,6 +73,7 @@ impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
             notification_ids: Default::default(),
             transaction_code: None,
             formats: None,
+            dpop_jkt: None,
         })
     }
 }

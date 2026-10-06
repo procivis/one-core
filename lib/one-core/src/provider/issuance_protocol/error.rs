@@ -147,6 +147,10 @@ pub enum OpenID4VCIError {
     #[error("use_fresh_attestation")]
     UseFreshAttestation,
 
+    // https://www.rfc-editor.org/rfc/rfc9449.html#section-5
+    #[error("invalid_dpop_proof")]
+    InvalidDpopProof,
+
     #[error("oidc runtime error: `{0}`")]
     RuntimeError(String),
 }

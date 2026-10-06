@@ -5,7 +5,6 @@ use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
-use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0MetadataResponseTypeEnum,
@@ -13,8 +12,10 @@ use one_core::service::oid4vci_final1_0::dto::{
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
+use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
+use standardized_types::oauth2::dpop::DPOP_HEADER;
 use standardized_types::oauth2::token::TokenResponse;
 use standardized_types::openid4vci::{
     CredentialOffer, CredentialRequest, NonceResponse, NotificationRequest,
@@ -24,11 +25,11 @@ use super::dto::{
     OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
     OpenID4VCITokenRequestRestDTO,
 };
-use super::mapper::wallet_attestation_response;
+use super::mapper::{dpop_proof_response, wallet_attestation_response};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
 use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
-use crate::extractor::Accept;
+use crate::extractor::{Accept, AccessToken};
 use crate::headers::APPLICATION_JWT;
 use crate::router::AppState;
 
@@ -262,6 +263,8 @@ pub(crate) async fn oid4vci_final1_0_create_token(
         .get("OAuth-Client-Attestation-PoP")
         .and_then(|v| v.to_str().ok());
 
+    let dpop_proof = headers.get(DPOP_HEADER).and_then(|v| v.to_str().ok());
+
     let result = async {
         state
             .core
@@ -271,6 +274,7 @@ pub(crate) async fn oid4vci_final1_0_create_token(
                 request.try_into()?,
                 oauth_client_attestation,
                 oauth_client_attestation_pop,
+                dpop_proof,
             )
             .await
     }
@@ -287,6 +291,9 @@ pub(crate) async fn oid4vci_final1_0_create_token(
                 .into_response()
         }
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
+        Err(OID4VCIFinal1_0ServiceError::DpopProof(error)) => {
+            dpop_proof_response(StatusCode::BAD_REQUEST, &error)
+        }
         Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
             tracing::error!("Invalid credential state state error: {state}");
             (
@@ -345,8 +352,8 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
         Path<CredentialSchemaId>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(TypedHeader(token), _): WithRejection<
-        TypedHeader<headers::Authorization<Bearer>>,
+    WithRejection(TypedHeader(access_token), _): WithRejection<
+        TypedHeader<AccessToken>,
         ErrorResponseRestDTO,
     >,
     headers: HeaderMap,
@@ -357,15 +364,25 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
         Err(response) => return *response,
     };
 
-    let access_token = token.token();
     let result = state
         .core
         .oid4vci_final1_0_service
-        .create_credential(&credential_schema_id, access_token, request)
+        .create_credential(
+            &credential_schema_id,
+            &access_token.token,
+            headers
+                .get(DPOP_HEADER)
+                .and_then(|v| v.to_str().ok())
+                .filter(|_| access_token.scheme == TokenType::DPoP),
+            request,
+        )
         .await;
 
     match result {
         Ok(value) => credential_response(value),
+        Err(OID4VCIFinal1_0ServiceError::DpopProof(error)) => {
+            dpop_proof_response(StatusCode::UNAUTHORIZED, &error)
+        }
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (
@@ -451,21 +468,32 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
         Path<CredentialSchemaId>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(TypedHeader(token), _): WithRejection<
-        TypedHeader<headers::Authorization<Bearer>>,
+    WithRejection(TypedHeader(access_token), _): WithRejection<
+        TypedHeader<AccessToken>,
         ErrorResponseRestDTO,
     >,
+    headers: HeaderMap,
     WithRejection(Json(request), _): WithRejection<Json<NotificationRequest>, ErrorResponseRestDTO>,
 ) -> Response {
-    let access_token = token.token();
     let result = state
         .core
         .oid4vci_final1_0_service
-        .handle_notification(credential_schema_id, access_token, request)
+        .handle_notification(
+            credential_schema_id,
+            &access_token.token,
+            headers
+                .get(DPOP_HEADER)
+                .and_then(|v| v.to_str().ok())
+                .filter(|_| access_token.scheme == TokenType::DPoP),
+            request,
+        )
         .await;
 
     match result {
         Ok(_) => (StatusCode::NO_CONTENT).into_response(),
+        Err(OID4VCIFinal1_0ServiceError::DpopProof(error)) => {
+            dpop_proof_response(StatusCode::UNAUTHORIZED, &error)
+        }
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential notification error: {:?}", error);
             (

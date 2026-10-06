@@ -8,7 +8,7 @@ use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::service::test_utilities::dummy_organisation;
-use serde_json::json;
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
@@ -112,6 +112,10 @@ pub async fn proof_jwt_for(
 
     header["alg"] = jose_alg.into();
 
+    sign_jwt(key, header, payload).await
+}
+
+pub async fn sign_jwt(key: &KeyHandle, header: Value, payload: Value) -> String {
     let jwt = [header.to_string(), payload.to_string()]
         .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
         .join(".");

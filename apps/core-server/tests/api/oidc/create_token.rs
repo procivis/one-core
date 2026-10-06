@@ -5,11 +5,19 @@ use one_core::model::credential::{CredentialStateEnum, CredentialType, UpdateCre
 use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
 use one_core::model::history::{HistoryAction, HistoryMetadata};
 use one_core::model::interaction::InteractionType;
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
+use one_core::provider::key_algorithm::key::KeyHandle;
+use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
+use reqwest::header::WWW_AUTHENTICATE;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::api_oidc_tests::common::sign_jwt;
 use crate::fixtures::TestingCredentialParams;
+use crate::utils::api_clients::http_client;
 use crate::utils::api_clients::ssi::TokenRequest;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -652,4 +660,156 @@ async fn test_oidc_issuer_create_token_fails_when_credential_is_expiring() {
 
     let credential = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(credential.common().state, CredentialStateEnum::Expiring);
+}
+
+async fn dpop_proof(key: &KeyHandle, url: &str, access_token: Option<&str>) -> String {
+    let header = json!({
+        "typ": "dpop+jwt",
+        "alg": "ES256",
+        "jwk": key.public_key_as_jwk().unwrap(),
+    });
+    let mut payload = json!({
+        "htm": "POST",
+        "htu": url,
+        "iat": one_core::clock::now_utc().unix_timestamp(),
+        "jti": Uuid::new_v4().to_string(),
+    });
+    if let Some(access_token) = access_token {
+        payload["ath"] = SHA256
+            .hash_base64_url(access_token.as_bytes())
+            .unwrap()
+            .into();
+    }
+    sign_jwt(key, header, payload).await
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
+    // GIVEN
+    let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let interaction_id = Uuid::new_v4().into();
+    let data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+    });
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test-schema", &org, TestingCreateSchemaParams::default())
+        .await;
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &org,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    let key = Ecdsa.generate_key().unwrap().key;
+    let base_url = format!(
+        "{}/ssi/openid4vci/final-1.0/{}",
+        context.config.app.core_base_url, credential_schema.id
+    );
+    let token_url = format!("{base_url}/token");
+    let notification_url = format!("{base_url}/notification");
+    let pre_authorized_code = interaction_id.to_string();
+    let token_request = [
+        (
+            "grant_type",
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+        ),
+        ("pre-authorized_code", pre_authorized_code.as_str()),
+    ];
+
+    // WHEN
+    let resp = http_client()
+        .post(&token_url)
+        .header("DPoP", dpop_proof(&key, &token_url, None).await)
+        .form(&token_request)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("DPoP"), resp["token_type"]);
+    let access_token = resp["access_token"].as_str().unwrap();
+
+    let notification = json!({
+        "notification_id": "unknown",
+        "event": "credential_accepted",
+    });
+
+    // WHEN
+    let resp = http_client()
+        .post(&notification_url)
+        .bearer_auth(access_token)
+        .json(&notification)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(401, resp.status());
+    assert_eq!(
+        r#"DPoP error="invalid_dpop_proof""#,
+        resp.headers()[WWW_AUTHENTICATE]
+    );
+
+    // WHEN
+    let other_key = Ecdsa.generate_key().unwrap().key;
+    let resp = http_client()
+        .post(&notification_url)
+        .header("Authorization", format!("DPoP {access_token}"))
+        .header(
+            "DPoP",
+            dpop_proof(&other_key, &notification_url, Some(access_token)).await,
+        )
+        .json(&notification)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(401, resp.status());
+
+    // WHEN
+    let resp = http_client()
+        .post(&notification_url)
+        .header("Authorization", format!("DPoP {access_token}"))
+        .header(
+            "DPoP",
+            dpop_proof(&key, &notification_url, Some(access_token)).await,
+        )
+        .json(&notification)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(400, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("invalid_notification_id"), resp["error"]);
 }

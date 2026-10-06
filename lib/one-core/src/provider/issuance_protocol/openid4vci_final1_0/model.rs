@@ -264,6 +264,8 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     pub transaction_code: Option<String>,
     #[serde(default)]
     pub formats: Option<Vec<CredentialSchemaFormatId>>,
+    #[serde(default)]
+    pub dpop_jkt: Option<String>,
 }
 
 #[skip_serializing_none]

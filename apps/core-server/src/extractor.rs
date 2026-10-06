@@ -4,6 +4,7 @@ use axum::http::request::Parts;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use headers::{Error, Header, Mime};
 use serde_qs::Config;
+use standardized_types::oauth2::TokenType;
 
 pub struct Qs<T>(pub T);
 
@@ -188,6 +189,43 @@ impl From<Mime> for Accept {
     }
 }
 
+pub struct AccessToken {
+    pub scheme: TokenType,
+    pub token: String,
+}
+
+impl Header for AccessToken {
+    fn name() -> &'static HeaderName {
+        &http::header::AUTHORIZATION
+    }
+
+    fn decode<'i, I: Iterator<Item = &'i HeaderValue>>(values: &mut I) -> Result<Self, Error> {
+        let (scheme, token) = values
+            .next()
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.split_once(' '))
+            .ok_or_else(Error::invalid)?;
+        let scheme = if scheme.eq_ignore_ascii_case("Bearer") {
+            TokenType::Bearer
+        } else if scheme.eq_ignore_ascii_case("DPoP") {
+            TokenType::DPoP
+        } else {
+            return Err(Error::invalid());
+        };
+        Ok(Self {
+            scheme,
+            token: token.trim().to_string(),
+        })
+    }
+
+    fn encode<E: Extend<HeaderValue>>(&self, values: &mut E) {
+        values.extend(HeaderValue::from_str(&format!(
+            "{} {}",
+            self.scheme, self.token
+        )));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use similar_asserts::assert_eq;
@@ -276,5 +314,25 @@ mod tests {
     fn test_negotiate_unsupported_media_type() {
         assert_eq!(None, negotiate("text/plain"));
         assert_eq!(None, negotiate("text/*, application/xml"));
+    }
+
+    #[test]
+    fn test_access_token_schemes() {
+        let decode = |value: &'static str| {
+            AccessToken::decode(&mut [&HeaderValue::from_static(value)].into_iter())
+        };
+
+        let token = decode("Bearer abc").unwrap();
+        assert_eq!(
+            (TokenType::Bearer, "abc"),
+            (token.scheme, token.token.as_str())
+        );
+        let token = decode("dpop abc").unwrap();
+        assert_eq!(
+            (TokenType::DPoP, "abc"),
+            (token.scheme, token.token.as_str())
+        );
+        assert!(decode("Basic abc").is_err());
+        assert!(decode("abc").is_err());
     }
 }
