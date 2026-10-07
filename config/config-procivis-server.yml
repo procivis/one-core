@@ -25,7 +25,7 @@ app:
       jwksExpireAfterSeconds: 86400 # 1 day
       leewaySeconds: 60 # 1min
   databasePool:
-    maxConnections: 15
+    maxConnections: 10
     minConnections: 2
     acquireTimeoutSeconds: 10
     idleTimeoutSeconds: 60
