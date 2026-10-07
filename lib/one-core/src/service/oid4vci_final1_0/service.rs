@@ -344,12 +344,7 @@ impl OID4VCIFinal1_0Service {
             OID4VCIFinal1_0ServiceError::MappingError("Missing base_url".to_owned()),
         )?;
 
-        let identifier_id = credential
-            .issuer_identifier()
-            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                "Missing issuer_identifier".to_owned(),
-            ))?
-            .id();
+        let identifier_id = credential.issuer()?.data.identifier.id();
 
         Ok(create_credential_offer(
             &protocol_base_url,
@@ -563,13 +558,7 @@ impl OID4VCIFinal1_0Service {
             CredentialRequestPayload::Encrypted(jwe) => jwe,
         };
 
-        let issuer_identifier = credential
-            .issuer_identifier()
-            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                "Missing issuer_identifier".to_string(),
-            ))?
-            .as_ref()
-            .await?;
+        let issuer_identifier = credential.issuer()?.data.identifier.as_ref().await?;
 
         let candidates = key_agreement_keys(
             &issuer_identifier,
@@ -1265,14 +1254,7 @@ impl OID4VCIFinal1_0Service {
         let issuer_identifier_id = if params.swiyu_mode {
             None
         } else {
-            Some(
-                credential
-                    .issuer_identifier()
-                    .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                        "missing issuer_identifier".to_string(),
-                    ))?
-                    .id(),
-            )
+            Some(credential.issuer()?.data.identifier.id())
         };
         let wallet_instance_attestation_token = self
             .validate_oauth_client_attestation(

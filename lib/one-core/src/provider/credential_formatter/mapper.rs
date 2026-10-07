@@ -404,25 +404,14 @@ async fn issuer_url_for_credential(
     credential: &Credential,
     core_base_url: &str,
 ) -> Result<Url, FormatterError> {
-    let issuer_identifier = match credential.issuer_identifier() {
-        Some(identifier) => Some(identifier.as_ref().await?.to_owned()),
-        None => None,
-    };
+    let issuer_identifier = credential.issuer()?.data.identifier.as_ref().await?;
 
-    if let Some(IdentifierData::Did(issuer_did)) = issuer_identifier
-        .as_ref()
-        .map(|identifier| &identifier.data)
-    {
+    if let IdentifierData::Did(issuer_did) = &issuer_identifier.data {
         let issuer_did = issuer_did.as_ref().await?;
         return Ok(issuer_did.did.clone().into_url());
     }
 
-    let issuer_identifier_id = issuer_identifier
-        .as_ref()
-        .ok_or(FormatterError::CouldNotFormat(
-            "missing credential issuer identifier".to_string(),
-        ))?
-        .id;
+    let issuer_identifier_id = issuer_identifier.id;
 
     Ok(format!(
         "{core_base_url}/ssi/openid4vci/{}/{issuer_identifier_id}/{}",

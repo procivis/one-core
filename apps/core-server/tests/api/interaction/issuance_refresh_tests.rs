@@ -383,7 +383,14 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         if let Some(expires) = offer.fixed_identifier_expiry {
             assert_eq!(item.common().expires_at.is_some(), expires);
             assert_eq!(
-                item.holder_identifier().as_ref().unwrap().id(),
+                item.holder()
+                    .unwrap()
+                    .data
+                    .binding
+                    .as_ref()
+                    .unwrap()
+                    .identifier
+                    .id(),
                 holder_identifier.id
             );
         }

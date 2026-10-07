@@ -99,13 +99,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             } = actual
         );
         assert_eq!(
-            actual
-                .issuer_identifier()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .id,
+            issuer.identifier.as_ref().await.unwrap().id,
             setup.identifier.id
         );
         assert_eq!(issuer.signing_key.as_ref().await.unwrap().id, key_id);
@@ -114,8 +108,8 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             format_id
         );
         assert_eq!(
-            actual
-                .holder_identifier()
+            credential
+                .holder_identifier
                 .as_ref()
                 .unwrap()
                 .as_ref()

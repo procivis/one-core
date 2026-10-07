@@ -126,7 +126,6 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                 assert_eq!(subscriber_information.as_deref(), Some("shared metadata"));
                 assert_eq!(webhook_url.as_deref(), Some("https://example.com/webhook"));
                 assert!(actual.format().is_none());
-                assert!(actual.holder_identifier().is_none());
                 assert!(actual.credential_blob_id().is_none());
             }
             Credential::IssuerBatchItem { credential, .. } => {
@@ -143,7 +142,7 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                     data.wallet_instance_attestation_blob_id
                 );
                 assert_eq!(
-                    actual.holder_identifier().as_ref().unwrap().id(),
+                    credential.holder_identifier.as_ref().unwrap().id(),
                     setup.identifier.id
                 );
             }

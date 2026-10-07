@@ -46,6 +46,7 @@ use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerInteractionDataDTO;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::common_dto::BoundedB64Image;
 use crate::service::common_mapper::recorded_ecosystem_outcomes;
@@ -73,14 +74,8 @@ pub(crate) async fn credential_detail_response_from_model(
             .await
             .map_err(|e: NestedError| CredentialServiceError::MappingError(e.to_string()))?;
 
-    let mut filtered_claims = Vec::with_capacity(claims.len());
-    for claim in claims {
-        if !claim.schema.as_ref().await?.metadata {
-            filtered_claims.push(claim);
-        }
-    }
-    let claims = filtered_claims;
-    let state = value.common().state;
+    let claims = to_credential_detail_claims(claims, &schema_model, config).await?;
+    drop(schema_model);
 
     let role = value.role();
     let credential_type = value.r#type();
@@ -93,46 +88,11 @@ pub(crate) async fn credential_detail_response_from_model(
         config,
     )?;
 
-    let issuer_certificate = match &value.issuer_certificate() {
-        None => None,
-        Some(certificate) => Some(
-            certificate_to_response_dto(certificate.as_ref().await?.to_owned())
-                .await
-                .error_while("converting certificate")?,
-        ),
-    };
-
-    let holder = match &value.holder_identifier() {
-        None => None,
-        Some(holder_identifier) => Some(holder_identifier.as_ref().await?.to_owned().into()),
-    };
-
-    let issuer = match &value.issuer_identifier() {
-        None => None,
-        Some(issuer_identifier) => {
-            let identifier = issuer_identifier.as_ref().await?.to_owned();
-            let mut dto: GetIdentifierListItemResponseDTO = identifier.clone().into();
-            if matches!(
-                value,
-                Credential::HolderSingle { .. }
-                    | Credential::HolderBatchParent { .. }
-                    | Credential::HolderBatchItem { .. }
-            ) {
-                let texts = identifier.translations.as_ref().await?.to_owned();
-                dto.translations = Some(identifier_translations_dto(
-                    &texts,
-                    &identifier.name,
-                    &config.global_settings.default_language,
-                ));
-                if let Some(blob_storage_provider) = blob_storage_provider {
-                    dto.logo = resolve_identifier_logo(blob_storage_provider, identifier.logo)
-                        .await?
-                        .map(BoundedB64Image);
-                }
-            }
-            Some(dto)
-        }
-    };
+    let CredentialDetailIdentities {
+        issuer,
+        holder,
+        issuer_certificate,
+    } = credential_detail_identities(&value, config, blob_storage_provider).await?;
 
     let offered_formats = get_offered_formats(
         value.common(),
@@ -143,55 +103,23 @@ pub(crate) async fn credential_detail_response_from_model(
     )
     .await?;
 
-    let claims = from_vec_claim(claims, &schema_model, config).await?;
-    drop(schema_model);
     let suspend_end_date = value.suspend_end_date();
     let parent_id = value.parent().map(|parent| parent.id());
-    let (common, webhook_url, consumed_at, subscriber_information) = match value {
-        Credential::IssuerSingle {
-            common,
-            webhook_url,
-            subscriber_information,
-            ..
-        }
-        | Credential::IssuerBatchParent {
-            common,
-            webhook_url,
-            subscriber_information,
-            ..
-        } => (common, webhook_url, None, subscriber_information),
-        Credential::IssuerBatchItem { common, parent, .. } => {
-            let subscriber_information = match &*parent.as_ref().await? {
-                Credential::IssuerSingle {
-                    subscriber_information,
-                    ..
-                }
-                | Credential::IssuerBatchParent {
-                    subscriber_information,
-                    ..
-                } => subscriber_information.clone(),
-                _ => None,
-            };
-            (common, None, None, subscriber_information)
-        }
-        Credential::HolderBatchItem {
-            common,
-            consumed_at,
-            ..
-        } => (common, None, consumed_at, None),
-        Credential::HolderSingle { common, .. }
-        | Credential::HolderBatchParent { common, .. }
-        | Credential::Verifier { common, .. } => (common, None, None, None),
-    };
+    let CredentialDetailMetadata {
+        common,
+        webhook_url,
+        consumed_at,
+        subscriber_information,
+    } = credential_detail_metadata(value).await?;
 
     Ok(CredentialDetailResponseDTO {
         id: common.id,
         created_date: common.created_date,
         issuance_date: common.issuance_date,
-        revocation_date: get_revocation_date(&state, &common.last_modified),
+        revocation_date: get_revocation_date(&common.state, &common.last_modified),
         expires_at: common.expires_at,
         consumed_at,
-        state: state.into(),
+        state: common.state.into(),
         last_modified: common.last_modified,
         claims,
         schema: schema_dto,
@@ -225,7 +153,173 @@ pub(crate) async fn credential_detail_response_from_model(
     })
 }
 
-async fn from_vec_claim(
+struct CredentialDetailIdentities {
+    issuer: Option<GetIdentifierListItemResponseDTO>,
+    holder: Option<GetIdentifierListItemResponseDTO>,
+    issuer_certificate: Option<CertificateResponseDTO>,
+}
+
+async fn credential_detail_identities(
+    value: &Credential,
+    config: &CoreConfig,
+    blob_storage_provider: Option<&dyn BlobStorageProvider>,
+) -> Result<CredentialDetailIdentities, CredentialServiceError> {
+    let (issuer_identifier, issuer_certificate, holder_identifier) = match value {
+        Credential::IssuerSingle {
+            issuer, credential, ..
+        }
+        | Credential::IssuerBatchItem {
+            issuer, credential, ..
+        } => (
+            Some(&issuer.identifier),
+            issuer.certificate.as_ref(),
+            credential.holder_identifier.as_ref(),
+        ),
+        Credential::IssuerBatchParent { issuer, .. } => {
+            (Some(&issuer.identifier), issuer.certificate.as_ref(), None)
+        }
+        Credential::HolderSingle { credential, .. }
+        | Credential::HolderBatchItem { credential, .. } => (
+            Some(&credential.issuer.identifier),
+            credential.issuer.certificate.as_ref(),
+            credential
+                .binding
+                .as_ref()
+                .map(|binding| &binding.identifier),
+        ),
+        Credential::Verifier { verifier_data, .. } => (
+            Some(&verifier_data.issuer.identifier),
+            verifier_data.issuer.certificate.as_ref(),
+            verifier_data.holder_identifier.as_ref(),
+        ),
+        Credential::HolderBatchParent { .. } => (None, None, None),
+    };
+    let issuer_certificate = match issuer_certificate {
+        None => None,
+        Some(certificate) => Some(
+            certificate_to_response_dto(certificate.as_ref().await?.to_owned())
+                .await
+                .error_while("converting certificate")?,
+        ),
+    };
+
+    let holder = match holder_identifier {
+        None => None,
+        Some(holder_identifier) => Some(holder_identifier.as_ref().await?.to_owned().into()),
+    };
+
+    let issuer = match issuer_identifier {
+        None => None,
+        Some(identifier) => Some(
+            issuer_identifier_to_response(
+                identifier.as_ref().await?.to_owned(),
+                value.role() == CredentialRole::Holder,
+                config,
+                blob_storage_provider,
+            )
+            .await?,
+        ),
+    };
+
+    Ok(CredentialDetailIdentities {
+        issuer,
+        holder,
+        issuer_certificate,
+    })
+}
+
+async fn issuer_identifier_to_response(
+    identifier: Identifier,
+    include_translations: bool,
+    config: &CoreConfig,
+    blob_storage_provider: Option<&dyn BlobStorageProvider>,
+) -> Result<GetIdentifierListItemResponseDTO, CredentialServiceError> {
+    let mut dto: GetIdentifierListItemResponseDTO = identifier.clone().into();
+    if include_translations {
+        let texts = identifier.translations.as_ref().await?;
+        dto.translations = Some(identifier_translations_dto(
+            &texts,
+            &identifier.name,
+            &config.global_settings.default_language,
+        ));
+        if let Some(blob_storage_provider) = blob_storage_provider {
+            dto.logo = resolve_identifier_logo(blob_storage_provider, identifier.logo)
+                .await?
+                .map(BoundedB64Image);
+        }
+    }
+    Ok(dto)
+}
+
+struct CredentialDetailMetadata {
+    common: CredentialCommon,
+    webhook_url: Option<String>,
+    consumed_at: Option<OffsetDateTime>,
+    subscriber_information: Option<String>,
+}
+
+async fn credential_detail_metadata(
+    value: Credential,
+) -> Result<CredentialDetailMetadata, CredentialServiceError> {
+    Ok(match value {
+        Credential::IssuerSingle {
+            common,
+            webhook_url,
+            subscriber_information,
+            ..
+        }
+        | Credential::IssuerBatchParent {
+            common,
+            webhook_url,
+            subscriber_information,
+            ..
+        } => CredentialDetailMetadata {
+            common,
+            webhook_url,
+            consumed_at: None,
+            subscriber_information,
+        },
+        Credential::IssuerBatchItem { common, parent, .. } => {
+            let subscriber_information = match &*parent.as_ref().await? {
+                Credential::IssuerSingle {
+                    subscriber_information,
+                    ..
+                }
+                | Credential::IssuerBatchParent {
+                    subscriber_information,
+                    ..
+                } => subscriber_information.clone(),
+                _ => None,
+            };
+            CredentialDetailMetadata {
+                common,
+                webhook_url: None,
+                consumed_at: None,
+                subscriber_information,
+            }
+        }
+        Credential::HolderBatchItem {
+            common,
+            consumed_at,
+            ..
+        } => CredentialDetailMetadata {
+            common,
+            webhook_url: None,
+            consumed_at,
+            subscriber_information: None,
+        },
+        Credential::HolderSingle { common, .. }
+        | Credential::HolderBatchParent { common, .. }
+        | Credential::Verifier { common, .. } => CredentialDetailMetadata {
+            common,
+            webhook_url: None,
+            consumed_at: None,
+            subscriber_information: None,
+        },
+    })
+}
+
+async fn to_credential_detail_claims(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
@@ -248,13 +342,13 @@ async fn from_vec_claim(
 
     let mut result = vec![];
     for claim in claims {
-        result = insert_claim(result, claim, &claim_schema_dtos, config).await?;
+        if !claim.schema.as_ref().await?.metadata {
+            result = insert_claim(result, claim, &claim_schema_dtos, config).await?;
+        }
     }
-    let mut claims = result;
+    sort_claims(&mut result);
 
-    sort_claims(&mut claims);
-
-    Ok(claims)
+    Ok(result)
 }
 
 async fn insert_claim(
@@ -572,7 +666,16 @@ pub(super) async fn to_credential_list_response(
     let schema = credential.common().schema.as_ref().await?.to_owned();
     let credential_format = credential.credential_format().await?;
 
-    let issuer = match &credential.issuer_identifier() {
+    let issuer_identifier = match &credential {
+        Credential::IssuerSingle { issuer, .. }
+        | Credential::IssuerBatchParent { issuer, .. }
+        | Credential::IssuerBatchItem { issuer, .. } => Some(&issuer.identifier),
+        Credential::HolderSingle { credential, .. }
+        | Credential::HolderBatchItem { credential, .. } => Some(&credential.issuer.identifier),
+        Credential::Verifier { verifier_data, .. } => Some(&verifier_data.issuer.identifier),
+        Credential::HolderBatchParent { .. } => None,
+    };
+    let issuer = match issuer_identifier {
         None => None,
         Some(issuer_identifier) => Some(issuer_identifier.as_ref().await?.to_owned().into()),
     };
@@ -1304,13 +1407,7 @@ pub(crate) async fn credential_detail_response_from_backup(
     let schema = value.common.schema.as_ref().await?;
     let schema_dto =
         to_credential_schema_detail_response(schema.clone(), config, formatter_provider).await?;
-    let mut claims = vec![];
-    for claim in value.claims {
-        if !claim.schema.as_ref().await?.metadata {
-            claims.push(claim);
-        }
-    }
-    let claims = from_vec_claim(claims, &schema, config).await?;
+    let claims = to_credential_detail_claims(value.claims, &schema, config).await?;
     drop(schema);
     let format = match &value.format {
         Some(format) if value.r#type != CredentialType::BatchParent => {

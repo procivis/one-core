@@ -178,11 +178,18 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
             assert!(matches!(credential, Credential::Verifier { .. }));
             assert_eq!(credential.common().protocol, "ISO_MDL");
             assert_eq!(
-                credential.issuer_identifier().unwrap().id(),
+                credential.verifier().unwrap().data.issuer.identifier.id(),
                 issuer_identifier_id
             );
             assert_eq!(
-                credential.holder_identifier().as_ref().unwrap().id(),
+                credential
+                    .verifier()
+                    .unwrap()
+                    .data
+                    .holder_identifier
+                    .as_ref()
+                    .unwrap()
+                    .id(),
                 holder_identifier_id
             );
             Ok(credential.common().id)
@@ -227,7 +234,14 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
     for claim in claims {
         let credential = claim.credential.as_ref().await.unwrap();
         assert_eq!(
-            credential.holder_identifier().as_ref().unwrap().id(),
+            credential
+                .verifier()
+                .unwrap()
+                .data
+                .holder_identifier
+                .as_ref()
+                .unwrap()
+                .id(),
             holder_identifier_id
         );
     }

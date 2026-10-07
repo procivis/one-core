@@ -845,6 +845,36 @@ pub struct CredentialBuilder {
 
 impl From<Credential> for CredentialBuilder {
     fn from(value: Credential) -> Self {
+        let (issuer_identifier, issuer_certificate, holder_identifier) = match &value {
+            Credential::IssuerSingle {
+                issuer, credential, ..
+            }
+            | Credential::IssuerBatchItem {
+                issuer, credential, ..
+            } => (
+                Some(&issuer.identifier),
+                issuer.certificate.as_ref(),
+                credential.holder_identifier.as_ref(),
+            ),
+            Credential::IssuerBatchParent { issuer, .. } => {
+                (Some(&issuer.identifier), issuer.certificate.as_ref(), None)
+            }
+            Credential::HolderSingle { credential, .. }
+            | Credential::HolderBatchItem { credential, .. } => (
+                Some(&credential.issuer.identifier),
+                credential.issuer.certificate.as_ref(),
+                credential
+                    .binding
+                    .as_ref()
+                    .map(|binding| &binding.identifier),
+            ),
+            Credential::Verifier { verifier_data, .. } => (
+                Some(&verifier_data.issuer.identifier),
+                verifier_data.issuer.certificate.as_ref(),
+                verifier_data.holder_identifier.as_ref(),
+            ),
+            Credential::HolderBatchParent { .. } => (None, None, None),
+        };
         let issuer_credential = value.issuer_credential().ok();
         let holder = value.holder().ok().map(|view| view.data);
         let binding = holder.and_then(|holder| holder.binding.as_ref());
@@ -867,9 +897,9 @@ impl From<Credential> for CredentialBuilder {
             role: value.role(),
             r#type: value.r#type(),
             suspend_end_date: value.suspend_end_date(),
-            issuer_identifier: value.issuer_identifier().cloned(),
-            issuer_certificate: value.issuer_certificate().clone(),
-            holder_identifier: value.holder_identifier().cloned(),
+            issuer_identifier: issuer_identifier.cloned(),
+            issuer_certificate: issuer_certificate.cloned(),
+            holder_identifier: holder_identifier.cloned(),
             key: value
                 .issuer()
                 .ok()

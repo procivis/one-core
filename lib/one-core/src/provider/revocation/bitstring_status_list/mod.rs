@@ -139,13 +139,8 @@ impl RevocationMethod for BitstringStatusList {
         &self,
         credential: &Credential,
     ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
-        let issuer_identifier = credential
-            .issuer_identifier()
-            .ok_or(RevocationError::MappingError(
-                "issuer identifier is None".to_string(),
-            ))?
-            .as_ref()
-            .await?;
+        let issuer = credential.issuer()?.data;
+        let issuer_identifier = issuer.identifier.as_ref().await?;
 
         let credential_schema = credential.common().schema.as_ref().await?;
 
@@ -177,13 +172,8 @@ impl RevocationMethod for BitstringStatusList {
         credential: &Credential,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        let issuer_identifier = credential
-            .issuer_identifier()
-            .ok_or(RevocationError::MappingError(
-                "issuer identifier is None".to_string(),
-            ))?
-            .as_ref()
-            .await?;
+        let issuer = credential.issuer()?.data;
+        let issuer_identifier = issuer.identifier.as_ref().await?;
 
         let purpose = if new_state == RevocationState::Revoked {
             RevocationListPurpose::Revocation
@@ -195,7 +185,7 @@ impl RevocationMethod for BitstringStatusList {
             .revocation_list_repository
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier.id,
-                credential.issuer_certificate().as_ref().map(|c| c.id()),
+                issuer.certificate.as_ref().map(|c| c.id()),
                 purpose,
                 &self.config_id,
             )

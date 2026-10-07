@@ -491,80 +491,131 @@ pub(super) fn request_to_active_model(
     request: &Credential,
     organisation_id: OrganisationId,
 ) -> credential::ActiveModel {
-    let issuer_credential = request.issuer_credential().ok();
-    let holder = request.holder().ok().map(|view| view.data);
-    let binding = holder.and_then(|holder| holder.binding.as_ref());
-    credential::ActiveModel {
-        id: Set(request.common().id),
-        credential_schema_id: Set(request.common().schema.id()),
+    let common = request.common();
+    let mut model = credential::ActiveModel {
+        id: Set(common.id),
+        credential_schema_id: Set(common.schema.id()),
         organisation_id: Set(organisation_id),
-        created_date: Set(request.common().created_date),
-        last_modified: Set(request.common().last_modified),
-        issuance_date: Set(request.common().issuance_date),
-        expires_at: Set(request.common().expires_at),
-        deleted_at: Set(request.common().deleted_at),
-        consumed_at: Set(match request {
-            Credential::HolderBatchItem { consumed_at, .. } => *consumed_at,
-            _ => None,
-        }),
-        protocol: Set(request.common().protocol.to_owned()),
-        redirect_uri: Set(request.common().redirect_uri.to_owned()),
-        issuer_identifier_id: Set(request
-            .issuer_identifier()
-            .map(|identifier| identifier.id())),
-        issuer_certificate_id: Set(request
-            .issuer_certificate()
-            .as_ref()
-            .map(|certificate| certificate.id())),
-        holder_identifier_id: Set(request
-            .holder_identifier()
-            .as_ref()
-            .map(|identifier| identifier.id())),
-        interaction_id: Set(request
-            .common()
+        created_date: Set(common.created_date),
+        last_modified: Set(common.last_modified),
+        issuance_date: Set(common.issuance_date),
+        expires_at: Set(common.expires_at),
+        deleted_at: Set(common.deleted_at),
+        protocol: Set(common.protocol.clone()),
+        redirect_uri: Set(common.redirect_uri.clone()),
+        interaction_id: Set(common
             .interaction
             .as_ref()
             .map(|interaction| interaction.id())),
-        key_id: Set(request
-            .issuer()
-            .ok()
-            .map(|issuer| issuer.data.signing_key.id())
-            .or_else(|| binding.map(|binding| binding.key.id()))),
         role: Set(request.role().into()),
-        state: Set(request.common().state.into()),
+        state: Set(common.state.into()),
         suspend_end_date: Set(request.suspend_end_date()),
-        profile: Set(request.common().profile.clone()),
-        parent_id: Set(request.parent().map(|m| m.id())),
+        profile: Set(common.profile.clone()),
+        parent_id: Set(request.parent().map(|parent| parent.id())),
         credential_blob_id: Set(request.credential_blob_id()),
-        wallet_key_attestation_blob_id: Set(issuer_credential
-            .as_ref()
-            .and_then(|issuer| issuer.data.wallet_key_attestation_blob_id)),
-        wallet_instance_attestation_blob_id: Set(
-            issuer_credential.and_then(|issuer| issuer.data.wallet_instance_attestation_blob_id)
-        ),
-        webhook_url: Set(match request {
-            Credential::IssuerSingle { webhook_url, .. }
-            | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),
-            _ => None,
-        }),
-        embedded_disclosure_policy: Set(
-            holder.and_then(|holder| holder.embedded_disclosure_policy.clone())
-        ),
-        subscriber_information: Set(match request {
-            Credential::IssuerSingle {
-                subscriber_information,
-                ..
-            }
-            | Credential::IssuerBatchParent {
-                subscriber_information,
-                ..
-            } => subscriber_information.clone(),
-            _ => None,
-        }),
-        ecosystem: Set(request.common().ecosystem.clone()),
+        ecosystem: Set(common.ecosystem.clone()),
         r#type: Set(request.r#type().into()),
         format: Set(request.format().map(|format| format.id())),
+        consumed_at: Set(None),
+        issuer_identifier_id: Set(None),
+        issuer_certificate_id: Set(None),
+        holder_identifier_id: Set(None),
+        key_id: Set(None),
+        wallet_key_attestation_blob_id: Set(None),
+        wallet_instance_attestation_blob_id: Set(None),
+        webhook_url: Set(None),
+        embedded_disclosure_policy: Set(None),
+        subscriber_information: Set(None),
+    };
+    set_credential_variant_fields(&mut model, request);
+    model
+}
+
+fn set_credential_variant_fields(model: &mut credential::ActiveModel, request: &Credential) {
+    match request {
+        Credential::IssuerSingle {
+            issuer,
+            credential,
+            webhook_url,
+            subscriber_information,
+            ..
+        } => {
+            set_issuer_fields(model, issuer);
+            set_issuer_credential_fields(model, credential);
+            model.webhook_url = Set(webhook_url.clone());
+            model.subscriber_information = Set(subscriber_information.clone());
+        }
+        Credential::IssuerBatchParent {
+            issuer,
+            webhook_url,
+            subscriber_information,
+            ..
+        } => {
+            set_issuer_fields(model, issuer);
+            model.webhook_url = Set(webhook_url.clone());
+            model.subscriber_information = Set(subscriber_information.clone());
+        }
+        Credential::IssuerBatchItem {
+            issuer, credential, ..
+        } => {
+            set_issuer_fields(model, issuer);
+            set_issuer_credential_fields(model, credential);
+        }
+        Credential::HolderSingle { credential, .. } => {
+            set_holder_credential_fields(model, credential);
+        }
+        Credential::HolderBatchItem {
+            credential,
+            consumed_at,
+            ..
+        } => {
+            set_holder_credential_fields(model, credential);
+            model.consumed_at = Set(*consumed_at);
+        }
+        Credential::Verifier { verifier_data, .. } => {
+            model.issuer_identifier_id = Set(Some(verifier_data.issuer.identifier.id()));
+            model.issuer_certificate_id = Set(verifier_data
+                .issuer
+                .certificate
+                .as_ref()
+                .map(|certificate| certificate.id()));
+            model.holder_identifier_id = Set(verifier_data
+                .holder_identifier
+                .as_ref()
+                .map(|identifier| identifier.id()));
+        }
+        Credential::HolderBatchParent { .. } => {}
     }
+}
+
+fn set_issuer_fields(model: &mut credential::ActiveModel, issuer: &IssuerData) {
+    model.issuer_identifier_id = Set(Some(issuer.identifier.id()));
+    model.issuer_certificate_id = Set(issuer
+        .certificate
+        .as_ref()
+        .map(|certificate| certificate.id()));
+    model.key_id = Set(Some(issuer.signing_key.id()));
+}
+
+fn set_issuer_credential_fields(model: &mut credential::ActiveModel, data: &IssuerCredentialData) {
+    model.holder_identifier_id = Set(data
+        .holder_identifier
+        .as_ref()
+        .map(|identifier| identifier.id()));
+    model.wallet_key_attestation_blob_id = Set(data.wallet_key_attestation_blob_id);
+    model.wallet_instance_attestation_blob_id = Set(data.wallet_instance_attestation_blob_id);
+}
+
+fn set_holder_credential_fields(model: &mut credential::ActiveModel, data: &HolderCredentialData) {
+    model.issuer_identifier_id = Set(Some(data.issuer.identifier.id()));
+    model.issuer_certificate_id = Set(data
+        .issuer
+        .certificate
+        .as_ref()
+        .map(|certificate| certificate.id()));
+    model.holder_identifier_id = Set(data.binding.as_ref().map(|binding| binding.identifier.id()));
+    model.key_id = Set(data.binding.as_ref().map(|binding| binding.key.id()));
+    model.embedded_disclosure_policy = Set(data.embedded_disclosure_policy.clone());
 }
 
 pub(crate) struct CredentialSchemaFormatLoader {

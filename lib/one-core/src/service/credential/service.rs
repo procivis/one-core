@@ -641,11 +641,7 @@ impl CredentialService {
             ));
         }
 
-        let Some(issuer_identifier) = credential.issuer_identifier() else {
-            return Err(CredentialServiceError::MappingError(
-                "Missing issuer identifier".to_string(),
-            ));
-        };
+        let issuer_identifier = &credential.issuer()?.data.identifier;
         if issuer_identifier.as_ref().await?.state != IdentifierState::Active {
             return Err(CredentialServiceError::IdentifierIsDeactivated(
                 issuer_identifier.id(),

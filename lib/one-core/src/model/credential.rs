@@ -401,48 +401,6 @@ impl Credential {
         }
     }
 
-    pub fn issuer_identifier(&self) -> Option<&Related<Identifier>> {
-        match self {
-            Self::IssuerSingle { issuer, .. }
-            | Self::IssuerBatchParent { issuer, .. }
-            | Self::IssuerBatchItem { issuer, .. } => Some(&issuer.identifier),
-            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
-                Some(&credential.issuer.identifier)
-            }
-            Self::Verifier { verifier_data, .. } => Some(&verifier_data.issuer.identifier),
-            Self::HolderBatchParent { .. } => None,
-        }
-    }
-
-    pub fn issuer_certificate(&self) -> &Option<Related<Certificate>> {
-        match self {
-            Self::IssuerSingle { issuer, .. }
-            | Self::IssuerBatchParent { issuer, .. }
-            | Self::IssuerBatchItem { issuer, .. } => &issuer.certificate,
-            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
-                &credential.issuer.certificate
-            }
-            Self::Verifier { verifier_data, .. } => &verifier_data.issuer.certificate,
-            Self::HolderBatchParent { .. } => &None,
-        }
-    }
-
-    pub fn holder_identifier(&self) -> Option<&Related<Identifier>> {
-        match self {
-            Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
-                credential.holder_identifier.as_ref()
-            }
-            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
-                credential
-                    .binding
-                    .as_ref()
-                    .map(|binding| &binding.identifier)
-            }
-            Self::Verifier { verifier_data, .. } => verifier_data.holder_identifier.as_ref(),
-            Self::IssuerBatchParent { .. } | Self::HolderBatchParent { .. } => None,
-        }
-    }
-
     pub fn format(&self) -> Option<&Related<CredentialSchemaFormat>> {
         match self {
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {

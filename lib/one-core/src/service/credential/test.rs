@@ -781,7 +781,8 @@ async fn test_share_credential_success() {
         .times(1)
         .returning(move |_| Ok(protocol.clone()));
 
-    let credential = generic_credential().await;
+    let credential =
+        crate::service::test_utilities::issuer_credential(generic_credential().await).unwrap();
     let credential_id = credential.common().id;
     {
         let clone = credential.clone();
@@ -883,14 +884,17 @@ async fn test_share_credential_failed_invalid_type() {
 async fn test_share_credential_failed_inactive_identifier() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential().await;
-    let Credential::HolderSingle {
-        credential: data, ..
-    } = &mut credential
-    else {
-        panic!("expected holder single")
-    };
-    data.issuer.identifier.as_mut().await.unwrap().state = IdentifierState::Deactivated;
+    let mut credential =
+        crate::service::test_utilities::issuer_credential(generic_credential().await).unwrap();
+    credential
+        .issuer_mut()
+        .unwrap()
+        .data
+        .identifier
+        .as_mut()
+        .await
+        .unwrap()
+        .state = IdentifierState::Deactivated;
     {
         let clone = credential.clone();
         credential_repository
@@ -921,8 +925,11 @@ impl CredentialCreationFixture {
     async fn new() -> Self {
         let credential = generic_credential().await;
         let issuer = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap();
@@ -1055,8 +1062,11 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
     {
         let clone = credential.clone();
         let issuer_identifier = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -1139,7 +1149,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
                 .unwrap()
                 .id
                 .to_owned(),
-            issuer: Some(credential.issuer_identifier().unwrap().id()),
+            issuer: Some(credential.holder().unwrap().data.issuer.identifier.id()),
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
@@ -1169,10 +1179,9 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
     let credential = generic_credential().await;
     let schema = &credential.common().schema;
     let claims = stored_credential_claims(&credential).await.unwrap();
-    let issuer_identifier = credential.issuer_identifier().cloned();
+    let issuer_identifier = credential.holder().unwrap().data.issuer.identifier.clone();
 
     let mut schema = schema.as_ref().await.unwrap().to_owned();
-    let issuer_identifier = issuer_identifier.unwrap();
 
     schema.wallet_attestation.key_storage_security_level = Some(KeyStorageSecurity::EnhancedBasic);
     {
@@ -1232,8 +1241,11 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             data: IdentifierData::Did(issuer_identifier_did),
             ..
         } = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -1356,8 +1368,11 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             data: IdentifierData::Did(issuer_identifier_did),
             ..
         } = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -1585,8 +1600,11 @@ async fn test_create_credential_one_required_claim_missing_success() {
             data: IdentifierData::Did(issuer_identifier_did),
             ..
         } = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -1735,8 +1753,11 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             data: IdentifierData::Did(issuer_identifier_did),
             ..
         } = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -1881,8 +1902,11 @@ async fn test_create_credential_namespace_optional() {
             data: IdentifierData::Did(issuer_identifier_did),
             ..
         } = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -2071,8 +2095,11 @@ async fn test_create_credential_schema_deleted() {
             data: IdentifierData::Did(issuer_identifier_did),
             ..
         } = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -2255,8 +2282,11 @@ async fn test_create_credential_fail_webhook_not_allowed() {
     let credential = generic_credential().await;
     {
         let issuer_identifier = credential
-            .issuer_identifier()
+            .holder()
             .unwrap()
+            .data
+            .issuer
+            .identifier
             .as_ref()
             .await
             .unwrap()
@@ -2332,7 +2362,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
                 .unwrap()
                 .id
                 .to_owned(),
-            issuer: Some(credential.issuer_identifier().unwrap().id()),
+            issuer: Some(credential.holder().unwrap().data.issuer.identifier.id()),
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
@@ -3608,8 +3638,11 @@ async fn test_create_credential_session_org_mismatch() {
     let mut identifier_repository = MockIdentifierRepository::new();
     let credential = generic_credential().await;
     let issuer_identifier = credential
-        .issuer_identifier()
+        .holder()
         .unwrap()
+        .data
+        .issuer
+        .identifier
         .as_ref()
         .await
         .unwrap()

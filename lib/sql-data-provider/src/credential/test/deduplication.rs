@@ -687,7 +687,7 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
         &setup.parent.common().schema.id(),
         CredentialStateEnum::Accepted,
         "OPENID4VCI_FINAL1",
-        setup.template.issuer_identifier().unwrap().id(),
+        setup.template.holder().unwrap().data.issuer.identifier.id(),
         None,
         None,
         Uuid::new_v4().into(),

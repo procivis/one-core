@@ -1229,7 +1229,10 @@ async fn test_post_issuer_credential_with(
                 .as_ref()
                 .unwrap(),
             &credential
-                .holder_identifier()
+                .issuer_credential()
+                .unwrap()
+                .data
+                .holder_identifier
                 .as_ref()
                 .unwrap()
                 .id()
@@ -2110,5 +2113,12 @@ async fn test_post_issuer_credential_encrypted_request_and_response() {
 
     let credential = context.db.credentials.get(&credential.common().id).await;
     assert!(credential.common().issuance_date.is_some());
-    assert!(credential.holder_identifier().is_some());
+    assert!(
+        credential
+            .issuer_credential()
+            .unwrap()
+            .data
+            .holder_identifier
+            .is_some()
+    );
 }
