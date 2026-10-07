@@ -9,10 +9,12 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Build
+import android.os.ParcelUuid
 import android.util.Log
 import androidx.annotation.RequiresApi
 import java.lang.ref.WeakReference
@@ -50,6 +52,10 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
             val scanCallback = getScanCallback(filters)
 
+            val scanFilters = if (filters.isEmpty()) null else filters.map { serviceUuid ->
+                ScanFilter.Builder().setServiceUuid(ParcelUuid(serviceUuid)).build()
+            }
+
             val scanSettings =
                 ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
 
@@ -60,10 +66,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
                 mScanning.scannedDevices.clear()
                 mScanning.callback = scanCallback
-                scanner.startScan(
-                    null, // service UUID filter not working on some devices
-                    scanSettings, scanCallback
-                )
+                scanner?.startScan(scanFilters, scanSettings, scanCallback)
             }
         }
     }
@@ -100,7 +103,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                     throw BleException.ScanNotStarted()
                 }
 
-                scanner.stopScan(mScanning.callback)
+                scanner?.stopScan(mScanning.callback)
                 mScanning.callback = null
                 mScanning.devices.clear()
 
@@ -277,9 +280,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         return asyncCallback { promise ->
             synchronized(lock) {
                 val (ch, gatt, address) = getCharacteristic(
-                    peripheral,
-                    service,
-                    characteristic
+                    peripheral, service, characteristic
                 )
 
                 if (mReadInProgress.containsKey(address)) {
@@ -297,8 +298,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
     }
 
-    private val mWriteInProgress: MutableMap<DeviceCharacteristicAddress, Promise<Unit>> =
-        HashMap()
+    private val mWriteInProgress: MutableMap<DeviceCharacteristicAddress, Promise<Unit>> = HashMap()
 
     @SuppressLint("MissingPermission")
     override suspend fun writeData(
@@ -338,13 +338,10 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         data: ByteArray,
         writeType: CharacteristicWriteType
     ) {
-        val statusCode =
-            gatt.writeCharacteristic(characteristic, data, getWriteType(writeType))
+        val statusCode = gatt.writeCharacteristic(characteristic, data, getWriteType(writeType))
         if (statusCode != BluetoothStatusCodes.SUCCESS) {
             throw statusCodeException(
-                statusCode,
-                address.service,
-                address.characteristic
+                statusCode, address.service, address.characteristic
             )
         }
     }
@@ -443,8 +440,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
     }
 
     private fun getConnectCallback(
-        peripheral: String,
-        connectPromise: Promise<UShort>
+        peripheral: String, connectPromise: Promise<UShort>
     ): BluetoothGattCallback {
         return ConnectCallback(WeakReference(this), peripheral, connectPromise)
     }
@@ -524,6 +520,16 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                 BluetoothProfile.STATE_CONNECTED -> {
                     Log.d(TAG, "Device connected")
                     connected = true
+
+                    // force refresh device cache
+                    try {
+                        val method = gatt.javaClass.getMethod("refresh")
+                        val refreshResult = method.invoke(gatt) as Boolean
+                        Log.d(TAG, "GATT Cache refresh requested: $refreshResult")
+                    } catch (error: Throwable) {
+                        Log.e(TAG, "Device cache refreshing failed: $error")
+                    }
+
                     if (mMTU != null) {
                         connectPromise.succeed(mMTU!!)
                     } else if (!gatt.discoverServices()) {
@@ -546,6 +552,10 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             super.onServicesDiscovered(gatt, status)
             Log.d(TAG, "onServicesDiscovered: $status")
+
+            for (service in gatt.services) {
+                Log.d(TAG, "Discovered Service: ${service.uuid}")
+            }
 
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 gatt.close()
@@ -594,9 +604,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         }
 
         override fun onCharacteristicChanged(
-            gatt: BluetoothGatt,
-            characteristic: BluetoothGattCharacteristic,
-            value: ByteArray
+            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray
         ) {
             Log.d(TAG, "onCharacteristicChanged: " + characteristic.uuid)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -622,9 +630,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
         @Deprecated("Deprecated in Java")
         override fun onCharacteristicRead(
-            gatt: BluetoothGatt?,
-            characteristic: BluetoothGattCharacteristic,
-            status: Int
+            gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic, status: Int
         ) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                 super.onCharacteristicRead(gatt, characteristic, status)
@@ -666,9 +672,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         }
 
         override fun onCharacteristicWrite(
-            gatt: BluetoothGatt,
-            characteristic: BluetoothGattCharacteristic,
-            status: Int
+            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int
         ) {
             super.onCharacteristicWrite(gatt, characteristic, status);
             Log.d(TAG, "onCharacteristicWrite: ${characteristic.uuid}, status: $status")
