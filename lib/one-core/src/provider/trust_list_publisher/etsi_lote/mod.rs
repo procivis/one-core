@@ -379,7 +379,7 @@ async fn build_trusted_entity(
     lote_type: &LoTEType,
     identifier: &Identifier,
     params: &dto::AddEntryParams,
-) -> Result<TrustedEntity, TrustListPublisherError> {
+) -> Result<Option<TrustedEntity>, TrustListPublisherError> {
     let (IdentifierData::Certificate(identifier_certificates)
     | IdentifierData::CertificateAuthority(identifier_certificates)) = &identifier.data
     else {
@@ -403,6 +403,10 @@ async fn build_trusted_entity(
             val,
             ..Default::default()
         });
+    }
+
+    if pki_objects.is_empty() {
+        return Ok(None);
     }
 
     let services = lote_type
@@ -436,7 +440,7 @@ async fn build_trusted_entity(
         })
         .collect();
 
-    Ok(TrustedEntity {
+    Ok(Some(TrustedEntity {
         trusted_entity_information: TrustedEntityInformation {
             te_name: params.entity.name.clone().unwrap_or_else(|| {
                 vec![MultiLangString {
@@ -450,7 +454,7 @@ async fn build_trusted_entity(
             te_information_extensions: params.entity.extensions.clone(),
         },
         trusted_entity_services: services,
-    })
+    }))
 }
 
 async fn build_lote_payload(
@@ -518,7 +522,9 @@ async fn build_lote_payload(
     let mut trusted_entities: Vec<TrustedEntity> = Vec::with_capacity(entries.len());
     for (entry, identifier) in entries.iter() {
         let entry_params: dto::AddEntryParams = serde_json::from_slice(&entry.metadata)?;
-        trusted_entities.push(build_trusted_entity(&lote_type, identifier, &entry_params).await?);
+        if let Some(entity) = build_trusted_entity(&lote_type, identifier, &entry_params).await? {
+            trusted_entities.push(entity);
+        }
     }
 
     Ok(LoTEPayload {

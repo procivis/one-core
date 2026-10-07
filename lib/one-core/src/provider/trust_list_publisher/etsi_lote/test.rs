@@ -779,6 +779,7 @@ async fn test_build_trusted_entity_with_params() {
 
     let entity = build_trusted_entity(&LoTEType::EuPidProvidersList, &identifier, &params)
         .await
+        .unwrap()
         .unwrap();
 
     assert_eq!(entity.trusted_entity_information.te_name[0].lang, "de");
@@ -890,6 +891,12 @@ async fn test_build_trusted_entity_publishes_only_active_certificates(
     .await
     .unwrap();
 
+    if only_ineligible {
+        assert!(entity.is_none());
+        return;
+    }
+    let entity = entity.unwrap();
+
     assert_eq!(entity.trusted_entity_services.len(), 2);
     for service in entity.trusted_entity_services {
         let identity = service
@@ -900,6 +907,97 @@ async fn test_build_trusted_entity_publishes_only_active_certificates(
         let published_certificates: Vec<_> =
             certificates.into_iter().map(|cert| cert.val).collect();
         assert_eq!(published_certificates, expected_certificates);
+    }
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_format_trust_list_omits_identifiers_without_eligible_certificates(
+    #[values(LoteContentType::Jwt, LoteContentType::Xml)] content_type: LoteContentType,
+    #[values(false, true)] include_eligible: bool,
+) {
+    let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
+    let publication = TrustListPublication {
+        key: Some(key.into()),
+        certificate: Some(certificate.into()),
+        ..dummy_publication(
+            TrustListRoleEnum::PidProvider,
+            serde_json::to_vec(&sample_list_params()).unwrap(),
+        )
+    };
+
+    let deleted_certificate = Certificate {
+        deleted_at: Some(crate::clock::now_utc()),
+        ..dummy_certificate(generate_self_signed_pem())
+    };
+    let entry_metadata = serde_json::to_vec(&AddEntryParams::default()).unwrap();
+    let mut entries = Vec::new();
+    for data in [
+        IdentifierData::Certificate(vec![].into()),
+        IdentifierData::CertificateAuthority(vec![deleted_certificate].into()),
+    ] {
+        entries.push((
+            dummy_entry(entry_metadata.clone()),
+            Identifier {
+                data,
+                ..dummy_identifier()
+            },
+        ));
+    }
+    if include_eligible {
+        entries.push((
+            dummy_entry(entry_metadata),
+            Identifier {
+                name: "Eligible Entity".into(),
+                data: IdentifierData::Certificate(
+                    vec![dummy_certificate(generate_self_signed_pem())].into(),
+                ),
+                ..dummy_identifier()
+            },
+        ));
+    }
+
+    let mut xades_proto = MockXAdESProto::new();
+    if content_type == LoteContentType::Xml {
+        xades_proto
+            .expect_create_enveloped_signature()
+            .once()
+            .returning(|unsigned_xml, _, _| {
+                let xml = unsigned_xml.to_owned();
+                Box::pin(async move { Ok(xml) })
+            });
+    }
+    let mut publisher = make_publisher(
+        key_provider,
+        key_algorithm_provider,
+        MockTrustListPublicationRepository::new(),
+        MockTrustEntryRepository::new(),
+        xades_proto,
+    );
+    publisher.params.content_type = content_type.clone();
+
+    let content = publisher
+        .format_trust_list(&publication, "Test Operator", &entries)
+        .await
+        .unwrap();
+    let payload = match content_type {
+        LoteContentType::Jwt => decode_jws_payload(&content),
+        LoteContentType::Xml => {
+            quick_xml::de::from_reader::<_, xml::LoTEPayload>(content.as_slice())
+                .unwrap()
+                .into()
+        }
+    };
+
+    if include_eligible {
+        let entities = payload.trusted_entities_list.unwrap();
+        assert_eq!(entities.len(), 1);
+        assert_eq!(
+            entities[0].trusted_entity_information.te_name[0].value,
+            "Eligible Entity"
+        );
+    } else {
+        assert!(payload.trusted_entities_list.is_none());
     }
 }
 
