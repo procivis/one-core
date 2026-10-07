@@ -1,5 +1,6 @@
+use assert2::let_assert;
 use one_core::model::blob::BlobType;
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::history::HistoryAction;
 use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
@@ -130,33 +131,20 @@ async fn test_delete_proof_claims_success() {
         )
         .await;
 
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
     context
         .db
         .proofs
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential
-                .claims()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .to_owned(),
+            claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
 
     let credential = context.db.credentials.get(&credential.common().id).await;
-    assert!(
-        !credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .is_empty()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert!(!claims.as_ref().await.unwrap().is_empty());
 
     // WHEN
     let resp = context.api.proofs.delete_proof_claims(&proof.id).await;
@@ -180,16 +168,8 @@ async fn test_delete_proof_claims_success() {
     assert_eq!(proof.claims.as_ref().await.unwrap().len(), 0);
 
     let credential = context.db.credentials.get(&credential.common().id).await;
-    assert!(
-        credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .is_empty()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert!(claims.as_ref().await.unwrap().is_empty());
 
     let get_credential_blob = context.db.blobs.get(&credential_blob.id).await;
     assert!(get_credential_blob.is_none());

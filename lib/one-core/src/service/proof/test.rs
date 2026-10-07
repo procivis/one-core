@@ -23,6 +23,7 @@ use crate::config::core_config::{
     VerificationProtocolType,
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::mapper::credential::stored_credential_claims;
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -109,7 +110,7 @@ async fn verifier_proof_rejects_unexpected_credential_variants(
         ..invalid.into()
     }
     .build();
-    let claim = invalid.claims().unwrap().as_ref().await.unwrap()[0].clone();
+    let claim = stored_credential_claims(&invalid).await.unwrap()[0].clone();
     let mut credentials = vec![valid, invalid];
     if invalid_first {
         credentials.reverse();

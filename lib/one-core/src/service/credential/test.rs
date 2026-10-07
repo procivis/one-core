@@ -22,6 +22,7 @@ use super::mapper::get_credential_trust_information;
 use super::validator::validate_create_request;
 use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::mapper::credential::stored_credential_claims;
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
@@ -928,7 +929,7 @@ impl CredentialCreationFixture {
         let_assert!(IdentifierData::Did(issuer_did) = &issuer.data);
         let issuer_did = issuer_did.as_ref().await.unwrap().clone();
         let schema = credential.common().schema.as_ref().await.unwrap().clone();
-        let claims = credential.claims().unwrap().as_ref().await.unwrap();
+        let claims = stored_credential_claims(&credential).await.unwrap();
         let claim = &claims[0];
         let issuer_key = issuer_did.keys.as_ref().await.unwrap()[0].key.id;
 
@@ -1126,6 +1127,8 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
         ..Default::default()
     });
 
+    let claims = stored_credential_claims(&credential).await.unwrap();
+    let claim = &claims[0];
     let result = service
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential
@@ -1142,20 +1145,9 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
+                claim_schema_id: claim.schema.as_ref().await.unwrap().id.to_owned(),
+                value: claim.value.to_owned().unwrap(),
+                path: claim.path.to_owned(),
             }],
             redirect_uri: None,
             profile: None,
@@ -1176,11 +1168,10 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
 
     let credential = generic_credential().await;
     let schema = &credential.common().schema;
-    let claims = credential.claims().unwrap();
+    let claims = stored_credential_claims(&credential).await.unwrap();
     let issuer_identifier = credential.issuer_identifier().cloned();
 
     let mut schema = schema.as_ref().await.unwrap().to_owned();
-    let claims = claims.as_ref().await.unwrap().to_owned();
     let issuer_identifier = issuer_identifier.unwrap();
 
     schema.wallet_attestation.key_storage_security_level = Some(KeyStorageSecurity::EnhancedBasic);
@@ -1317,6 +1308,8 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
         ..Default::default()
     });
 
+    let claims = stored_credential_claims(&credential).await.unwrap();
+    let claim = &claims[0];
     let result = service
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential
@@ -1333,20 +1326,9 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
+                claim_schema_id: claim.schema.as_ref().await.unwrap().id.to_owned(),
+                value: claim.value.to_owned().unwrap(),
+                path: claim.path.to_owned(),
             }],
             redirect_uri: None,
             profile: None,
@@ -1450,6 +1432,8 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         ..Default::default()
     });
 
+    let claims = stored_credential_claims(&credential).await.unwrap();
+    let claim = &claims[0];
     let result = service
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential
@@ -1466,20 +1450,9 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
+                claim_schema_id: claim.schema.as_ref().await.unwrap().id.to_owned(),
+                value: claim.value.to_owned().unwrap(),
+                path: claim.path.to_owned(),
             }],
             redirect_uri: None,
             profile: None,
@@ -2010,7 +1983,7 @@ async fn test_create_credential_namespace_optional() {
         .expect_create_credential()
         .withf(move |request| {
             // already loaded, so this does not actually block on any I/O
-            let claims = futures::executor::block_on(request.claims().unwrap().as_ref()).unwrap();
+            let claims = futures::executor::block_on(stored_credential_claims(request)).unwrap();
             assert_eq!(claims.len(), 1);
             let claim = &claims[0];
             assert_eq!(claim.value.as_ref().unwrap(), "value");
@@ -2347,6 +2320,8 @@ async fn test_create_credential_fail_webhook_not_allowed() {
         ..Default::default()
     });
 
+    let claims = stored_credential_claims(&credential).await.unwrap();
+    let claim = &claims[0];
     let result = service
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential
@@ -2363,20 +2338,9 @@ async fn test_create_credential_fail_webhook_not_allowed() {
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .schema
-                    .as_ref()
-                    .await
-                    .unwrap()
-                    .id
-                    .to_owned(),
-                value: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .value
-                    .to_owned()
-                    .unwrap(),
-                path: credential.claims().unwrap().as_ref().await.unwrap()[0]
-                    .path
-                    .to_owned(),
+                claim_schema_id: claim.schema.as_ref().await.unwrap().id.to_owned(),
+                value: claim.value.to_owned().unwrap(),
+                path: claim.path.to_owned(),
             }],
             redirect_uri: None,
             profile: None,

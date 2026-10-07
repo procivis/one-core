@@ -58,6 +58,7 @@ mod test {
 
     use super::*;
     use crate::config::core_config::CoreConfig;
+    use crate::model::credential::Credential;
     use crate::proto::credential_validity_manager::MockCredentialValidityManager;
     use crate::proto::session_provider::NoSessionProvider;
     use crate::proto::wallet_instance::MockHolderWalletUnitProto;
@@ -137,10 +138,17 @@ mod test {
             subject_common_name: None,
             x5_references: Default::default(),
         });
+        assert2::let_assert!(
+            Credential::IssuerSingle {
+                claims,
+                credential,
+                ..
+            } = credential
+        );
         ecosystem
             .resolve_verifier_submission(
-                credential.claims().unwrap(),
-                credential.format().unwrap(),
+                &claims,
+                &credential.format,
                 &issuer,
                 Uuid::new_v4().into(),
             )

@@ -62,19 +62,9 @@ async fn test_create_credential_success() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert!(matches!(credential, Credential::IssuerSingle { .. }));
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
-    assert_eq!(
-        2,
-        credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .len()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert_eq!(2, claims.as_ref().await.unwrap().len());
     assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
     assert_eq!(credential.common().profile, None);
 }
@@ -299,10 +289,8 @@ async fn test_create_credential_with_array_success() {
         .credentials
         .get(&CredentialId::from(credential_id.parse::<Uuid>().unwrap()))
         .await;
-    assert_eq!(
-        credential.claims().unwrap().as_ref().await.unwrap().len(),
-        15
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert_eq!(claims.as_ref().await.unwrap().len(), 15);
     let expected_claim_paths = [
         "namespace",
         "namespace/root_field",
@@ -322,9 +310,7 @@ async fn test_create_credential_with_array_success() {
     ];
     for expected_path in expected_claim_paths {
         assert!(
-            credential
-                .claims()
-                .unwrap()
+            claims
                 .as_ref()
                 .await
                 .unwrap()
@@ -434,17 +420,8 @@ async fn test_create_credential_success_with_nested_claims() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
-    assert_eq!(
-        5,
-        credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .len()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert_eq!(5, claims.as_ref().await.unwrap().len());
     assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
 }
 
@@ -1020,17 +997,8 @@ async fn test_create_credential_with_big_picture_success() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
-    assert_eq!(
-        1,
-        credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .len()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert_eq!(1, claims.as_ref().await.unwrap().len());
     assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
 }
 
@@ -1470,17 +1438,8 @@ async fn test_create_credential_success_with_profile() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
-    assert_eq!(
-        2,
-        credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .len()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert_eq!(2, claims.as_ref().await.unwrap().len());
     assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol);
 
     // Verify the profile is correctly stored

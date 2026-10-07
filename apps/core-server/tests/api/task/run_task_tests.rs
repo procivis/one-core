@@ -1,9 +1,10 @@
 use std::ops::{Add, Sub};
 
+use assert2::let_assert;
 use axum::http::Method;
 use one_core::model::blob::BlobType;
 use one_core::model::certificate::CertificateState;
-use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
@@ -1710,61 +1711,35 @@ async fn test_run_retain_proof_check_with_update() {
         )
         .await;
 
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential_1);
     context
         .db
         .proofs
         .set_proof_claims(
             &proof_1.id,
             credential_1.common().id,
-            credential_1
-                .claims()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .to_owned(),
+            claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
 
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential_2);
     context
         .db
         .proofs
         .set_proof_claims(
             &proof_2.id,
             credential_2.common().id,
-            credential_2
-                .claims()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .to_owned(),
+            claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
 
     let credential_1 = context.db.credentials.get(&credential_1.common().id).await;
-    assert!(
-        !credential_1
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .is_empty()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential_1);
+    assert!(!claims.as_ref().await.unwrap().is_empty());
 
     let credential_2 = context.db.credentials.get(&credential_2.common().id).await;
-    assert!(
-        !credential_2
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .is_empty()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential_2);
+    assert!(!claims.as_ref().await.unwrap().is_empty());
 
     // WHEN
     let resp = context.api.tasks.run("RETAIN_PROOF_CHECK").await;
@@ -1776,16 +1751,8 @@ async fn test_run_retain_proof_check_with_update() {
     assert!(proof.claims.as_ref().await.unwrap().is_empty());
 
     let credential = context.db.credentials.get(&credential_1.common().id).await;
-    assert!(
-        credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .is_empty()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert!(claims.as_ref().await.unwrap().is_empty());
 
     let get_credential_blob = context.db.blobs.get(&credential_1_blob.id).await;
     assert!(get_credential_blob.is_none());
@@ -1797,16 +1764,8 @@ async fn test_run_retain_proof_check_with_update() {
     assert!(!proof.claims.as_ref().await.unwrap().is_empty());
 
     let credential = context.db.credentials.get(&credential_2.common().id).await;
-    assert!(
-        !credential
-            .claims()
-            .unwrap()
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-            .is_empty()
-    );
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
+    assert!(!claims.as_ref().await.unwrap().is_empty());
 
     let get_credential_blob = context.db.blobs.get(&credential_2_blob.id).await;
     assert!(get_credential_blob.is_some());

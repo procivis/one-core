@@ -1161,7 +1161,13 @@ async fn test_get_credential_success() {
         *credential.common().schema.as_ref().await.unwrap()
     );
     assert!(credential.common().interaction.is_none());
-    let credential_claims = credential.claims().unwrap().as_ref().await.unwrap();
+    let_assert!(
+        Credential::IssuerSingle {
+            claims: credential_claims,
+            ..
+        } = &credential
+    );
+    let credential_claims = credential_claims.as_ref().await.unwrap();
     assert_eq!(credential_claims.len(), 2);
 
     // claims must be ordered in the same way as in the credential_schema

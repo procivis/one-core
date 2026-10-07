@@ -94,6 +94,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
                 credential,
                 webhook_url,
                 subscriber_information,
+                claims,
                 ..
             } = actual
         );
@@ -123,10 +124,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
                 .id,
             setup.identifier.id
         );
-        assert_eq!(
-            actual.claims().unwrap().as_ref().await.unwrap()[0].id,
-            claim.id
-        );
+        assert_eq!(claims.as_ref().await.unwrap()[0].id, claim.id);
         assert_eq!(actual.suspend_end_date(), request.suspend_end_date());
         assert_eq!(webhook_url.as_deref(), Some(expected_webhook_url));
         assert_eq!(

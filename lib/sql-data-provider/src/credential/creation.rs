@@ -33,14 +33,16 @@ pub(super) async fn prepare_credentials(
         if !ids.insert(credential.common().id) {
             return Err(DataLayerError::AlreadyExists);
         }
-        let claims = if matches!(
-            credential,
-            Credential::IssuerBatchItem { .. } | Credential::HolderBatchParent { .. }
-        ) {
-            vec![]
-        } else {
-            credential
-                .claims()?
+        let claims = match &credential {
+            Credential::IssuerSingle { claims, .. }
+            | Credential::IssuerBatchParent { claims, .. } => Some(claims),
+            Credential::HolderSingle { credential, .. }
+            | Credential::HolderBatchItem { credential, .. } => Some(&credential.claims),
+            Credential::Verifier { verifier_data, .. } => Some(&verifier_data.claims),
+            Credential::IssuerBatchItem { .. } | Credential::HolderBatchParent { .. } => None,
+        };
+        let claims = if let Some(claims) = claims {
+            claims
                 .as_ref()
                 .await?
                 .iter()
@@ -48,6 +50,8 @@ pub(super) async fn prepare_credentials(
                 .map(|claim| claim::ActiveModel::from(claim).try_into_model())
                 .collect::<Result<_, _>>()
                 .map_err(to_data_layer_error)?
+        } else {
+            vec![]
         };
         credentials.push(CredentialToCreate { credential, claims });
     }

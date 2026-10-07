@@ -105,7 +105,6 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
         loaded_parent,
         Credential::HolderBatchParent { .. }
     ));
-    assert!(loaded_parent.claims().is_err());
     assert_eq!(
         loaded_parent.common().schema.as_ref().await.unwrap().id,
         setup.credential_schema.id

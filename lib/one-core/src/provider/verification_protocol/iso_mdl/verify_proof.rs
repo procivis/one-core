@@ -397,7 +397,9 @@ pub(super) async fn accept_proof(
         let credential = Related::from(model_credential.clone());
         proof_claims.extend(
             model_credential
-                .claims()?
+                .verifier()?
+                .data
+                .claims
                 .as_ref()
                 .await?
                 .iter()

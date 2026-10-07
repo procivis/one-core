@@ -10,6 +10,7 @@ use uuid::Uuid;
 use super::*;
 use crate::clock::now_utc;
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
+use crate::model::credential::Credential;
 use crate::model::credential_schema::WalletAttestation;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionEcosystems, InteractionType};
@@ -702,11 +703,17 @@ async fn test_an_invitation_does_not_store_an_ecosystem() {
 }
 
 fn submission_artifact(index: usize) -> ProtocolArtifact<'static> {
-    let credential = dummy_credential();
+    assert2::let_assert!(
+        Credential::IssuerSingle {
+            claims,
+            credential,
+            ..
+        } = dummy_credential()
+    );
     ProtocolArtifact::VerifierSubmission {
         credential_id: submitted_credential(index),
-        claims: Cow::Owned(credential.claims().unwrap().clone()),
-        format: Cow::Owned(credential.format().unwrap().clone()),
+        claims: Cow::Owned(claims),
+        format: Cow::Owned(credential.format),
         issuer_details: Cow::Owned(submission_issuer(index)),
         proof_id: submitted_proof(),
     }

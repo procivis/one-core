@@ -850,7 +850,16 @@ impl From<Credential> for CredentialBuilder {
         let binding = holder.and_then(|holder| holder.binding.as_ref());
         Self {
             common: value.common().clone(),
-            claims: value.claims().cloned().unwrap_or_default(),
+            claims: match &value {
+                Credential::IssuerSingle { claims, .. }
+                | Credential::IssuerBatchParent { claims, .. } => claims.clone(),
+                Credential::HolderSingle { credential, .. }
+                | Credential::HolderBatchItem { credential, .. } => credential.claims.clone(),
+                Credential::Verifier { verifier_data, .. } => verifier_data.claims.clone(),
+                Credential::IssuerBatchItem { .. } | Credential::HolderBatchParent { .. } => {
+                    Default::default()
+                }
+            },
             consumed_at: match &value {
                 Credential::HolderBatchItem { consumed_at, .. } => *consumed_at,
                 _ => None,

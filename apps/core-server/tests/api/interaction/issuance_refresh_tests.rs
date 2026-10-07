@@ -372,7 +372,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     let mut policy_counts = [0, 0];
     let mut initial_payload_claim_ids = std::collections::HashSet::new();
     for item in &items {
-        let claims = item.claims().unwrap().as_ref().await.unwrap();
+        let claims = item.holder().unwrap().data.claims.as_ref().await.unwrap();
         initial_payload_claim_ids.insert(
             claims
                 .iter()
@@ -484,7 +484,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             .expect("Unexpected policy ID");
         assert_eq!(policy["policy"], "none");
         refreshed_policy_counts[index] += 1;
-        let claims = item.claims().unwrap().as_ref().await.unwrap();
+        let claims = item.holder().unwrap().data.claims.as_ref().await.unwrap();
         assert!(!claims.is_empty());
 
         let payload = claims.iter().find(|claim| claim.path == "string").unwrap();

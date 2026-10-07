@@ -559,8 +559,10 @@ async fn check_two_queries_with_item_claims(distinct_items: bool) {
         let credential = entry.credential.as_ref().await.unwrap();
         assert!(
             credential
-                .claims()
+                .holder()
                 .unwrap()
+                .data
+                .claims
                 .as_ref()
                 .await
                 .unwrap()

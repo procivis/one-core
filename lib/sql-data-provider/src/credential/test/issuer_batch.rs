@@ -118,12 +118,10 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
             Credential::IssuerBatchParent {
                 webhook_url,
                 subscriber_information,
+                claims,
                 ..
             } => {
-                assert_eq!(
-                    actual.claims().unwrap().as_ref().await.unwrap()[0].id,
-                    claim.id
-                );
+                assert_eq!(claims.as_ref().await.unwrap()[0].id, claim.id);
                 assert_eq!(actual.suspend_end_date(), parent.suspend_end_date());
                 assert_eq!(subscriber_information.as_deref(), Some("shared metadata"));
                 assert_eq!(webhook_url.as_deref(), Some("https://example.com/webhook"));
@@ -148,7 +146,6 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                     actual.holder_identifier().as_ref().unwrap().id(),
                     setup.identifier.id
                 );
-                assert!(actual.claims().is_err());
             }
             _ => panic!("expected issuer batch variant"),
         }

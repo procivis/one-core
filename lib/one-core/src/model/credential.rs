@@ -401,23 +401,6 @@ impl Credential {
         }
     }
 
-    /// Locally owned claims. Issuer batch items inherit claims; holder batch parents own none.
-    pub fn claims(&self) -> Result<&RelatedVec<Claim>, NestedError> {
-        match self {
-            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
-                Ok(&credential.claims)
-            }
-            Self::IssuerSingle { claims, .. } | Self::IssuerBatchParent { claims, .. } => {
-                Ok(claims)
-            }
-            Self::Verifier { verifier_data, .. } => Ok(&verifier_data.claims),
-            Self::IssuerBatchItem { .. } | Self::HolderBatchParent { .. } => {
-                Err(DataLayerError::MappingError
-                    .error_while("accessing a field unavailable on this credential variant"))
-            }
-        }
-    }
-
     pub fn issuer_identifier(&self) -> Option<&Related<Identifier>> {
         match self {
             Self::IssuerSingle { issuer, .. }

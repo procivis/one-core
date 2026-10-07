@@ -20,6 +20,7 @@ use crate::config::core_config::{CoreConfig, TransportType, VerificationProtocol
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::LockType;
+use crate::model::credential::Credential;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryMetadata};
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -419,12 +420,20 @@ async fn test_submit_proof_failed_on_trust_failure() {
         .returning(|_, _, _, _| {
             let mut credential = dummy_credential();
             credential.common_mut().schema = dummy_credential_schema_with_format("JWT").into();
+            assert2::let_assert!(
+                Credential::IssuerSingle {
+                    common,
+                    claims,
+                    credential,
+                    ..
+                } = credential
+            );
             Ok((
                 ValidatedProofResult {
                     proved_credentials: vec![ProvedCredential {
-                        common: credential.common().clone(),
-                        claims: credential.claims().unwrap().clone(),
-                        format: credential.format().unwrap().clone(),
+                        common,
+                        claims,
+                        format: credential.format,
                         issuer_details: IdentifierDetails::Certificate(CertificateDetails {
                             chain: "chain".to_string(),
                             fingerprint: "fingerprint".to_string(),

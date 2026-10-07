@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
+use assert2::let_assert;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
@@ -644,8 +645,10 @@ async fn test_get_proof_with_array() {
             &proof.id,
             credential.common().id,
             credential
-                .claims()
+                .verifier()
                 .unwrap()
+                .data
+                .claims
                 .as_ref()
                 .await
                 .unwrap()
@@ -934,8 +937,10 @@ async fn test_get_proof_with_nested_optional_inputs() {
             &proof.id,
             credential.common().id,
             credential
-                .claims()
+                .verifier()
                 .unwrap()
+                .data
+                .claims
                 .as_ref()
                 .await
                 .unwrap()
@@ -1078,8 +1083,10 @@ async fn test_get_proof_with_credentials() {
             &proof.id,
             credential.common().id,
             credential
-                .claims()
+                .verifier()
                 .unwrap()
+                .data
+                .claims
                 .as_ref()
                 .await
                 .unwrap()
@@ -1209,8 +1216,10 @@ async fn test_get_proof_with_deleted_credential() {
             &proof.id,
             credential.common().id,
             credential
-                .claims()
+                .verifier()
                 .unwrap()
+                .data
+                .claims
                 .as_ref()
                 .await
                 .unwrap()
@@ -1506,19 +1515,14 @@ async fn test_get_proof_with_deleted_claims() {
         )
         .await;
 
+    let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
     context
         .db
         .proofs
         .set_proof_claims(
             &proof.id,
             credential.common().id,
-            credential
-                .claims()
-                .unwrap()
-                .as_ref()
-                .await
-                .unwrap()
-                .to_owned(),
+            claims.as_ref().await.unwrap().to_owned(),
         )
         .await;
 
@@ -1620,8 +1624,10 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
             &proof.id,
             credential.common().id,
             credential
-                .claims()
+                .verifier()
                 .unwrap()
+                .data
+                .claims
                 .as_ref()
                 .await
                 .unwrap()
@@ -1772,8 +1778,10 @@ async fn test_get_proof_with_credentials_returns_profiles() {
             &proof.id,
             credential.common().id,
             credential
-                .claims()
+                .verifier()
                 .unwrap()
+                .data
+                .claims
                 .as_ref()
                 .await
                 .unwrap()
