@@ -150,6 +150,8 @@ impl ProofService {
                 trust_information,
                 &*self.credential_repository,
                 &*self.credential_formatter_provider,
+                self.ecosystem_provider.as_ref(),
+                &*self.history_repository,
             )
             .await
         }

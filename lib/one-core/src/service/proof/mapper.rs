@@ -202,7 +202,7 @@ pub(super) async fn get_verifier_proof_detail(
     claims_removed_event: Option<History>,
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
-    ecosystem_provider: &dyn EcosystemDirectory,
+    ecosystem_directory: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
@@ -237,7 +237,7 @@ pub(super) async fn get_verifier_proof_detail(
         let trust_information = get_credential_trust_information(
             &credential,
             None,
-            ecosystem_provider,
+            ecosystem_directory,
             history_repository,
         )
         .await
@@ -586,6 +586,7 @@ fn map_to_proof_claim_value_dto(
     })
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(super) async fn get_holder_proof_detail(
     proof: Proof,
     config: &CoreConfig,
@@ -593,6 +594,8 @@ pub(super) async fn get_holder_proof_detail(
     trust_information: Option<TrustInformation>,
     credential_repository: &dyn CredentialRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
+    ecosystem_directory: &dyn EcosystemDirectory,
+    history_repository: &dyn HistoryRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let organisation_id = match (
         proof.verifier_identifier.as_ref(),
@@ -629,6 +632,14 @@ pub(super) async fn get_holder_proof_detail(
                 entry.get_mut().0.push(proof_claim.clone());
             }
             Entry::Vacant(entry) => {
+                let trust_information = get_credential_trust_information(
+                    &credential,
+                    None,
+                    ecosystem_directory,
+                    history_repository,
+                )
+                .await
+                .error_while("getting credential trust information")?;
                 entry.insert((
                     vec![proof_claim.clone()],
                     credential_detail_response_from_model(
@@ -636,7 +647,7 @@ pub(super) async fn get_holder_proof_detail(
                         crate::mapper::credential::stored_credential_claims(&credential).await?,
                         config,
                         CredentialAttestationBlobs::default(),
-                        None,
+                        trust_information,
                         None,
                         credential_repository,
                         formatter_provider,
@@ -954,7 +965,7 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
 /// Verifiers call [`get_verifier_proof_detail`] instead
 pub(super) async fn get_proof_trust_information(
     proof: &Proof,
-    ecosystem_provider: &dyn EcosystemDirectory,
+    ecosystem_directory: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
 ) -> Result<TrustInformation, ProofServiceError> {
     let ecosystem_errors = recorded_ecosystem_outcomes(proof.id.into(), history_repository).await?;
@@ -967,7 +978,7 @@ pub(super) async fn get_proof_trust_information(
             ecosystem_errors,
         });
     };
-    let (received_at, name) = match verifier_trust_detail(proof, ecosystem_id, ecosystem_provider)
+    let (received_at, name) = match verifier_trust_detail(proof, ecosystem_id, ecosystem_directory)
         .await
     {
         Ok(details) => {
@@ -990,9 +1001,9 @@ pub(super) async fn get_proof_trust_information(
 async fn verifier_trust_detail(
     proof: &Proof,
     ecosystem_id: &EcosystemId,
-    ecosystem_provider: &dyn EcosystemDirectory,
+    ecosystem_directory: &dyn EcosystemDirectory,
 ) -> Result<TrustDetail, ProofServiceError> {
-    Ok(ecosystem_provider
+    Ok(ecosystem_directory
         .get(ecosystem_id)?
         .verifier_trust_details(&proof.id)
         .await

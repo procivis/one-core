@@ -626,6 +626,9 @@ async fn proof_detail_with_claims(
     assert_eq!(result.id, id);
     assert_eq!(result.proof_inputs.len(), 1);
     assert_eq!(result.proof_inputs[0].claims.len(), 1);
+    if role == ProofRole::Holder {
+        assert!(result.proof_inputs[0].trust_information.is_some());
+    }
     result
 }
 
