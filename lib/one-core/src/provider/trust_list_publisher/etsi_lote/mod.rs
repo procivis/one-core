@@ -388,8 +388,14 @@ async fn build_trusted_entity(
         ))?;
     };
 
+    let certificate_filter = CertificateFilter::default();
     let mut pki_objects = Vec::new();
-    for cert in identifier_certificates.as_ref().await?.iter() {
+    for cert in identifier_certificates
+        .as_ref()
+        .await?
+        .iter()
+        .filter(|cert| certificate_filter.matches_certificate(cert))
+    {
         let leaf = extract_leaf_pem_from_chain(cert.chain.as_bytes())
             .error_while("extracting leaf certificate")?;
         let val = Base64::encode_to_string(leaf.contents)?;

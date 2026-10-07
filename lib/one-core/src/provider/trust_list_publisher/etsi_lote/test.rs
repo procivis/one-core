@@ -842,6 +842,67 @@ async fn test_build_trusted_entity_with_params() {
     );
 }
 
+#[rstest::rstest]
+#[tokio::test]
+async fn test_build_trusted_entity_publishes_only_active_certificates(
+    #[values(false, true)] is_ca: bool,
+    #[values(false, true)] only_ineligible: bool,
+) {
+    let mut certificates = vec![Certificate {
+        deleted_at: Some(crate::clock::now_utc()),
+        ..dummy_certificate(generate_self_signed_pem())
+    }];
+    for state in [
+        CertificateState::NotYetActive,
+        CertificateState::Expired,
+        CertificateState::Revoked,
+    ] {
+        certificates.push(Certificate {
+            state,
+            ..dummy_certificate(generate_self_signed_pem())
+        });
+    }
+
+    let mut expected_certificates = Vec::new();
+    if !only_ineligible {
+        for _ in 0..2 {
+            let certificate = dummy_certificate(generate_self_signed_pem());
+            expected_certificates.extend(pem_chain_into_x5c(&certificate.chain).unwrap());
+            certificates.push(certificate);
+        }
+    }
+
+    let identifier = Identifier {
+        is_remote: true,
+        data: if is_ca {
+            IdentifierData::CertificateAuthority(certificates.into())
+        } else {
+            IdentifierData::Certificate(certificates.into())
+        },
+        ..dummy_identifier()
+    };
+
+    let entity = build_trusted_entity(
+        &LoTEType::EuPidProvidersList,
+        &identifier,
+        &AddEntryParams::default(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(entity.trusted_entity_services.len(), 2);
+    for service in entity.trusted_entity_services {
+        let identity = service
+            .service_information
+            .service_digital_identity
+            .unwrap();
+        let certificates = identity.x509_certificates.unwrap();
+        let published_certificates: Vec<_> =
+            certificates.into_iter().map(|cert| cert.val).collect();
+        assert_eq!(published_certificates, expected_certificates);
+    }
+}
+
 #[tokio::test]
 async fn test_create_trust_list_with_params_enriches_scheme_info() {
     let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
