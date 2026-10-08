@@ -21,7 +21,7 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
     common.id = Uuid::new_v4().into();
     common.state = CredentialStateEnum::Accepted;
     let key = template.issuer().unwrap().data.signing_key.clone();
-    let format = template.format().unwrap().clone();
+    let format = template.issuer_credential().unwrap().data.format.clone();
     let claim = Claim {
         id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),

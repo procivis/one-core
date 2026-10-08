@@ -6,7 +6,6 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
 use crate::model::history::{HistoryAction, HistoryEntityType, WalletRelyingPartyMetadata};
 use crate::model::interaction::Interaction;
-use crate::model::relation::OptionalRelatedRefExt;
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::{IdentifierDetails, X5References};
 use crate::provider::ecosystem::eudi::mapper::formatter_requires_namespaces;
@@ -21,8 +20,9 @@ impl EudiEcosystem {
         credential_configuration_id: &String,
         interaction: &Interaction,
     ) -> Result<(), HolderIssuanceError> {
-        let schema = credential.common().schema.as_ref().await?;
-        let schema_format = credential.format().as_required_ref().await?;
+        let holder = credential.holder()?;
+        let schema = holder.common.schema.as_ref().await?;
+        let schema_format = holder.data.format.as_ref().await?;
         let format = &schema_format.format;
         let formatter = self.formatter_provider.get_credential_formatter(format)?;
         let organisation_id = interaction.organisation.id();
@@ -35,7 +35,7 @@ impl EudiEcosystem {
             .error_while("parsing credential")?
             .issuer;
 
-        let claims = credential.holder()?.data.claims.as_ref().await?;
+        let claims = holder.data.claims.as_ref().await?;
         let credential_category = {
             let namespaced = formatter_requires_namespaces(formatter.as_ref());
             credential_category(&claims, namespaced)

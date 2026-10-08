@@ -653,7 +653,7 @@ async fn check_batch_item_rejection(
                 Credential::HolderBatchItem { parent, .. } if parent.id() == parent_id
             ));
             assert_eq!(item.common().state, CredentialStateEnum::Accepted);
-            let format_id = item.format().unwrap().id();
+            let format_id = item.holder().unwrap().data.format.id();
             counts[formats
                 .iter()
                 .position(|format| format.id == format_id)

@@ -2428,9 +2428,8 @@ async fn test_create_credential_success_mdoc() {
             .withf(move |request| {
                 matches!(
                     request,
-                    Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
+                    Credential::IssuerBatchItem { credential, .. } if credential.format.id() == format_id
                 ) && request.common().state == CredentialStateEnum::Offered
-                    && request.format().map(|f| f.id()) == Some(format_id)
                     && request.common().expires_at.is_some()
             })
             .returning(move |_| Ok(batch_item_credential_id));

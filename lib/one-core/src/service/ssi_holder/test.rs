@@ -2391,7 +2391,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
             credential_configuration_id: configuration_id.to_string(),
             format: "jwt_vc_json".to_string(),
             credential_id: Some(parent.credential.common().id),
-            credential_schema_format_id: item.format().map(|format| format.id()),
+            credential_schema_format_id: Some(item.holder().unwrap().data.format.id()),
             ..data.credential_configurations[0].clone()
         })
         .collect();

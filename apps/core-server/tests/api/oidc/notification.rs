@@ -289,7 +289,7 @@ async fn batch_item_states(
         .await
     {
         states
-            .entry(item.format().unwrap().id())
+            .entry(item.issuer_credential().unwrap().data.format.id())
             .or_default()
             .push(item.common().state);
     }

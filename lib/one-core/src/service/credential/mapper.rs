@@ -80,7 +80,18 @@ pub(crate) async fn credential_detail_response_from_model(
     let role = value.role();
     let credential_type = value.r#type();
 
-    let credential_format = value.credential_format().await?;
+    let format = match &value {
+        Credential::IssuerSingle { credential, .. }
+        | Credential::IssuerBatchItem { credential, .. } => Some(&credential.format),
+        Credential::HolderSingle { credential, .. }
+        | Credential::HolderBatchItem { credential, .. } => Some(&credential.format),
+        Credential::Verifier { verifier_data, .. } => Some(&verifier_data.format),
+        Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => None,
+    };
+    let credential_format = match format {
+        Some(format) => Some(format.as_ref().await?.format.to_owned()),
+        None => None,
+    };
     let mdoc_mso_validity = mdoc_mso_validity(
         value.common(),
         credential_type,
@@ -98,7 +109,7 @@ pub(crate) async fn credential_detail_response_from_model(
         value.common(),
         role,
         credential_type,
-        value.format(),
+        format,
         credential_repository,
     )
     .await?;
@@ -670,16 +681,28 @@ pub(super) async fn to_credential_list_response(
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
     let schema = credential.common().schema.as_ref().await?.to_owned();
-    let credential_format = credential.credential_format().await?;
-
-    let issuer_identifier = match &credential {
-        Credential::IssuerSingle { issuer, .. }
-        | Credential::IssuerBatchParent { issuer, .. }
-        | Credential::IssuerBatchItem { issuer, .. } => Some(&issuer.identifier),
+    let (issuer_identifier, format) = match &credential {
+        Credential::IssuerSingle {
+            issuer, credential, ..
+        }
+        | Credential::IssuerBatchItem {
+            issuer, credential, ..
+        } => (Some(&issuer.identifier), Some(&credential.format)),
+        Credential::IssuerBatchParent { issuer, .. } => (Some(&issuer.identifier), None),
         Credential::HolderSingle { credential, .. }
-        | Credential::HolderBatchItem { credential, .. } => Some(&credential.issuer.identifier),
-        Credential::Verifier { verifier_data, .. } => Some(&verifier_data.issuer.identifier),
-        Credential::HolderBatchParent { .. } => None,
+        | Credential::HolderBatchItem { credential, .. } => (
+            Some(&credential.issuer.identifier),
+            Some(&credential.format),
+        ),
+        Credential::Verifier { verifier_data, .. } => (
+            Some(&verifier_data.issuer.identifier),
+            Some(&verifier_data.format),
+        ),
+        Credential::HolderBatchParent { .. } => (None, None),
+    };
+    let credential_format = match format {
+        Some(format) => Some(format.as_ref().await?.format.to_owned()),
+        None => None,
     };
     let issuer = match issuer_identifier {
         None => None,
@@ -1212,14 +1235,8 @@ pub(crate) async fn get_remaining_batch_item_count(
 
     let mut counts = HashMap::new();
     for item in batch_items {
-        let format = item
-            .format()
-            .ok_or(CredentialServiceError::MappingError(format!(
-                "Missing format on batch_item credential {}",
-                item.common().id
-            )))?
-            .as_ref()
-            .await?;
+        let holder = item.holder()?;
+        let format = holder.data.format.as_ref().await?;
         let entry = counts.entry(format.format.to_owned()).or_insert(0);
         if item.common().state == CredentialStateEnum::Accepted
             && !matches!(

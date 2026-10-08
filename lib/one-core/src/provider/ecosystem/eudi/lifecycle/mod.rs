@@ -46,7 +46,7 @@ impl EudiEcosystem {
         }
 
         // batch items rather than batch parents: the WUA is written per issued credential, so
-        // only the items carry one, while the WIA is copied from the parent onto every item
+        // only the items carry one, while the WIA is taken from the parent
         let filtering = CredentialFilterValue::Roles(vec![CredentialRole::Issuer]).condition()
             & CredentialFilterValue::States(vec![
                 CredentialStateEnum::Accepted,

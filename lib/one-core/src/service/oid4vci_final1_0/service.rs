@@ -1840,7 +1840,15 @@ impl OID4VCIFinal1_0Service {
             .get_batch_items(parent.common().id)
             .await?
             .into_iter()
-            .partition(|item| item.format().is_some_and(|f| f.id() == format_id));
+            .partition(|item| match item {
+                Credential::IssuerBatchItem { credential, .. } => {
+                    credential.format.id() == format_id
+                }
+                Credential::HolderBatchItem { credential, .. } => {
+                    credential.format.id() == format_id
+                }
+                _ => false,
+            });
 
         if affected.is_empty() {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
@@ -1892,10 +1900,20 @@ impl OID4VCIFinal1_0Service {
 
         let schema = credential.common().schema.as_ref().await?;
 
-        let format = credential.credential_format().await?;
+        let format = match &credential {
+            Credential::IssuerSingle { credential, .. }
+            | Credential::IssuerBatchItem { credential, .. } => Some(&credential.format),
+            Credential::HolderSingle { credential, .. }
+            | Credential::HolderBatchItem { credential, .. } => Some(&credential.format),
+            Credential::Verifier { verifier_data, .. } => Some(&verifier_data.format),
+            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => None,
+        };
         let revocation_method = match format {
             Some(format) => {
-                let formatter = self.formatter_provider.get_credential_formatter(&format)?;
+                let format = format.as_ref().await?;
+                let formatter = self
+                    .formatter_provider
+                    .get_credential_formatter(&format.format)?;
                 match schema.revocation_method_id(formatter.as_ref()) {
                     Some(method_id) => Some(
                         self.revocation_method_provider

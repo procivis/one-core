@@ -415,8 +415,10 @@ async fn mixed_format_batch_parent_rejection() {
             .credentials
             .get(&batch.bbs_item)
             .await
-            .format()
+            .holder()
             .unwrap()
+            .data
+            .format
             .id();
         // Consumed JWT items imply exhaustion; consumed BBS items never match this request.
         // In either case, the remaining available BBS item cannot satisfy the JWT request.
@@ -797,7 +799,7 @@ async fn setup_mixed_format_batch(
         .await
         .unwrap();
     let parent = context.db.credentials.get(&parent.common().id).await;
-    assert!(parent.format().is_none());
+    assert!(matches!(parent, Credential::HolderBatchParent { .. }));
     MixedFormatBatch {
         parent,
         earliest_expiring_jwt_item: earliest_expiring_jwt.common().id,

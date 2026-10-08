@@ -87,7 +87,7 @@ use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
 use crate::model::organisation::Organisation;
-use crate::model::relation::{OptionalRelatedRefExt, Related};
+use crate::model::relation::Related;
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
@@ -1044,8 +1044,9 @@ impl OpenID4VCIFinal1_0 {
                     .first()
                     .unwrap_or(&response.main_credential)
                     .credential
-                    .format()
-                    .map(Related::id)
+                    .holder()
+                    .ok()
+                    .map(|holder| holder.data.format.id())
             });
         }
 
@@ -1283,7 +1284,7 @@ impl OpenID4VCIFinal1_0 {
                 .error_while("getting legacy batch items")?;
             let mut formats = vec![];
             for item in items.values {
-                let format = item.format().as_required_ref().await?;
+                let format = item.holder()?.data.format.as_ref().await?;
                 if self
                     .config
                     .format
@@ -1368,10 +1369,9 @@ impl OpenID4VCIFinal1_0 {
                     });
                     interaction_data_changed = true;
                 }
-                if stored.credential_schema_format_id.is_none()
-                    && let Some(format) = &credential.format()
-                {
-                    stored.credential_schema_format_id = Some(format.id());
+                if stored.credential_schema_format_id.is_none() {
+                    stored.credential_schema_format_id =
+                        Some(credential.holder()?.data.format.id());
                     interaction_data_changed = true;
                 }
             }
@@ -2288,26 +2288,30 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         credential: Credential,
     ) -> Result<(), IssuanceProtocolError> {
-        let (main_credential, rejected_format) =
-            if let Credential::IssuerBatchItem { parent, .. }
-            | Credential::HolderBatchItem { parent, .. } = &credential
+        let batch_item = match &credential {
+            Credential::IssuerBatchItem {
+                parent, credential, ..
+            } => Some((parent, &credential.format)),
+            Credential::HolderBatchItem {
+                parent, credential, ..
+            } => Some((parent, &credential.format)),
+            _ => None,
+        };
+        let (main_credential, rejected_format) = if let Some((parent, format)) = batch_item {
+            let parent = parent.as_ref().await?;
+            let format_id = format.id();
+            if !self
+                .batch_format_is_rejected(parent.common().id, Some(format_id))
+                .await?
             {
-                let parent = parent.as_ref().await?;
-                let format_id = credential.format().id_opt().ok_or_else(|| {
-                    IssuanceProtocolError::Failed("Missing CredentialSchemaFormat".to_string())
-                })?;
-                if !self
-                    .batch_format_is_rejected(parent.common().id, Some(format_id))
-                    .await?
-                {
-                    // Only a single item of a batch with others of the same format has been rejected.
-                    // The issuer will not be notified, and the format will still be refreshed.
-                    return Ok(());
-                }
-                (parent.to_owned(), Some(format_id))
-            } else {
-                (credential, None)
-            };
+                // Only a single item of a batch with others of the same format has been rejected.
+                // The issuer will not be notified, and the format will still be refreshed.
+                return Ok(());
+            }
+            (parent.to_owned(), Some(format_id))
+        } else {
+            (credential, None)
+        };
         let interaction = main_credential
             .common()
             .interaction

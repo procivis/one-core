@@ -388,19 +388,6 @@ impl Credential {
         }
     }
 
-    pub fn format(&self) -> Option<&Related<CredentialSchemaFormat>> {
-        match self {
-            Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
-                Some(&credential.format)
-            }
-            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
-                Some(&credential.format)
-            }
-            Self::Verifier { verifier_data, .. } => Some(&verifier_data.format),
-            Self::IssuerBatchParent { .. } | Self::HolderBatchParent { .. } => None,
-        }
-    }
-
     /// The credential that holds the relevant ecosystem history events.
     /// Points to the batch parent for credentials of type [CredentialType::BatchItem]
     pub(crate) fn ecosystem_history_id(&self) -> CredentialId {
@@ -424,15 +411,6 @@ impl Credential {
             Self::HolderSingle { .. } => true,
             Self::HolderBatchItem { consumed_at, .. } => consumed_at.is_none(),
             _ => false,
-        }
-    }
-
-    /// Returns the concrete credential's format. Batch parents return `None`, even if
-    /// they retain a legacy format in storage; use their items' formats instead.
-    pub async fn credential_format(&self) -> Result<Option<CredentialFormat>, NestedError> {
-        match &self.format() {
-            Some(format) => Ok(Some(format.as_ref().await?.format.to_owned())),
-            None => Ok(None),
         }
     }
 }

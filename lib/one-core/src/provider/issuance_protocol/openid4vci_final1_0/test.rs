@@ -2284,7 +2284,7 @@ async fn test_holder_refresh_credential_preserves_error_when_deleting_unused_bin
         serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
     data.credential_configurations[0].credential_id = Some(parent.common().id);
     data.credential_configurations[0].credential_schema_format_id =
-        Some(item.format().unwrap().id());
+        Some(item.holder().unwrap().data.format.id());
 
     Mock::given(method(Method::POST))
         .and(path("/nonce"))
@@ -6422,9 +6422,9 @@ async fn refresh_selects_all_refreshable_configurations() {
     }
     .build();
     let data = holder_interaction_data(json!([
-        {"credential_configuration_id": "jwt", "format": "jwt_vc_json", "credential_id": parent.common().id, "credential_schema_format_id": jwt_item.format().unwrap().id()},
-        {"credential_configuration_id": "mdoc", "format": "mso_mdoc", "credential_id": parent.common().id, "credential_schema_format_id": mdoc_item.format().unwrap().id()},
-        {"credential_configuration_id": "fixed_without_expiry", "format": "jwt_vc_json", "credential_id": parent.common().id, "credential_schema_format_id": fixed_without_expiry.format().unwrap().id()},
+        {"credential_configuration_id": "jwt", "format": "jwt_vc_json", "credential_id": parent.common().id, "credential_schema_format_id": jwt_item.holder().unwrap().data.format.id()},
+        {"credential_configuration_id": "mdoc", "format": "mso_mdoc", "credential_id": parent.common().id, "credential_schema_format_id": mdoc_item.holder().unwrap().data.format.id()},
+        {"credential_configuration_id": "fixed_without_expiry", "format": "jwt_vc_json", "credential_id": parent.common().id, "credential_schema_format_id": fixed_without_expiry.holder().unwrap().data.format.id()},
         {"credential_configuration_id": "failed", "format": "jwt_vc_json"},
         {"credential_configuration_id": "skipped", "format": "jwt_vc_json"},
         {"credential_configuration_id": "rejected", "format": "jwt_vc_json", "credential_id": rejected.common().id},
@@ -6445,7 +6445,7 @@ async fn refresh_selects_all_refreshable_configurations() {
                 .into_iter()
                 .find(|item| {
                     query.filtering.as_ref().unwrap().contains(&|filter| {
-                        matches!(filter, CredentialFilterValue::FormatIds(ids) if ids == &[item.format().unwrap().id()])
+                        matches!(filter, CredentialFilterValue::FormatIds(ids) if ids == &[item.holder().unwrap().data.format.id()])
                     })
                 })
                 .expect("Refresh must select the item of the configuration's exact format");
@@ -6642,11 +6642,20 @@ async fn refresh_resolves_the_issued_format_independently_of_schema_order(
 
     let mut item = generic_credential_did();
     item = CredentialBuilder {
+        role: CredentialRole::Holder,
         r#type: CredentialType::BatchItem,
         ..item.into()
     }
     .build();
-    let issued_format = item.format().unwrap().as_ref().await.unwrap().to_owned();
+    let issued_format = item
+        .holder()
+        .unwrap()
+        .data
+        .format
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
     let mut unrelated_format = issued_format.clone();
     unrelated_format.id = Uuid::new_v4().into();
     unrelated_format.format = "MDOC".into();

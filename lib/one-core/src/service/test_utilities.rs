@@ -946,7 +946,14 @@ impl From<Credential> for CredentialBuilder {
                 | Credential::HolderBatchItem { parent, .. } => Some(parent.clone()),
                 _ => None,
             },
-            format: value.format().cloned(),
+            format: match &value {
+                Credential::IssuerSingle { credential, .. }
+                | Credential::IssuerBatchItem { credential, .. } => Some(credential.format.clone()),
+                Credential::HolderSingle { credential, .. }
+                | Credential::HolderBatchItem { credential, .. } => Some(credential.format.clone()),
+                Credential::Verifier { verifier_data, .. } => Some(verifier_data.format.clone()),
+                Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => None,
+            },
         }
     }
 }

@@ -1565,7 +1565,6 @@ async fn test_create_credential_success_with_multiformat_schema() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert!(matches!(credential, Credential::IssuerBatchParent { .. }));
-    assert!(credential.format().is_none());
 }
 
 #[tokio::test]
@@ -1623,7 +1622,15 @@ async fn test_create_credential_success_with_format_selection() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(
-        credential.format().unwrap().as_ref().await.unwrap().format,
+        credential
+            .issuer_credential()
+            .unwrap()
+            .data
+            .format
+            .as_ref()
+            .await
+            .unwrap()
+            .format,
         format
     );
 }

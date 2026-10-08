@@ -40,7 +40,7 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
             .into(),
     };
     let key = template.issuer().unwrap().data.signing_key.clone();
-    let format = template.format().unwrap().clone();
+    let format = template.issuer_credential().unwrap().data.format.clone();
     let mut common = parent.common().clone();
     common.id = Uuid::new_v4().into();
     common.interaction = None;

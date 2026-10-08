@@ -133,7 +133,6 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                 assert_eq!(actual.suspend_end_date(), parent.suspend_end_date());
                 assert_eq!(subscriber_information.as_deref(), Some("shared metadata"));
                 assert_eq!(webhook_url.as_deref(), Some("https://example.com/webhook"));
-                assert!(actual.format().is_none());
                 assert_eq!(
                     *wallet_instance_attestation_blob_id,
                     data.credential_blob_id
@@ -145,7 +144,7 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                 ..
             } => {
                 assert_eq!(item_parent.id(), parent.common().id);
-                assert_eq!(actual.format().unwrap().id(), data.format.id());
+                assert_eq!(credential.format.id(), data.format.id());
                 assert_eq!(actual.suspend_end_date(), data.suspend_end_date);
                 assert_eq!(credential.credential_blob_id, data.credential_blob_id);
                 assert_eq!(
@@ -208,7 +207,6 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
         legacy_parent,
         Credential::IssuerBatchParent { .. }
     ));
-    assert!(legacy_parent.format().is_none());
 }
 
 #[tokio::test]

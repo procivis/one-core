@@ -1,6 +1,8 @@
 use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{CredentialRole, CredentialStateEnum, CredentialType};
+use one_core::model::credential::{
+    Credential, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use one_core::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
 use one_core::service::credential::dto::WalletInstanceAttestationDTO;
 use similar_asserts::assert_eq;
@@ -593,7 +595,10 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
     assert_eq!(parent_details.status(), 200);
     let parent_details = parent_details.json_value().await;
     // Issuer batch parents carry neither a format nor MSO validity.
-    assert!(parent_credential.format().is_none());
+    assert!(matches!(
+        parent_credential,
+        Credential::IssuerBatchParent { .. }
+    ));
     assert!(parent_details["mdocMsoValidity"].is_null());
 
     // MDOC's `expirationSeconds` config default is 72h - pick a real expiration that doesn't

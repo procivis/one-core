@@ -516,7 +516,7 @@ pub(super) fn request_to_active_model(
         credential_blob_id: Set(None),
         ecosystem: Set(common.ecosystem.clone()),
         r#type: Set(request.r#type().into()),
-        format: Set(request.format().map(|format| format.id())),
+        format: Set(None),
         consumed_at: Set(None),
         issuer_identifier_id: Set(None),
         issuer_certificate_id: Set(None),
@@ -584,6 +584,7 @@ fn set_credential_variant_fields(model: &mut credential::ActiveModel, request: &
             model.consumed_at = Set(*consumed_at);
         }
         Credential::Verifier { verifier_data, .. } => {
+            model.format = Set(Some(verifier_data.format.id()));
             model.issuer_identifier_id = Set(Some(verifier_data.issuer.identifier.id()));
             model.issuer_certificate_id = Set(verifier_data
                 .issuer
@@ -609,6 +610,7 @@ fn set_issuer_fields(model: &mut credential::ActiveModel, issuer: &IssuerData) {
 }
 
 fn set_issuer_credential_fields(model: &mut credential::ActiveModel, data: &IssuerCredentialData) {
+    model.format = Set(Some(data.format.id()));
     model.credential_blob_id = Set(data.credential_blob_id);
     model.holder_identifier_id = Set(data
         .holder_identifier
@@ -618,6 +620,7 @@ fn set_issuer_credential_fields(model: &mut credential::ActiveModel, data: &Issu
 }
 
 fn set_holder_credential_fields(model: &mut credential::ActiveModel, data: &HolderCredentialData) {
+    model.format = Set(Some(data.format.id()));
     model.credential_blob_id = Set(data.credential_blob_id);
     model.issuer_identifier_id = Set(Some(data.issuer.identifier.id()));
     model.issuer_certificate_id = Set(data
