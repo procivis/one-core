@@ -1,6 +1,8 @@
 //! Common functionality on central (client) side
 //! holder during central-client mode, verifier during peripheral-server mode
 
+use std::time::Duration;
+
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
@@ -8,6 +10,7 @@ use uuid::Uuid;
 use super::common::PeerInfo;
 use super::{Chunk, Command, split_into_chunks};
 use crate::error::ContextWithErrorCode;
+use crate::proto::bluetooth_low_energy::BleError;
 use crate::proto::bluetooth_low_energy::low_level::MTU_HEADER_OVERHEAD;
 use crate::proto::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::proto::bluetooth_low_energy::low_level::dto::CharacteristicWriteType;
@@ -161,4 +164,38 @@ pub(super) async fn wait_for_connection(
         max_payload_size: max_payload_size as _,
         service_uuid: *service_uuid,
     })
+}
+
+pub(super) async fn wait_for_end_command(
+    central: &impl BleCentral,
+    connection: &PeerInfo,
+    state_characteristic: &str,
+    timeout: Duration,
+) {
+    tracing::debug!("Awaiting End command: {state_characteristic}");
+
+    let end_received = async {
+        loop {
+            let notifications = central
+                .get_notifications(
+                    connection.address.to_owned(),
+                    connection.service_uuid.to_string(),
+                    state_characteristic.into(),
+                )
+                .await?;
+
+            if notifications
+                .into_iter()
+                .any(|notification| matches!(Command::try_from(notification), Ok(Command::End)))
+            {
+                return Ok::<_, BleError>(());
+            }
+        }
+    };
+
+    match tokio::time::timeout(timeout, end_received).await {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => tracing::info!(%err, "Failed to receive End command"),
+        Err(_) => tracing::info!("Timeout waiting for End command"),
+    }
 }

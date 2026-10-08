@@ -1,7 +1,5 @@
 //! Common functionality on both sides holder/verifier as well as both BLE modes
 
-use std::time::Duration;
-
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -56,7 +54,6 @@ pub(super) async fn send_session_message<T: Serialize>(
     peripheral: &impl BlePeripheral,
     message: &T,
     peer: &ConnectedPeer,
-    should_disconnect_after: bool,
 ) -> Result<(), VerificationProtocolError> {
     match (sender_role, peer) {
         (ProofRole::Holder, ConnectedPeer::CentralClientMode(connection))
@@ -68,12 +65,6 @@ pub(super) async fn send_session_message<T: Serialize>(
                 client_2_server_characteristic(peer),
             )
             .await?;
-
-            if should_disconnect_after
-                && let Err(err) = central.disconnect(connection.address.to_owned()).await
-            {
-                tracing::warn!("failed to disconnect BLE central: {err}");
-            }
         }
         (ProofRole::Holder, ConnectedPeer::PeripheralServerMode(connection))
         | (ProofRole::Verifier, ConnectedPeer::CentralClientMode(connection)) => {
@@ -84,11 +75,6 @@ pub(super) async fn send_session_message<T: Serialize>(
                 server_2_client_characteristic(peer),
             )
             .await?;
-
-            if should_disconnect_after {
-                // Wait for client disconnection here (but this means blocking UI)
-                tokio::time::sleep(Duration::from_millis(200)).await;
-            }
         }
     };
 

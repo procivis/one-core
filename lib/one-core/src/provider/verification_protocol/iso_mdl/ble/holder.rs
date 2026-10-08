@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofId};
@@ -536,9 +537,36 @@ async fn send_session_data(
         peripheral,
         &session_data,
         connected_verifier,
-        should_disconnect_after,
     )
-    .await
+    .await?;
+
+    // wait for disconnection with an arbitrary timeout
+    // on some OS's the disconnection events are not reported right away
+    if should_disconnect_after {
+        const DISCONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
+
+        match connected_verifier {
+            ConnectedPeer::CentralClientMode(connection) => {
+                central::wait_for_end_command(
+                    central,
+                    connection,
+                    central_client_mode::STATE,
+                    DISCONNECTION_TIMEOUT,
+                )
+                .await;
+
+                if let Err(err) = central.disconnect(connection.address.to_owned()).await {
+                    tracing::warn!("failed to disconnect BLE central: {err}");
+                }
+            }
+            ConnectedPeer::PeripheralServerMode(connection) => {
+                peripheral::wait_for_disconnection(peripheral, connection, DISCONNECTION_TIMEOUT)
+                    .await;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 async fn wait_for_central_client_mode(

@@ -310,7 +310,6 @@ async fn process_proof(
         peripheral,
         &session_establishment,
         connected_holder,
-        false,
     )
     .await?;
 

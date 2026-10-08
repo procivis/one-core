@@ -30,6 +30,7 @@ use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
+use crate::proto::bluetooth_low_energy::low_level::dto::ConnectionEvent;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
@@ -59,6 +60,15 @@ async fn test_presentation_reject_ok() {
         .expect_notify_characteristic_data()
         .times(1)
         .returning(move |_, _, _, _| Ok(()));
+
+    ble_peripheral
+        .expect_get_connection_change_events()
+        .times(1)
+        .returning(|| {
+            Ok(vec![ConnectionEvent::Disconnected {
+                device_address: "test address".to_string(),
+            }])
+        });
 
     ble_peripheral
         .expect_is_advertising()

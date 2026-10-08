@@ -1,6 +1,8 @@
 //! Common functionality on peripheral side
 //! holder during peripheral-server mode, verifier during central-client mode
 
+use std::time::Duration;
+
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
@@ -8,6 +10,7 @@ use uuid::Uuid;
 use super::common::PeerInfo;
 use super::{Chunk, Command, split_into_chunks};
 use crate::error::ContextWithErrorCode;
+use crate::proto::bluetooth_low_energy::BleError;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::{ConnectionEvent, DeviceInfo};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -174,5 +177,40 @@ pub(super) async fn notify_end(
         .await;
     if let Err(err) = result {
         tracing::warn!(%err, "Failed to notify State command End");
+    }
+}
+
+pub(super) async fn wait_for_disconnection(
+    peripheral: &impl BlePeripheral,
+    connection: &PeerInfo,
+    timeout: Duration,
+) {
+    tracing::debug!("Awaiting device disconnection");
+
+    let disconnected = async {
+        loop {
+            let disconnected_devices = peripheral
+                .get_connection_change_events()
+                .await?
+                .into_iter()
+                .filter_map(|info| match info {
+                    ConnectionEvent::Connected { .. } => None,
+                    ConnectionEvent::Disconnected { device_address } => Some(device_address),
+                });
+
+            for disconnected_device in disconnected_devices {
+                tracing::debug!("device disconnected: {disconnected_device}");
+
+                if disconnected_device == connection.address {
+                    return Ok::<_, BleError>(());
+                }
+            }
+        }
+    };
+
+    match tokio::time::timeout(timeout, disconnected).await {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => tracing::info!(%err, "Failed to get connection events"),
+        Err(_) => tracing::info!("Timeout waiting for disconnection"),
     }
 }
