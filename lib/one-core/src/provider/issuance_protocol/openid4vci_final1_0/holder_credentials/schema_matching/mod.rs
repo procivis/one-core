@@ -523,7 +523,7 @@ pub(super) struct AlignmentUpdate {
 pub(super) async fn align_format_claim_schemas_and_mappings(
     stored_schema: &mut CredentialSchema,
     credential: CredentialViewMut<'_, HolderCredentialData>,
-    default_language: &str,
+    config: &CoreConfig,
     format_id: Option<shared_types::CredentialSchemaFormatId>,
 ) -> Result<AlignmentUpdate, IssuanceProtocolError> {
     let CredentialViewMut { common, data } = credential;
@@ -536,10 +536,14 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
     };
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
-    let (parsed_format, parsed_mappings) = {
+    let (parsed_format, parsed_ecosystem_schema_id, parsed_mappings) = {
         let parsed_format = data.format.as_ref().await?;
         let mappings = parsed_format.claim_mappings.as_ref().await?.to_owned();
-        (parsed_format.format.clone(), mappings)
+        (
+            parsed_format.format.clone(),
+            parsed_format.ecosystem_schema_id.clone(),
+            mappings,
+        )
     };
 
     let mut new_claim_schemas = vec![];
@@ -548,14 +552,32 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
         let stored_formats = stored_schema.formats.as_ref().await?;
         stored_formats
             .iter()
-            .find(|format| {
-                format.format == parsed_format && format_id.is_none_or(|id| format.id == id)
+            // The stored format may use a different config name for the same format type.
+            // Identify its row by the explicit ID or ecosystem schema ID, then check the type.
+            .find(|format| match format_id {
+                Some(id) => format.id == id,
+                None => format.ecosystem_schema_id == parsed_ecosystem_schema_id,
             })
             .cloned()
             .ok_or(IssuanceProtocolError::Failed(format!(
                 "No matching stored format found for `{parsed_format}`"
             )))?
     };
+    if stored_format.format != parsed_format
+        && config
+            .format
+            .get_type(&stored_format.format)
+            .error_while("getting stored format type")?
+            != config
+                .format
+                .get_type(&parsed_format)
+                .error_while("getting parsed format type")?
+    {
+        return Err(IssuanceProtocolError::Failed(format!(
+            "Stored format `{}` has a different type than parsed format `{parsed_format}`",
+            stored_format.format
+        )));
+    }
     let stored_format_id = stored_format.id;
     {
         let mut stored_mappings = stored_format.claim_mappings.as_mut().await?;
@@ -644,9 +666,12 @@ pub(super) async fn align_format_claim_schemas_and_mappings(
             stored_mappings.push(new_mapping.clone());
             new_mappings.push(new_mapping);
             new_claim_schemas.push(
-                add_fallback_translation(parsed_claim_schema, default_language)
-                    .await
-                    .error_while("adding fallback claim translation")?,
+                add_fallback_translation(
+                    parsed_claim_schema,
+                    &config.global_settings.default_language,
+                )
+                .await
+                .error_while("adding fallback claim translation")?,
             );
         }
         stored_claim_schemas.extend(new_claim_schemas.clone());

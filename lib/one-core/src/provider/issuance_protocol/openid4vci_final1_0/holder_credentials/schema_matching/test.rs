@@ -21,7 +21,7 @@ use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, Local
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
-use crate::service::test_utilities::{CredentialBuilder, dummy_organisation};
+use crate::service::test_utilities::{CredentialBuilder, dummy_organisation, generic_config};
 
 #[rstest]
 #[case::stored_requirements(true)]
@@ -344,7 +344,7 @@ async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
     align_format_claim_schemas_and_mappings(
         &mut selected_schema,
         parsed_credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -425,7 +425,7 @@ async fn formatted_key_match_with_different_namespace_does_not_satisfy_stored_re
     align_format_claim_schemas_and_mappings(
         &mut selected_schema,
         parsed_credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -516,7 +516,7 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
     align_format_claim_schemas_and_mappings(
         &mut selected_schema,
         parsed_credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -751,7 +751,7 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
     let alignment = align_format_claim_schemas_and_mappings(
         &mut resolved_schema,
         parsed_credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -829,7 +829,7 @@ async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key(
     let alignment = align_format_claim_schemas_and_mappings(
         &mut resolved_schema,
         parsed_credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -1266,7 +1266,7 @@ async fn matches_existing_schema() {
     let alignment = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -1278,6 +1278,101 @@ async fn matches_existing_schema() {
     let claims = holder.data.claims.as_ref().await.unwrap();
     assert_eq!(claims[0].schema.as_ref().await.unwrap().id, stored_cs_id);
     assert_eq!(claims[0].path, "addr/city");
+}
+
+#[rstest]
+#[tokio::test]
+async fn reuses_swiyu_format_for_parsed_sd_jwt_vc(
+    #[values(false, true)] other_format_first: bool,
+    #[values(false, true)] explicit_format_id: bool,
+) {
+    let mut config = generic_config().core;
+    let sd_jwt_vc_config = config
+        .format
+        .get_fields(&"SD_JWT_VC".into())
+        .unwrap()
+        .clone();
+    config
+        .format
+        .insert("SD_JWT_VC_SWIYU".into(), sd_jwt_vc_config);
+
+    let parsed_claim = claim_schema("name", "STRING");
+    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_schema = credential_schema(
+        Uuid::new_v4().into(),
+        parsed_format_id,
+        "SD_JWT_VC",
+        vec![parsed_claim.clone()],
+        vec![mapping(parsed_format_id, parsed_claim.id, "name", None)],
+    );
+    let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
+    let mut credential =
+        credential(parsed_schema.clone(), vec![claim("name", &parsed_claim)]).await;
+
+    let stored_claim = claim_schema("local-name", "STRING");
+    let stored_format_id = Uuid::new_v4().into();
+    let mut stored_schema = credential_schema(
+        Uuid::new_v4().into(),
+        stored_format_id,
+        "SD_JWT_VC_SWIYU",
+        vec![stored_claim.clone()],
+        vec![mapping(stored_format_id, stored_claim.id, "name", None)],
+    );
+    let stored_schema_id = stored_schema.id;
+    if other_format_first {
+        // An exact format-name match for a different VCT must not take precedence.
+        let mut other_format = parsed_format.clone();
+        other_format.credential_schema_id = stored_schema_id;
+        other_format.ecosystem_schema_id = "other-vct".into();
+        other_format.claim_mappings =
+            vec![mapping(other_format.id, stored_claim.id, "name", None)].into();
+        stored_schema
+            .formats
+            .as_mut()
+            .await
+            .unwrap()
+            .insert(0, other_format);
+    }
+    let organisation_id = stored_schema.organisation.id();
+    let mut repository = MockCredentialSchemaRepository::new();
+    repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(move |_| Ok(credential_schema_list(vec![stored_schema])));
+    let importer = MockCredentialSchemaImporter::new();
+
+    let mut resolution = find_or_import_credential_schema(
+        &importer,
+        &repository,
+        parsed_schema,
+        &parsed_format,
+        organisation_id,
+        &config,
+    )
+    .await
+    .unwrap();
+    assert_eq!(resolution.schema.id, stored_schema_id);
+    assert!(resolution.new_format.is_none());
+
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut resolution.schema,
+        credential.holder_mut().unwrap(),
+        &config,
+        explicit_format_id.then_some(stored_format_id),
+    )
+    .await
+    .unwrap();
+
+    assert!(alignment.new_claim_schemas.is_empty());
+    assert!(alignment.new_mappings.is_empty());
+    let holder = credential.holder().unwrap();
+    assert_eq!(holder.common.schema.id(), stored_schema_id);
+    let format = holder.data.format.as_ref().await.unwrap();
+    assert_eq!(format.id, stored_format_id);
+    assert_eq!(format.format, "SD_JWT_VC_SWIYU".into());
+    let claims = holder.data.claims.as_ref().await.unwrap();
+    assert_eq!(claims[0].schema.id(), stored_claim.id);
+    assert_eq!(claims[0].path, "local-name");
 }
 
 #[tokio::test]
@@ -1329,7 +1424,7 @@ async fn remaps_nested_and_array_claim_paths() {
     let alignment = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -1383,7 +1478,7 @@ async fn returns_new_claim_schemas() {
     let alignment = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -1485,7 +1580,7 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
     let alignment = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -1506,8 +1601,16 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
     assert_eq!(claims[1].path, new_key);
 }
 
+#[rstest]
+#[case::different_type("SD_JWT", "schemaId", false)]
+#[case::different_ecosystem_schema_id("JWT", "other-schema-id", false)]
+#[case::missing_format_id("JWT", "schemaId", true)]
 #[tokio::test]
-async fn errors_when_stored_format_missing() {
+async fn errors_when_stored_format_does_not_match(
+    #[case] stored_format: &str,
+    #[case] ecosystem_schema_id: &str,
+    #[case] explicit_format_id: bool,
+) {
     let parsed_schema = credential_schema(
         Uuid::new_v4().into(),
         Uuid::new_v4().into(),
@@ -1516,22 +1619,22 @@ async fn errors_when_stored_format_missing() {
         vec![],
     );
 
-    // stored schema only has the "SD_JWT" format
     let mut stored_schema = credential_schema(
         Uuid::new_v4().into(),
         Uuid::new_v4().into(),
-        "SD_JWT",
+        stored_format,
         vec![],
         vec![],
     );
+    set_ecosystem_schema_id(&mut stored_schema, ecosystem_schema_id).await;
 
     let mut credential = credential(parsed_schema, vec![]).await;
 
     let result = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
-        None,
+        &generic_config().core,
+        explicit_format_id.then(|| Uuid::new_v4().into()),
     )
     .await;
 
@@ -1563,7 +1666,7 @@ async fn errors_when_parsed_mapping_missing() {
     let result = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await;
@@ -1636,7 +1739,7 @@ async fn remaps_new_nested_and_array_claim_paths() {
     let alignment = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await
@@ -1926,7 +2029,7 @@ async fn relinks_claims_of_new_root_array_claim_schema() {
     let alignment = align_format_claim_schemas_and_mappings(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
-        "en",
+        &generic_config().core,
         None,
     )
     .await

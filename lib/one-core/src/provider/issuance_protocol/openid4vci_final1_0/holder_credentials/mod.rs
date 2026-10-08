@@ -225,7 +225,7 @@ impl OpenID4VCIFinal1_0 {
         let alignment = align_format_claim_schemas_and_mappings(
             schema,
             CredentialViewMut { common, data },
-            &self.config.global_settings.default_language,
+            &self.config,
             None,
         )
         .await?;
@@ -420,7 +420,7 @@ impl OpenID4VCIFinal1_0 {
             let alignment = align_format_claim_schemas_and_mappings(
                 &mut schema,
                 item.credential.holder_mut()?,
-                &self.config.global_settings.default_language,
+                &self.config,
                 Some(config_schema_format.id),
             )
             .await?;
