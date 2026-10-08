@@ -95,7 +95,12 @@ pub(crate) fn validate_create_v2_request(
     }
 
     if let Some(expiration) = request.expiration
-        && expiration <= time::Duration::ZERO
+        && (expiration <= time::Duration::ZERO
+            || expiration
+                > config
+                    .global_settings
+                    .credential_schema
+                    .max_expiration_seconds)
     {
         return Err(CredentialSchemaServiceError::InvalidExpiration);
     }

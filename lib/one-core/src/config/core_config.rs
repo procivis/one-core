@@ -90,10 +90,37 @@ pub struct GlobalSettings {
     /// re-hosting the schema locally.
     #[serde(default)]
     pub rehost_imported_schemas: bool,
+    #[serde(default)]
+    pub credential_schema: CredentialSchemaConfig,
 }
 
 fn default_en() -> String {
     "en".to_string()
+}
+
+#[serde_as]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CertificateValidationConfig {
+    #[serde(default)]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway_seconds: time::Duration,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaConfig {
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub max_expiration_seconds: time::Duration,
+}
+
+impl Default for CredentialSchemaConfig {
+    fn default() -> Self {
+        Self {
+            max_expiration_seconds: time::Duration::days(10 * 365),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -832,15 +859,6 @@ impl VerificationEngagementFields {
 }
 
 pub type VerificationEngagementConfig = Dict<VerificationEngagement, VerificationEngagementFields>;
-
-#[serde_as]
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CertificateValidationConfig {
-    #[serde(default)]
-    #[serde_as(as = "DurationSeconds<i64>")]
-    pub leeway_seconds: time::Duration,
-}
 
 pub type SignerConfig = ConfigBlock<SignerId, SignerType>;
 

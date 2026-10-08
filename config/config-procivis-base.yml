@@ -720,6 +720,8 @@ globalSettings:
     maxRedirects: 3
     deniedHosts: []
     maxResponseSize: 10485760 # 10MiB
+  credentialSchema:
+    maxExpirationSeconds: 315360000 # 10years
 documentSignerProvider:
   SIGN8:
     type: WALLET_CENTRIC
