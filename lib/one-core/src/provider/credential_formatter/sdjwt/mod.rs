@@ -355,8 +355,12 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     ))?;
 
                 let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
-                let validation_options =
-                    CertificateValidationOptions::signature_and_revocation(None);
+                // Status checks also extract stored credentials without verifying them.
+                let validation_options = if verification.is_some() {
+                    CertificateValidationOptions::signature_and_revocation(None)
+                } else {
+                    CertificateValidationOptions::no_validation()
+                };
                 let ParsedCertificate {
                     attributes,
                     subject_common_name,

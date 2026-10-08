@@ -8,6 +8,7 @@ use maplit::hashmap;
 use mockall::predicate::eq;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
+use rstest::rstest;
 use serde_json::json;
 use shared_types::{DidMethodId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
@@ -17,13 +18,16 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::{DidType, KeyAlgorithmType};
-use crate::error::NestedError;
+use crate::error::{ErrorCodeMixin, NestedError};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::key::Key;
-use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::certificate_validator::{
+    CertContext, CertificatePurpose, Error as CertificateError, MockCertificateValidator,
+    ParsedCertificate,
+};
 use crate::proto::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
@@ -59,6 +63,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProvider, MockKeyAlgorithmProvider, ParsedKey,
 };
+use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
@@ -489,6 +494,107 @@ async fn test_extract_credentials() {
         CredentialClaimValue::Object(credentials.claims).into();
 
     assert_eq!(claim_values_as_json, expected_result);
+}
+
+#[rstest]
+#[case::revoked(CertificateError::CertificateRevoked)]
+#[case::expired(CertificateError::CertificateExpired)]
+#[case::not_yet_valid(CertificateError::CertificateNotYetValid)]
+#[tokio::test]
+async fn test_extract_credentials_certificate_validity(
+    #[case] certificate_error: fn(CertContext) -> CertificateError,
+    #[values(false, true)] verify: bool,
+) {
+    let header = Base64UrlSafeNoPadding::encode_to_string(
+        json!({"alg": "ES256", "typ": "dc+sd-jwt", "x5c": ["Y2VydGlmaWNhdGU="]}).to_string(),
+    )
+    .unwrap();
+    let payload = Base64UrlSafeNoPadding::encode_to_string(
+        json!({
+            "iss": "https://issuer.example.com",
+            "vct": "urn:example:pid",
+            "given_name": "Max",
+            "status": {"status_list": {"idx": 42, "uri": "https://issuer.example.com/status"}}
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let token = format!("{header}.{payload}.QUJD~").into();
+    let error = certificate_error(CertContext {
+        purpose: CertificatePurpose::Unspecified,
+        is_ca: false,
+        subject_dn: "CN=PID Provider".to_string(),
+    });
+    let expected_error_code = error.error_code();
+
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
+        .once()
+        .return_once(move |_, validation| {
+            // Model a certificate that fails validity checks but can still be parsed.
+            if validation.validity_check.is_some() {
+                assert!(validation.integrity_check);
+                return Err(error);
+            }
+            assert!(!validation.integrity_check);
+            let now = crate::clock::now_utc();
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "42".to_string(),
+                    not_before: now,
+                    not_after: now,
+                    issuer: "CN=CA".to_string(),
+                    subject: "CN=PID Provider".to_string(),
+                    fingerprint: "fingerprint".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("PID Provider".to_string()),
+                subject_key_identifier: None,
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::new(),
+                ))),
+            })
+        });
+    let formatter = SDJWTVCFormatter::new(
+        None,
+        "SD_JWT_VC".into(),
+        json!({"leewaySeconds": 0, "embedLayoutProperties": false}),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(certificate_validator),
+        generic_config().core.datatype,
+        Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
+    )
+    .unwrap();
+
+    if verify {
+        let error = formatter
+            .extract_credentials(&token, None, Box::new(MockTokenVerifier::new()))
+            .await
+            .unwrap_err();
+        assert_eq!(error.error_code(), expected_error_code);
+    } else {
+        let credential = formatter
+            .extract_credentials_unverified(&token, None)
+            .await
+            .unwrap();
+        let_assert!(IdentifierDetails::Certificate(issuer) = credential.issuer);
+        assert_eq!(issuer.fingerprint, "fingerprint");
+        assert_eq!(issuer.subject_common_name.as_deref(), Some("PID Provider"));
+        assert_eq!(
+            credential.claims["given_name"].value,
+            CredentialClaimValue::String("Max".to_string())
+        );
+        assert_eq!(credential.status.len(), 1);
+        assert_eq!(
+            credential.status[0].additional_fields["uri"],
+            json!("https://issuer.example.com/status")
+        );
+        assert_eq!(credential.status[0].additional_fields["idx"], json!("42"));
+    }
 }
 
 #[tokio::test]
