@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
 
-use maplit::hashmap;
+use maplit::btreemap;
 use mockall::predicate::*;
 use shared_types::CredentialSchemaId;
 use shared_types::i18n::I18nString;
@@ -1869,7 +1869,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -1882,7 +1882,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -1895,7 +1895,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
     ];
@@ -1909,7 +1909,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
         required: true,
         array: false,
         translations: CredentialClaimSchemaTranslationsDTO {
-            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
         },
 
         claims: vec![
@@ -1923,7 +1923,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
                 array: false,
                 claims: vec![],
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                 },
             },
             CredentialClaimSchemaDTO {
@@ -1936,7 +1936,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
                 array: false,
                 claims: vec![],
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                 },
             },
         ],
@@ -1968,7 +1968,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -1981,7 +1981,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -1994,7 +1994,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2007,7 +2007,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2020,7 +2020,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2033,7 +2033,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2046,7 +2046,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
             },
         },
     ];
@@ -2060,7 +2060,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
         required: true,
         array: false,
         translations: CredentialClaimSchemaTranslationsDTO {
-            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
         },
 
         claims: vec![
@@ -2073,7 +2073,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 required: true,
                 array: false,
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                 },
 
                 claims: vec![
@@ -2087,7 +2087,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                         },
                     },
                     CredentialClaimSchemaDTO {
@@ -2100,7 +2100,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                         },
                     },
                 ],
@@ -2114,7 +2114,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 required: true,
                 array: false,
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                 },
 
                 claims: vec![
@@ -2128,7 +2128,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                         },
                     },
                     CredentialClaimSchemaDTO {
@@ -2141,7 +2141,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
                         },
                     },
                 ],
@@ -2168,7 +2168,7 @@ fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
         array: false,
         claims: vec![],
         translations: CredentialClaimSchemaTranslationsDTO {
-            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
         },
     }];
     assert!(matches!(

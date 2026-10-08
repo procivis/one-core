@@ -7,7 +7,7 @@ use one_dto_mapper::{From, convert_inner};
 use standardized_types::etsi_119_475::registration_certificate::SupervisoryAuthority;
 
 use super::history::EcosystemOutcomeBindingDTO;
-use super::mapper::convert_ecosystem_errors;
+use super::mapper::{convert_ecosystem_errors, from_i18n_strings};
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(TrustInformationDetailResponseDTO)]
@@ -45,6 +45,7 @@ pub struct EudiTrustInformationResponseBindingDTO {
     pub phone: Option<String>,
     pub country: String,
     pub identifier: String,
+    #[from(with_fn = from_i18n_strings)]
     pub service_description: Vec<HashMap<String, String>>,
     pub supervisory_authority: EudiSupervisoryAuthorityResponseBindingDTO,
     #[from(with_fn = convert_inner)]

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 
 use indexmap::IndexMap;
@@ -516,7 +516,7 @@ async fn create_display_dtos_from_schema(
 
     let visual_base = create_display_dto_from_schema(credential_schema, format).await?;
 
-    let mut by_lang: HashMap<String, (Option<String>, Option<String>)> = HashMap::new();
+    let mut by_lang: BTreeMap<String, (Option<String>, Option<String>)> = BTreeMap::new();
     for translation in &translations {
         let entry = by_lang.entry(translation.lang.clone()).or_default();
         match translation.field {

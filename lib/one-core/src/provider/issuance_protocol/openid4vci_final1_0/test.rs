@@ -6218,14 +6218,14 @@ fn falls_back_to_default_language_when_no_name_translations() {
 
 #[test]
 fn one_entry_per_name_language_with_logo_and_matching_alt_text() {
+    // Match the language/field order returned by persistence.
     let translations = vec![
-        text(LocalizedTextField::Name, "en", "English name"),
-        text(LocalizedTextField::Name, "de", "Deutscher Name"),
         text(LocalizedTextField::LogoAltText, "de", "Logo Beschreibung"),
+        text(LocalizedTextField::Name, "de", "Deutscher Name"),
+        text(LocalizedTextField::Name, "en", "English name"),
     ];
 
-    let mut result = build_issuer_display("Plain", &translations, Some("https://logo"), "en");
-    result.sort_by(|a, b| a.locale.cmp(&b.locale));
+    let result = build_issuer_display("Plain", &translations, Some("https://logo"), "en");
 
     assert_eq!(
         result,

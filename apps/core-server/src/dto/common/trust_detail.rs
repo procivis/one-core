@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use one_core::service::common_dto::{
     EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO,
     TrustInformationDetailResponseEnum,
@@ -7,6 +5,7 @@ use one_core::service::common_dto::{
 use one_dto_mapper::{From, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::Serialize;
+use shared_types::i18n::I18nString;
 use standardized_types::etsi_119_475::registration_certificate::SupervisoryAuthority;
 use url::Url;
 use utoipa::ToSchema;
@@ -32,7 +31,7 @@ pub(crate) struct EudiTrustInformationResponseRestDTO {
     pub country: String,
     pub identifier: String,
     #[schema(example = json!([{ "de": "Demo Dienstleistung", "en": "Demo Service" }]))]
-    pub service_description: Vec<HashMap<String, String>>,
+    pub service_description: Vec<I18nString>,
     pub supervisory_authority: SupervisoryAuthority,
     #[from(with_fn = convert_inner)]
     pub intermediary: Option<EudiIntermediaryResponseRestDTO>,

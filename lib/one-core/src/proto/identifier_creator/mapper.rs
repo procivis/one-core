@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use shared_types::IdentifierId;
 use shared_types::i18n::I18nString;
@@ -77,8 +77,8 @@ pub(crate) fn issuer_display_to_identifier_translations(
         return None;
     }
 
-    let mut names = HashMap::new();
-    let mut logo_alt_texts = HashMap::new();
+    let mut names = BTreeMap::new();
+    let mut logo_alt_texts = BTreeMap::new();
     for entry in display {
         let lang = entry
             .locale
@@ -162,7 +162,7 @@ mod tests {
     fn build_identifier_translations_backfills_default_language_name() {
         let id = Uuid::new_v4().into();
         let supplied = IdentifierTranslations {
-            name: shared_types::i18n::I18nString(std::collections::HashMap::from([(
+            name: shared_types::i18n::I18nString(std::collections::BTreeMap::from([(
                 "pl".to_owned(),
                 "Nazwisko".to_owned(),
             )])),
@@ -183,7 +183,7 @@ mod tests {
     fn build_identifier_translations_keeps_supplied_default_language_name() {
         let id = Uuid::new_v4().into();
         let supplied = IdentifierTranslations {
-            name: shared_types::i18n::I18nString(std::collections::HashMap::from([(
+            name: shared_types::i18n::I18nString(std::collections::BTreeMap::from([(
                 "en".to_owned(),
                 "Given name".to_owned(),
             )])),

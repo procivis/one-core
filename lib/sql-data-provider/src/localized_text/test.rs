@@ -1,10 +1,13 @@
 use one_core::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
+use one_core::model::relation::AsyncBatchLoader;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
+use sea_orm::{EntityTrait, Set};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::localized_text::LocalizedTextProvider;
+use crate::entity::localized_text;
+use crate::localized_text::{LocalizedTextLoader, LocalizedTextProvider};
 use crate::test_utilities::{get_dummy_date, setup_test_data_layer_and_connection};
 
 struct TestSetup {
@@ -82,6 +85,61 @@ async fn test_upsert_many_get_localized_text_success() {
             .iter()
             .any(|t| eq_excluding_timestamps(&localized_text2, t))
     );
+}
+
+#[tokio::test]
+async fn test_translation_order_matches_for_repository_and_batch_loader() {
+    let TestSetup { provider } = setup().await;
+    let first = dummy_text();
+    let second = dummy_text();
+    let now = get_dummy_date();
+    // Insert out of order, including ties on creation date and language.
+    for entity in [&first, &second] {
+        for (lang, field, created_date) in [
+            ("fr", LocalizedTextField::Name, now + time::Duration::DAY),
+            ("de", LocalizedTextField::Name, now + time::Duration::DAY),
+            ("en", LocalizedTextField::Name, now),
+            (
+                "de",
+                LocalizedTextField::Description,
+                now + time::Duration::DAY,
+            ),
+        ] {
+            let mut model = localized_text::ActiveModel::from(LocalizedText {
+                lang: lang.to_owned(),
+                field,
+                ..entity.clone()
+            });
+            model.created_date = Set(created_date);
+            localized_text::Entity::insert(model)
+                .exec(&provider.db)
+                .await
+                .unwrap();
+        }
+    }
+
+    let loaded = LocalizedTextLoader {
+        db: provider.db.clone(),
+    }
+    .load(&[second.entity_id, first.entity_id])
+    .await
+    .unwrap();
+    for entity in [&first, &second] {
+        let texts = provider.get(&entity.entity_id).await.unwrap();
+        assert_eq!(
+            texts
+                .iter()
+                .map(|text| (text.lang.as_str(), &text.field))
+                .collect::<Vec<_>>(),
+            vec![
+                ("de", &LocalizedTextField::Description),
+                ("de", &LocalizedTextField::Name),
+                ("en", &LocalizedTextField::Name),
+                ("fr", &LocalizedTextField::Name),
+            ]
+        );
+        assert_eq!(loaded[&entity.entity_id], texts);
+    }
 }
 
 #[tokio::test]

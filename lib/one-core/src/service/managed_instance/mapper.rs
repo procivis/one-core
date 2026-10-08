@@ -82,10 +82,12 @@ pub(super) fn map_already_exists_error(error: DataLayerError) -> ManagedInstance
 }
 
 pub(crate) fn params_into_display_names(params: HashMap<String, String>) -> Vec<DisplayNameDTO> {
-    params
+    let mut names: Vec<_> = params
         .into_iter()
         .map(|(lang, value)| DisplayNameDTO { lang, value })
-        .collect()
+        .collect();
+    names.sort_by(|a, b| a.lang.cmp(&b.lang));
+    names
 }
 
 impl TryFrom<ManagedInstanceFilterParamsDTO> for ListFilterCondition<ManagedInstanceFilterValue> {
@@ -175,5 +177,28 @@ impl From<UserAuthenticationParams> for UserAuthenticationDTO {
                 jwks_uri: ua.token_validation.jwks_uri,
             }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn config_translations_are_ordered_by_language() {
+        let display = params_into_display_names(HashMap::from([
+            ("fr".to_owned(), "French".to_owned()),
+            ("en".to_owned(), "English".to_owned()),
+            ("de".to_owned(), "German".to_owned()),
+        ]));
+        assert_eq!(
+            display
+                .iter()
+                .map(|d| (d.lang.as_str(), d.value.as_str()))
+                .collect::<Vec<_>>(),
+            [("de", "German"), ("en", "English"), ("fr", "French")]
+        );
     }
 }

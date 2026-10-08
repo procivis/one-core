@@ -6,7 +6,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::OnConflict;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 use shared_types::EntityId;
 
 use crate::entity;
@@ -41,6 +41,8 @@ impl LocalizedTextRepository for LocalizedTextProvider {
     async fn get(&self, id: &EntityId) -> Result<Vec<LocalizedText>, DataLayerError> {
         let models = Entity::find()
             .filter(Column::EntityId.eq(id))
+            .order_by_asc(Column::Lang)
+            .order_by_asc(Column::Field)
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;

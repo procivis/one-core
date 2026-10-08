@@ -851,7 +851,7 @@ impl From<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailu
                 purpose,
             } => Self::ApplicableCredentials {
                 applicable_credentials: convert_inner(applicable_credentials),
-                purpose: purpose.map(|p| p.0),
+                purpose: purpose.map(|p| p.into_iter().collect()),
             },
             ApplicableCredentialOrFailureHintEnum::FailureHint { failure_hint } => {
                 Self::FailureHint {
@@ -1160,10 +1160,13 @@ impl TryFrom<DisclosurePolicyOptionBindingDTO>
 }
 
 pub(crate) fn to_i18n_string(value: HashMap<String, String>) -> I18nString {
-    I18nString(value)
+    I18nString(value.into_iter().collect())
 }
 pub(crate) fn from_i18n_string(value: I18nString) -> HashMap<String, String> {
-    value.0
+    value.into_iter().collect()
+}
+pub(crate) fn from_i18n_strings(values: Vec<I18nString>) -> Vec<HashMap<String, String>> {
+    values.into_iter().map(from_i18n_string).collect()
 }
 pub(crate) fn to_i18n_string_opt(value: Option<HashMap<String, String>>) -> Option<I18nString> {
     value.map(to_i18n_string)

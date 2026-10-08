@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::convert_inner;
@@ -434,7 +434,7 @@ pub(crate) fn translations_to_i18n(
     texts: &[LocalizedText],
     field: LocalizedTextField,
 ) -> Option<I18nString> {
-    let translations: HashMap<_, _> = texts
+    let translations: BTreeMap<_, _> = texts
         .iter()
         .filter(|t| t.field == field)
         .map(|t| (t.lang.clone(), t.value.clone()))
@@ -489,7 +489,7 @@ pub(crate) fn identifier_translations_dto(
     default_language: &str,
 ) -> IdentifierTranslationsDTO {
     let name = translations_to_i18n(texts, LocalizedTextField::Name).unwrap_or_else(|| {
-        I18nString(HashMap::from([(
+        I18nString(BTreeMap::from([(
             default_language.to_owned(),
             identifier_name.to_owned(),
         )]))

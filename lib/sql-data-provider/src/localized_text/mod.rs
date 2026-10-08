@@ -31,8 +31,8 @@ impl AsyncBatchLoader<EntityId, Vec<LocalizedText>> for LocalizedTextLoader {
     ) -> Result<HashMap<EntityId, Vec<LocalizedText>>, DataLayerError> {
         let translations: Vec<localized_text::Model> = localized_text::Entity::find()
             .filter(localized_text::Column::EntityId.is_in(ids))
-            .order_by_asc(localized_text::Column::CreatedDate)
             .order_by_asc(localized_text::Column::Lang)
+            .order_by_asc(localized_text::Column::Field)
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;

@@ -2191,7 +2191,10 @@ async fn test_update_identifier_translations_replace_with_backfill() {
             PatchIdentifierRequestDTO {
                 translations: Some(Some(
                     crate::service::identifier::dto::IdentifierTranslationsDTO {
-                        name: I18nString(HashMap::from([("pl".to_string(), "Nazwa".to_string())])),
+                        name: I18nString(std::collections::BTreeMap::from([(
+                            "pl".to_string(),
+                            "Nazwa".to_string(),
+                        )])),
                         logo_alt_text: None,
                     },
                 )),

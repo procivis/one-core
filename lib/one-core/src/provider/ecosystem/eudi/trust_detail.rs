@@ -368,10 +368,12 @@ fn map_reg_cert(
                 .into_iter()
                 .filter(|langs| !langs.is_empty())
                 .map(|langs| {
-                    langs
-                        .into_iter()
-                        .map(|lang| (lang.lang, lang.value))
-                        .collect()
+                    I18nString(
+                        langs
+                            .into_iter()
+                            .map(|lang| (lang.lang, lang.value))
+                            .collect(),
+                    )
                 })
                 .collect(),
             supervisory_authority: reg_cert.custom.supervisory_authority,
@@ -407,10 +409,12 @@ fn map_national_registry_info(
                 .into_iter()
                 .filter(|langs| !langs.is_empty())
                 .map(|langs| {
-                    langs
-                        .into_iter()
-                        .map(|lang| (lang.lang, lang.content))
-                        .collect()
+                    I18nString(
+                        langs
+                            .into_iter()
+                            .map(|lang| (lang.lang, lang.content))
+                            .collect(),
+                    )
                 })
                 .collect(),
             supervisory_authority: SupervisoryAuthority {

@@ -1197,7 +1197,7 @@ mod test {
                 array: true,
                 claims: vec![],
                 translations: CredentialClaimSchemaTranslationsRestDTO {
-                    name: I18nString(std::collections::HashMap::from([(
+                    name: I18nString(std::collections::BTreeMap::from([(
                         "en".to_string(),
                         "key".to_string(),
                     )])),
@@ -1233,7 +1233,7 @@ mod test {
             }),
             dcql: None,
             translations: CredentialSchemaTranslationsRestDTO {
-                name: I18nString(std::collections::HashMap::from([(
+                name: I18nString(std::collections::BTreeMap::from([(
                     "en".to_string(),
                     "name".to_string(),
                 )])),
@@ -1276,7 +1276,7 @@ mod test {
                     namespace: None,
                 }]),
                 translations: CredentialClaimSchemaTranslationsRestDTO {
-                    name: I18nString(std::collections::HashMap::from([(
+                    name: I18nString(std::collections::BTreeMap::from([(
                         "en".to_string(),
                         "key".to_string(),
                     )])),
@@ -1299,7 +1299,7 @@ mod test {
                 description: Some("description".to_string()),
             }),
             translations: CredentialSchemaTranslationsRestDTO {
-                name: I18nString(std::collections::HashMap::from([(
+                name: I18nString(std::collections::BTreeMap::from([(
                     "en".to_string(),
                     "name".to_string(),
                 )])),

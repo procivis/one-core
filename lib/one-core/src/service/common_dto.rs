@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use shared_types::EcosystemId;
+use shared_types::i18n::I18nString;
 use standardized_types::etsi_119_475::registration_certificate::SupervisoryAuthority;
 use url::Url;
 
@@ -50,7 +49,7 @@ pub struct EudiTrustInformationResponseDTO {
     pub phone: Option<String>,
     pub country: String,
     pub identifier: String,
-    pub service_description: Vec<HashMap<String, String>>,
+    pub service_description: Vec<I18nString>,
     pub supervisory_authority: SupervisoryAuthority,
     pub intermediary: Option<EudiIntermediaryResponseDTO>,
     pub is_public_sector: bool,
