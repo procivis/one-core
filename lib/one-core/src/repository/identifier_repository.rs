@@ -35,6 +35,10 @@ pub trait IdentifierRepository: Send + Sync {
 
     async fn hard_delete(&self, id: &IdentifierId) -> Result<(), DataLayerError>;
 
+    /// Whether any credential references this identifier as issuer or holder,
+    /// including credentials that are errored or soft-deleted.
+    async fn has_credential_references(&self, id: &IdentifierId) -> Result<bool, DataLayerError>;
+
     async fn get_identifier_list(
         &self,
         query_params: IdentifierListQuery,

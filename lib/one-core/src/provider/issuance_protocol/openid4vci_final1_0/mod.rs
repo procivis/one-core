@@ -1555,6 +1555,21 @@ impl OpenID4VCIFinal1_0 {
             if let Err(delete_error) = self
                 .tx_manager
                 .tx(async {
+                    // Issuance may already have stored an issuer-side credential using this
+                    // binding when issuer and holder share an organisation. A holder failure
+                    // (and its notification) does not remove that reference.
+                    if self
+                        .identifier_repository
+                        .has_credential_references(&binding.identifier.id)
+                        .await
+                        .error_while("checking auto-generated identifier credential references")?
+                    {
+                        tracing::debug!(
+                            identifier_id = %binding.identifier.id,
+                            "Retaining auto-generated holder binding referenced by a stored credential"
+                        );
+                        return Ok(());
+                    }
                     self.identifier_repository
                         .hard_delete(&binding.identifier.id)
                         .await

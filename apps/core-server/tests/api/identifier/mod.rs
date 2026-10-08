@@ -1,5 +1,6 @@
 mod add_certificate_authority_tests;
 mod add_certificate_tests;
+mod cleanup_tests;
 mod create_certificate_tests;
 mod create_identifier_tests;
 mod create_remote_identifier_tests;

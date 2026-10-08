@@ -9,15 +9,15 @@ use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::identifier_repository::IdentifierRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Select, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
+    Select, Set, Unchanged,
 };
-use shared_types::{DidId, IdentifierId};
+use shared_types::{CredentialId, DidId, IdentifierId};
 
 use super::IdentifierProvider;
 use super::mapper::identifier_from_model;
 use crate::common::list_query_with_custom_model;
-use crate::entity::identifier;
+use crate::entity::{credential, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -160,6 +160,22 @@ impl IdentifierRepository for IdentifierProvider {
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())
+    }
+
+    async fn has_credential_references(&self, id: &IdentifierId) -> Result<bool, DataLayerError> {
+        Ok(credential::Entity::find()
+            .select_only()
+            .column(credential::Column::Id)
+            .filter(
+                Condition::any()
+                    .add(credential::Column::HolderIdentifierId.eq(*id))
+                    .add(credential::Column::IssuerIdentifierId.eq(*id)),
+            )
+            .into_tuple::<CredentialId>()
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?
+            .is_some())
     }
 
     async fn get_identifier_list(

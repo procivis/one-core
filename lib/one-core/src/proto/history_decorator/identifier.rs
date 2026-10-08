@@ -154,4 +154,8 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
     async fn hard_delete(&self, id: &IdentifierId) -> Result<(), DataLayerError> {
         self.inner.hard_delete(id).await
     }
+
+    async fn has_credential_references(&self, id: &IdentifierId) -> Result<bool, DataLayerError> {
+        self.inner.has_credential_references(id).await
+    }
 }
