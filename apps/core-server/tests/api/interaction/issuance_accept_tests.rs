@@ -738,7 +738,7 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
         "SD_JWT_VC"
     );
     assert!(sd_jwt_vc.common().expires_at.is_none());
-    assert!(sd_jwt_vc.parent().is_none());
+    assert!(matches!(sd_jwt_vc, Credential::HolderSingle { .. }));
     assert!(
         context
             .db
@@ -811,7 +811,6 @@ async fn check_multi_configuration_issuance(
             main.common().interaction.as_ref().unwrap().id(),
             interaction_id
         );
-        assert!(main.parent().is_none());
         let items = context
             .db
             .credentials
@@ -929,7 +928,6 @@ async fn test_issuance_accept_partially_successful() {
     assert_eq!(response["id"], credential_ids[0]);
     let credential = context.db.credentials.get(&credential_ids[0].parse()).await;
     assert!(matches!(credential, Credential::HolderSingle { .. }));
-    assert!(credential.parent().is_none());
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
     let configurations = data["credential_configurations"].as_array().unwrap();

@@ -344,8 +344,17 @@ impl SSIHolderService {
             let parent_id = group.main_credential.credential.common().id;
             configuration_parents.insert(response.credential_configuration_id, parent_id);
             for item in &mut response.batch_items {
-                *item.credential.parent_mut()? =
-                    Related::new(parent_id, self.credential_repository.clone());
+                match &mut item.credential {
+                    Credential::IssuerBatchItem { parent, .. }
+                    | Credential::HolderBatchItem { parent, .. } => {
+                        *parent = Related::new(parent_id, self.credential_repository.clone());
+                    }
+                    _ => {
+                        return Err(HolderServiceError::MappingError(
+                            "expected batch item when regrouping credentials".to_string(),
+                        ));
+                    }
+                }
             }
             group.batch_items.append(&mut response.batch_items);
         }

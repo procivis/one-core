@@ -932,7 +932,11 @@ impl From<Credential> for CredentialBuilder {
                 } => subscriber_information.clone(),
                 _ => None,
             },
-            parent: value.parent().cloned(),
+            parent: match &value {
+                Credential::IssuerBatchItem { parent, .. }
+                | Credential::HolderBatchItem { parent, .. } => Some(parent.clone()),
+                _ => None,
+            },
             format: value.format().cloned(),
         }
     }

@@ -1089,7 +1089,10 @@ impl OpenID4VCIFinal1_0 {
                 return Err(IssuanceProtocolError::RefreshNotPossible);
             }
             let holder = credential.holder()?;
-            let main_id = credential.parent().map_or(holder.common.id, Related::id);
+            let main_id = match credential {
+                Credential::HolderBatchItem { parent, .. } => parent.id(),
+                _ => holder.common.id,
+            };
             let format_id = holder.data.format.id();
             let mut configuration = data
                 .configurations_for_credential(main_id)
@@ -1358,11 +1361,11 @@ impl OpenID4VCIFinal1_0 {
                 && let Some(credential) = credentials.first()
             {
                 if stored.credential_id.is_none() {
-                    stored.credential_id = Some(
-                        credential
-                            .parent()
-                            .map_or(credential.common().id, Related::id),
-                    );
+                    stored.credential_id = Some(match credential {
+                        Credential::IssuerBatchItem { parent, .. }
+                        | Credential::HolderBatchItem { parent, .. } => parent.id(),
+                        _ => credential.common().id,
+                    });
                     interaction_data_changed = true;
                 }
                 if stored.credential_schema_format_id.is_none()
@@ -2270,26 +2273,26 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         credential: Credential,
     ) -> Result<(), IssuanceProtocolError> {
-        let (main_credential, rejected_format) = if matches!(
-            credential,
-            Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
-        ) {
-            let parent = credential.parent().as_required_ref().await?;
-            let format_id = credential.format().id_opt().ok_or_else(|| {
-                IssuanceProtocolError::Failed("Missing CredentialSchemaFormat".to_string())
-            })?;
-            if !self
-                .batch_format_is_rejected(parent.common().id, Some(format_id))
-                .await?
+        let (main_credential, rejected_format) =
+            if let Credential::IssuerBatchItem { parent, .. }
+            | Credential::HolderBatchItem { parent, .. } = &credential
             {
-                // Only a single item of a batch with others of the same format has been rejected.
-                // The issuer will not be notified, and the format will still be refreshed.
-                return Ok(());
-            }
-            (parent.to_owned(), Some(format_id))
-        } else {
-            (credential, None)
-        };
+                let parent = parent.as_ref().await?;
+                let format_id = credential.format().id_opt().ok_or_else(|| {
+                    IssuanceProtocolError::Failed("Missing CredentialSchemaFormat".to_string())
+                })?;
+                if !self
+                    .batch_format_is_rejected(parent.common().id, Some(format_id))
+                    .await?
+                {
+                    // Only a single item of a batch with others of the same format has been rejected.
+                    // The issuer will not be notified, and the format will still be refreshed.
+                    return Ok(());
+                }
+                (parent.to_owned(), Some(format_id))
+            } else {
+                (credential, None)
+            };
         let interaction = main_credential
             .common()
             .interaction

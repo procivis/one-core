@@ -511,7 +511,7 @@ pub(super) fn request_to_active_model(
         state: Set(common.state.into()),
         suspend_end_date: Set(request.suspend_end_date()),
         profile: Set(common.profile.clone()),
-        parent_id: Set(request.parent().map(|parent| parent.id())),
+        parent_id: Set(None),
         credential_blob_id: Set(None),
         ecosystem: Set(common.ecosystem.clone()),
         r#type: Set(request.r#type().into()),
@@ -556,20 +556,26 @@ fn set_credential_variant_fields(model: &mut credential::ActiveModel, request: &
             model.subscriber_information = Set(subscriber_information.clone());
         }
         Credential::IssuerBatchItem {
-            issuer, credential, ..
+            issuer,
+            credential,
+            parent,
+            ..
         } => {
             set_issuer_fields(model, issuer);
             set_issuer_credential_fields(model, credential);
+            model.parent_id = Set(Some(parent.id()));
         }
         Credential::HolderSingle { credential, .. } => {
             set_holder_credential_fields(model, credential);
         }
         Credential::HolderBatchItem {
             credential,
+            parent,
             consumed_at,
             ..
         } => {
             set_holder_credential_fields(model, credential);
+            model.parent_id = Set(Some(parent.id()));
             model.consumed_at = Set(*consumed_at);
         }
         Credential::Verifier { verifier_data, .. } => {

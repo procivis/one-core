@@ -158,9 +158,10 @@ pub(crate) async fn get_presentation_definition_v2(
         // Historical matches are used only to classify parent submissions. They never
         // become selectable credentials in the definition.
         for candidate in &filtered_credential_candidates {
-            let Some(parent_id) = candidate.parent().map(|parent| parent.id()) else {
+            let Credential::HolderBatchItem { parent, .. } = candidate else {
                 continue;
             };
+            let parent_id = parent.id();
             if candidate.is_available_for_presentation(now)
                 || !submitted_credential_ids.contains(&parent_id)
                 || matching_batches_with_unavailable_items

@@ -98,9 +98,9 @@ impl EudiEcosystem {
                 result.total_checks += 1;
 
                 // a batch shares one WIA and is revoked as a whole, through its parent
-                let main_credential = match &credential.parent() {
-                    Some(parent) => &parent.as_ref().await?,
-                    None => credential,
+                let main_credential = match credential {
+                    Credential::IssuerBatchItem { parent, .. } => &parent.as_ref().await?,
+                    _ => credential,
                 };
 
                 let wia_revoked = match cached_wia_status.get(&main_credential.common().id) {

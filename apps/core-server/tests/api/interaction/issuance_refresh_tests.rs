@@ -337,7 +337,6 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             let credential = context.db.credentials.get(&id.parse()).await;
             assert!(matches!(credential, Credential::HolderSingle { .. }));
             assert!(credential.common().expires_at.is_none());
-            assert!(credential.parent().is_none());
         }
         let response = context
             .api
@@ -475,8 +474,10 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     let mut refreshed_policy_counts = [0, 0];
     for id in ids {
         let item = context.db.credentials.get(&id.parse()).await;
-        assert!(matches!(item, Credential::HolderBatchItem { .. }));
-        assert_eq!(first_parent, item.parent().unwrap().id());
+        assert!(matches!(
+            &item,
+            Credential::HolderBatchItem { parent, .. } if parent.id() == first_parent
+        ));
         let holder = item.holder().unwrap();
         if offer.fixed_identifier_expiry.is_some() {
             let binding = holder.data.binding.as_ref().unwrap();

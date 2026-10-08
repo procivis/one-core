@@ -19,7 +19,6 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::relation::{Related, RelatedVec};
-use crate::repository::error::DataLayerError;
 
 #[derive(Clone, Debug, Model, IntoStaticStr)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -400,30 +399,15 @@ impl Credential {
         }
     }
 
-    pub fn parent(&self) -> Option<&Related<Credential>> {
-        match self {
-            Self::IssuerBatchItem { parent, .. } | Self::HolderBatchItem { parent, .. } => {
-                Some(parent)
-            }
-            _ => None,
-        }
-    }
-
-    pub fn parent_mut(&mut self) -> Result<&mut Related<Credential>, NestedError> {
-        match self {
-            Self::IssuerBatchItem { parent, .. } | Self::HolderBatchItem { parent, .. } => {
-                Ok(parent)
-            }
-            _ => Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on this credential variant")),
-        }
-    }
     /// The credential that holds the relevant ecosystem history events.
     /// Points to the batch parent for credentials of type [CredentialType::BatchItem]
     pub(crate) fn ecosystem_history_id(&self) -> CredentialId {
-        self.parent()
-            .map(|parent| parent.id())
-            .unwrap_or(self.common().id)
+        match self {
+            Self::IssuerBatchItem { parent, .. } | Self::HolderBatchItem { parent, .. } => {
+                parent.id()
+            }
+            _ => self.common().id,
+        }
     }
 
     pub(crate) fn is_available_for_presentation(&self, now: OffsetDateTime) -> bool {

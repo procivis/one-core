@@ -104,9 +104,9 @@ pub(crate) async fn credential_detail_response_from_model(
     .await?;
 
     let suspend_end_date = value.suspend_end_date();
-    let parent_id = value.parent().map(|parent| parent.id());
     let CredentialDetailMetadata {
         common,
+        parent_id,
         webhook_url,
         consumed_at,
         subscriber_information,
@@ -253,6 +253,7 @@ async fn issuer_identifier_to_response(
 
 struct CredentialDetailMetadata {
     common: CredentialCommon,
+    parent_id: Option<CredentialId>,
     webhook_url: Option<String>,
     consumed_at: Option<OffsetDateTime>,
     subscriber_information: Option<String>,
@@ -275,6 +276,7 @@ async fn credential_detail_metadata(
             ..
         } => CredentialDetailMetadata {
             common,
+            parent_id: None,
             webhook_url,
             consumed_at: None,
             subscriber_information,
@@ -293,6 +295,7 @@ async fn credential_detail_metadata(
             };
             CredentialDetailMetadata {
                 common,
+                parent_id: Some(parent.id()),
                 webhook_url: None,
                 consumed_at: None,
                 subscriber_information,
@@ -300,10 +303,12 @@ async fn credential_detail_metadata(
         }
         Credential::HolderBatchItem {
             common,
+            parent,
             consumed_at,
             ..
         } => CredentialDetailMetadata {
             common,
+            parent_id: Some(parent.id()),
             webhook_url: None,
             consumed_at,
             subscriber_information: None,
@@ -312,6 +317,7 @@ async fn credential_detail_metadata(
         | Credential::HolderBatchParent { common, .. }
         | Credential::Verifier { common, .. } => CredentialDetailMetadata {
             common,
+            parent_id: None,
             webhook_url: None,
             consumed_at: None,
             subscriber_information: None,
@@ -681,10 +687,9 @@ pub(super) async fn to_credential_list_response(
     };
 
     let suspend_end_date = credential.suspend_end_date();
-    let parent_id = credential.parent().map(|parent| parent.id());
     let role = credential.role();
     let credential_type = credential.r#type();
-    let (common, webhook_url, consumed_at) = match credential {
+    let (common, parent_id, webhook_url, consumed_at) = match credential {
         Credential::IssuerSingle {
             common,
             webhook_url,
@@ -694,16 +699,19 @@ pub(super) async fn to_credential_list_response(
             common,
             webhook_url,
             ..
-        } => (common, webhook_url, None),
+        } => (common, None, webhook_url, None),
         Credential::HolderBatchItem {
             common,
+            parent,
             consumed_at,
             ..
-        } => (common, None, consumed_at),
-        Credential::IssuerBatchItem { common, .. }
-        | Credential::HolderSingle { common, .. }
+        } => (common, Some(parent.id()), None, consumed_at),
+        Credential::IssuerBatchItem { common, parent, .. } => {
+            (common, Some(parent.id()), None, None)
+        }
+        Credential::HolderSingle { common, .. }
         | Credential::HolderBatchParent { common, .. }
-        | Credential::Verifier { common, .. } => (common, None, None),
+        | Credential::Verifier { common, .. } => (common, None, None, None),
     };
 
     Ok(CredentialListItemResponseDTO {

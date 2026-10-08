@@ -490,7 +490,11 @@ impl OpenID4VCIFinal1_0 {
         for (parent_id, item) in refreshed
             .iter()
             .flat_map(|response| &response.credentials)
-            .filter_map(|item| item.parent().map(|parent| (parent.id(), item)))
+            .filter_map(|item| match item {
+                Credential::IssuerBatchItem { parent, .. }
+                | Credential::HolderBatchItem { parent, .. } => Some((parent.id(), item)),
+                _ => None,
+            })
             .unique_by(|(parent_id, _)| *parent_id)
         {
             self.history_repository

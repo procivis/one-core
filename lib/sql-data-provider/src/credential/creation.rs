@@ -160,7 +160,12 @@ async fn insert_credential_rows(
     let (parents, items): (Vec<_>, Vec<_>) = credentials
         .iter()
         .map(|item| &item.credential)
-        .partition(|credential| credential.parent().is_none());
+        .partition(|credential| {
+            !matches!(
+                credential,
+                Credential::IssuerBatchItem { .. } | Credential::HolderBatchItem { .. }
+            )
+        });
     for group in [parents, items] {
         // 30 columns per credential: 25 rows use at most 750 binds.
         for chunk in group.chunks(25) {

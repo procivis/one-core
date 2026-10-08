@@ -137,13 +137,16 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
         .filter(|value| value.common().id == item_id)
         .chain([&loaded_item])
     {
-        let_assert!(Credential::HolderBatchItem { consumed_at, .. } = actual);
+        let_assert!(
+            Credential::HolderBatchItem {
+                parent,
+                consumed_at,
+                ..
+            } = actual
+        );
         let holder = actual.holder().unwrap();
         let binding = holder.data.binding.as_ref();
-        assert_eq!(
-            actual.parent().unwrap().as_ref().await.unwrap().common().id,
-            parent_id
-        );
+        assert_eq!(parent.as_ref().await.unwrap().common().id, parent_id);
         assert_eq!(holder.data.claims.as_ref().await.unwrap()[0], claim);
         assert_eq!(
             holder.data.issuer.identifier.as_ref().await.unwrap().id,

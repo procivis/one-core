@@ -2329,10 +2329,10 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
     for (response, id) in grouped.iter().zip(expected_ids) {
         assert_eq!(response.main_credential.credential.common().id, id);
         assert_eq!(response.batch_items.len(), 1);
-        assert_eq!(
-            response.batch_items[0].credential.parent().unwrap().id(),
-            id
-        );
+        assert!(matches!(
+            &response.batch_items[0].credential,
+            Credential::HolderBatchItem { parent, .. } if parent.id() == id
+        ));
     }
 }
 

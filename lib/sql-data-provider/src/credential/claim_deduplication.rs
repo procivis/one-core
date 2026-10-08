@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use one_core::model::credential::Credential;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, QuerySelect,
@@ -69,7 +70,9 @@ pub(super) async fn reuse_batch_claims(
     let mut new_claims = Vec::new();
     let mut groups: HashMap<_, Vec<_>> = HashMap::new();
     for item in credentials {
-        if let Some(parent) = &item.credential.parent() {
+        if let Credential::IssuerBatchItem { parent, .. }
+        | Credential::HolderBatchItem { parent, .. } = &item.credential
+        {
             groups.entry(parent.id()).or_default().push(item);
         } else {
             for claim in &item.claims {

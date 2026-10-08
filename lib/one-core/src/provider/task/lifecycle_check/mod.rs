@@ -174,7 +174,11 @@ impl LifecycleCheckProvider {
 
             let parents_with_remaining_items: HashSet<_> = remaining_items
                 .iter()
-                .filter_map(|item| item.parent().map(|parent| parent.id()))
+                .filter_map(|item| match item {
+                    Credential::IssuerBatchItem { parent, .. }
+                    | Credential::HolderBatchItem { parent, .. } => Some(parent.id()),
+                    _ => None,
+                })
                 .collect();
 
             for credential in batch_parents.values {

@@ -1,5 +1,7 @@
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{CredentialRole, CredentialStateEnum, CredentialType};
+use one_core::model::credential::{
+    Credential, CredentialRole, CredentialStateEnum, CredentialType,
+};
 use one_core::model::did::DidType;
 use one_core::model::interaction::InteractionType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -646,7 +648,10 @@ async fn check_batch_item_rejection(
         let mut counts = [0, 0];
         for id in ids {
             let item = context.db.credentials.get(&id.parse()).await;
-            assert_eq!(item.parent().unwrap().id(), parent_id);
+            assert!(matches!(
+                &item,
+                Credential::HolderBatchItem { parent, .. } if parent.id() == parent_id
+            ));
             assert_eq!(item.common().state, CredentialStateEnum::Accepted);
             let format_id = item.format().unwrap().id();
             counts[formats

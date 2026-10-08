@@ -18,7 +18,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::relation::{OptionalRelatedRefExt, Related};
+use crate::model::relation::Related;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
@@ -189,13 +189,16 @@ impl CredentialValidityManagerImpl {
             Some(revocation_state) => revocation_state,
         };
 
-        match credential.r#type() {
-            CredentialType::Single => {
+        match &credential {
+            Credential::IssuerSingle { .. }
+            | Credential::HolderSingle { .. }
+            | Credential::Verifier { .. } => {
                 self.change_revocation_state(&credential, &credential_schema, revocation_state)
                     .await?;
             }
-            CredentialType::BatchItem => {
-                let parent = credential.parent().as_required_ref().await?;
+            Credential::IssuerBatchItem { parent, .. }
+            | Credential::HolderBatchItem { parent, .. } => {
+                let parent = parent.as_ref().await?;
                 // `None` when the parent carries a state with no revocation equivalent -
                 // `Expiring` (a deliberate flag, cleared only by an explicit transition back to
                 // `Accepted`) or the terminal `Expired`. Those aren't aggregations of the items'
@@ -232,7 +235,7 @@ impl CredentialValidityManagerImpl {
                     .await
                     .error_while("changing batch item state")??;
             }
-            CredentialType::BatchParent => {
+            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. } => {
                 // the items follow the parent, as far as they still can; terminal items
                 // (`Revoked`, `Expired`, ...) and items that are not issued yet keep the state they
                 // have.
