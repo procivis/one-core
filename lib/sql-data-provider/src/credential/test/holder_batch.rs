@@ -59,7 +59,11 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
                 identifier: setup.identifier.clone().into(),
                 key: key.clone(),
             }),
-            credential_blob_id: template.credential_blob_id(),
+            credential_blob_id: template
+                .issuer_credential()
+                .unwrap()
+                .data
+                .credential_blob_id,
             embedded_disclosure_policy: Some("batch policy".into()),
         },
     };
@@ -154,7 +158,10 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
             binding.map(|binding| binding.identifier.id()),
             bound.then_some(setup.identifier.id)
         );
-        assert_eq!(actual.credential_blob_id(), item.credential_blob_id());
+        assert_eq!(
+            holder.data.credential_blob_id,
+            item.holder().unwrap().data.credential_blob_id
+        );
         assert_eq!(
             holder.data.embedded_disclosure_policy.as_deref(),
             Some("batch policy")

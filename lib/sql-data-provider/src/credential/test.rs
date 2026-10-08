@@ -1229,7 +1229,12 @@ async fn test_update_credential_success() {
 
     assert_eq!(
         blob_id,
-        credential_before_update.credential_blob_id().unwrap()
+        credential_before_update
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id
+            .unwrap()
     );
 
     let organisation_id = test_utilities::insert_organisation_to_database(&db, None)
@@ -1265,7 +1270,12 @@ async fn test_update_credential_success() {
     let credential_after_update = credential_after_update.unwrap();
     assert_eq!(
         blob_id,
-        credential_after_update.credential_blob_id().unwrap()
+        credential_after_update
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id
+            .unwrap()
     );
     assert_eq!(
         interaction_id,
@@ -1325,13 +1335,27 @@ async fn test_delete_credential_blobs_success() {
         .get_credential(&credential.common().id)
         .await
         .unwrap();
-    assert!(credential.credential_blob_id().is_some());
+    assert!(
+        credential
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id
+            .is_some()
+    );
 
     let credential_two = provider
         .get_credential(&credential_two.common().id)
         .await
         .unwrap();
-    assert!(credential_two.credential_blob_id().is_some());
+    assert!(
+        credential_two
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id
+            .is_some()
+    );
 
     provider
         .delete_credential_blobs(HashSet::from([
@@ -1345,13 +1369,27 @@ async fn test_delete_credential_blobs_success() {
         .get_credential(&credential.common().id)
         .await
         .unwrap();
-    assert!(credential.credential_blob_id().is_none());
+    assert!(
+        credential
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id
+            .is_none()
+    );
 
     let credential_two = provider
         .get_credential(&credential_two.common().id)
         .await
         .unwrap();
-    assert!(credential_two.credential_blob_id().is_none());
+    assert!(
+        credential_two
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id
+            .is_none()
+    );
 }
 
 #[tokio::test]

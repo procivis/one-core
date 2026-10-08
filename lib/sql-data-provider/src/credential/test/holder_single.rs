@@ -51,7 +51,11 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
                 identifier: setup.identifier.clone().into(),
                 key: key.clone(),
             }),
-            credential_blob_id: template.credential_blob_id(),
+            credential_blob_id: template
+                .issuer_credential()
+                .unwrap()
+                .data
+                .credential_blob_id,
             embedded_disclosure_policy: Some("policy".into()),
         },
     };
@@ -70,7 +74,14 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
         bound.then_some(setup.identifier.id)
     );
     assert_eq!(row.key_id, bound.then_some(key.id()));
-    assert_eq!(row.credential_blob_id, template.credential_blob_id());
+    assert_eq!(
+        row.credential_blob_id,
+        template
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id
+    );
     assert_eq!(row.embedded_disclosure_policy.as_deref(), Some("policy"));
     assert!(row.parent_id.is_none());
     assert!(row.consumed_at.is_none());
@@ -115,7 +126,10 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
                 setup.identifier.id
             );
         }
-        assert_eq!(actual.credential_blob_id(), request.credential_blob_id());
+        assert_eq!(
+            holder.data.credential_blob_id,
+            request.holder().unwrap().data.credential_blob_id
+        );
         assert_eq!(
             holder.data.embedded_disclosure_policy,
             request.holder().unwrap().data.embedded_disclosure_policy

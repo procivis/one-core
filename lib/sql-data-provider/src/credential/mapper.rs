@@ -512,7 +512,7 @@ pub(super) fn request_to_active_model(
         suspend_end_date: Set(request.suspend_end_date()),
         profile: Set(common.profile.clone()),
         parent_id: Set(request.parent().map(|parent| parent.id())),
-        credential_blob_id: Set(request.credential_blob_id()),
+        credential_blob_id: Set(None),
         ecosystem: Set(common.ecosystem.clone()),
         r#type: Set(request.r#type().into()),
         format: Set(request.format().map(|format| format.id())),
@@ -598,6 +598,7 @@ fn set_issuer_fields(model: &mut credential::ActiveModel, issuer: &IssuerData) {
 }
 
 fn set_issuer_credential_fields(model: &mut credential::ActiveModel, data: &IssuerCredentialData) {
+    model.credential_blob_id = Set(data.credential_blob_id);
     model.holder_identifier_id = Set(data
         .holder_identifier
         .as_ref()
@@ -607,6 +608,7 @@ fn set_issuer_credential_fields(model: &mut credential::ActiveModel, data: &Issu
 }
 
 fn set_holder_credential_fields(model: &mut credential::ActiveModel, data: &HolderCredentialData) {
+    model.credential_blob_id = Set(data.credential_blob_id);
     model.issuer_identifier_id = Set(Some(data.issuer.identifier.id()));
     model.issuer_certificate_id = Set(data
         .issuer

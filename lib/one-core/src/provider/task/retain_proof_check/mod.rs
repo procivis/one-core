@@ -8,7 +8,7 @@ use uuid::Uuid;
 use super::Task;
 use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::{CredentialFilterValue, CredentialListQuery};
+use crate::model::credential::{Credential, CredentialFilterValue, CredentialListQuery};
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
@@ -149,7 +149,17 @@ impl Task for RetainProofCheck {
                     .error_while("getting credentials")?
                     .values
                     .into_iter()
-                    .filter_map(|c| c.credential_blob_id())
+                    .filter_map(|credential| match credential {
+                        Credential::IssuerSingle { credential, .. }
+                        | Credential::IssuerBatchItem { credential, .. } => {
+                            credential.credential_blob_id
+                        }
+                        Credential::HolderSingle { credential, .. }
+                        | Credential::HolderBatchItem { credential, .. } => {
+                            credential.credential_blob_id
+                        }
+                        _ => None,
+                    })
                     .collect::<Vec<_>>();
 
                 blob_storage

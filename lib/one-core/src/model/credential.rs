@@ -387,20 +387,6 @@ impl Credential {
         }
     }
 
-    pub fn credential_blob_id(&self) -> Option<BlobId> {
-        match self {
-            Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
-                credential.credential_blob_id
-            }
-            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
-                credential.credential_blob_id
-            }
-            Self::IssuerBatchParent { .. }
-            | Self::HolderBatchParent { .. }
-            | Self::Verifier { .. } => None,
-        }
-    }
-
     pub fn format(&self) -> Option<&Related<CredentialSchemaFormat>> {
         match self {
             Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {

@@ -125,7 +125,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             subscriber_information.as_deref(),
             Some(expected_subscriber_information)
         );
-        assert_eq!(actual.credential_blob_id(), blob_id);
+        assert_eq!(credential.credential_blob_id, blob_id);
         assert_eq!(credential.wallet_key_attestation_blob_id, blob_id);
         assert_eq!(credential.wallet_instance_attestation_blob_id, blob_id);
     }

@@ -821,11 +821,10 @@ async fn check_multi_configuration_issuance(
             assert!(matches!(main, Credential::HolderSingle { .. }));
             assert!(items.is_empty());
             assert!(main.format().is_some());
-            assert!(main.credential_blob_id().is_some());
+            assert!(main.holder().unwrap().data.credential_blob_id.is_some());
             assert_eq!(main.common().expires_at.is_none(), without_expiry);
         } else {
             assert!(main.format().is_none());
-            assert!(main.credential_blob_id().is_none());
             assert!(matches!(main, Credential::HolderBatchParent { .. }));
             assert_eq!(
                 main.common().expires_at.is_none(),
@@ -840,7 +839,7 @@ async fn check_multi_configuration_issuance(
                 assert_eq!(item.common().state, CredentialStateEnum::Accepted);
                 assert_eq!(item.common().schema.id(), main.common().schema.id());
                 assert!(item.common().interaction.is_none());
-                assert!(item.credential_blob_id().is_some());
+                assert!(item.holder().unwrap().data.credential_blob_id.is_some());
                 assert!(
                     !main_ids
                         .iter()

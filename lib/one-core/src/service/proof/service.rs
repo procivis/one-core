@@ -35,7 +35,7 @@ use crate::config::validator::transport::{
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::CertificateRole;
-use crate::model::credential::{CredentialFilterValue, CredentialListQuery};
+use crate::model::credential::{Credential, CredentialFilterValue, CredentialListQuery};
 use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::identifier::IdentifierType;
@@ -808,7 +808,13 @@ impl ProofService {
             .error_while("getting credentials")?
             .values
             .into_iter()
-            .filter_map(|c| c.credential_blob_id())
+            .filter_map(|credential| match credential {
+                Credential::IssuerSingle { credential, .. }
+                | Credential::IssuerBatchItem { credential, .. } => credential.credential_blob_id,
+                Credential::HolderSingle { credential, .. }
+                | Credential::HolderBatchItem { credential, .. } => credential.credential_blob_id,
+                _ => None,
+            })
             .collect::<Vec<_>>();
 
         blob_storage

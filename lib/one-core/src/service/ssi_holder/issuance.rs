@@ -506,12 +506,13 @@ impl SSIHolderService {
                     .get_credential(&batch_item.common().id)
                     .await
                     .error_while("getting batch credential")?;
+                let blob_id = batch_item
+                    .holder()?
+                    .data
+                    .credential_blob_id
+                    .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?;
                 let blob = db_blob_storage
-                    .get(
-                        &batch_item
-                            .credential_blob_id()
-                            .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?,
-                    )
+                    .get(&blob_id)
                     .await
                     .error_while("getting batch credential blob")?
                     .ok_or(HolderServiceError::MappingError("missing blob".to_string()))?;

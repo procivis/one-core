@@ -946,7 +946,7 @@ impl OpenID4VCIFinal1_0 {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
 
-        let credential_blob_id = match credential.credential_blob_id() {
+        let credential_blob_id = match credential.issuer_credential()?.data.credential_blob_id {
             None => {
                 let blob = Blob::new(token.as_ref(), BlobType::Credential);
                 db_blob_storage

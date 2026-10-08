@@ -626,7 +626,14 @@ async fn test_revoke_check_mdoc_update() {
     let updated_credentials = context
         .db
         .blobs
-        .get(&credential.credential_blob_id().unwrap())
+        .get(
+            &credential
+                .holder()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(
@@ -772,7 +779,14 @@ async fn test_revoke_check_mdoc_update_invalid() {
     let updated_credentials = context
         .db
         .blobs
-        .get(&credential.credential_blob_id().unwrap())
+        .get(
+            &credential
+                .holder()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(
@@ -919,7 +933,14 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         let updated_credentials = context
             .db
             .blobs
-            .get(&credential.credential_blob_id().unwrap())
+            .get(
+                &credential
+                    .holder()
+                    .unwrap()
+                    .data
+                    .credential_blob_id
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(
@@ -1217,7 +1238,14 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let updated_credentials_blob = context
         .db
         .blobs
-        .get(&credential.credential_blob_id().unwrap())
+        .get(
+            &credential
+                .holder()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(
@@ -1505,7 +1533,14 @@ async fn test_suspended_to_valid_mdoc() {
     let updated_credentials_blob = context
         .db
         .blobs
-        .get(&credential.credential_blob_id().unwrap())
+        .get(
+            &credential
+                .holder()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(
@@ -1670,7 +1705,14 @@ async fn test_suspended_to_suspended_update_failed() {
     let updated_credentials_blob = context
         .db
         .blobs
-        .get(&credential.credential_blob_id().unwrap())
+        .get(
+            &credential
+                .holder()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(

@@ -547,7 +547,14 @@ async fn test_post_issuer_credential_embeds_expires_at_in_formatted_credential()
     let blob = context
         .db
         .blobs
-        .get(&updated_credential.credential_blob_id().unwrap())
+        .get(
+            &updated_credential
+                .issuer_credential()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .unwrap(),
+        )
         .await
         .unwrap();
     let stored_jwt = String::from_utf8(blob.value).unwrap();
@@ -1451,7 +1458,14 @@ async fn check_multi_format_credential_expiry(
         let stored = context
             .db
             .blobs
-            .get(&item.credential_blob_id().unwrap())
+            .get(
+                &item
+                    .issuer_credential()
+                    .unwrap()
+                    .data
+                    .credential_blob_id
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(std::str::from_utf8(&stored.value).unwrap(), token);
@@ -1506,7 +1520,13 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
     let mut issued_formats: Vec<String> = vec![];
     for item in &batch_items {
         assert_eq!(item.common().state, CredentialStateEnum::Accepted);
-        assert!(item.credential_blob_id().is_some());
+        assert!(
+            item.issuer_credential()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .is_some()
+        );
         issued_formats.push(
             item.format()
                 .unwrap()
@@ -1884,7 +1904,15 @@ async fn test_post_issuer_credential_jwt_vc_v2_mapped_claimed() {
     let serialized_credential_blob = context
         .db
         .blobs
-        .get(credential.credential_blob_id().as_ref().unwrap())
+        .get(
+            credential
+                .issuer_credential()
+                .unwrap()
+                .data
+                .credential_blob_id
+                .as_ref()
+                .unwrap(),
+        )
         .await
         .unwrap();
     let parsed_credential = Jwt::<serde_json::Value>::decompose_token(

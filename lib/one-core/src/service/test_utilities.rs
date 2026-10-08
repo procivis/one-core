@@ -905,7 +905,10 @@ impl From<Credential> for CredentialBuilder {
                 .ok()
                 .map(|issuer| issuer.data.signing_key.clone())
                 .or_else(|| binding.map(|binding| binding.key.clone())),
-            credential_blob_id: value.credential_blob_id(),
+            credential_blob_id: issuer_credential
+                .as_ref()
+                .and_then(|issuer| issuer.data.credential_blob_id)
+                .or_else(|| holder.and_then(|holder| holder.credential_blob_id)),
             wallet_key_attestation_blob_id: issuer_credential
                 .as_ref()
                 .and_then(|issuer| issuer.data.wallet_key_attestation_blob_id),
