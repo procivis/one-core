@@ -20,13 +20,16 @@ struct Cli {
     /// Skip DB migration on startup
     #[arg(long, action)]
     skip_migration: bool,
+    /// Run only DB migration
+    #[arg(long, action, conflicts_with = "skip_migration")]
+    only_migration: bool,
 
     /// Specific task to run
-    #[arg(long)]
+    #[arg(long, conflicts_with = "only_migration")]
     task: Option<String>,
 
     /// Arguments to pass to the task (JSON).
-    #[arg(long)]
+    #[arg(long, requires = "task")]
     task_params: Option<String>,
 
     /// Decrypt and load a database from a backup file.
@@ -35,14 +38,14 @@ struct Cli {
     backup_from: Option<PathBuf>,
 
     /// Backup decryption passphrase.
-    #[arg(long)]
+    #[arg(long, requires = "backup_from")]
     backup_secret: Option<SecretString>,
 
     /// Target filename under which the decrypted backup database should be
     /// saved. If not specified, a random name inside the system's temporary
     /// directory will be used. Note that the file will *NOT* be deleted
     /// upon program exit.
-    #[arg(long)]
+    #[arg(long, requires = "backup_from")]
     backup_to: Option<PathBuf>,
 }
 
@@ -97,6 +100,10 @@ fn main() {
                 tracing::error!(stage = error.stage(), %error, "Database setup failed");
                 panic!("Database setup failed: {error}");
             });
+
+            if cli.only_migration {
+                return;
+            }
 
             let core = initialize_core(&app_config, db_conn)
                 .await
