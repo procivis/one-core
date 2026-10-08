@@ -39,6 +39,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             claims,
             webhook_url,
             subscriber_information,
+            wallet_instance_attestation_blob_id,
             ..
         } = &mut request
     );
@@ -47,7 +48,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     let blob_id = credential.credential_blob_id;
     credential.holder_identifier = Some(setup.identifier.clone().into());
     credential.wallet_key_attestation_blob_id = blob_id;
-    credential.wallet_instance_attestation_blob_id = blob_id;
+    *wallet_instance_attestation_blob_id = blob_id;
     *claims = vec![claim.clone()].into();
     let expected_webhook_url = "https://example.com/credential";
     *webhook_url = Some(expected_webhook_url.into());
@@ -94,6 +95,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
                 credential,
                 webhook_url,
                 subscriber_information,
+                wallet_instance_attestation_blob_id,
                 claims,
                 ..
             } = actual
@@ -127,7 +129,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
         );
         assert_eq!(credential.credential_blob_id, blob_id);
         assert_eq!(credential.wallet_key_attestation_blob_id, blob_id);
-        assert_eq!(credential.wallet_instance_attestation_blob_id, blob_id);
+        assert_eq!(*wallet_instance_attestation_blob_id, blob_id);
     }
     repository
         .update_credential(

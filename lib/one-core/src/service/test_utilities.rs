@@ -912,8 +912,17 @@ impl From<Credential> for CredentialBuilder {
             wallet_key_attestation_blob_id: issuer_credential
                 .as_ref()
                 .and_then(|issuer| issuer.data.wallet_key_attestation_blob_id),
-            wallet_instance_attestation_blob_id: issuer_credential
-                .and_then(|issuer| issuer.data.wallet_instance_attestation_blob_id),
+            wallet_instance_attestation_blob_id: match &value {
+                Credential::IssuerSingle {
+                    wallet_instance_attestation_blob_id,
+                    ..
+                }
+                | Credential::IssuerBatchParent {
+                    wallet_instance_attestation_blob_id,
+                    ..
+                } => *wallet_instance_attestation_blob_id,
+                _ => None,
+            },
             webhook_url: match &value {
                 Credential::IssuerSingle { webhook_url, .. }
                 | Credential::IssuerBatchParent { webhook_url, .. } => webhook_url.clone(),
@@ -962,6 +971,7 @@ impl CredentialBuilder {
         if self.role == CredentialRole::Issuer && self.r#type == CredentialType::BatchParent {
             return Credential::IssuerBatchParent {
                 common: self.common,
+                wallet_instance_attestation_blob_id: self.wallet_instance_attestation_blob_id,
                 issuer: IssuerData {
                     identifier: issuer.identifier,
                     certificate: issuer.certificate,
@@ -1046,7 +1056,6 @@ impl CredentialBuilder {
                 holder_identifier: self.holder_identifier,
                 credential_blob_id: self.credential_blob_id,
                 wallet_key_attestation_blob_id: self.wallet_key_attestation_blob_id,
-                wallet_instance_attestation_blob_id: self.wallet_instance_attestation_blob_id,
                 suspend_end_date: self.suspend_end_date,
             };
             if self.r#type == CredentialType::BatchItem {
@@ -1059,6 +1068,7 @@ impl CredentialBuilder {
             } else {
                 Credential::IssuerSingle {
                     common: self.common,
+                    wallet_instance_attestation_blob_id: self.wallet_instance_attestation_blob_id,
                     issuer,
                     credential,
                     claims: self.claims,

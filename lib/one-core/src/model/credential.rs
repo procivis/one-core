@@ -33,6 +33,7 @@ pub enum Credential {
         subscriber_information: Option<String>,
         claims: RelatedVec<Claim>,
         credential: IssuerCredentialData,
+        wallet_instance_attestation_blob_id: Option<BlobId>,
     },
     IssuerBatchParent {
         #[model(nested)]
@@ -44,6 +45,8 @@ pub enum Credential {
         subscriber_information: Option<String>,
         claims: RelatedVec<Claim>,
         suspend_end_date: Option<OffsetDateTime>,
+        /// Shared by the batch; items read the instance attestation through their parent.
+        wallet_instance_attestation_blob_id: Option<BlobId>,
     },
     IssuerBatchItem {
         #[model(nested)]
@@ -109,7 +112,6 @@ pub struct IssuerCredentialData {
     pub holder_identifier: Option<Related<Identifier>>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_key_attestation_blob_id: Option<BlobId>,
-    pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 

@@ -308,7 +308,6 @@ impl CredentialsDB {
                     suspend_end_date: *suspend_end_date,
                     credential_blob_id: None,
                     wallet_key_attestation_blob_id: None,
-                    wallet_instance_attestation_blob_id: None,
                 },
             }
         } else {

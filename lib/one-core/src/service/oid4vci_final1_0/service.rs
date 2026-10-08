@@ -711,13 +711,17 @@ impl OID4VCIFinal1_0Service {
             .await?;
 
             if schema.wallet_attestation.require_instance_attestation {
-                let Some(wallet_instance_attestation_blob_id) = credential
-                    .issuer_credential()
-                    .ok()
-                    .and_then(|issuer| issuer.data.wallet_instance_attestation_blob_id)
+                let (Credential::IssuerSingle {
+                    wallet_instance_attestation_blob_id: Some(wallet_instance_attestation_blob_id),
+                    ..
+                }
+                | Credential::IssuerBatchParent {
+                    wallet_instance_attestation_blob_id: Some(wallet_instance_attestation_blob_id),
+                    ..
+                }) = credential
                 else {
                     tracing::debug!(
-                        "app attestation required but no wallet app attestation blob ID found"
+                        "instance attestation required but no wallet instance attestation blob ID found"
                     );
                     return Err(OpenID4VCIError::InvalidOrMissingProof.into());
                 };
@@ -727,7 +731,7 @@ impl OID4VCIFinal1_0Service {
                     .get_blob_storage(BlobStorageType::Db)?;
 
                 let wallet_instance_attestation_blob = db_blob_storage
-                    .get(&wallet_instance_attestation_blob_id)
+                    .get(wallet_instance_attestation_blob_id)
                     .await
                     .error_while("getting WIA blob")?
                     .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
@@ -1750,7 +1754,6 @@ impl OID4VCIFinal1_0Service {
                 holder_identifier: None,
                 credential_blob_id: None,
                 wallet_key_attestation_blob_id: None,
-                wallet_instance_attestation_blob_id: None,
                 suspend_end_date,
             },
         })

@@ -1624,6 +1624,290 @@ async fn test_create_token_fails_when_related_credential_is_expiring() {
 // const NONCE: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTgyNjU2NDMsImV4cCI6MTk1ODI2NTY0MywiaXNzIjoiaHR0cDovLzEyNy4wLjAuMTozMDAwIiwianRpIjoiYTRiMTQ5NzYtYzQ2MS00OWNkLWEyODItYzBmZjcyMGY3YTYyIiwiY29udGV4dCI6Imlzc3VhbmNlLW9wZW5pZHZjaS1maW5hbC0xLjAtbm9uY2UifQ.Am8B0y5QqsiJluim9Q6Ov-4Po3VLkLcxAg2L0vDXNu8";
 const PROOF_JWT: &str = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20iLCJub25jZSI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpwWVhRaU9qRTNOVGd5TmpVMk5ETXNJbVY0Y0NJNk1UazFPREkyTlRZME15d2lhWE56SWpvaWFIUjBjRG92THpFeU55NHdMakF1TVRvek1EQXdJaXdpYW5ScElqb2lZVFJpTVRRNU56WXRZelEyTVMwME9XTmtMV0V5T0RJdFl6Qm1aamN5TUdZM1lUWXlJaXdpWTI5dWRHVjRkQ0k2SW1semMzVmhibU5sTFc5d1pXNXBaSFpqYVMxbWFXNWhiQzB4TGpBdGJtOXVZMlVpZlEuQW04QjB5NVFxc2lKbHVpbTlRNk92LTRQbzNWTGtMY3hBZzJMMHZEWE51OCJ9.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw";
 
+#[rstest::rstest]
+#[case::single(CredentialType::Single, true, true)]
+#[case::batch(CredentialType::BatchParent, true, true)]
+#[case::single_missing_wia(CredentialType::Single, false, true)]
+#[case::batch_missing_wia(CredentialType::BatchParent, false, true)]
+#[case::single_mismatched_issuer(CredentialType::Single, true, false)]
+#[case::batch_mismatched_issuer(CredentialType::BatchParent, true, false)]
+#[tokio::test]
+async fn test_create_credential_with_instance_attestation(
+    #[case] credential_type: CredentialType,
+    #[case] has_wia: bool,
+    #[case] matching_issuer: bool,
+) {
+    use crate::config::core_config::BlobStorageType;
+    use crate::model::blob::{Blob, BlobType};
+    use crate::proto::jwt::model::JWTPayload;
+    use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
+    use crate::provider::blob_storage::MockBlobStorage;
+    use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
+    use crate::service::credential::dto::WalletInstanceAttestationDTO;
+
+    let succeeds = has_wia && matching_issuer;
+    let config = generic_config().core;
+    let params: OpenID4VCIFinal1Params = config.issuance_protocol.get("OPENID4VCI_FINAL1").unwrap();
+    let nonce = super::nonce::generate_nonce(
+        params.nonce.unwrap(),
+        Some("http://127.0.0.1:3000".into()),
+        super::nonce::Context::OpenID4VCINonce,
+    )
+    .await
+    .unwrap();
+    let jwk = PublicJwk::Okp(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "Ed25519".into(),
+        x: "whP_b7GlegxzU0Q1J6fNV3XDxYuPMkdt7oIA-1dnkE0".into(),
+        y: None,
+    });
+    // Signature verification is mocked; use real JWT parsing and attestation validation.
+    let key_attestation = Jwt::new(
+        "key-attestation+jwt".into(),
+        "EdDSA".into(),
+        None,
+        Some(JwtPublicKeyInfo::Jwk(jwk.clone())),
+        JWTPayload {
+            issued_at: Some(crate::clock::now_utc()),
+            expires_at: Some(crate::clock::now_utc() + Duration::minutes(5)),
+            custom: json!({ "key_storage": ["iso_18045_basic"], "attested_keys": [jwk] }),
+            ..Default::default()
+        },
+    )
+    .tokenize(None)
+    .await
+    .unwrap();
+    let mut wia_jwk = jwk.clone();
+    if !matching_issuer {
+        let PublicJwk::Okp(key) = &mut wia_jwk else {
+            unreachable!()
+        };
+        key.x = "different-wallet-provider-key".into();
+    }
+    let wia = Jwt::new(
+        "oauth-client-attestation+jwt".into(),
+        "EdDSA".into(),
+        None,
+        Some(JwtPublicKeyInfo::Jwk(wia_jwk)),
+        JWTPayload {
+            custom: json!({}),
+            ..Default::default()
+        },
+    )
+    .tokenize(None)
+    .await
+    .unwrap();
+    let wia_blob = Blob::new(
+        serde_json::to_vec(&WalletInstanceAttestationDTO {
+            name: "Wallet".into(),
+            link: "https://example.com/wallet".into(),
+            attestation: wia,
+        })
+        .unwrap(),
+        BlobType::WalletInstanceAttestation,
+    );
+    let wia_blob_id = wia_blob.id;
+    let proof = Jwt::new_with_attestation(
+        "openid4vci-proof+jwt".into(),
+        "EdDSA".into(),
+        None,
+        Some(JwtPublicKeyInfo::Jwk(jwk)),
+        Some(key_attestation),
+        JWTPayload {
+            custom: json!({ "nonce": nonce }),
+            ..Default::default()
+        },
+    )
+    .tokenize(None)
+    .await
+    .unwrap();
+
+    let mut schema = generic_credential_schema();
+    schema.wallet_attestation.require_instance_attestation = true;
+    schema.batch_size = (credential_type == CredentialType::BatchParent).then_some(2);
+    let credential = CredentialBuilder {
+        wallet_instance_attestation_blob_id: has_wia.then_some(wia_blob_id),
+        ..dummy_credential(
+            "OPENID4VCI_FINAL1",
+            CredentialStateEnum::Offered,
+            true,
+            schema.clone(),
+            credential_type,
+        )
+        .into()
+    }
+    .build();
+    let mut mocks = Mocks {
+        config,
+        ..Default::default()
+    };
+    mocks
+        .credential_schema_repository
+        .expect_get_credential_schema()
+        .return_once({
+            let schema = schema.clone();
+            move |_| Ok(schema)
+        });
+    mocks
+        .credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .return_once({
+            let credential = credential.clone();
+            move |_| Ok(vec![credential])
+        });
+    mocks
+        .interaction_repository
+        .expect_get_interaction()
+        .times(if succeeds { 2 } else { 1 })
+        .returning(|id, _| Ok(dummy_interaction(Some(*id), true, None, None, None)));
+    let mut protocol = MockIssuanceProtocol::new();
+    if succeeds {
+        protocol
+            .expect_issuer_issue_credential()
+            .once()
+            .returning(|_, _, _, _| Ok("issued-credential".into()));
+    }
+    let protocol = Arc::new(protocol);
+    mocks
+        .exchange_provider
+        .expect_get_protocol()
+        .returning(move |_| Ok(protocol.clone()));
+    let algorithm = mock_key_algorithm();
+    mocks
+        .key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .returning({
+            let algorithm = algorithm.clone();
+            move |_| Some((KeyAlgorithmType::Eddsa, algorithm.clone()))
+        });
+    mocks
+        .key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning(move |_| Ok(algorithm.clone()));
+    if has_wia {
+        let mut storage = MockBlobStorage::new();
+        storage
+            .expect_get()
+            .once()
+            .with(eq(wia_blob_id))
+            .return_once(move |_| Ok(Some(wia_blob)));
+        if succeeds {
+            storage.expect_create().once().returning(|_| Ok(()));
+        }
+        let storage = Arc::new(storage);
+        mocks
+            .blob_storage_provider
+            .expect_get_blob_storage()
+            .with(eq(BlobStorageType::Db))
+            .returning(move |_| Ok(storage.clone()));
+    }
+    if succeeds {
+        mocks
+            .identifier_creator
+            .expect_get_or_create_remote_identifier()
+            .once()
+            .returning(|_, _, _, _, _, _| {
+                Ok((
+                    dummy_identifier(),
+                    RemoteIdentifierRelation::Key(dummy_key()),
+                ))
+            });
+        mocks
+            .interaction_repository
+            .expect_mark_nonces_as_used()
+            .once()
+            .returning(|_, _| Ok(()));
+        mocks
+            .interaction_repository
+            .expect_update_interaction()
+            .once()
+            .returning(|_, _| Ok(()));
+        let mut formatter = MockCredentialFormatter::new();
+        formatter
+            .expect_get_default_expiration()
+            .return_const(Duration::days(30));
+        mocks
+            .formatter_provider
+            .expect_get_credential_formatter()
+            .return_once(move |_| Ok(Arc::new(formatter)));
+        mocks
+            .credential_repository
+            .expect_update_credential()
+            .times(if credential_type == CredentialType::BatchParent {
+                2
+            } else {
+                1
+            })
+            .returning(|_, _| Ok(()));
+        if credential_type == CredentialType::BatchParent {
+            mocks
+                .credential_repository
+                .expect_get_credential()
+                .return_once(move |_| Ok(credential));
+            mocks
+                .credential_repository
+                .expect_get_credential_list()
+                .returning(|_| {
+                    Ok(GetCredentialList {
+                        values: vec![],
+                        total_pages: None,
+                        total_items: None,
+                    })
+                });
+            mocks
+                .credential_repository
+                .expect_create_credential()
+                .once()
+                .withf(|item| matches!(item, Credential::IssuerBatchItem { .. }))
+                .returning(|item| Ok(item.common().id));
+        }
+    }
+    let service = setup_service(mocks);
+    let result = service
+        .create_credential(
+            &schema.id,
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            None,
+            CredentialRequestPayload::Plain(Box::new(CredentialRequest {
+                credential: CredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id().await.unwrap(),
+                ),
+                proofs: Some(Proofs::Jwt(vec![proof])),
+                credential_response_encryption: None,
+            })),
+        )
+        .await;
+    if !has_wia {
+        assert!(
+            matches!(
+                result,
+                Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+                    OpenID4VCIError::InvalidOrMissingProof
+                ))
+            ),
+            "{result:?}"
+        );
+    } else if !matching_issuer {
+        assert!(
+            matches!(
+                result,
+                Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
+                    WalletAttestationError::WiaKaIssuerMismatch
+                ))
+            ),
+            "{result:?}"
+        );
+    } else {
+        let_assert!(CredentialResponsePayload::Plain(response) = result.unwrap());
+        assert_eq!(
+            response.standard.credentials.unwrap()[0].credential,
+            "issued-credential"
+        );
+    }
+}
+
 #[tokio::test]
 async fn test_create_credential_success() {
     let mut repository = MockCredentialSchemaRepository::default();

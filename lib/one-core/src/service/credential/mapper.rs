@@ -807,6 +807,7 @@ pub(super) fn from_create_request(
     if r#type == CredentialType::Single {
         return Ok(Credential::IssuerSingle {
             common,
+            wallet_instance_attestation_blob_id: None,
             issuer: IssuerData {
                 identifier: issuer_identifier.into(),
                 certificate: issuer_certificate.map(Into::into),
@@ -823,12 +824,12 @@ pub(super) fn from_create_request(
                 holder_identifier: None,
                 credential_blob_id: None,
                 wallet_key_attestation_blob_id: None,
-                wallet_instance_attestation_blob_id: None,
             },
         });
     }
     Ok(Credential::IssuerBatchParent {
         common,
+        wallet_instance_attestation_blob_id: None,
         issuer: IssuerData {
             identifier: issuer_identifier.into(),
             certificate: issuer_certificate.map(Into::into),

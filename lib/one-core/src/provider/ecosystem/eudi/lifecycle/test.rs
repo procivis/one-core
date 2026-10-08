@@ -190,18 +190,17 @@ fn accepted_pid(wua_blob_id: Option<BlobId>, wia_blob_id: Option<BlobId>) -> Cre
         issuer.common.id = Uuid::new_v4().into();
         issuer.common.state = CredentialStateEnum::Accepted;
         issuer.data.wallet_key_attestation_blob_id = wua_blob_id;
-        issuer.data.wallet_instance_attestation_blob_id = wia_blob_id;
-        updated_credential
+        CredentialBuilder {
+            wallet_instance_attestation_blob_id: wia_blob_id,
+            ..updated_credential.into()
+        }
+        .build()
     }
 }
 
-fn batch_item(
-    parent: &Credential,
-    wua_blob_id: Option<BlobId>,
-    wia_blob_id: Option<BlobId>,
-) -> Credential {
+fn batch_item(parent: &Credential, wua_blob_id: Option<BlobId>) -> Credential {
     {
-        let mut updated_credential = accepted_pid(wua_blob_id, wia_blob_id);
+        let mut updated_credential = accepted_pid(wua_blob_id, None);
         updated_credential = CredentialBuilder {
             r#type: CredentialType::BatchItem,
             parent: Some(parent.clone().into()),
@@ -212,12 +211,13 @@ fn batch_item(
     }
 }
 
-fn batch_parent() -> Credential {
+fn batch_parent(wia_blob_id: Option<BlobId>) -> Credential {
     {
         let mut updated_credential = dummy_credential();
         updated_credential.common_mut().id = Uuid::new_v4().into();
         updated_credential = CredentialBuilder {
             r#type: CredentialType::BatchParent,
+            wallet_instance_attestation_blob_id: wia_blob_id,
             ..updated_credential.into()
         }
         .build();
@@ -369,15 +369,12 @@ async fn test_revoked_wallet_instance_attestation_revokes_the_pid() {
 
 #[tokio::test]
 async fn test_revoked_wia_revokes_the_whole_batch_once() {
-    let parent = batch_parent();
+    let wia_blob_id: BlobId = Uuid::new_v4().into();
+    let parent = batch_parent(Some(wia_blob_id));
     let parent_id = parent.common().id;
 
-    // the WIA is copied from the parent onto every item, so both items carry the same one
-    let wia_blob_id: BlobId = Uuid::new_v4().into();
-    let items = vec![
-        batch_item(&parent, None, Some(wia_blob_id)),
-        batch_item(&parent, None, Some(wia_blob_id)),
-    ];
+    // Both items read the shared WIA from their parent.
+    let items = vec![batch_item(&parent, None), batch_item(&parent, None)];
 
     let credential_repository = credential_repository_serving(vec![items]);
 
@@ -420,12 +417,9 @@ async fn test_revoked_wua_revokes_only_the_batch_item() {
     // every item of a batch has its own WUA
     let revoked_wua_blob_id: BlobId = Uuid::new_v4().into();
     let active_wua_blob_id: BlobId = Uuid::new_v4().into();
-    let revoked_item = batch_item(&parent, Some(revoked_wua_blob_id), None);
+    let revoked_item = batch_item(&parent, Some(revoked_wua_blob_id));
     let revoked_item_id = revoked_item.common().id;
-    let items = vec![
-        revoked_item,
-        batch_item(&parent, Some(active_wua_blob_id), None),
-    ];
+    let items = vec![revoked_item, batch_item(&parent, Some(active_wua_blob_id))];
 
     let credential_repository = credential_repository_serving(vec![items]);
 
@@ -625,11 +619,10 @@ async fn test_pid_that_cannot_be_revoked_is_reported() {
 /// `Expiring` instead - it stays valid, but can never be refreshed.
 #[tokio::test]
 async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
-    let parent = batch_parent();
-    let parent_id = parent.common().id;
-
     let wia_blob_id: BlobId = Uuid::new_v4().into();
-    let items = vec![batch_item(&parent, None, Some(wia_blob_id))];
+    let parent = batch_parent(Some(wia_blob_id));
+    let parent_id = parent.common().id;
+    let items = vec![batch_item(&parent, None)];
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
     wallet_unit_proto
@@ -676,10 +669,10 @@ async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
 /// fallback - it is reported as failed and left alone. The mock panics on any second state change.
 #[tokio::test]
 async fn test_batch_item_that_cannot_be_revoked_is_not_flagged_expiring() {
-    let parent = batch_parent();
+    let parent = batch_parent(None);
 
     let wua_blob_id: BlobId = Uuid::new_v4().into();
-    let item = batch_item(&parent, Some(wua_blob_id), None);
+    let item = batch_item(&parent, Some(wua_blob_id));
     let item_id = item.common().id;
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();

@@ -397,6 +397,7 @@ pub(super) fn credential_from_model(
             return Ok(Credential::IssuerBatchParent {
                 common,
                 issuer,
+                wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
                 suspend_end_date: credential.suspend_end_date,
                 webhook_url: credential.webhook_url,
                 subscriber_information: credential.subscriber_information,
@@ -413,7 +414,6 @@ pub(super) fn credential_from_model(
                 .map(|id| Related::new(id, repositories.identifier_repository.clone())),
             credential_blob_id: credential.credential_blob_id,
             wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
-            wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
             suspend_end_date: credential.suspend_end_date,
         };
         return Ok(match credential.r#type {
@@ -429,6 +429,7 @@ pub(super) fn credential_from_model(
             credential::CredentialType::Single => Credential::IssuerSingle {
                 common,
                 issuer,
+                wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
                 webhook_url: credential.webhook_url,
                 subscriber_information: credential.subscriber_information,
                 claims: credential_claims(credential.id, repositories.claim_repository),
@@ -536,22 +537,26 @@ fn set_credential_variant_fields(model: &mut credential::ActiveModel, request: &
         Credential::IssuerSingle {
             issuer,
             credential,
+            wallet_instance_attestation_blob_id,
             webhook_url,
             subscriber_information,
             ..
         } => {
             set_issuer_fields(model, issuer);
             set_issuer_credential_fields(model, credential);
+            model.wallet_instance_attestation_blob_id = Set(*wallet_instance_attestation_blob_id);
             model.webhook_url = Set(webhook_url.clone());
             model.subscriber_information = Set(subscriber_information.clone());
         }
         Credential::IssuerBatchParent {
             issuer,
+            wallet_instance_attestation_blob_id,
             webhook_url,
             subscriber_information,
             ..
         } => {
             set_issuer_fields(model, issuer);
+            model.wallet_instance_attestation_blob_id = Set(*wallet_instance_attestation_blob_id);
             model.webhook_url = Set(webhook_url.clone());
             model.subscriber_information = Set(subscriber_information.clone());
         }
@@ -610,7 +615,6 @@ fn set_issuer_credential_fields(model: &mut credential::ActiveModel, data: &Issu
         .as_ref()
         .map(|identifier| identifier.id()));
     model.wallet_key_attestation_blob_id = Set(data.wallet_key_attestation_blob_id);
-    model.wallet_instance_attestation_blob_id = Set(data.wallet_instance_attestation_blob_id);
 }
 
 fn set_holder_credential_fields(model: &mut credential::ActiveModel, data: &HolderCredentialData) {

@@ -106,11 +106,22 @@ impl EudiEcosystem {
                 let wia_revoked = match cached_wia_status.get(&main_credential.common().id) {
                     Some(revoked) => *revoked,
                     None => {
+                        let wia_blob_id = match main_credential {
+                            Credential::IssuerSingle {
+                                wallet_instance_attestation_blob_id,
+                                ..
+                            }
+                            | Credential::IssuerBatchParent {
+                                wallet_instance_attestation_blob_id,
+                                ..
+                            } => *wallet_instance_attestation_blob_id,
+                            _ => None,
+                        };
                         let revoked = self
                             .attestation_revoked(
                                 main_credential,
                                 blob_storage.as_ref(),
-                                issuer.data.wallet_instance_attestation_blob_id,
+                                wia_blob_id,
                                 AttestationType::WalletInstanceAttestation,
                             )
                             .await?;

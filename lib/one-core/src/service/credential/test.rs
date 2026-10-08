@@ -632,6 +632,108 @@ async fn test_get_credential_success() {
     assert_eq!(None, result.revocation_date);
 }
 
+#[rstest]
+#[case::single(CredentialType::Single)]
+#[case::parent(CredentialType::BatchParent)]
+#[case::item(CredentialType::BatchItem)]
+#[tokio::test]
+async fn test_get_credential_instance_attestation_belongs_to_offer(#[case] kind: CredentialType) {
+    use crate::model::blob::{Blob, BlobType};
+    use crate::provider::blob_storage::MockBlobStorage;
+    use crate::service::credential::dto::{WalletInstanceAttestationDTO, WalletUnitAttestationDTO};
+
+    let wia = Blob::new(
+        serde_json::to_vec(&WalletInstanceAttestationDTO {
+            name: "Wallet".into(),
+            link: "https://example.com/wallet".into(),
+            attestation: "instance-attestation".into(),
+        })
+        .unwrap(),
+        BlobType::WalletInstanceAttestation,
+    );
+    let wua = Blob::new(
+        serde_json::to_vec(&WalletUnitAttestationDTO {
+            attestation: "key-attestation".into(),
+        })
+        .unwrap(),
+        BlobType::WalletUnitAttestation,
+    );
+    let mut offer = CredentialBuilder {
+        role: CredentialRole::Issuer,
+        r#type: if kind == CredentialType::Single {
+            kind
+        } else {
+            CredentialType::BatchParent
+        },
+        wallet_instance_attestation_blob_id: Some(wia.id),
+        wallet_key_attestation_blob_id: (kind == CredentialType::Single).then_some(wua.id),
+        ..generic_credential().await.into()
+    }
+    .build();
+    offer.common_mut().interaction = None;
+    offer.common_mut().state = CredentialStateEnum::Created;
+    let credential = if kind == CredentialType::BatchItem {
+        let mut builder: CredentialBuilder = offer.clone().into();
+        builder.common.id = Uuid::new_v4().into();
+        builder.r#type = CredentialType::BatchItem;
+        builder.parent = Some(offer.into());
+        builder.wallet_instance_attestation_blob_id = None;
+        builder.wallet_key_attestation_blob_id = Some(wua.id);
+        builder.build()
+    } else {
+        offer
+    };
+    let id = credential.common().id;
+    let mut repositories = Repositories {
+        config: generic_config().core,
+        ..Default::default()
+    };
+    repositories
+        .credential_repository
+        .expect_get_credential()
+        .return_once(move |_| Ok(credential));
+    let mut storage = MockBlobStorage::new();
+    storage
+        .expect_get()
+        .once()
+        .with(eq(wia.id))
+        .return_once(move |_| Ok(Some(wia)));
+    if kind != CredentialType::BatchParent {
+        storage
+            .expect_get()
+            .once()
+            .with(eq(wua.id))
+            .return_once(move |_| Ok(Some(wua)));
+    }
+    repositories
+        .blob_storage_provider
+        .expect_get_blob_storage()
+        .return_once(move |_| Ok(Arc::new(storage)));
+    repositories
+        .formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
+    let detail = setup_service(repositories)
+        .get_credential(&id)
+        .await
+        .unwrap();
+    assert_eq!(
+        detail.wallet_instance_attestation.unwrap().attestation,
+        "instance-attestation"
+    );
+    assert_eq!(
+        detail
+            .wallet_unit_attestation
+            .map(|attestation| attestation.attestation),
+        (kind != CredentialType::BatchParent).then(|| "key-attestation".to_string())
+    );
+}
+
 #[tokio::test]
 async fn test_get_credential_success_suspended_credential_with_end_date() {
     let mut credential_repository = MockCredentialRepository::default();
