@@ -10,7 +10,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use one_core::service::test_utilities::dummy_organisation;
-use sea_orm::DatabaseConnection;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
 use url::Url;
@@ -95,6 +95,33 @@ async fn test_get_trust_collection_success() {
     let found = result.unwrap();
     assert_eq!(found.id, id);
     assert_eq!(found.name, "test-collection");
+}
+
+#[tokio::test]
+async fn test_get_trust_collection_retains_url_error() {
+    use std::error::Error;
+
+    let TestSetup {
+        provider,
+        org_id,
+        db,
+        ..
+    } = setup().await;
+    let collection = dummy_trust_collection(org_id);
+    let id = collection.id;
+    let mut model: crate::entity::trust_collection::ActiveModel = collection.into();
+    model.remote_trust_collection_url = Set(Some("invalid-url".into()));
+    model.insert(&db).await.unwrap();
+
+    let error = provider.get(&id).await.unwrap_err();
+
+    assert!(matches!(error, DataLayerError::MappingError(_)));
+    let cause = url::ParseError::RelativeUrlWithoutBase;
+    assert!(error.to_string().contains(&cause.to_string()));
+    assert_eq!(
+        error.source().unwrap().downcast_ref::<url::ParseError>(),
+        Some(&cause)
+    );
 }
 
 #[tokio::test]

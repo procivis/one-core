@@ -370,7 +370,7 @@ async fn test_duplicate_schema() {
         )
         .await;
 
-    assert!(matches!(res, Err(DataLayerError::AlreadyExists)));
+    assert!(matches!(res, Err(DataLayerError::AlreadyExists(_))));
 
     let schemas = context.db.credential_schemas.list().await;
     assert_eq!(schemas.len(), 1);

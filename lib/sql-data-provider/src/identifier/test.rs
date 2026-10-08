@@ -121,7 +121,7 @@ async fn test_create_and_delete_identifier() {
 
     assert!(matches!(
         setup.provider.create(identifier).await,
-        Err(DataLayerError::AlreadyExists)
+        Err(DataLayerError::AlreadyExists(_))
     ));
 }
 

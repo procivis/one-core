@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use one_core::model::claim::Claim;
 use one_core::model::credential::{
     Clearable, Credential, CredentialCommon, CredentialFilterValue, HolderBinding,
@@ -350,16 +351,18 @@ pub(super) fn credential_from_model(
     };
     if credential.role == credential::CredentialRole::Verifier {
         if credential.r#type != credential::CredentialType::Single {
-            return Err(DataLayerError::MappingError);
+            return Err(DataLayerError::MappingError(anyhow!(
+                "Verifier credential must have type Single"
+            )));
         }
         return Ok(Credential::Verifier {
             common,
             verifier_data: VerifierCredentialData {
                 issuer: IssuerIdentity {
                     identifier: Related::new(
-                        credential
-                            .issuer_identifier_id
-                            .ok_or(DataLayerError::MappingError)?,
+                        credential.issuer_identifier_id.ok_or_else(|| {
+                            DataLayerError::MappingError(anyhow!("Missing issuer_identifier_id"))
+                        })?,
                         issuer,
                     ),
                     certificate: credential
@@ -367,7 +370,9 @@ pub(super) fn credential_from_model(
                         .map(|id| Related::new(id, repositories.certificate_repository.clone())),
                 },
                 format: Related::new(
-                    credential.format.ok_or(DataLayerError::MappingError)?,
+                    credential
+                        .format
+                        .ok_or_else(|| DataLayerError::MappingError(anyhow!("Missing format")))?,
                     format,
                 ),
                 claims: credential_claims(credential.id, repositories.claim_repository),
@@ -380,16 +385,18 @@ pub(super) fn credential_from_model(
     if credential.role == credential::CredentialRole::Issuer {
         let issuer = IssuerData {
             identifier: Related::new(
-                credential
-                    .issuer_identifier_id
-                    .ok_or(DataLayerError::MappingError)?,
+                credential.issuer_identifier_id.ok_or_else(|| {
+                    DataLayerError::MappingError(anyhow!("Missing issuer_identifier_id"))
+                })?,
                 issuer,
             ),
             certificate: credential
                 .issuer_certificate_id
                 .map(|id| Related::new(id, repositories.certificate_repository.clone())),
             signing_key: Related::new(
-                credential.key_id.ok_or(DataLayerError::MappingError)?,
+                credential
+                    .key_id
+                    .ok_or_else(|| DataLayerError::MappingError(anyhow!("Missing key_id")))?,
                 repositories.key_repository.clone(),
             ),
         };
@@ -406,7 +413,9 @@ pub(super) fn credential_from_model(
         }
         let data = IssuerCredentialData {
             format: Related::new(
-                credential.format.ok_or(DataLayerError::MappingError)?,
+                credential
+                    .format
+                    .ok_or_else(|| DataLayerError::MappingError(anyhow!("Missing format")))?,
                 format,
             ),
             holder_identifier: credential
@@ -421,7 +430,9 @@ pub(super) fn credential_from_model(
                 common,
                 issuer,
                 parent: Related::new(
-                    credential.parent_id.ok_or(DataLayerError::MappingError)?,
+                    credential.parent_id.ok_or_else(|| {
+                        DataLayerError::MappingError(anyhow!("Missing parent_id"))
+                    })?,
                     repositories.credential_repository,
                 ),
                 credential: data,
@@ -447,14 +458,18 @@ pub(super) fn credential_from_model(
             key: Related::new(key, repositories.key_repository.clone()),
         }),
         (None, None) => None,
-        _ => return Err(DataLayerError::MappingError),
+        _ => {
+            return Err(DataLayerError::MappingError(anyhow!(
+                "Holder identifier and key must both be present or absent"
+            )));
+        }
     };
     let data = HolderCredentialData {
         issuer: IssuerIdentity {
             identifier: Related::new(
-                credential
-                    .issuer_identifier_id
-                    .ok_or(DataLayerError::MappingError)?,
+                credential.issuer_identifier_id.ok_or_else(|| {
+                    DataLayerError::MappingError(anyhow!("Missing issuer_identifier_id"))
+                })?,
                 issuer,
             ),
             certificate: credential
@@ -462,7 +477,9 @@ pub(super) fn credential_from_model(
                 .map(|id| Related::new(id, repositories.certificate_repository.clone())),
         },
         format: Related::new(
-            credential.format.ok_or(DataLayerError::MappingError)?,
+            credential
+                .format
+                .ok_or_else(|| DataLayerError::MappingError(anyhow!("Missing format")))?,
             format,
         ),
         claims: credential_claims(credential.id, repositories.claim_repository),
@@ -479,7 +496,9 @@ pub(super) fn credential_from_model(
             common,
             credential: data,
             parent: Related::new(
-                credential.parent_id.ok_or(DataLayerError::MappingError)?,
+                credential
+                    .parent_id
+                    .ok_or_else(|| DataLayerError::MappingError(anyhow!("Missing parent_id")))?,
                 repositories.credential_repository,
             ),
             consumed_at: credential.consumed_at,

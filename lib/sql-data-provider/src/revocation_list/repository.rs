@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
 use one_core::model::common::LockType;
@@ -215,13 +216,17 @@ impl RevocationListRepository for RevocationListProvider {
 
         let serial = if let RevocationListEntityId::Signature(_, Some(serial)) = &entity_id {
             if index_on_status_list.is_some() {
-                return Err(DataLayerError::IncorrectParameters);
+                return Err(DataLayerError::IncorrectParameters(anyhow!(
+                    "Serial and status list index cannot both be provided"
+                )));
             }
 
             Some(serial.to_owned().into())
         } else {
             if index_on_status_list.is_none() {
-                return Err(DataLayerError::IncorrectParameters);
+                return Err(DataLayerError::IncorrectParameters(anyhow!(
+                    "Either a serial or status list index is required"
+                )));
             }
 
             None
@@ -391,7 +396,9 @@ impl RevocationListProvider {
                 let entity_info = match entry.r#type {
                     RevocationListEntryType::Credential => match entry.credential_id {
                         Some(value) => Ok(RevocationListEntityInfo::Credential(value)),
-                        None => Err(DataLayerError::MappingError),
+                        None => Err(DataLayerError::MappingError(anyhow!(
+                            "Credential revocation list entry is missing credential_id"
+                        ))),
                     },
                     RevocationListEntryType::KeyAttestation => {
                         Ok(RevocationListEntityInfo::KeyAttestation)
@@ -408,7 +415,9 @@ impl RevocationListProvider {
                             };
                             Ok(RevocationListEntityInfo::Signature(value.into(), serial))
                         }
-                        None => Err(DataLayerError::MappingError),
+                        None => Err(DataLayerError::MappingError(anyhow!(
+                            "Signature revocation list entry is missing signature_type"
+                        ))),
                     },
                 }?;
                 Ok(RevocationListEntry {

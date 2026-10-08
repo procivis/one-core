@@ -171,7 +171,7 @@ async fn test_mark_nonces_as_used_already_used() {
         .provider
         .mark_nonces_as_used(&interaction_id, vec![nonce_id])
         .await;
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
 }
 
 #[tokio::test]
@@ -207,7 +207,7 @@ async fn test_mark_nonces_as_used_already_used_different_interaction() {
         .provider
         .mark_nonces_as_used(&interaction_id, vec![nonce_id])
         .await;
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
 }
 
 #[tokio::test]

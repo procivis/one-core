@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::claim::Claim;
 use one_core::model::relation::{BatchModelLoader, Related};
@@ -234,7 +235,9 @@ async fn validate_stored_claim_contents(
                 || stored.selectively_disclosable != claim.selectively_disclosable
         })
     }) {
-        return Err(DataLayerError::AlreadyExists);
+        return Err(DataLayerError::AlreadyExists(anyhow!(
+            "Claim ID conflicts with stored contents"
+        )));
     }
     Ok(())
 }
@@ -257,7 +260,9 @@ async fn validate_unique_claim_paths(
             .insert(&claim.path, claim.id)
             .is_some_and(|id| id != claim.id)
         {
-            return Err(DataLayerError::AlreadyExists);
+            return Err(DataLayerError::AlreadyExists(anyhow!(
+                "Multiple claim IDs use the same credential path"
+            )));
         }
     }
     Ok(())

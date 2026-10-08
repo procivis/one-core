@@ -217,5 +217,5 @@ impl InteractionRepository for InteractionProvider {
 fn now_truncated_to_milliseconds() -> Result<OffsetDateTime, DataLayerError> {
     let now = one_core::clock::now_utc();
     now.replace_millisecond(now.millisecond())
-        .map_err(|_| DataLayerError::MappingError)
+        .map_err(|e| DataLayerError::MappingError(e.into()))
 }

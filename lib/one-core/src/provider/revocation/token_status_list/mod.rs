@@ -730,7 +730,7 @@ impl TokenStatusList {
                         .await
                     {
                         Ok(entry_id) => Ok(Some((entry_id, index))),
-                        Err(DataLayerError::AlreadyExists) => {
+                        Err(DataLayerError::AlreadyExists(_)) => {
                             tracing::info!(
                                 "Retrying adding entity to list({list_id}), occupied index({index}), retry({retry_counter})"
                             );

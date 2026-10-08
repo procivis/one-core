@@ -312,9 +312,12 @@ async fn test_update_did_keys_rolls_back_on_invalid_keys(#[case] duplicate: bool
     let result = setup.provider.update_did_keys(&did_id, keys).await;
 
     if duplicate {
-        assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+        assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
     } else {
-        assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+        assert!(matches!(
+            result,
+            Err(DataLayerError::IncorrectParameters(_))
+        ));
     }
     assert_eq!(
         did::Entity::find_by_id(did_id)
@@ -337,7 +340,7 @@ async fn test_update_did_keys_missing_did() {
         .provider
         .update_did_keys(&Uuid::new_v4().into(), vec![])
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
 }
 
 #[tokio::test]
@@ -418,7 +421,10 @@ async fn test_create_did_invalid_organisation() {
             log: None,
         })
         .await;
-    assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(DataLayerError::IncorrectParameters(_))
+    ));
 }
 
 #[tokio::test]

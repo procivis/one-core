@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use one_core::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
@@ -43,12 +44,16 @@ pub(crate) fn serialize_schema_format(schema_format: &SchemaFormat) -> String {
 pub fn deserialize_schema_format(serialized: &str) -> Result<SchemaFormat, DataLayerError> {
     let splits = serialized.split("|").collect::<Vec<_>>();
     if splits.len() != 2 {
-        return Err(DataLayerError::MappingError);
+        return Err(DataLayerError::MappingError(anyhow!(
+            "Schema format must contain exactly two pipe-separated components"
+        )));
     }
-    let schema_id = unescape_schema_id(splits.first().ok_or(DataLayerError::MappingError)?);
+    let schema_id = unescape_schema_id(splits.first().ok_or_else(|| {
+        DataLayerError::MappingError(anyhow!("Schema format is missing schema ID"))
+    })?);
     let format = splits
         .get(1)
-        .ok_or(DataLayerError::MappingError)?
+        .ok_or_else(|| DataLayerError::MappingError(anyhow!("Schema format is missing format")))?
         .to_string();
     Ok(SchemaFormat { schema_id, format })
 }

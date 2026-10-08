@@ -3,6 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use anyhow::anyhow;
 use itertools::Itertools;
 use one_core::model::credential::Credential;
 use one_core::repository::error::DataLayerError;
@@ -31,7 +32,9 @@ pub(super) async fn prepare_credentials(
     let mut credentials = Vec::with_capacity(requests.len());
     for credential in requests {
         if !ids.insert(credential.common().id) {
-            return Err(DataLayerError::AlreadyExists);
+            return Err(DataLayerError::AlreadyExists(anyhow!(
+                "Duplicate credential ID in creation request"
+            )));
         }
         let claims = match &credential {
             Credential::IssuerSingle { claims, .. }
@@ -84,7 +87,9 @@ fn distinct_claims<'a>(
     for claim in claims {
         if let Some(previous) = distinct.get(&claim.id) {
             if ClaimContents::from(*previous) != ClaimContents::from(claim) {
-                return Err(DataLayerError::AlreadyExists);
+                return Err(DataLayerError::AlreadyExists(anyhow!(
+                    "Claim ID has conflicting contents in creation request"
+                )));
             }
         } else {
             distinct.insert(claim.id, claim);
@@ -130,7 +135,9 @@ fn ensure_no_claim_conflicts(
             .get(&claim.id)
             .is_some_and(|stored| ClaimContents::from(stored) != ClaimContents::from(*claim))
     }) {
-        return Err(DataLayerError::AlreadyExists);
+        return Err(DataLayerError::AlreadyExists(anyhow!(
+            "Claim ID conflicts with stored contents"
+        )));
     }
     Ok(())
 }
@@ -144,7 +151,9 @@ fn ensure_paths_unique(credentials: &[CredentialToCreate]) -> Result<(), DataLay
                 .insert(&claim.path, claim.id)
                 .is_some_and(|id| id != claim.id)
             {
-                return Err(DataLayerError::AlreadyExists);
+                return Err(DataLayerError::AlreadyExists(anyhow!(
+                    "Multiple claim IDs use the same credential path"
+                )));
             }
         }
     }

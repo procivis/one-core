@@ -596,7 +596,7 @@ impl BitstringStatusList {
                         .await
                     {
                         Ok(_) => Ok(Some(index)),
-                        Err(DataLayerError::AlreadyExists) => {
+                        Err(DataLayerError::AlreadyExists(_)) => {
                             tracing::info!("Retrying adding credential entry to list({list_id}), occupied index({index}), retry({retry_counter})");
                             Ok(None)
                         },

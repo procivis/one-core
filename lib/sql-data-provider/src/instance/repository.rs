@@ -25,9 +25,11 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 impl InstanceRepository for InstanceProvider {
     async fn create(&self, request: Instance) -> Result<InstanceId, DataLayerError> {
         if !request.wallet_attestations.as_ref().await?.is_empty() {
-            return Err(DataLayerError::IncorrectParameters
-                .error_while("Wallet attestations must be created via its repository")
-                .into());
+            return Err(DataLayerError::IncorrectParameters(anyhow::anyhow!(
+                "Wallet attestations must be created via their repository"
+            ))
+            .error_while("Wallet attestations must be created via its repository")
+            .into());
         }
 
         let model = instance::ActiveModel::from(request)

@@ -1,5 +1,6 @@
 use std::hash::Hash;
 
+use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::future::try_join_all;
 use migration::supported_db_type::WithSupportedDbType;
@@ -197,7 +198,9 @@ impl HistoryRepository for HistoryProvider {
                 credential_lifecycle_operation_count,
             }),
             (None, None, None) => None,
-            _ => Err(DataLayerError::MappingError)?,
+            _ => Err(DataLayerError::MappingError(anyhow!(
+                "Previous organisation operation counts must all be present or absent"
+            )))?,
         };
         Ok(OrganisationStats {
             previous,
@@ -400,7 +403,9 @@ impl HistoryProvider {
             .query_one(&stmt.0)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?
-            .ok_or(DataLayerError::MappingError)?;
+            .ok_or_else(|| {
+                DataLayerError::MappingError(anyhow!("History count query returned no row"))
+            })?;
         Ok(result
             .try_get::<i64>("", "count")
             .map_err(|err| DataLayerError::Db(err.into()))? as usize)
@@ -470,7 +475,9 @@ impl HistoryProvider {
                 active_wallet_unit_count: wallet_unit_new_count - wallet_unit_revoked_count,
             }),
             (None, None, None, None, None, None) => None,
-            _ => Err(DataLayerError::MappingError)?,
+            _ => Err(DataLayerError::MappingError(anyhow!(
+                "Previous system operation counts must all be present or absent"
+            )))?,
         };
 
         Ok((current, previous))

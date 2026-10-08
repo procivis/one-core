@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use one_core::model::backup::UnexportableCredential;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
@@ -30,10 +31,12 @@ pub(super) fn credential_from_unexportable_model(
     db: &TransactionManagerImpl,
 ) -> Result<UnexportableCredential, DataLayerError> {
     if value.role == crate::entity::credential::CredentialRole::Verifier {
-        return Err(DataLayerError::MappingError);
+        return Err(DataLayerError::MappingError(anyhow!(
+            "Verifier credentials cannot be mapped to unexportable credentials"
+        )));
     }
     let claims_with_schema: Vec<ClaimWithSchema> =
-        serde_json::from_str(&value.claims).map_err(|_| DataLayerError::MappingError)?;
+        serde_json::from_str(&value.claims).map_err(|e| DataLayerError::MappingError(e.into()))?;
 
     let (claims, claim_schemas): (Vec<_>, Vec<ClaimSchema>) = claims_with_schema
         .into_iter()
@@ -54,7 +57,11 @@ pub(super) fn credential_from_unexportable_model(
             description: value.credential_schema_transaction_code_description,
         }),
         (None, None) => None,
-        _ => return Err(DataLayerError::MappingError),
+        _ => {
+            return Err(DataLayerError::MappingError(anyhow!(
+                "Transaction code type and length must both be present or absent"
+            )));
+        }
     };
 
     let formats = credential_schema_formats(value.credential_schema_id, db.clone());

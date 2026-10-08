@@ -275,7 +275,11 @@ pub(super) fn credential_schema_from_models(
             description: credential_schema.transaction_code_description,
         }),
         (None, None) => None,
-        _ => return Err(DataLayerError::MappingError),
+        _ => {
+            return Err(DataLayerError::MappingError(anyhow::anyhow!(
+                "Transaction code type and length must both be present or absent"
+            )));
+        }
     };
 
     let id = credential_schema.id;

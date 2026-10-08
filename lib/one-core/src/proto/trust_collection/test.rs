@@ -81,7 +81,11 @@ async fn test_skip_already_existing() {
         .expect_create()
         .once()
         .withf(|c| c.name == "already_exists" && c.remote_trust_collection_url.is_some())
-        .returning(|_| Err(DataLayerError::AlreadyExists));
+        .returning(|_| {
+            Err(DataLayerError::AlreadyExists(anyhow::anyhow!(
+                "test repository error"
+            )))
+        });
 
     let provider = TrustCollectionManagerImpl::new(
         Arc::new(repository),

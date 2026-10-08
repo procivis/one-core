@@ -169,7 +169,7 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                         // The subscription may have been created by a concurrent sync, or a
                         // list that is still advertised - and hence not deleted above - may
                         // hold on to the name. Neither must abort the remaining lists.
-                        Err(DataLayerError::AlreadyExists) => {
+                        Err(DataLayerError::AlreadyExists(_)) => {
                             tracing::warn!(
                                 "Skipping trust list `{name}` ({reference}) of trust collection {}: subscription already exists",
                                 trust_collection.id,

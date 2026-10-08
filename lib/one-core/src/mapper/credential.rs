@@ -35,8 +35,10 @@ pub(crate) async fn stored_credential_claims(
         | Credential::HolderBatchItem { credential, .. } => &credential.claims,
         Credential::Verifier { verifier_data, .. } => &verifier_data.claims,
         Credential::IssuerBatchItem { .. } | Credential::HolderBatchParent { .. } => {
-            return Err(DataLayerError::MappingError
-                .error_while("accessing a field unavailable on this credential variant"));
+            return Err(DataLayerError::MappingError(anyhow::anyhow!(
+                "Claims are unavailable on this credential variant"
+            ))
+            .error_while("accessing a field unavailable on this credential variant"));
         }
     };
     Ok(claims.as_ref().await?.to_owned())

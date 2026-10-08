@@ -528,7 +528,7 @@ async fn test_update_trust_list_publication_not_found() {
         )
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
 }
 
 #[tokio::test]

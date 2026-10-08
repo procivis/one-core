@@ -215,7 +215,7 @@ impl ProofSchemaService {
             .await
             .map_err(|error| match error {
                 // proof schema not found or already deleted
-                DataLayerError::RecordNotUpdated => ProofSchemaServiceError::NotFound(*id),
+                DataLayerError::RecordNotUpdated(_) => ProofSchemaServiceError::NotFound(*id),
                 error => error.error_while("deleting proof schema").into(),
             })?;
         tracing::info!("Deleted proof schema {}", id);

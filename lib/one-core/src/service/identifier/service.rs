@@ -817,7 +817,9 @@ impl IdentifierService {
                     .delete(id)
                     .await
                     .map_err(|e| match e {
-                        DataLayerError::RecordNotUpdated => IdentifierServiceError::NotFound(*id),
+                        DataLayerError::RecordNotUpdated(_) => {
+                            IdentifierServiceError::NotFound(*id)
+                        }
                         e => e.error_while("deleting identifier").into(),
                     })?;
 
@@ -1282,7 +1284,7 @@ impl IdentifierService {
                 .await
                 .map_err(|error| -> IdentifierServiceError {
                     match error {
-                        DataLayerError::AlreadyExists => {
+                        DataLayerError::AlreadyExists(_) => {
                             identifier_creator::Error::CertificateAlreadyExists
                                 .error_while("creating certificate")
                                 .into()

@@ -73,7 +73,7 @@ pub(crate) fn public_key_from_wallet_unit(
 
 pub(super) fn map_already_exists_error(error: DataLayerError) -> ManagedInstanceError {
     match error {
-        DataLayerError::AlreadyExists => {
+        DataLayerError::AlreadyExists(_) => {
             ManagedInstanceError::WalletUnitAlreadyExists.error_while("creating wallet unit")
         }
         e => e.error_while("creating wallet unit"),

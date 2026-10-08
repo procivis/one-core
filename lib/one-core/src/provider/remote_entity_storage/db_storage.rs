@@ -71,7 +71,7 @@ impl RemoteEntityStorage for DbStorage {
                 .update(storage_context_to_db_context(db_context.id, request))
                 .await
                 .map_err(|e| match e {
-                    DataLayerError::RecordNotUpdated => RemoteEntityStorageError::NotUpdated,
+                    DataLayerError::RecordNotUpdated(_) => RemoteEntityStorageError::NotUpdated,
                     e => RemoteEntityStorageError::Insert(e.to_string()),
                 })?;
         } else {

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
 use serde_json::json;
@@ -133,7 +134,11 @@ async fn test_create_organisation_already_exists() {
     organisation_repository
         .expect_create_organisation()
         .times(1)
-        .returning(|_| Err(DataLayerError::AlreadyExists));
+        .returning(|_| {
+            Err(DataLayerError::AlreadyExists(anyhow!(
+                "test repository error"
+            )))
+        });
 
     let service = setup_service(Mocks {
         organisation_repository,
@@ -366,7 +371,7 @@ async fn test_get_organisation_list_failure() {
     organisation_repository
         .expect_get_organisation_list()
         .times(1)
-        .returning(|_: OrganisationListQuery| Err(anyhow::anyhow!("TEST").into()));
+        .returning(|_: OrganisationListQuery| Err(anyhow!("TEST").into()));
 
     let service = setup_service(Mocks {
         organisation_repository,

@@ -111,7 +111,7 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             .create_credential_schema(credential_schema.clone())
             .await
             .map_err(|e| {
-                if matches!(e, DataLayerError::AlreadyExists) {
+                if matches!(e, DataLayerError::AlreadyExists(_)) {
                     Error::AlreadyExists
                 } else {
                     e.error_while("creating credential schema").into()

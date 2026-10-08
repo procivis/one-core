@@ -24,7 +24,7 @@ impl TryFrom<Interaction> for interaction::ActiveModel {
             ecosystem_data: Set(value
                 .ecosystem_data
                 .into_stored()
-                .map_err(|_| DataLayerError::MappingError)?),
+                .map_err(|e| DataLayerError::MappingError(e.into()))?),
         })
     }
 }
@@ -40,7 +40,7 @@ impl TryFrom<UpdateInteractionRequest> for interaction::ActiveModel {
                 .ecosystem_data
                 .map(|data| data.into_stored())
                 .transpose()
-                .map_err(|_| DataLayerError::MappingError)?
+                .map_err(|e| DataLayerError::MappingError(e.into()))?
                 .map(Set)
                 .unwrap_or_default(),
             ..Default::default()

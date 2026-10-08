@@ -72,7 +72,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                         Ok(id) => {
                             collection_ids.push(id);
                         }
-                        Err(DataLayerError::AlreadyExists) => {
+                        Err(DataLayerError::AlreadyExists(_)) => {
                             tracing::info!("Skipping trust collection with name `{}`: already exists", collection.name);
                             continue;
                         }

@@ -281,7 +281,7 @@ impl OrganisationService {
                 tracing::info!("Created organisation {}", uuid);
                 Ok(uuid)
             }
-            Err(DataLayerError::AlreadyExists) => Err(OrganisationServiceError::AlreadyExists),
+            Err(DataLayerError::AlreadyExists(_)) => Err(OrganisationServiceError::AlreadyExists),
             Err(err) => Err(err.error_while("creating organisation").into()),
         }
     }
@@ -430,10 +430,10 @@ impl OrganisationService {
         let mut updated = true;
         match result {
             Ok(_) => tracing::info!(message = success_log),
-            Err(DataLayerError::AlreadyExists) => {
+            Err(DataLayerError::AlreadyExists(_)) => {
                 return Err(OrganisationServiceError::AlreadyExists);
             }
-            Err(DataLayerError::RecordNotUpdated) => {
+            Err(DataLayerError::RecordNotUpdated(_)) => {
                 // Organisation does not exist, create a new one instead.
                 self.organisation_repository
                     .create_organisation(upsert_request_to_fresh_model(

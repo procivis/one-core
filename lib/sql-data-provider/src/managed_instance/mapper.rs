@@ -41,7 +41,7 @@ pub(super) fn managed_instance_from_model(
             .authentication_key_jwk
             .map(|jwk| serde_json::from_str(&jwk))
             .transpose()
-            .map_err(|_| DataLayerError::MappingError)?,
+            .map_err(|e| DataLayerError::MappingError(e.into()))?,
         last_issuance: value.last_issuance,
         name: value.name,
         organisation: Related::new(value.organisation_id, organisation_repository.clone()),
@@ -78,7 +78,7 @@ impl TryFrom<ManagedInstance> for managed_instance::ActiveModel {
             .as_ref()
             .map(serde_json::to_string)
             .transpose()
-            .map_err(|_| DataLayerError::MappingError)?;
+            .map_err(|e| DataLayerError::MappingError(e.into()))?;
         Ok(Self {
             id: Set(wallet_unit.id),
             created_date: Set(wallet_unit.created_date),

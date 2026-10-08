@@ -33,7 +33,7 @@ pub(crate) fn trust_collection_from_model(
             .remote_trust_collection_url
             .map(|url| Url::parse(&url))
             .transpose()
-            .map_err(|_| DataLayerError::MappingError)?,
+            .map_err(|e| DataLayerError::MappingError(e.into()))?,
         organisation: Related::new(value.organisation_id, organisation_repository.clone()),
     })
 }

@@ -31,7 +31,7 @@ impl CertificateProvider {
                 .split(",")
                 .map(CertificateRole::from_str)
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|_| DataLayerError::MappingError)?
+                .map_err(|e| DataLayerError::MappingError(e.into()))?
         } else {
             vec![]
         };

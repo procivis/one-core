@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use mockall::PredicateBooleanExt;
 use mockall::predicate::*;
 use serde_json::json;
@@ -262,7 +263,7 @@ async fn test_get_proof_schema_list_failure() {
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
-        .returning(|_| Err(anyhow::anyhow!("test").into()));
+        .returning(|_| Err(anyhow!("test").into()));
 
     let service = setup_service(Repositories {
         proof_schema_repository,
@@ -360,7 +361,11 @@ async fn test_delete_proof_schema_failure() {
     proof_schema_repository
         .expect_delete_proof_schema()
         .times(1)
-        .returning(|_, _| Err(DataLayerError::RecordNotUpdated));
+        .returning(|_, _| {
+            Err(DataLayerError::RecordNotUpdated(anyhow!(
+                "test repository error"
+            )))
+        });
 
     let service = setup_service(Repositories {
         proof_schema_repository,

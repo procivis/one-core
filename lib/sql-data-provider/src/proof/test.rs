@@ -293,6 +293,37 @@ fn get_certificate_repository_mock() -> Arc<dyn CertificateRepository> {
 }
 
 #[tokio::test]
+async fn test_create_duplicate_proof_retains_database_error() {
+    use std::error::Error;
+
+    let TestSetupWithProof {
+        repository,
+        proof_id,
+        ..
+    } = setup_with_proof(
+        get_credential_repository_mock(),
+        get_proof_schema_repository_mock(),
+        get_claim_repository_mock(),
+        get_identifier_repository_mock(),
+        get_interaction_repository_mock(),
+        get_key_repository_mock(),
+        get_certificate_repository_mock(),
+    )
+    .await;
+    let proof = repository.get_proof(&proof_id, None).await.unwrap();
+
+    let error = repository.create_proof(proof).await.unwrap_err();
+
+    assert!(matches!(error, DataLayerError::AlreadyExists(_)));
+    assert!(
+        error
+            .to_string()
+            .contains("UNIQUE constraint failed: proof.id")
+    );
+    assert!(error.source().unwrap().is::<sea_orm::DbErr>());
+}
+
+#[tokio::test]
 async fn test_create_proof_success() {
     let TestSetup {
         repository,

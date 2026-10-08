@@ -167,9 +167,11 @@ async fn test_create_trust_collection_already_exists() {
         });
 
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
-    trust_collection_repository
-        .expect_create()
-        .returning(|_| Err(DataLayerError::AlreadyExists));
+    trust_collection_repository.expect_create().returning(|_| {
+        Err(DataLayerError::AlreadyExists(anyhow::anyhow!(
+            "test repository error"
+        )))
+    });
 
     let mut ecosystem_provider = MockEcosystemDirectory::new();
     ecosystem_provider.expect_get().return_once(|_| {

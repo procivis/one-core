@@ -277,7 +277,7 @@ async fn test_create_credential_schema_already_exists() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository.create_credential_schema(credential_schema).await;
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
 }
 
 #[tokio::test]
@@ -533,7 +533,7 @@ async fn test_delete_credential_schema_not_found() {
             embedded_disclosure_policy: None,
         })
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
 }
 
 #[tokio::test]

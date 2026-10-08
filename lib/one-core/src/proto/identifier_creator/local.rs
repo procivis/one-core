@@ -170,7 +170,7 @@ impl IdentifierCreatorProto {
                 .create(certificate)
                 .await
                 .map_err(|err| match err {
-                    DataLayerError::AlreadyExists => Error::CertificateAlreadyExists,
+                    DataLayerError::AlreadyExists(_) => Error::CertificateAlreadyExists,
                     e => e.error_while("creating certificate").into(),
                 })?;
         }
@@ -230,7 +230,7 @@ impl IdentifierCreatorProto {
                 .create(certificate)
                 .await
                 .map_err(|err| match err {
-                    DataLayerError::AlreadyExists => Error::CertificateAlreadyExists,
+                    DataLayerError::AlreadyExists(_) => Error::CertificateAlreadyExists,
                     e => e.error_while("creating certificate").into(),
                 })?;
         }
@@ -310,7 +310,7 @@ impl IdentifierCreatorProto {
             .create_did(did.to_owned())
             .await
             .map_err(|err| match err {
-                DataLayerError::AlreadyExists => Error::DidValueAlreadyExists(did_value),
+                DataLayerError::AlreadyExists(_) => Error::DidValueAlreadyExists(did_value),
                 err => err.error_while("creating did").into(),
             })?;
 
@@ -808,7 +808,7 @@ fn non_deleted(certificates: Vec<Certificate>) -> Vec<Certificate> {
 
 fn map_already_exists_error(error: DataLayerError) -> Error {
     match error {
-        DataLayerError::AlreadyExists => Error::IdentifierAlreadyExists,
+        DataLayerError::AlreadyExists(_) => Error::IdentifierAlreadyExists,
         e => e.error_while("creating identifier").into(),
     }
 }

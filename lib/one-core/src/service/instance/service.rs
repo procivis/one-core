@@ -1070,7 +1070,7 @@ impl InstanceService {
             .create_key(key.clone())
             .await
             .map_err(|err| match err {
-                DataLayerError::AlreadyExists => HolderInstanceError::KeyAlreadyExists,
+                DataLayerError::AlreadyExists(_) => HolderInstanceError::KeyAlreadyExists,
                 err => err.error_while("creating key").into(),
             })?;
         Ok(())

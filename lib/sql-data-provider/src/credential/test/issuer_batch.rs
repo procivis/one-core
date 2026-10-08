@@ -285,12 +285,12 @@ async fn issuer_batch_rows_require_relations(
     row.update(&setup.db).await.unwrap();
     assert!(matches!(
         repository.get_credential(&setup.credential_id).await,
-        Err(DataLayerError::MappingError)
+        Err(DataLayerError::MappingError(_))
     ));
     assert!(matches!(
         repository
             .get_credential_list(CredentialListQuery::default())
             .await,
-        Err(DataLayerError::MappingError)
+        Err(DataLayerError::MappingError(_))
     ));
 }

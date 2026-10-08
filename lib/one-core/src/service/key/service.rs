@@ -90,7 +90,7 @@ impl KeyService {
             .create_key(key_entity.to_owned())
             .await
             .map_err(|err| match err {
-                DataLayerError::AlreadyExists => KeyServiceError::KeyAlreadyExists,
+                DataLayerError::AlreadyExists(_) => KeyServiceError::KeyAlreadyExists,
                 err => err.error_while("creating key").into(),
             })?;
 

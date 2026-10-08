@@ -263,7 +263,10 @@ async fn test_create_credential_entry_fail_without_index() {
         )
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(DataLayerError::IncorrectParameters(_))
+    ));
 }
 
 #[tokio::test]
@@ -315,7 +318,10 @@ async fn test_create_certificate_entry_fail_with_both_serial_and_index() {
         )
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(DataLayerError::IncorrectParameters(_))
+    ));
 }
 
 #[tokio::test]

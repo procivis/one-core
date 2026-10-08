@@ -366,7 +366,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                         .create(identifier)
                         .await
                         .map_err(|err| match err {
-                            DataLayerError::AlreadyExists => Error::IdentifierAlreadyExists,
+                            DataLayerError::AlreadyExists(_) => Error::IdentifierAlreadyExists,
                             e => e.error_while("creating identifier").into(),
                         })?;
 
@@ -375,7 +375,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                             .create(certificate)
                             .await
                             .map_err(|err| match err {
-                                DataLayerError::AlreadyExists => Error::CertificateAlreadyExists,
+                                DataLayerError::AlreadyExists(_) => Error::CertificateAlreadyExists,
                                 e => e.error_while("creating certificate").into(),
                             })?;
                     }

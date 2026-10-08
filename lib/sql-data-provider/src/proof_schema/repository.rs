@@ -32,7 +32,9 @@ impl ProofSchemaRepository for ProofSchemaProvider {
 
         let proof_input_schemas = request.input_schemas.as_ref().await?;
         if proof_input_schemas.is_empty() {
-            return Err(DataLayerError::IncorrectParameters);
+            return Err(DataLayerError::IncorrectParameters(anyhow::anyhow!(
+                "Proof schema must contain at least one input schema"
+            )));
         }
 
         let now = one_core::clock::now_utc();

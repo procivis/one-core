@@ -491,7 +491,7 @@ impl OID4VCIFinal1_0Service {
             .mark_nonces_as_used(&interaction.id, used_nonce_ids)
             .await
             .map_err(|e| match e {
-                DataLayerError::AlreadyExists => {
+                DataLayerError::AlreadyExists(_) => {
                     OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
                 }
                 e => e.error_while("marking nonce as used").into(),
@@ -1734,9 +1734,11 @@ impl OID4VCIFinal1_0Service {
             ..
         } = parent_credential
         else {
-            return Err(DataLayerError::MappingError
-                .error_while("preparing issuer batch item")
-                .into());
+            return Err(DataLayerError::MappingError(anyhow::anyhow!(
+                "Expected an issuer batch parent credential"
+            ))
+            .error_while("preparing issuer batch item")
+            .into());
         };
         common.id = Uuid::new_v4().into();
         common.created_date = now;
@@ -2045,7 +2047,7 @@ impl OID4VCIFinal1_0Service {
             .await
         {
             return Err(match err {
-                DataLayerError::AlreadyExists => WalletAttestationError::InvalidChallenge {
+                DataLayerError::AlreadyExists(_) => WalletAttestationError::InvalidChallenge {
                     fresh_challenge: get_fresh_challenge().await?,
                 }
                 .into(),

@@ -3162,7 +3162,11 @@ async fn test_create_credential_nonce_reused() {
             });
         interaction_repository
             .expect_mark_nonces_as_used()
-            .return_once(|_, _| Err(DataLayerError::AlreadyExists));
+            .return_once(|_, _| {
+                Err(DataLayerError::AlreadyExists(anyhow::anyhow!(
+                    "test repository error"
+                )))
+            });
     }
 
     let key_algorithm = mock_key_algorithm();

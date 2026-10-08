@@ -151,7 +151,8 @@ impl AsyncVecLoader<ProofInputSchema> for ProofInputSchemasLoader {
                 .split(',')
                 .map(Into::into)
                 .collect::<Vec<_>>();
-            validate_proof_input_formats(&formats).map_err(|_| DataLayerError::MappingError)?;
+            validate_proof_input_formats(&formats)
+                .map_err(|e| DataLayerError::MappingError(e.into()))?;
             inputs.push(ProofInputSchema {
                 formats,
                 claim_schemas: RelatedVec::new(ProofInputClaimSchemasLoader {

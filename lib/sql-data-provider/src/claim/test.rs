@@ -609,7 +609,7 @@ async fn conflicting_claim_insertion_preserves_existing_associations() {
         .create_claim_list(credential_ids[1], vec![conflicting])
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
     for credential_id in credential_ids {
         let claims = repositories
             .get_claim_repository()

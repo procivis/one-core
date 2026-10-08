@@ -1,6 +1,7 @@
 use std::ops::Add;
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use assert2::let_assert;
 use mockall::Sequence;
 use shared_types::IdentifierId;
@@ -677,10 +678,11 @@ async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
                 })
             }
         });
-    key_repository
-        .expect_create_key()
-        .once()
-        .return_once(|_| Err(DataLayerError::AlreadyExists));
+    key_repository.expect_create_key().once().return_once(|_| {
+        Err(DataLayerError::AlreadyExists(anyhow!(
+            "test repository error"
+        )))
+    });
 
     let identifier = dummy_identifier();
     let identifier_id = identifier.id;
@@ -891,10 +893,11 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
         });
 
     let mut did_repository = MockDidRepository::new();
-    did_repository
-        .expect_create_did()
-        .once()
-        .returning(|_| Err(DataLayerError::AlreadyExists));
+    did_repository.expect_create_did().once().returning(|_| {
+        Err(DataLayerError::AlreadyExists(anyhow!(
+            "test repository error"
+        )))
+    });
 
     let creator = setup_creator(Mocks {
         key_algorithm_provider,

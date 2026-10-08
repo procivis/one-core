@@ -516,7 +516,7 @@ async fn test_create_credential_already_exists() {
         })
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
     let history = crate::entity::history::Entity::find()
         .all(&db)
         .await

@@ -39,20 +39,20 @@ pub enum EntityKind {
 
 #[derive(Debug, Error)]
 pub enum DataLayerError {
-    #[error("Already exists")]
-    AlreadyExists,
+    #[error("Already exists: {0:#}")]
+    AlreadyExists(#[source] anyhow::Error),
 
     #[error("{kind:?} `{id}` not found")]
     EntityNotFound { kind: EntityKind, id: Uuid },
 
-    #[error("Wrong parameters")]
-    IncorrectParameters,
+    #[error("Wrong parameters: {0:#}")]
+    IncorrectParameters(#[source] anyhow::Error),
 
-    #[error("Record not updated")]
-    RecordNotUpdated,
+    #[error("Record not updated: {0:#}")]
+    RecordNotUpdated(#[source] anyhow::Error),
 
-    #[error("Response could not be mapped")]
-    MappingError,
+    #[error("Response could not be mapped: {0:#}")]
+    MappingError(#[source] anyhow::Error),
 
     #[error("List response is missing counts")]
     MissingCount,
@@ -86,10 +86,10 @@ impl ErrorCodeMixin for DataLayerError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::Db(_) => ErrorCode::BR_0054,
-            Self::AlreadyExists => ErrorCode::BR_0357,
-            Self::IncorrectParameters
-            | Self::RecordNotUpdated
-            | Self::MappingError
+            Self::AlreadyExists(_) => ErrorCode::BR_0357,
+            Self::IncorrectParameters(_)
+            | Self::RecordNotUpdated(_)
+            | Self::MappingError(_)
             | Self::MissingCount
             | Self::UUIDError(_)
             | Self::IncompleteClaimsList { .. }

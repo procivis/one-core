@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use anyhow::anyhow;
 use futures::{FutureExt, TryFutureExt};
 use one_crypto::encryption::{decrypt_file, encrypt_file};
 use secrecy::SecretString;
@@ -50,21 +51,19 @@ impl BackupService {
             .await
             .error_while("deleting unexportable")?;
 
-        let organisation = self
-            .organisation_repository
-            .get_organisation_list(OrganisationListQuery {
-                include_count: false,
-                ..Default::default()
-            })
-            .await
-            .and_then(|organisations| {
-                organisations
-                    .values
-                    .into_iter()
-                    .next()
-                    .ok_or(DataLayerError::MappingError)
-            })
-            .error_while("getting organisations")?;
+        let organisation =
+            self.organisation_repository
+                .get_organisation_list(OrganisationListQuery {
+                    include_count: false,
+                    ..Default::default()
+                })
+                .await
+                .and_then(|organisations| {
+                    organisations.values.into_iter().next().ok_or_else(|| {
+                        DataLayerError::MappingError(anyhow!("No organisation found"))
+                    })
+                })
+                .error_while("getting organisations")?;
 
         let history_event = create_backup_history_event(
             organisation.id,
@@ -154,11 +153,9 @@ impl BackupService {
             })
             .map(|result| {
                 result.and_then(|organisations| {
-                    organisations
-                        .values
-                        .into_iter()
-                        .next()
-                        .ok_or(DataLayerError::MappingError)
+                    organisations.values.into_iter().next().ok_or_else(|| {
+                        DataLayerError::MappingError(anyhow!("No organisation found"))
+                    })
                 })
             })
             .and_then(|organisation| {

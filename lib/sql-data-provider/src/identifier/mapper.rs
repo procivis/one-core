@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use one_core::model::identifier::{
     Identifier, IdentifierData, IdentifierFilterValue, IdentifierType, SortableIdentifierColumn,
 };
@@ -72,11 +73,15 @@ pub(crate) fn identifier_data_from_ids(
 ) -> Result<IdentifierData, DataLayerError> {
     let data = match r#type {
         IdentifierType::Did => IdentifierData::Did(Related::new(
-            did_id.ok_or(DataLayerError::MappingError)?,
+            did_id.ok_or_else(|| {
+                DataLayerError::MappingError(anyhow!("DID identifier is missing did_id"))
+            })?,
             did_repository.to_owned(),
         )),
         IdentifierType::Key => IdentifierData::Key(Related::new(
-            key_id.ok_or(DataLayerError::MappingError)?,
+            key_id.ok_or_else(|| {
+                DataLayerError::MappingError(anyhow!("Key identifier is missing key_id"))
+            })?,
             key_repository.to_owned(),
         )),
         IdentifierType::Certificate => {

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use anyhow::anyhow;
 use one_core::model::common::GetListResponse;
 use one_core::model::history::{
     GetHistoryList, History, IssuerSchemaStats, IssuerStats, IssuerTimelines,
@@ -63,7 +64,7 @@ impl TryFrom<History> for history::ActiveModel {
             .as_ref()
             .map(serde_json::to_string)
             .transpose()
-            .map_err(|_| Self::Error::MappingError)?;
+            .map_err(|e| Self::Error::MappingError(e.into()))?;
 
         Ok(Self {
             id: Set(value.id),
@@ -191,7 +192,11 @@ pub(super) fn map_to_stats(
                 result.verifier.rejected.push(point)
             }
             (HistoryEntityType::Proof, HistoryAction::Errored) => result.verifier.error.push(point),
-            _ => return Err(DataLayerError::MappingError),
+            _ => {
+                return Err(DataLayerError::MappingError(anyhow!(
+                    "Unsupported history entity type and action for timeline"
+                )));
+            }
         }
     }
     // make sure the end is covered in all time series
@@ -269,17 +274,17 @@ fn next_timestamp(
         TimeResolution::Month => {
             let new = current
                 .replace_month(current.month().next())
-                .map_err(|_| DataLayerError::IncorrectParameters)?;
+                .map_err(|e| DataLayerError::IncorrectParameters(e.into()))?;
             if new.month() == Month::January {
                 new.replace_year(new.year() + 1)
-                    .map_err(|_| DataLayerError::IncorrectParameters)?
+                    .map_err(|e| DataLayerError::IncorrectParameters(e.into()))?
             } else {
                 new
             }
         }
         TimeResolution::Year => current
             .replace_year(current.year() + 1)
-            .map_err(|_| DataLayerError::IncorrectParameters)?,
+            .map_err(|e| DataLayerError::IncorrectParameters(e.into()))?,
     };
     Ok(new)
 }
@@ -294,13 +299,13 @@ pub(super) fn floor(
         TimeResolution::Month => ts
             .truncate_to_day()
             .replace_day(1)
-            .map_err(|_| DataLayerError::IncorrectParameters),
+            .map_err(|e| DataLayerError::IncorrectParameters(e.into())),
         TimeResolution::Year => ts
             .truncate_to_day()
             .replace_day(1)
-            .map_err(|_| DataLayerError::IncorrectParameters)?
+            .map_err(|e| DataLayerError::IncorrectParameters(e.into()))?
             .replace_month(Month::January)
-            .map_err(|_| DataLayerError::IncorrectParameters),
+            .map_err(|e| DataLayerError::IncorrectParameters(e.into())),
     }
 }
 
@@ -335,7 +340,9 @@ pub(super) fn to_ops_org_count(
         return Ok(result);
     };
     if current_counts.len() != prev_counts.len() {
-        return Err(DataLayerError::MappingError);
+        return Err(DataLayerError::MappingError(anyhow!(
+            "Current and previous organisation operation counts differ in length"
+        )));
     }
     let result = current_counts
         .iter()

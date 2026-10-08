@@ -208,7 +208,9 @@ async fn test_sync_subscriptions_continues_when_a_subscription_already_exists() 
                 .unwrap()
                 .push(subscription.reference.clone());
             if subscription.reference == "https://first.list" {
-                return Err(DataLayerError::AlreadyExists);
+                return Err(DataLayerError::AlreadyExists(anyhow::anyhow!(
+                    "test repository error"
+                )));
             }
             Ok(Uuid::new_v4().into())
         });

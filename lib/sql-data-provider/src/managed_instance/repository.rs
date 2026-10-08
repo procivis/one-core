@@ -90,7 +90,7 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
             .authentication_key_jwk
             .map(|pk| serde_json::to_string(&pk))
             .transpose()
-            .map_err(|_| DataLayerError::MappingError)?;
+            .map_err(|e| DataLayerError::MappingError(e.into()))?;
         let update_model = managed_instance::ActiveModel {
             id: Unchanged(*id),
             last_modified: Set(one_core::clock::now_utc()),

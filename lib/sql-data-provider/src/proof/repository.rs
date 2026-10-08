@@ -33,7 +33,9 @@ impl ProofRepository for ProofProvider {
             .insert(&self.db)
             .await
             .map_err(|e| match e.sql_err() {
-                Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
+                Some(SqlErr::UniqueConstraintViolation(_)) => {
+                    DataLayerError::AlreadyExists(e.into())
+                }
                 Some(_) | None => DataLayerError::Db(e.into()),
             })?;
 

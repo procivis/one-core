@@ -63,7 +63,7 @@ impl TrustCollectionService {
             .create(trust_collection)
             .await
             .map_err(|e| {
-                if matches!(e, DataLayerError::AlreadyExists) {
+                if matches!(e, DataLayerError::AlreadyExists(_)) {
                     TrustCollectionServiceError::TrustCollectionAlreadyExists
                 } else {
                     e.error_while("creating trust collection").into()
@@ -299,7 +299,7 @@ impl TrustCollectionService {
             .create(trust_list_subscription)
             .await
             .map_err(|e| {
-                if matches!(e, DataLayerError::AlreadyExists) {
+                if matches!(e, DataLayerError::AlreadyExists(_)) {
                     TrustCollectionServiceError::TrustListSubscriptionAlreadyExists
                 } else {
                     e.error_while("creating trust list subscription").into()

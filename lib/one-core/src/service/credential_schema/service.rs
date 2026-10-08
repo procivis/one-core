@@ -385,7 +385,7 @@ impl CredentialSchemaService {
             .delete_credential_schema(&credential_schema)
             .await
             .map_err(|error| match error {
-                DataLayerError::RecordNotUpdated => {
+                DataLayerError::RecordNotUpdated(_) => {
                     CredentialSchemaServiceError::NotFound(*credential_schema_id)
                 }
                 error => error.error_while("deleting credential schema").into(),
