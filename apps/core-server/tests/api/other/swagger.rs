@@ -93,6 +93,12 @@ async fn test_openapi_schema_regressions() {
         schema["properties"]["values"]["items"]["$ref"].as_str(),
         "credential schema list values should reference the list item schema",
     );
+
+    assert_eq!(
+        Some("string"),
+        schemas["JwkUse"]["type"].as_str(),
+        "JwkUse should be a plain string, its unknown variant is untagged",
+    );
 }
 
 fn find_property<'a>(

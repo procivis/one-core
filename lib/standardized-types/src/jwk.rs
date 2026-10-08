@@ -209,7 +209,6 @@ pub struct PrivateJwkEc {
 
 /// see: <https://datatracker.ietf.org/doc/html/rfc7517#section-4.2>
 #[derive(Clone, Debug, Display, Eq, PartialEq, Deserialize, Serialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum JwkUse {
     #[serde(rename = "sig")]
     Signature,
@@ -217,6 +216,30 @@ pub enum JwkUse {
     Encryption,
     #[serde(untagged)]
     Unknown(String),
+}
+
+#[cfg(feature = "utoipa")]
+mod utoipa_schema {
+    use utoipa::openapi::{ObjectBuilder, RefOr, Schema, Type};
+    use utoipa::{PartialSchema, ToSchema};
+
+    use super::JwkUse;
+
+    impl PartialSchema for JwkUse {
+        fn schema() -> RefOr<Schema> {
+            RefOr::T(Schema::Object(
+                ObjectBuilder::new()
+                    .schema_type(Type::String)
+                    .description(Some(
+                        "see: <https://datatracker.ietf.org/doc/html/rfc7517#section-4.2>",
+                    ))
+                    .examples(["sig", "enc"])
+                    .build(),
+            ))
+        }
+    }
+
+    impl ToSchema for JwkUse {}
 }
 
 impl From<String> for JwkUse {
