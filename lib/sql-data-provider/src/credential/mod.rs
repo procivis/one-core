@@ -15,6 +15,7 @@ mod claim_deduplication;
 mod creation;
 pub mod mapper;
 pub mod repository;
+mod update;
 
 #[derive(Clone)]
 pub(crate) struct CredentialProvider {

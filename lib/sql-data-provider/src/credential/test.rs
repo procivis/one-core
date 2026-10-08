@@ -70,6 +70,9 @@ mod issuer_single;
 #[path = "test/verifier_single.rs"]
 mod verifier_single;
 
+#[path = "test/update.rs"]
+mod update;
+
 #[rstest]
 #[case::issuer_single(CredentialRole::Issuer, CredentialType::Single)]
 #[case::issuer_parent(CredentialRole::Issuer, CredentialType::BatchParent)]

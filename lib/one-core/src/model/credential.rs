@@ -444,6 +444,8 @@ pub type GetCredentialList<Count = Option<u64>> = GetListResponse<Credential, Co
 pub type CredentialListQuery =
     ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
 
+/// Partial repository update. Only fields represented by the stored credential variant may
+/// be patched.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateCredentialRequest {

@@ -15,7 +15,7 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Alias, Expr, Func, IntoCondition, SimpleExpr};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, FromQueryResult, JoinType, QueryFilter,
-    QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select, Set, Unchanged,
+    QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select, Set, TryIntoModel, Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
 
@@ -24,6 +24,7 @@ use super::creation::{insert_credentials_with_claims, prepare_credentials};
 use super::mapper::{
     CredentialRepositories, CredentialSchemaFormatLoader, credential_from_model, from_clearable,
 };
+use super::update::merge_patch;
 use crate::common::calculate_pages_count;
 use crate::credential_schema::mapper::CredentialSchemasLoader;
 use crate::entity::{claim, claim_schema, credential, credential_claim};
@@ -466,10 +467,39 @@ impl CredentialRepository for CredentialProvider {
             ..Default::default()
         };
 
-        update_model
-            .update(&self.db)
-            .await
-            .map_err(to_update_data_layer_error)?;
+        self.db
+            .tx(async {
+                // Validate and write against the same row, including inside a caller's transaction.
+                let stored = credential::Entity::find_by_id(credential_id)
+                    .lock_exclusive()
+                    .one(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?
+                    .ok_or_else(|| {
+                        DataLayerError::RecordNotUpdated(anyhow::anyhow!(
+                            "Credential {credential_id} not found"
+                        ))
+                    })?;
+                let merged = merge_patch(stored, update_model)?;
+                self.credential_model_to_repository_model(
+                    merged
+                        .clone()
+                        .try_into_model()
+                        .map_err(to_data_layer_error)?,
+                )
+                .map_err(|error| match error {
+                    DataLayerError::MappingError(error) => {
+                        DataLayerError::IncorrectParameters(error)
+                    }
+                    error => error,
+                })?;
+                merged
+                    .update(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+                Ok::<_, DataLayerError>(())
+            })
+            .await??;
 
         Ok(())
     }
