@@ -66,7 +66,10 @@ fn convert_internal_structure_to_dto() {
           "trustListSubscriber": {},
           "ecosystem": {},
           "globalSettings": {
-            "defaultLanguage": ""
+            "defaultLanguage": "",
+            "credentialSchema": {
+              "maxExpirationSeconds": 315360000
+            }
           }
         }),
         output
@@ -131,7 +134,10 @@ fn do_not_serialize_private_parameters() {
           "trustListSubscriber": {},
           "ecosystem": {},
           "globalSettings": {
-            "defaultLanguage": ""
+            "defaultLanguage": "",
+            "credentialSchema": {
+              "maxExpirationSeconds": 315360000
+            }
           }
         }),
         output

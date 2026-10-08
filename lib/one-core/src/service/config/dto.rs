@@ -36,4 +36,11 @@ pub struct ConfigDTO {
 #[serde(rename_all = "camelCase")]
 pub struct GlobalSettingsDTO {
     pub default_language: String,
+    pub credential_schema: CredentialSchemaGlobalSettingsDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaGlobalSettingsDTO {
+    pub max_expiration_seconds: i64,
 }

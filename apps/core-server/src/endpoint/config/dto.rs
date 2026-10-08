@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use one_core::service::config::dto::{ConfigDTO, GlobalSettingsDTO};
+use one_core::service::config::dto::{
+    ConfigDTO, CredentialSchemaGlobalSettingsDTO, GlobalSettingsDTO,
+};
+use one_dto_mapper::From;
 use serde::Serialize;
 use serde_json::Value;
 use utoipa::ToSchema;
@@ -99,20 +102,23 @@ pub(crate) struct ConfigRestDTO {
     pub global_settings: GlobalSettingsRestDTO,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(GlobalSettingsDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct GlobalSettingsRestDTO {
     /// Default language tag for the deployment, used where no lanugage
     /// is otherwise specified, for example, in credential schema creation.
     pub default_language: String,
+    /// Settings specific for credential schemas
+    pub credential_schema: CredentialSchemaGlobalSettingsRestDTO,
 }
 
-impl From<GlobalSettingsDTO> for GlobalSettingsRestDTO {
-    fn from(global_settings: GlobalSettingsDTO) -> Self {
-        GlobalSettingsRestDTO {
-            default_language: global_settings.default_language,
-        }
-    }
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialSchemaGlobalSettingsDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialSchemaGlobalSettingsRestDTO {
+    /// maximum allowed expiration when creating credential schema
+    pub max_expiration_seconds: i64,
 }
 
 impl From<ConfigDTO> for ConfigRestDTO {
