@@ -402,16 +402,8 @@ build_image_acr:
     matrix: !reference [.one_core, clients_matrix]
 
 sdk:ios:bitrise:
-  needs:
-    - job: tests:sqlite
-      artifacts: false
-    - job: tests:mariadb
-      artifacts: false
-    - job: tests:postgres
-      artifacts: false
-    - job: tests:api
-      artifacts: false
   stage: sdk_build
+  needs: []
   extends:
     - .bitrise:default
   when: manual
@@ -423,23 +415,15 @@ sdk:ios:bitrise:
   artifacts:
     paths:
       - ${ARTIFACTS_DIR}
-    expire_in: 10 days
+    expire_in: 5 days
 
 sdk:android:build:
   services:
     - docker:dind
   stage: sdk_build
+  needs: []
   tags:
     - rust
-  needs:
-    - job: tests:sqlite
-      artifacts: false
-    - job: tests:mariadb
-      artifacts: false
-    - job: tests:postgres
-      artifacts: false
-    - job: tests:api
-      artifacts: false
   when: manual
   script:
     - export HOSTNAME=$(docker ps -ql)
@@ -456,17 +440,9 @@ sdk:android:build:
 
 sdk:typescript:interface:
   stage: sdk_build
+  needs: []
   tags:
     - rust
-  needs:
-    - job: tests:sqlite
-      artifacts: false
-    - job: tests:mariadb
-      artifacts: false
-    - job: tests:postgres
-      artifacts: false
-    - job: tests:api
-      artifacts: false
   when: manual
   script:
     - makers generate_ts
@@ -570,15 +546,7 @@ sdk:react-native:
 
 sdk:generate_binding_files:
   stage: sdk_build
-  needs:
-    - job: tests:sqlite
-      artifacts: false
-    - job: tests:mariadb
-      artifacts: false
-    - job: tests:postgres
-      artifacts: false
-    - job: tests:api
-      artifacts: false
+  needs: []
   when: manual
   script:
     - makers generate_uniffi_interfaces
