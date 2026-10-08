@@ -102,17 +102,13 @@ async fn test_remove_certificate_success() {
     let certificate = context.db.certificates.get(certificate_id).await;
     assert!(certificate.deleted_at.is_some());
 
-    // deleted certificates are still returned (soft delete keeps them referenceable, e.g. by
-    // credentials and certificate history), only `deletedAt` on the DB record changes
+    // Identifier details only include certificates that have not been deleted.
     let get_result = context.api.identifiers.get(&identifier_id).await;
+    assert_eq!(get_result.status(), 200);
     let resp = get_result.json_value().await;
     let certificates: Vec<_> = resp["certificates"].as_array().unwrap().to_owned();
-    assert_eq!(certificates.len(), 2);
-    assert!(
-        certificates
-            .iter()
-            .any(|c| c["id"].as_str().unwrap() == certificate_id.to_string())
-    );
+    assert_eq!(certificates.len(), 1);
+    assert_eq!(certificates[0]["id"], certificate_ids[0].to_string());
 
     let cert_history = context
         .db

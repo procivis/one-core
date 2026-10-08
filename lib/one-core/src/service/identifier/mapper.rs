@@ -45,7 +45,12 @@ async fn map_certificates(
     certificates: &RelatedVec<Certificate>,
 ) -> Result<Vec<CertificateResponseDTO>, IdentifierServiceError> {
     let mut certs = vec![];
-    for certificate in certificates.as_ref().await?.iter() {
+    for certificate in certificates
+        .as_ref()
+        .await?
+        .iter()
+        .filter(|certificate| certificate.deleted_at.is_none())
+    {
         certs.push(
             certificate_to_response_dto(certificate.to_owned())
                 .await
