@@ -18,6 +18,9 @@ fn batch_parent(single: Credential) -> (Credential, IssuerCredentialData) {
         panic!("expected issuer single")
     };
     common.id = Uuid::new_v4().into();
+    common.state = CredentialStateEnum::Suspended {
+        suspend_end_date: Some(get_dummy_date() + Duration::days(1)),
+    };
     (
         Credential::IssuerBatchParent {
             common,
@@ -26,7 +29,6 @@ fn batch_parent(single: Credential) -> (Credential, IssuerCredentialData) {
             webhook_url: Some("https://example.com/webhook".into()),
             subscriber_information: Some("shared metadata".into()),
             claims: Default::default(),
-            suspend_end_date: Some(get_dummy_date() + Duration::days(1)),
         },
         credential,
     )
@@ -82,11 +84,13 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
         panic!("expected an issuer batch parent")
     };
     *claims = vec![claim.clone()].into();
-    data.suspend_end_date = Some(get_dummy_date() + Duration::days(2));
     data.holder_identifier = Some(setup.identifier.clone().into());
     data.wallet_key_attestation_blob_id = data.credential_blob_id;
     *wallet_instance_attestation_blob_id = data.credential_blob_id;
     let mut item = batch_item(&parent, data.clone());
+    item.common_mut().state = CredentialStateEnum::Suspended {
+        suspend_end_date: Some(get_dummy_date() + Duration::days(2)),
+    };
     let Credential::IssuerBatchItem {
         parent: relation, ..
     } = &mut item
@@ -130,7 +134,10 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
                 ..
             } => {
                 assert_eq!(claims.as_ref().await.unwrap()[0].id, claim.id);
-                assert_eq!(actual.suspend_end_date(), parent.suspend_end_date());
+                assert_eq!(
+                    actual.common().state.suspend_end_date(),
+                    parent.common().state.suspend_end_date()
+                );
                 assert_eq!(subscriber_information.as_deref(), Some("shared metadata"));
                 assert_eq!(webhook_url.as_deref(), Some("https://example.com/webhook"));
                 assert_eq!(
@@ -145,7 +152,10 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
             } => {
                 assert_eq!(item_parent.id(), parent.common().id);
                 assert_eq!(credential.format.id(), data.format.id());
-                assert_eq!(actual.suspend_end_date(), data.suspend_end_date);
+                assert_eq!(
+                    actual.common().state.suspend_end_date(),
+                    item.common().state.suspend_end_date()
+                );
                 assert_eq!(credential.credential_blob_id, data.credential_blob_id);
                 assert_eq!(
                     credential.wallet_key_attestation_blob_id,

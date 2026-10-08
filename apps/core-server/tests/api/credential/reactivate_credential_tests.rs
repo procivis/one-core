@@ -20,7 +20,9 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None,
+            },
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),

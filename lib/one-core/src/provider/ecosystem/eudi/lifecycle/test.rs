@@ -262,7 +262,7 @@ async fn test_credential_with_valid_attestations_is_not_revoked() {
             let filter = format!("{:?}", query.filtering);
             [
                 "Roles([Issuer])",
-                "States([Accepted, Suspended])",
+                "States([Accepted, Suspended { suspend_end_date: None }])",
                 "Types([Single, BatchItem])",
                 "Deleted(false)",
                 r#"Ecosystems([EcosystemId("EUDI")])"#,

@@ -368,7 +368,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         consumed_at: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
             created_date: crate::clock::now_utc(),
@@ -828,7 +827,6 @@ pub struct CredentialBuilder {
     pub consumed_at: Option<OffsetDateTime>,
     pub role: CredentialRole,
     pub r#type: CredentialType,
-    pub suspend_end_date: Option<OffsetDateTime>,
     pub issuer_identifier: Option<crate::model::relation::Related<Identifier>>,
     pub issuer_certificate: Option<crate::model::relation::Related<Certificate>>,
     pub holder_identifier: Option<crate::model::relation::Related<Identifier>>,
@@ -896,7 +894,6 @@ impl From<Credential> for CredentialBuilder {
             },
             role: value.role(),
             r#type: value.r#type(),
-            suspend_end_date: value.suspend_end_date(),
             issuer_identifier: issuer_identifier.cloned(),
             issuer_certificate: issuer_certificate.cloned(),
             holder_identifier: holder_identifier.cloned(),
@@ -987,7 +984,6 @@ impl CredentialBuilder {
                 claims: self.claims,
                 webhook_url: self.webhook_url,
                 subscriber_information: self.subscriber_information,
-                suspend_end_date: self.suspend_end_date,
             };
         }
         let format = self.format.unwrap_or_else(|| {
@@ -1063,7 +1059,6 @@ impl CredentialBuilder {
                 holder_identifier: self.holder_identifier,
                 credential_blob_id: self.credential_blob_id,
                 wallet_key_attestation_blob_id: self.wallet_key_attestation_blob_id,
-                suspend_end_date: self.suspend_end_date,
             };
             if self.r#type == CredentialType::BatchItem {
                 Credential::IssuerBatchItem {

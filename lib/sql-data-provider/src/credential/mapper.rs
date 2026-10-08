@@ -341,7 +341,7 @@ pub(super) fn credential_from_model(
         deleted_at: credential.deleted_at,
         protocol: credential.protocol,
         redirect_uri: credential.redirect_uri,
-        state: credential.state.into(),
+        state: credential.state.to_model(credential.suspend_end_date),
         profile: credential.profile,
         schema: Related::new(credential.credential_schema_id, schema),
         interaction: credential
@@ -405,7 +405,6 @@ pub(super) fn credential_from_model(
                 common,
                 issuer,
                 wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
-                suspend_end_date: credential.suspend_end_date,
                 webhook_url: credential.webhook_url,
                 subscriber_information: credential.subscriber_information,
                 claims: credential_claims(credential.id, repositories.claim_repository),
@@ -423,7 +422,6 @@ pub(super) fn credential_from_model(
                 .map(|id| Related::new(id, repositories.identifier_repository.clone())),
             credential_blob_id: credential.credential_blob_id,
             wallet_key_attestation_blob_id: credential.wallet_key_attestation_blob_id,
-            suspend_end_date: credential.suspend_end_date,
         };
         return Ok(match credential.r#type {
             credential::CredentialType::BatchItem => Credential::IssuerBatchItem {
@@ -529,7 +527,7 @@ pub(super) fn request_to_active_model(
             .map(|interaction| interaction.id())),
         role: Set(request.role().into()),
         state: Set(common.state.into()),
-        suspend_end_date: Set(request.suspend_end_date()),
+        suspend_end_date: Set(common.state.suspend_end_date()),
         profile: Set(common.profile.clone()),
         parent_id: Set(None),
         credential_blob_id: Set(None),

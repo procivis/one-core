@@ -332,10 +332,15 @@ async fn test_patch_credential_state_suspended_with_bitstring_status_list_succes
 
     let credential = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: Some(suspend_end_date)
+        },
         credential.common().state.clone()
     );
-    assert_eq!(suspend_end_date, credential.suspend_end_date().unwrap());
+    assert_eq!(
+        suspend_end_date,
+        credential.common().state.suspend_end_date().unwrap()
+    );
     assert_history_count(
         &context,
         &credential.common().id.into(),
@@ -454,7 +459,9 @@ async fn test_patch_credential_state_accepted_with_bitstring_status_list_success
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None,
+            },
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams::default(),
@@ -837,7 +844,9 @@ async fn test_patch_credential_state_expiring_from_suspended_success() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None,
+            },
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
@@ -1077,7 +1086,9 @@ async fn test_patch_credential_state_suspend_from_expiring_success() {
     // THEN
     assert_eq!(resp.status(), 204);
     assert_eq!(
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None
+        },
         context
             .db
             .credentials
@@ -1087,7 +1098,9 @@ async fn test_patch_credential_state_suspend_from_expiring_success() {
             .state
     );
     assert_eq!(
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None
+        },
         context
             .db
             .credentials
@@ -1143,15 +1156,16 @@ async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: Some(
+                    OffsetDateTime::parse("2023-06-09T14:19:57.000Z", &Rfc3339).unwrap(),
+                ),
+            },
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchItem),
                 parent_id: Some(parent.common().id),
-                suspend_end_date: Some(
-                    OffsetDateTime::parse("2023-06-09T14:19:57.000Z", &Rfc3339).unwrap(),
-                ),
                 ..Default::default()
             },
         )
@@ -1201,8 +1215,16 @@ async fn test_patch_credential_state_suspend_batch_parent_with_already_suspended
         suspended_item.common().id,
     ] {
         let credential = context.db.credentials.get(&credential_id).await;
-        assert_eq!(CredentialStateEnum::Suspended, credential.common().state);
-        assert_eq!(Some(new_end_date), credential.suspend_end_date());
+        assert_eq!(
+            CredentialStateEnum::Suspended {
+                suspend_end_date: Some(new_end_date)
+            },
+            credential.common().state
+        );
+        assert_eq!(
+            Some(new_end_date),
+            credential.common().state.suspend_end_date()
+        );
     }
 }
 

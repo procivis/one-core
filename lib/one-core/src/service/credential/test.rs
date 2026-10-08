@@ -185,7 +185,6 @@ async fn generic_credential() -> Credential {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -329,7 +328,6 @@ async fn generic_credential_list_entity() -> Credential {
         consumed_at: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         claims: Default::default(),
         issuer_identifier: Some(
             Identifier {
@@ -742,12 +740,9 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
         crate::service::test_utilities::issuer_credential(generic_credential().await).unwrap();
     let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
-    credential.common_mut().state = CredentialStateEnum::Suspended;
-    credential
-        .issuer_credential_mut()
-        .unwrap()
-        .data
-        .suspend_end_date = Some(suspend_end_date);
+    credential.common_mut().state = CredentialStateEnum::Suspended {
+        suspend_end_date: Some(suspend_end_date),
+    };
 
     {
         let clone = credential.clone();

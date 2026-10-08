@@ -6,7 +6,9 @@ impl From<ChangeCredentialState> for CredentialStateEnum {
         match value {
             ChangeCredentialState::Accepted => CredentialStateEnum::Accepted,
             ChangeCredentialState::Revoked => CredentialStateEnum::Revoked,
-            ChangeCredentialState::Suspended { .. } => CredentialStateEnum::Suspended,
+            ChangeCredentialState::Suspended { suspend_end_date } => {
+                CredentialStateEnum::Suspended { suspend_end_date }
+            }
             ChangeCredentialState::Expiring => CredentialStateEnum::Expiring,
         }
     }

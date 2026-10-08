@@ -1416,7 +1416,9 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
 #[tokio::test]
 async fn batch_item_submission_rejects_item_after_state_change() {
     for state in [
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
         CredentialStateEnum::Revoked,
         CredentialStateEnum::Expired,
     ] {

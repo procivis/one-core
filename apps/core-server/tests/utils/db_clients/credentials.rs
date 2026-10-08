@@ -193,7 +193,6 @@ impl CredentialsDB {
             consumed_at: params.consumed_at,
             role: params.role.unwrap_or(CredentialRole::Issuer),
             r#type: params.r#type.unwrap_or(CredentialType::Single),
-            suspend_end_date: params.suspend_end_date,
             claims: claims.into(),
             issuer_identifier: Some(issuer_identifier.to_owned().into()),
             issuer_certificate: params
@@ -285,50 +284,44 @@ impl CredentialsDB {
             .create_credential(credential.to_owned())
             .await
             .unwrap();
-        let batch_item_template = if let Credential::IssuerBatchParent {
-            common,
-            issuer,
-            suspend_end_date,
-            ..
-        } = &credential
-        {
-            let mut common = common.clone();
-            common.interaction = None;
-            let item_format = match item_format {
-                Some(format) => format,
-                None => credential_schema.formats.as_ref().await.unwrap()[0].clone(),
-            };
-            Credential::IssuerBatchItem {
-                common,
-                issuer: issuer.clone(),
-                parent: Related::new(id, self.repository.clone()),
-                credential: one_core::model::credential::IssuerCredentialData {
-                    format: item_format.into(),
-                    holder_identifier,
-                    suspend_end_date: *suspend_end_date,
-                    credential_blob_id: None,
-                    wallet_key_attestation_blob_id: None,
-                },
-            }
-        } else {
-            let mut common = credential.common().clone();
-            common.interaction = None;
-            let mut data = holder_data.unwrap();
-            data.embedded_disclosure_policy = embedded_disclosure_policy;
-            data.binding = match (holder_identifier, key) {
-                (Some(identifier), Some(key)) => {
-                    Some(one_core::model::credential::HolderBinding { identifier, key })
+        let batch_item_template =
+            if let Credential::IssuerBatchParent { common, issuer, .. } = &credential {
+                let mut common = common.clone();
+                common.interaction = None;
+                let item_format = match item_format {
+                    Some(format) => format,
+                    None => credential_schema.formats.as_ref().await.unwrap()[0].clone(),
+                };
+                Credential::IssuerBatchItem {
+                    common,
+                    issuer: issuer.clone(),
+                    parent: Related::new(id, self.repository.clone()),
+                    credential: one_core::model::credential::IssuerCredentialData {
+                        format: item_format.into(),
+                        holder_identifier,
+                        credential_blob_id: None,
+                        wallet_key_attestation_blob_id: None,
+                    },
                 }
-                (None, None) => None,
-                _ => panic!("holder identifier and key must be supplied together"),
+            } else {
+                let mut common = credential.common().clone();
+                common.interaction = None;
+                let mut data = holder_data.unwrap();
+                data.embedded_disclosure_policy = embedded_disclosure_policy;
+                data.binding = match (holder_identifier, key) {
+                    (Some(identifier), Some(key)) => {
+                        Some(one_core::model::credential::HolderBinding { identifier, key })
+                    }
+                    (None, None) => None,
+                    _ => panic!("holder identifier and key must be supplied together"),
+                };
+                Credential::HolderBatchItem {
+                    common,
+                    parent: Related::new(id, self.repository.clone()),
+                    credential: data,
+                    consumed_at: None,
+                }
             };
-            Credential::HolderBatchItem {
-                common,
-                parent: Related::new(id, self.repository.clone()),
-                credential: data,
-                consumed_at: None,
-            }
-        };
         for _ in 0..num_items {
             let credential_blob_id = if let Some(blob_storage) = blob_storage {
                 Some(

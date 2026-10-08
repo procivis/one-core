@@ -413,13 +413,11 @@ impl CredentialRepository for CredentialProvider {
             Some(redirect_uri) => Set(redirect_uri),
         };
 
-        let suspend_end_date = from_clearable(request.suspend_end_date);
-        let consumed_at = from_clearable(request.consumed_at);
-
-        let state = match request.state {
-            None => NotSet,
-            Some(state) => Set(state.into()),
+        let (state, suspend_end_date) = match request.state {
+            None => (NotSet, NotSet),
+            Some(state) => (Set(state.into()), Set(state.suspend_end_date())),
         };
+        let consumed_at = from_clearable(request.consumed_at);
 
         let issuance_date = match request.issuance_date {
             None => Unchanged(Default::default()),

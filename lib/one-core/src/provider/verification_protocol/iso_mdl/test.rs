@@ -589,7 +589,6 @@ async fn test_get_presentation_definition_v2() {
             profile: None,
         },
         role: CredentialRole::Holder,
-        suspend_end_date: None,
         claims: claims.into(),
         issuer_identifier: None,
         issuer_certificate: None,

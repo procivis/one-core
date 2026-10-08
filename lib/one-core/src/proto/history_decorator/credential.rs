@@ -169,7 +169,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
                     CredentialStateEnum::Pending | CredentialStateEnum::Offered,
                     CredentialStateEnum::Accepted,
                 ) => Some(HistoryAction::Issued),
-                (CredentialStateEnum::Suspended, CredentialStateEnum::Accepted) => {
+                (CredentialStateEnum::Suspended { .. }, CredentialStateEnum::Accepted) => {
                     Some(HistoryAction::Reactivated)
                 }
                 _ => None,
@@ -252,7 +252,7 @@ fn action_from_state(state: CredentialStateEnum) -> HistoryAction {
         CredentialStateEnum::Accepted => HistoryAction::Accepted,
         CredentialStateEnum::Rejected => HistoryAction::Rejected,
         CredentialStateEnum::Revoked => HistoryAction::Revoked,
-        CredentialStateEnum::Suspended => HistoryAction::Suspended,
+        CredentialStateEnum::Suspended { .. } => HistoryAction::Suspended,
         CredentialStateEnum::Error => HistoryAction::Errored,
         CredentialStateEnum::InteractionExpired => HistoryAction::InteractionExpired,
         CredentialStateEnum::Expired => HistoryAction::Expired,

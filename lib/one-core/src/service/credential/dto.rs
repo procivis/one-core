@@ -175,9 +175,7 @@ pub enum CredentialRole {
     Verifier,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Into, From)]
-#[from("crate::model::credential::CredentialStateEnum")]
-#[into("crate::model::credential::CredentialStateEnum")]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialStateEnum {
     Created,

@@ -68,11 +68,16 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
     let credential = context.db.credentials.get(&credential.common().id).await;
 
     assert_eq!(
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: Some(suspend_end_date)
+        },
         credential.common().state.clone()
     );
 
-    assert_eq!(suspend_end_date, credential.suspend_end_date().unwrap());
+    assert_eq!(
+        suspend_end_date,
+        credential.common().state.suspend_end_date().unwrap()
+    );
     assert_history_count(
         &context,
         &credential.common().id.into(),

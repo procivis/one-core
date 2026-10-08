@@ -382,7 +382,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         consumed_at: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                 .unwrap()

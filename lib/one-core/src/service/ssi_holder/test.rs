@@ -1745,7 +1745,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         claims: Default::default(),
         issuer_identifier: Some(
             Identifier {

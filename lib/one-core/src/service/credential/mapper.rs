@@ -7,10 +7,11 @@ use uuid::Uuid;
 use super::dto::{
     CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
     CredentialFilterParamsDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
-    CredentialSearchTypeDTO, DetailCredentialClaimResponseDTO,
-    DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
-    MdocMsoValidityResponseDTO, OfferedFormatDTO, OfferedFormatStateEnum, TrustInformation,
-    WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
+    CredentialSearchTypeDTO, CredentialStateEnum as CredentialStateDTO,
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+    DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO, OfferedFormatDTO,
+    OfferedFormatStateEnum, TrustInformation, WalletInstanceAttestationDTO,
+    WalletUnitAttestationDTO,
 };
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
@@ -114,7 +115,7 @@ pub(crate) async fn credential_detail_response_from_model(
     )
     .await?;
 
-    let suspend_end_date = value.suspend_end_date();
+    let suspend_end_date = value.common().state.suspend_end_date();
     let CredentialDetailMetadata {
         common,
         parent_id,
@@ -603,7 +604,7 @@ async fn get_offered_formats(
             | CredentialStateEnum::Error => OfferedFormatStateEnum::Pending,
             CredentialStateEnum::Accepted
             | CredentialStateEnum::Revoked
-            | CredentialStateEnum::Suspended
+            | CredentialStateEnum::Suspended { .. }
             | CredentialStateEnum::Expiring
             | CredentialStateEnum::Expired => OfferedFormatStateEnum::Accepted,
             CredentialStateEnum::Rejected => OfferedFormatStateEnum::Rejected,
@@ -636,7 +637,7 @@ async fn get_offered_formats(
             CredentialStateEnum::Accepted
             | CredentialStateEnum::Rejected
             | CredentialStateEnum::Revoked
-            | CredentialStateEnum::Suspended
+            | CredentialStateEnum::Suspended { .. }
             | CredentialStateEnum::Expiring
             | CredentialStateEnum::Expired => {
                 let items = credential_repository
@@ -709,7 +710,7 @@ pub(super) async fn to_credential_list_response(
         Some(issuer_identifier) => Some(issuer_identifier.as_ref().await?.to_owned().into()),
     };
 
-    let suspend_end_date = credential.suspend_end_date();
+    let suspend_end_date = credential.common().state.suspend_end_date();
     let role = credential.role();
     let credential_type = credential.r#type();
     let (common, parent_id, webhook_url, consumed_at) = match credential {
@@ -840,7 +841,6 @@ pub(super) fn from_create_request(
             subscriber_information: request.subscriber_information,
             claims: claims.into(),
             credential: IssuerCredentialData {
-                suspend_end_date: None,
                 format: format
                     .ok_or(CredentialServiceError::InvalidFormatSelection)?
                     .into(),
@@ -858,7 +858,6 @@ pub(super) fn from_create_request(
             certificate: issuer_certificate.map(Into::into),
             signing_key: key.into(),
         },
-        suspend_end_date: None,
         claims: claims.into(),
         webhook_url: request.webhook_destination_url,
         subscriber_information: request.subscriber_information,
@@ -1222,7 +1221,9 @@ pub(crate) async fn get_remaining_batch_item_count(
                     & CredentialFilterValue::States(vec![
                         // Currently or previously usable states as holder.
                         CredentialStateEnum::Accepted,
-                        CredentialStateEnum::Suspended,
+                        CredentialStateEnum::Suspended {
+                            suspend_end_date: None,
+                        },
                         CredentialStateEnum::Revoked,
                         CredentialStateEnum::Expired,
                     ]),
@@ -1394,12 +1395,12 @@ fn mdoc_mso_validity(
                 .get_type(credential_format)
                 .error_while("getting format config")?
                 == FormatType::Mdoc
-            && [
-                CredentialStateEnum::Accepted,
-                CredentialStateEnum::Suspended,
-                CredentialStateEnum::Revoked,
-            ]
-            .contains(&common.state)
+            && matches!(
+                common.state,
+                CredentialStateEnum::Accepted
+                    | CredentialStateEnum::Suspended { .. }
+                    | CredentialStateEnum::Revoked
+            )
         {
             let params = config
                 .format
@@ -1469,7 +1470,7 @@ pub(crate) async fn credential_detail_response_from_backup(
         r#type: value.r#type.into(),
         format,
         interaction_id: common.interaction.map(|interaction| interaction.id()),
-        suspend_end_date: value.suspend_end_date,
+        suspend_end_date: common.state.suspend_end_date(),
         mdoc_mso_validity,
         holder: None,
         protocol: common.protocol,
@@ -1485,4 +1486,42 @@ pub(crate) async fn credential_detail_response_from_backup(
         ecosystem: common.ecosystem,
         offered_formats,
     })
+}
+
+impl From<CredentialStateEnum> for CredentialStateDTO {
+    fn from(value: CredentialStateEnum) -> Self {
+        match value {
+            CredentialStateEnum::Created => Self::Created,
+            CredentialStateEnum::Pending => Self::Pending,
+            CredentialStateEnum::Offered => Self::Offered,
+            CredentialStateEnum::Accepted => Self::Accepted,
+            CredentialStateEnum::Rejected => Self::Rejected,
+            CredentialStateEnum::Revoked => Self::Revoked,
+            CredentialStateEnum::Suspended { .. } => Self::Suspended,
+            CredentialStateEnum::Error => Self::Error,
+            CredentialStateEnum::InteractionExpired => Self::InteractionExpired,
+            CredentialStateEnum::Expiring => Self::Expiring,
+            CredentialStateEnum::Expired => Self::Expired,
+        }
+    }
+}
+
+impl From<CredentialStateDTO> for CredentialStateEnum {
+    fn from(value: CredentialStateDTO) -> Self {
+        match value {
+            CredentialStateDTO::Created => Self::Created,
+            CredentialStateDTO::Pending => Self::Pending,
+            CredentialStateDTO::Offered => Self::Offered,
+            CredentialStateDTO::Accepted => Self::Accepted,
+            CredentialStateDTO::Rejected => Self::Rejected,
+            CredentialStateDTO::Revoked => Self::Revoked,
+            CredentialStateDTO::Suspended => Self::Suspended {
+                suspend_end_date: None,
+            },
+            CredentialStateDTO::Error => Self::Error,
+            CredentialStateDTO::InteractionExpired => Self::InteractionExpired,
+            CredentialStateDTO::Expiring => Self::Expiring,
+            CredentialStateDTO::Expired => Self::Expired,
+        }
+    }
 }

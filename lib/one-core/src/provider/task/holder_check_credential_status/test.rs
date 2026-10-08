@@ -257,7 +257,6 @@ fn generic_credential() -> Credential {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
             created_date: now,

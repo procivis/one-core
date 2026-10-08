@@ -1480,7 +1480,9 @@ async fn test_suspended_to_valid_mdoc() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None,
+            },
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
@@ -1667,7 +1669,9 @@ async fn test_suspended_to_suspended_update_failed() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None,
+            },
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
@@ -1722,7 +1726,9 @@ async fn test_suspended_to_suspended_update_failed() {
     let updated_credentials = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(
         updated_credentials.common().state,
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None
+        },
     );
 }
 

@@ -95,13 +95,12 @@ async fn test_run_task_lifecycle_check_reactivates_suspended() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: Some(a_while_ago),
+            },
             &identifier,
             "OPENID4VCI_DRAFT13",
-            TestingCredentialParams {
-                suspend_end_date: Some(a_while_ago),
-                ..Default::default()
-            },
+            Default::default(),
         )
         .await;
 
@@ -144,7 +143,7 @@ async fn test_run_task_lifecycle_check_reactivates_suspended() {
 
     let credential = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
-    assert_eq!(credential.suspend_end_date(), None);
+    assert_eq!(credential.common().state.suspend_end_date(), None);
 }
 
 /// A batch parent can be flagged `Expiring` while its items stay `Suspended` - `Expiring` has no
@@ -181,13 +180,14 @@ async fn test_run_task_lifecycle_check_reactivates_suspended_batch_item_of_expir
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: Some(a_while_ago),
+            },
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 r#type: Some(one_core::model::credential::CredentialType::BatchItem),
                 parent_id: Some(parent_credential.common().id),
-                suspend_end_date: Some(a_while_ago),
                 ..Default::default()
             },
         )
@@ -239,7 +239,7 @@ async fn test_run_task_lifecycle_check_reactivates_suspended_batch_item_of_expir
         item_credential.common().state,
         CredentialStateEnum::Accepted
     );
-    assert_eq!(item_credential.suspend_end_date(), None);
+    assert_eq!(item_credential.common().state.suspend_end_date(), None);
 
     // the parent's `Expiring` flag is preserved - only an explicit transition back to `ACCEPTED`
     // clears it
@@ -407,14 +407,14 @@ async fn test_run_task_lifecycle_check_expires_suspended_credential() {
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: Some(now.add(Duration::days(1))),
+            },
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Issuer),
                 expires_at: Some(now.sub(Duration::seconds(1))),
-                // still running, so the reactivation pass leaves this credential alone
-                suspend_end_date: Some(now.add(Duration::days(1))),
                 ..Default::default()
             },
         )
@@ -2031,7 +2031,9 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None,
+            },
             &issuer_identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {

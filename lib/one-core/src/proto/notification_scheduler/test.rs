@@ -36,7 +36,7 @@ impl TransactionManager for DeferredCommit {
 
 #[rstest]
 #[case::accepted(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Accepted), "ACCEPTED")]
-#[case::suspended(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Suspended), "SUSPENDED")]
+#[case::suspended(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Suspended { suspend_end_date: None }), "SUSPENDED")]
 #[case::revoked(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Revoked), "REVOKED")]
 #[case::rejected(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Rejected), "REJECTED")]
 #[case::error(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Error), "ERROR")]

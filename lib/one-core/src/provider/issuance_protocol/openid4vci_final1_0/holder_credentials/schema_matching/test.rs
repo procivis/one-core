@@ -1962,7 +1962,6 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         credential_blob_id: None,
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,

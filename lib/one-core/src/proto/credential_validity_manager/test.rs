@@ -15,8 +15,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Clearable, Credential, CredentialCommon, CredentialFilterValue, CredentialRole,
-    CredentialStateEnum, CredentialType, GetCredentialList, UpdateCredentialRequest,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialRole, CredentialStateEnum,
+    CredentialType, GetCredentialList, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -187,8 +187,18 @@ async fn test_check_revocation_already_revoked() {
     assert_eq!(result.status, CredentialStateEnum::Revoked);
 }
 
+#[rstest]
+#[case::revoked(CredentialStateEnum::Accepted, RevocationState::Revoked)]
+#[case::suspended(CredentialStateEnum::Accepted, RevocationState::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH) })]
+#[case::suspension_date_changed(CredentialStateEnum::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH) }, RevocationState::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH + Duration::days(1)) })]
+#[case::suspension_date_cleared(CredentialStateEnum::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH) }, RevocationState::Suspended { suspend_end_date: None })]
+#[case::suspension_unchanged(CredentialStateEnum::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH) }, RevocationState::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH) })]
 #[tokio::test]
-async fn test_check_revocation_becoming_revoked() {
+async fn test_check_revocation_updates_state(
+    #[case] current_state: CredentialStateEnum,
+    #[case] detected_state: RevocationState,
+) {
+    let expected_state = CredentialStateEnum::from(detected_state);
     let mut credential_repository = MockCredentialRepository::default();
     let mut revocation_method_provider: MockRevocationMethodProvider =
         MockRevocationMethodProvider::default();
@@ -226,7 +236,7 @@ async fn test_check_revocation_becoming_revoked() {
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
+        .returning(move |_, _, _, _| Ok(detected_state));
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -242,7 +252,7 @@ async fn test_check_revocation_becoming_revoked() {
     let credential_blob_id = Uuid::new_v4().into();
     let credential = {
         let mut updated_credential = generic_credential();
-        updated_credential.common_mut().state = CredentialStateEnum::Accepted;
+        updated_credential.common_mut().state = current_state;
         updated_credential
             .holder_mut()
             .unwrap()
@@ -256,15 +266,8 @@ async fn test_check_revocation_becoming_revoked() {
     });
     credential_repository
         .expect_update_credential()
-        .withf(|_, request| {
-            matches!(
-                request,
-                UpdateCredentialRequest {
-                    state: Some(CredentialStateEnum::Revoked),
-                    ..
-                }
-            )
-        })
+        .times(usize::from(current_state != expected_state))
+        .withf(move |_, request| request.state == Some(expected_state))
         .returning(|_, _| Ok(()));
 
     let mut blob_storage_provider = MockBlobStorageProvider::new();
@@ -296,7 +299,7 @@ async fn test_check_revocation_becoming_revoked() {
 
     assert_eq!(result.credential_id, credential.common().id);
     assert!(result.success);
-    assert_eq!(result.status, CredentialStateEnum::Revoked);
+    assert_eq!(result.status, expected_state);
 }
 
 #[tokio::test]
@@ -1486,15 +1489,18 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .unwrap();
 }
 
+#[rstest]
 #[tokio::test]
-async fn test_revoke_credential_success_with_suspended_credential() {
+async fn test_revoke_credential_success_with_suspended_credential(
+    #[values(None, Some(OffsetDateTime::UNIX_EPOCH))] suspend_end_date: Option<OffsetDateTime>,
+) {
     let mut credential = generic_credential();
     credential = CredentialBuilder {
         role: CredentialRole::Issuer,
         ..credential.into()
     }
     .build();
-    credential.common_mut().state = CredentialStateEnum::Suspended;
+    credential.common_mut().state = CredentialStateEnum::Suspended { suspend_end_date };
 
     let mut credential_repository = MockCredentialRepository::default();
 
@@ -1598,8 +1604,16 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
     ));
 }
 
+#[rstest]
 #[tokio::test]
-async fn test_suspend_credential_success() {
+async fn test_suspend_credential_success(
+    #[values(
+        CredentialStateEnum::Accepted,
+        CredentialStateEnum::Suspended { suspend_end_date: None },
+        CredentialStateEnum::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH) }
+    )]
+    current_state: CredentialStateEnum,
+) {
     let now = crate::clock::now_utc();
 
     let mut credential = generic_credential();
@@ -1608,7 +1622,7 @@ async fn test_suspend_credential_success() {
         ..credential.into()
     }
     .build();
-    credential.common_mut().state = CredentialStateEnum::Accepted;
+    credential.common_mut().state = current_state;
 
     let suspend_end_date = now.add(Duration::days(1));
 
@@ -1641,7 +1655,12 @@ async fn test_suspend_credential_success() {
         .expect_update_credential()
         .once()
         .returning(move |_, request| {
-            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
+            assert_eq!(
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: Some(suspend_end_date)
+                },
+                request.state.unwrap()
+            );
             Ok(())
         });
 
@@ -1684,15 +1703,18 @@ async fn test_suspend_credential_success() {
         .unwrap();
 }
 
+#[rstest]
 #[tokio::test]
-async fn test_reactivate_credential_success() {
+async fn test_reactivate_credential_success(
+    #[values(None, Some(OffsetDateTime::UNIX_EPOCH))] suspend_end_date: Option<OffsetDateTime>,
+) {
     let mut credential = generic_credential();
     credential = CredentialBuilder {
         role: CredentialRole::Issuer,
         ..credential.into()
     }
     .build();
-    credential.common_mut().state = CredentialStateEnum::Suspended;
+    credential.common_mut().state = CredentialStateEnum::Suspended { suspend_end_date };
 
     let mut credential_repository = MockCredentialRepository::default();
     let cred_clone = credential.clone();
@@ -2111,12 +2133,9 @@ async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialS
         ..child_credential.into()
     }
     .build();
-    child_credential.common_mut().state = CredentialStateEnum::Suspended;
-    child_credential
-        .issuer_credential_mut()
-        .unwrap()
-        .data
-        .suspend_end_date = Some(crate::clock::now_utc().sub(Duration::hours(1)));
+    child_credential.common_mut().state = CredentialStateEnum::Suspended {
+        suspend_end_date: Some(crate::clock::now_utc().sub(Duration::hours(1))),
+    };
     child_credential = CredentialBuilder {
         r#type: CredentialType::BatchItem,
         parent: Some(parent_credential.clone().into()),
@@ -2292,7 +2311,12 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         .once()
         .with(eq(parent_credential.common().id), always())
         .returning(move |_, request| {
-            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
+            assert_eq!(
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: None
+                },
+                request.state.unwrap()
+            );
             Ok(())
         });
     credential_repository
@@ -2300,7 +2324,12 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         .once()
         .with(eq(sdjwtvc_credential.common().id), always())
         .returning(move |_, request| {
-            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
+            assert_eq!(
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: None
+                },
+                request.state.unwrap()
+            );
             Ok(())
         });
 
@@ -2639,7 +2668,6 @@ fn generic_credential() -> Credential {
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
-        suspend_end_date: None,
         claims: vec![Claim {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -2732,7 +2760,9 @@ fn generic_credential() -> Credential {
 const ALLOWED_TRANSITIONS: &[(CredentialStateEnum, CredentialStateEnum)] = &[
     // reactivating a suspension, clearing the `Expiring` flag, re-applying `Accepted`
     (
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
         CredentialStateEnum::Accepted,
     ),
     (CredentialStateEnum::Expiring, CredentialStateEnum::Accepted),
@@ -2740,25 +2770,40 @@ const ALLOWED_TRANSITIONS: &[(CredentialStateEnum, CredentialStateEnum)] = &[
     // suspending, including re-suspending to update `suspend_end_date`
     (
         CredentialStateEnum::Accepted,
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
     ),
     (
         CredentialStateEnum::Expiring,
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
     ),
     (
-        CredentialStateEnum::Suspended,
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
     ),
     // revoking, including an expiring batch and an already revoked credential
     (CredentialStateEnum::Accepted, CredentialStateEnum::Revoked),
-    (CredentialStateEnum::Suspended, CredentialStateEnum::Revoked),
+    (
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
+        CredentialStateEnum::Revoked,
+    ),
     (CredentialStateEnum::Expiring, CredentialStateEnum::Revoked),
     (CredentialStateEnum::Revoked, CredentialStateEnum::Revoked),
     // flagging a batch as expiring
     (CredentialStateEnum::Accepted, CredentialStateEnum::Expiring),
     (
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
         CredentialStateEnum::Expiring,
     ),
     (CredentialStateEnum::Expiring, CredentialStateEnum::Expiring),
@@ -2775,7 +2820,7 @@ fn _every_state_is_in_the_matrix(state: CredentialStateEnum) {
         | CredentialStateEnum::Accepted
         | CredentialStateEnum::Rejected
         | CredentialStateEnum::Revoked
-        | CredentialStateEnum::Suspended
+        | CredentialStateEnum::Suspended { .. }
         | CredentialStateEnum::Error
         | CredentialStateEnum::InteractionExpired
         | CredentialStateEnum::Expiring
@@ -2792,7 +2837,7 @@ fn test_transition_matrix(
         CredentialStateEnum::Accepted,
         CredentialStateEnum::Rejected,
         CredentialStateEnum::Revoked,
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended { suspend_end_date: None },
         CredentialStateEnum::Error,
         CredentialStateEnum::InteractionExpired,
         CredentialStateEnum::Expiring,
@@ -2868,8 +2913,8 @@ impl<T> Default for Recorder<T> {
     }
 }
 
-/// `(credential id, new state, new suspend end date)` of every `update_credential` call.
-type StateUpdates = Recorder<(CredentialId, CredentialStateEnum, Option<OffsetDateTime>)>;
+/// `(credential id, new state)` of every `update_credential` call.
+type StateUpdates = Recorder<(CredentialId, CredentialStateEnum)>;
 /// `(credential id, state)` of every state published to a revocation method.
 type MarkedStates = Recorder<(CredentialId, RevocationState)>;
 
@@ -2977,14 +3022,7 @@ fn record_updates(credential_repository: &mut MockCredentialRepository, updates:
     credential_repository
         .expect_update_credential()
         .returning(move |credential_id, request| {
-            updates.push((
-                credential_id,
-                request.state.unwrap(),
-                match request.suspend_end_date {
-                    Clearable::ForceSet(suspend_end_date) => suspend_end_date,
-                    Clearable::DontTouch => None,
-                },
-            ));
+            updates.push((credential_id, request.state.unwrap()));
             Ok(())
         });
 }
@@ -3060,8 +3098,8 @@ async fn test_revoke_expiring_batch_parent() {
     );
     assert_eq!(
         vec![
-            (items[0].common().id, CredentialStateEnum::Revoked, None),
-            (parent.common().id, CredentialStateEnum::Revoked, None),
+            (items[0].common().id, CredentialStateEnum::Revoked),
+            (parent.common().id, CredentialStateEnum::Revoked),
         ],
         updates.take()
     );
@@ -3069,23 +3107,24 @@ async fn test_revoke_expiring_batch_parent() {
 
 #[tokio::test]
 async fn test_suspend_batch_parent_with_already_suspended_item() {
-    // re-suspending an item is how its `suspend_end_date` gets updated, so an item that already
-    // carries the target state must not make the parent's change fail
-    let (parent, mut items) = issuer_batch(
-        CredentialStateEnum::Accepted,
+    // The parent already matches, but items with a different state or date must still follow.
+    // An item with the same suspension date needs no update.
+    let previous_end_date = crate::clock::now_utc().add(Duration::days(1));
+    let new_end_date = crate::clock::now_utc().add(Duration::days(7));
+    let (parent, items) = issuer_batch(
+        CredentialStateEnum::Suspended {
+            suspend_end_date: Some(new_end_date),
+        },
         &[
             CredentialStateEnum::Accepted,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: Some(previous_end_date),
+            },
+            CredentialStateEnum::Suspended {
+                suspend_end_date: Some(new_end_date),
+            },
         ],
     );
-    let previous_end_date = crate::clock::now_utc().add(Duration::days(1));
-    items[1]
-        .issuer_credential_mut()
-        .unwrap()
-        .data
-        .suspend_end_date = Some(previous_end_date);
-
-    let new_end_date = crate::clock::now_utc().add(Duration::days(7));
     let updates = StateUpdates::default();
     let marked = MarkedStates::default();
     let validity_manager = batch_validity_manager(
@@ -3117,18 +3156,21 @@ async fn test_suspend_batch_parent_with_already_suspended_item() {
         vec![
             (
                 items[0].common().id,
-                CredentialStateEnum::Suspended,
-                Some(new_end_date)
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: Some(new_end_date)
+                }
             ),
             (
                 items[1].common().id,
-                CredentialStateEnum::Suspended,
-                Some(new_end_date)
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: Some(new_end_date)
+                }
             ),
             (
                 parent.common().id,
-                CredentialStateEnum::Suspended,
-                Some(new_end_date)
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: Some(new_end_date)
+                }
             ),
         ],
         updates.take()
@@ -3175,8 +3217,18 @@ async fn test_suspend_batch_parent_skips_items_that_cannot_follow() {
     );
     assert_eq!(
         vec![
-            (items[0].common().id, CredentialStateEnum::Suspended, None),
-            (parent.common().id, CredentialStateEnum::Suspended, None),
+            (
+                items[0].common().id,
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: None
+                }
+            ),
+            (
+                parent.common().id,
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: None
+                }
+            ),
         ],
         updates.take()
     );
@@ -3209,7 +3261,12 @@ async fn test_suspend_batch_parent_with_only_terminal_items() {
 
     assert!(marked.take().is_empty());
     assert_eq!(
-        vec![(parent.common().id, CredentialStateEnum::Suspended, None)],
+        vec![(
+            parent.common().id,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None
+            }
+        )],
         updates.take()
     );
 }
@@ -3242,7 +3299,7 @@ async fn test_flagging_a_batch_parent_as_expiring_leaves_items_untouched() {
 
     assert!(marked.take().is_empty());
     assert_eq!(
-        vec![(parent.common().id, CredentialStateEnum::Expiring, None)],
+        vec![(parent.common().id, CredentialStateEnum::Expiring)],
         updates.take()
     );
 }
@@ -3275,18 +3332,27 @@ async fn test_clearing_the_expiring_flag_leaves_items_untouched() {
 
     assert!(marked.take().is_empty());
     assert_eq!(
-        vec![(parent.common().id, CredentialStateEnum::Accepted, None)],
+        vec![(parent.common().id, CredentialStateEnum::Accepted)],
         updates.take()
     );
 }
 
+#[rstest]
+#[case::accepted(ChangeCredentialState::Accepted)]
+#[case::revoked(ChangeCredentialState::Revoked)]
+#[case::suspended_indefinitely(ChangeCredentialState::Suspended { suspend_end_date: None })]
+#[case::suspended_until_date(ChangeCredentialState::Suspended { suspend_end_date: Some(OffsetDateTime::UNIX_EPOCH) })]
 #[tokio::test]
-async fn test_reapplying_the_current_state_is_a_noop() {
+async fn test_reapplying_the_current_state_is_a_noop(
+    #[case] change: ChangeCredentialState,
+    #[values(CredentialType::Single, CredentialType::BatchItem)] credential_type: CredentialType,
+) {
     let credential = {
         let mut updated_credential = generic_credential();
-        updated_credential.common_mut().state = CredentialStateEnum::Revoked;
+        updated_credential.common_mut().state = change.into();
         updated_credential = CredentialBuilder {
             role: CredentialRole::Issuer,
+            r#type: credential_type,
             ..updated_credential.into()
         }
         .build();
@@ -3300,7 +3366,7 @@ async fn test_reapplying_the_current_state_is_a_noop() {
     );
 
     validity_manager
-        .change_credential_state(&credential.common().id, ChangeCredentialState::Revoked)
+        .change_credential_state(&credential.common().id, change)
         .await
         .unwrap();
 

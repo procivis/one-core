@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
+use crate::model::credential::{CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
@@ -36,7 +36,6 @@ pub(super) fn get_issued_credential_update(
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
         state: Some(CredentialStateEnum::Accepted),
-        suspend_end_date: Clearable::DontTouch,
         holder_identifier_id: Some(holder_identifier_id),
         credential_blob_id: Some(credential_blob_id),
         ..Default::default()

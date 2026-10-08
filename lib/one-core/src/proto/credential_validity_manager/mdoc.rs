@@ -50,7 +50,9 @@ impl CredentialValidityManagerImpl {
             Err(err) => {
                 tracing::warn!(%err, "Credential refresh failure");
                 if credential_expired(&detail_credential) {
-                    CredentialStateEnum::Suspended
+                    CredentialStateEnum::Suspended {
+                        suspend_end_date: None,
+                    }
                 } else {
                     CredentialStateEnum::Accepted
                 }

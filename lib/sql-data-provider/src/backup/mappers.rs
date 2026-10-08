@@ -77,7 +77,7 @@ pub(super) fn credential_from_unexportable_model(
             deleted_at: value.deleted_at,
             protocol: value.protocol,
             redirect_uri: value.redirect_uri,
-            state: value.state.into(),
+            state: value.state.to_model(value.suspend_end_date),
             profile: value.profile,
             schema: CredentialSchema {
                 ecosystem: None,
@@ -123,7 +123,6 @@ pub(super) fn credential_from_unexportable_model(
         consumed_at: value.consumed_at,
         role: value.role.into(),
         r#type: value.r#type.into(),
-        suspend_end_date: value.suspend_end_date,
         webhook_url: value.webhook_url,
         subscriber_information: value.subscriber_information,
         format: value.format.map(|id| {

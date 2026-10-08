@@ -44,7 +44,6 @@ pub enum Credential {
         /// Shared by an entire issuance: batch items read it through their parent.
         subscriber_information: Option<String>,
         claims: RelatedVec<Claim>,
-        suspend_end_date: Option<OffsetDateTime>,
         /// Shared by the batch; items read the instance attestation through their parent.
         wallet_instance_attestation_blob_id: Option<BlobId>,
     },
@@ -112,7 +111,6 @@ pub struct IssuerCredentialData {
     pub holder_identifier: Option<Related<Identifier>>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_key_attestation_blob_id: Option<BlobId>,
-    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]
@@ -188,7 +186,9 @@ pub enum CredentialStateEnum {
     Accepted,
     Rejected,
     Revoked,
-    Suspended,
+    Suspended {
+        suspend_end_date: Option<OffsetDateTime>,
+    },
     Error,
     InteractionExpired,
     Expiring,
@@ -373,21 +373,6 @@ impl Credential {
         }
     }
 
-    pub fn suspend_end_date(&self) -> Option<OffsetDateTime> {
-        match self {
-            Self::IssuerSingle { credential, .. } | Self::IssuerBatchItem { credential, .. } => {
-                credential.suspend_end_date
-            }
-            Self::IssuerBatchParent {
-                suspend_end_date, ..
-            } => *suspend_end_date,
-            Self::HolderSingle { .. }
-            | Self::HolderBatchParent { .. }
-            | Self::HolderBatchItem { .. }
-            | Self::Verifier { .. } => None,
-        }
-    }
-
     /// The credential that holds the relevant ecosystem history events.
     /// Points to the batch parent for credentials of type [CredentialType::BatchItem]
     pub(crate) fn ecosystem_history_id(&self) -> CredentialId {
@@ -416,10 +401,22 @@ impl Credential {
 }
 
 impl CredentialStateEnum {
-    pub fn is_terminal(&self) -> bool {
-        !Self::non_terminal_states().contains(self)
+    pub fn suspend_end_date(&self) -> Option<OffsetDateTime> {
+        match self {
+            Self::Suspended { suspend_end_date } => *suspend_end_date,
+            _ => None,
+        }
     }
 
+    pub fn is_terminal(&self) -> bool {
+        matches!(
+            self,
+            Self::Rejected | Self::Revoked | Self::Error | Self::InteractionExpired | Self::Expired
+        )
+    }
+
+    /// State values for repository filters, which match variants regardless of their payload.
+    /// Use `is_terminal` to classify a credential's actual state.
     pub fn non_terminal_states() -> &'static [Self] {
         &[
             CredentialStateEnum::Expiring,
@@ -427,7 +424,9 @@ impl CredentialStateEnum {
             CredentialStateEnum::Pending,
             CredentialStateEnum::Offered,
             CredentialStateEnum::Accepted,
-            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Suspended {
+                suspend_end_date: None,
+            },
         ]
     }
 }
@@ -460,7 +459,6 @@ pub struct UpdateCredentialRequest {
     /// Consumed by the history decorator; not stored on the credential.
     pub error_info: Option<HistoryErrorMetadata>,
     pub expires_at: Option<OffsetDateTime>,
-    pub suspend_end_date: Clearable<Option<OffsetDateTime>>,
     pub consumed_at: Clearable<Option<OffsetDateTime>>,
     pub wallet_key_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
@@ -505,6 +503,7 @@ pub enum CredentialFilterValue {
     Ecosystems(Vec<EcosystemId>),
     SchemaId(String),
     IssuerIds(Vec<IdentifierId>),
+    /// Matches state variants, ignoring suspension dates. Use `SuspendEndDate` to filter dates.
     States(Vec<CredentialStateEnum>),
     Types(Vec<CredentialType>),
     SuspendEndDate(ValueComparison<OffsetDateTime>),

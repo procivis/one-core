@@ -97,7 +97,7 @@ impl CredentialRepository for CredentialNotificationDecorator {
         if let Some(updated_state) = updated_state {
             match updated_state {
                 CredentialStateEnum::Accepted
-                | CredentialStateEnum::Suspended
+                | CredentialStateEnum::Suspended { .. }
                 | CredentialStateEnum::Revoked
                 | CredentialStateEnum::Rejected
                 | CredentialStateEnum::Error => {

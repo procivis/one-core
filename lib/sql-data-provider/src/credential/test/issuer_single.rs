@@ -15,7 +15,9 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
         .await
         .unwrap();
     request.common_mut().id = Uuid::new_v4().into();
-    request.common_mut().state = CredentialStateEnum::Suspended;
+    request.common_mut().state = CredentialStateEnum::Suspended {
+        suspend_end_date: Some(get_dummy_date() + Duration::days(1)),
+    };
     let claim = Claim {
         id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
@@ -54,7 +56,6 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     *webhook_url = Some(expected_webhook_url.into());
     let expected_subscriber_information = "opaque metadata";
     *subscriber_information = Some(expected_subscriber_information.into());
-    credential.suspend_end_date = Some(get_dummy_date() + Duration::days(1));
     let id = repository.create_credential(request.clone()).await.unwrap();
 
     let row = credential::Entity::find_by_id(id)
@@ -67,7 +68,10 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
     assert_eq!(row.key_id, Some(key_id));
     assert_eq!(row.format, Some(format_id));
     assert_eq!(row.issuer_identifier_id, Some(setup.identifier.id));
-    assert_eq!(row.suspend_end_date, request.suspend_end_date());
+    assert_eq!(
+        row.suspend_end_date,
+        request.common().state.suspend_end_date()
+    );
     assert_eq!(row.webhook_url.as_deref(), Some(expected_webhook_url));
     assert_eq!(
         row.subscriber_information.as_deref(),
@@ -118,7 +122,10 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             setup.identifier.id
         );
         assert_eq!(claims.as_ref().await.unwrap()[0].id, claim.id);
-        assert_eq!(actual.suspend_end_date(), request.suspend_end_date());
+        assert_eq!(
+            actual.common().state.suspend_end_date(),
+            request.common().state.suspend_end_date()
+        );
         assert_eq!(webhook_url.as_deref(), Some(expected_webhook_url));
         assert_eq!(
             subscriber_information.as_deref(),
@@ -133,7 +140,6 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
             id,
             UpdateCredentialRequest {
                 state: Some(CredentialStateEnum::Accepted),
-                suspend_end_date: Clearable::ForceSet(None),
                 ..Default::default()
             },
         )
@@ -141,7 +147,7 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
         .unwrap();
     let resumed = repository.get_credential(&id).await.unwrap();
     assert_eq!(resumed.common().state, CredentialStateEnum::Accepted);
-    assert!(resumed.suspend_end_date().is_none());
+    assert!(resumed.common().state.suspend_end_date().is_none());
 }
 
 #[rstest]

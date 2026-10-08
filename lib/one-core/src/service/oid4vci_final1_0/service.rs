@@ -1728,10 +1728,7 @@ impl OID4VCIFinal1_0Service {
         };
 
         let Credential::IssuerBatchParent {
-            mut common,
-            issuer,
-            suspend_end_date,
-            ..
+            mut common, issuer, ..
         } = parent_credential
         else {
             return Err(DataLayerError::MappingError(anyhow::anyhow!(
@@ -1756,7 +1753,6 @@ impl OID4VCIFinal1_0Service {
                 holder_identifier: None,
                 credential_blob_id: None,
                 wallet_key_attestation_blob_id: None,
-                suspend_end_date,
             },
         })
     }
@@ -1777,7 +1773,7 @@ impl OID4VCIFinal1_0Service {
         match (credential.common().state, &notification.event) {
             (
                 CredentialStateEnum::Accepted
-                | CredentialStateEnum::Suspended
+                | CredentialStateEnum::Suspended { .. }
                 | CredentialStateEnum::Revoked,
                 _,
             ) => {
@@ -1869,7 +1865,7 @@ impl OID4VCIFinal1_0Service {
         let other_format_active = others.iter().any(|item| {
             matches!(
                 item.common().state,
-                CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
+                CredentialStateEnum::Accepted | CredentialStateEnum::Suspended { .. }
             )
         });
         if !other_format_active && parent.common().state != new_state {
@@ -1942,7 +1938,7 @@ impl OID4VCIFinal1_0Service {
         // mark the credential as revoked (if supported and not done before)
         if matches!(
             credential.common().state,
-            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
+            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended { .. }
         ) && let Some(revocation_method) = revocation_method
             && revocation_method
                 .get_capabilities()

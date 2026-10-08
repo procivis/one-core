@@ -39,7 +39,6 @@ pub struct UnexportableCredential {
     pub role: CredentialRole,
     pub r#type: CredentialType,
     pub consumed_at: Option<OffsetDateTime>,
-    pub suspend_end_date: Option<OffsetDateTime>,
     pub webhook_url: Option<String>,
     pub subscriber_information: Option<String>,
     pub parent_id: Option<CredentialId>,

@@ -50,7 +50,9 @@ impl EudiEcosystem {
         let filtering = CredentialFilterValue::Roles(vec![CredentialRole::Issuer]).condition()
             & CredentialFilterValue::States(vec![
                 CredentialStateEnum::Accepted,
-                CredentialStateEnum::Suspended,
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: None,
+                },
             ])
             & CredentialFilterValue::Types(vec![CredentialType::Single, CredentialType::BatchItem])
             & CredentialFilterValue::Deleted(false)

@@ -45,7 +45,10 @@ impl LifecycleCheckProvider {
             .get_credential_list(CredentialListQuery {
                 include_count: false,
                 filtering: Some(
-                    CredentialFilterValue::States(vec![CredentialStateEnum::Suspended]).condition()
+                    CredentialFilterValue::States(vec![CredentialStateEnum::Suspended {
+                        suspend_end_date: None,
+                    }])
+                    .condition()
                         & CredentialFilterValue::Roles(vec![CredentialRole::Issuer])
                         & CredentialFilterValue::Types(vec![
                             CredentialType::Single,

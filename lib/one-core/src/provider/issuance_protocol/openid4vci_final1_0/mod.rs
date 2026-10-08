@@ -317,7 +317,7 @@ impl OpenID4VCIFinal1_0 {
                     return Err(IssuanceProtocolError::RefreshTooSoon);
                 }
             }
-            (CredentialStateEnum::Suspended, FormatType::Mdoc) => {
+            (CredentialStateEnum::Suspended { .. }, FormatType::Mdoc) => {
                 return Err(IssuanceProtocolError::Suspended);
             }
             (CredentialStateEnum::Offered, _) => {

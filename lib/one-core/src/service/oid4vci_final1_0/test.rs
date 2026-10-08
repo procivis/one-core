@@ -358,7 +358,6 @@ fn dummy_credential(
         consumed_at: None,
         role: CredentialRole::Issuer,
         r#type,
-        suspend_end_date: None,
         claims: Default::default(),
         issuer_identifier: Some(dummy_identifier().into()),
         issuer_certificate: None,

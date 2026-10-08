@@ -7,8 +7,8 @@ use one_core::clock::now_utc;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
-    Clearable, Credential, CredentialCommon, CredentialFilterValue, CredentialListQuery,
-    CredentialRole, CredentialStateEnum, CredentialType, HolderCredentialData, IssuerIdentity,
+    Credential, CredentialCommon, CredentialFilterValue, CredentialListQuery, CredentialRole,
+    CredentialStateEnum, CredentialType, HolderCredentialData, IssuerIdentity,
     UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, WalletAttestation};
@@ -69,6 +69,122 @@ mod issuer_single;
 
 #[path = "test/verifier_single.rs"]
 mod verifier_single;
+
+#[rstest]
+#[case::issuer_single(CredentialRole::Issuer, CredentialType::Single)]
+#[case::issuer_parent(CredentialRole::Issuer, CredentialType::BatchParent)]
+#[case::holder_single(CredentialRole::Holder, CredentialType::Single)]
+#[case::holder_parent(CredentialRole::Holder, CredentialType::BatchParent)]
+#[tokio::test]
+async fn suspension_date_follows_state(
+    #[case] role: CredentialRole,
+    #[case] credential_type: CredentialType,
+) {
+    use sea_orm::{ActiveModelTrait, IntoActiveModel};
+
+    let setup = setup_with_credential().await;
+    let repository = credential_repository(setup.db.clone(), None);
+    let template = repository
+        .get_credential(&setup.credential_id)
+        .await
+        .unwrap();
+    let mut request = CredentialBuilder {
+        role,
+        r#type: credential_type,
+        claims: Default::default(),
+        holder_identifier: Some(setup.identifier.clone().into()),
+        ..template.into()
+    }
+    .build();
+    let end_date = get_dummy_date() + Duration::days(1);
+    let suspended = CredentialStateEnum::Suspended {
+        suspend_end_date: Some(end_date),
+    };
+    request.common_mut().id = Uuid::new_v4().into();
+    request.common_mut().state = suspended;
+    let id = repository.create_credential(request).await.unwrap();
+    assert_eq!(
+        repository.get_credential(&id).await.unwrap().common().state,
+        suspended
+    );
+
+    // Unrelated updates preserve the whole state, including the date.
+    repository
+        .update_credential(
+            id,
+            UpdateCredentialRequest {
+                redirect_uri: Some(Some("https://example.com".into())),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let listed = repository
+        .get_credential_list(CredentialListQuery {
+            filtering: Some(
+                CredentialFilterValue::CredentialIds(vec![id]).condition()
+                    & CredentialFilterValue::States(vec![CredentialStateEnum::Suspended {
+                        suspend_end_date: None,
+                    }]),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(listed.values.len(), 1);
+    assert_eq!(listed.values[0].common().state, suspended);
+
+    // Re-suspension changes or clears the date; leaving suspension clears the SQL column.
+    for state in [
+        CredentialStateEnum::Suspended {
+            suspend_end_date: Some(end_date + Duration::days(1)),
+        },
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
+        suspended,
+        CredentialStateEnum::Accepted,
+        suspended,
+        CredentialStateEnum::Revoked,
+        suspended,
+        CredentialStateEnum::Expired,
+    ] {
+        repository
+            .update_credential(
+                id,
+                UpdateCredentialRequest {
+                    state: Some(state),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            repository.get_credential(&id).await.unwrap().common().state,
+            state
+        );
+        let row = credential::Entity::find_by_id(id)
+            .one(&setup.db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.state, state.into());
+        assert_eq!(row.suspend_end_date, state.suspend_end_date());
+    }
+
+    // Old rows can carry a stale date after leaving suspension. It is not part of their state.
+    let mut row = credential::Entity::find_by_id(id)
+        .one(&setup.db)
+        .await
+        .unwrap()
+        .unwrap()
+        .into_active_model();
+    row.suspend_end_date = Set(Some(end_date));
+    row.update(&setup.db).await.unwrap();
+    let stored = repository.get_credential(&id).await.unwrap();
+    assert_eq!(stored.common().state, CredentialStateEnum::Expired);
+    assert!(stored.common().state.suspend_end_date().is_none());
+}
 
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
@@ -144,7 +260,6 @@ async fn setup_empty() -> TestSetup {
             preferred_key_storage_attestation_lifetime: None,
             preferred_instance_attestation_lifetime: None,
         },
-
         claim_schemas: new_claim_schemas
             .into_iter()
             .map(|schema| ClaimSchema {
@@ -844,7 +959,9 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
     update_credential_state(
         &db,
         credential_id,
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
         Some(much_later),
         later,
     )
@@ -1256,7 +1373,6 @@ async fn test_update_credential_success() {
                 credential_id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Pending),
-                    suspend_end_date: Clearable::DontTouch,
                     interaction: Some(interaction_id),
                     credential_blob_id: Some(blob_id),
                     ..Default::default()
@@ -1482,7 +1598,9 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     // Suspended items with an earlier expiry must not hide an accepted item.
     let suspended_jwt = {
         let mut updated_credential = new_item(&first_parent, &jwt_format, 0);
-        updated_credential.common_mut().state = CredentialStateEnum::Suspended;
+        updated_credential.common_mut().state = CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        };
         updated_credential
     };
     // An already consumed item is unavailable even though its state is Accepted.

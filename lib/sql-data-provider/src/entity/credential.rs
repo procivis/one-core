@@ -193,9 +193,7 @@ pub enum CredentialType {
     BatchItem,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
-#[from(ModelCredentialStateEnum)]
-#[into(ModelCredentialStateEnum)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum CredentialState {
     #[sea_orm(string_value = "CREATED")]
@@ -220,4 +218,43 @@ pub enum CredentialState {
     Expired,
     #[sea_orm(string_value = "EXPIRING")]
     Expiring,
+}
+
+impl From<ModelCredentialStateEnum> for CredentialState {
+    fn from(value: ModelCredentialStateEnum) -> Self {
+        match value {
+            ModelCredentialStateEnum::Created => Self::Created,
+            ModelCredentialStateEnum::Pending => Self::Pending,
+            ModelCredentialStateEnum::Offered => Self::Offered,
+            ModelCredentialStateEnum::Accepted => Self::Accepted,
+            ModelCredentialStateEnum::Rejected => Self::Rejected,
+            ModelCredentialStateEnum::Revoked => Self::Revoked,
+            ModelCredentialStateEnum::Suspended { .. } => Self::Suspended,
+            ModelCredentialStateEnum::Error => Self::Error,
+            ModelCredentialStateEnum::InteractionExpired => Self::InteractionExpired,
+            ModelCredentialStateEnum::Expiring => Self::Expiring,
+            ModelCredentialStateEnum::Expired => Self::Expired,
+        }
+    }
+}
+
+impl CredentialState {
+    pub(crate) fn to_model(
+        self,
+        suspend_end_date: Option<OffsetDateTime>,
+    ) -> ModelCredentialStateEnum {
+        match self {
+            Self::Created => ModelCredentialStateEnum::Created,
+            Self::Pending => ModelCredentialStateEnum::Pending,
+            Self::Offered => ModelCredentialStateEnum::Offered,
+            Self::Accepted => ModelCredentialStateEnum::Accepted,
+            Self::Rejected => ModelCredentialStateEnum::Rejected,
+            Self::Revoked => ModelCredentialStateEnum::Revoked,
+            Self::Suspended => ModelCredentialStateEnum::Suspended { suspend_end_date },
+            Self::Error => ModelCredentialStateEnum::Error,
+            Self::InteractionExpired => ModelCredentialStateEnum::InteractionExpired,
+            Self::Expiring => ModelCredentialStateEnum::Expiring,
+            Self::Expired => ModelCredentialStateEnum::Expired,
+        }
+    }
 }

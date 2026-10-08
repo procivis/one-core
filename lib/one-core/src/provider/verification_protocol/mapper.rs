@@ -98,7 +98,9 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
         // historical matches distinguish exhausted batches from unrelated batches.
         let unavailable_items = CredentialFilterValue::Consumed(true).condition()
             | CredentialFilterValue::States(vec![
-                CredentialStateEnum::Suspended,
+                CredentialStateEnum::Suspended {
+                    suspend_end_date: None,
+                },
                 CredentialStateEnum::Revoked,
                 CredentialStateEnum::Expired,
             ])
@@ -123,7 +125,9 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                     & CredentialFilterValue::OrganisationId(organisation_id)
                     & CredentialFilterValue::States(vec![
                         CredentialStateEnum::Accepted,
-                        CredentialStateEnum::Suspended,
+                        CredentialStateEnum::Suspended {
+                            suspend_end_date: None,
+                        },
                         CredentialStateEnum::Revoked,
                         CredentialStateEnum::Expired,
                     ])
