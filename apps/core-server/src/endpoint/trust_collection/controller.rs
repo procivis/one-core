@@ -223,10 +223,10 @@ pub(crate) async fn delete_trust_list_subscription(
 #[endpoint(
     permissions = [Permission::TrustCollectionDetail],
     get,
-    path = "/api/trust-collection/v1/{trustCollectionId}/trust-list",
+    path = "/api/trust-collection/v1/{trust_collection_id}/trust-list",
     responses(InlineOkOrErrorResponse<GetTrustListSubscriptionListResponseRestDTO>),
     params(
-        ("trustCollectionId" = TrustCollectionId, Path, description = "Trust collection id"),
+        ("trust_collection_id" = TrustCollectionId, Path, description = "Trust collection id"),
         ListTrustListSubscriptionsEntitiesQuery
     ),
     tag = "trust_collection_management",

@@ -4,6 +4,7 @@ use one_core::config::core_config::CoreConfig;
 use proc_macros::modify_schema_autodetect;
 use url::Url;
 use utoipa::openapi::extensions::Extensions;
+use utoipa::openapi::path::Paths;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::{Contact, ExternalDocs, Object, Server, Tag};
 use utoipa::{Modify, OpenApi};
@@ -16,39 +17,25 @@ use crate::build_info::{APP_VERSION, build};
 use crate::openapi::permissions::PermissionsModifier;
 use crate::{AuthMode, ServerConfig};
 
-pub(crate) fn gen_openapi_documentation(
-    server_config: Arc<ServerConfig>,
-    core_config: Arc<CoreConfig>,
-) -> utoipa::openapi::OpenApi {
+/// Schemas from the source scan; the router adds the paths of the enabled endpoints.
+pub(crate) fn base_openapi() -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src", function_attribute_name = "endpoint")]
     #[derive(OpenApi)]
     #[openapi(components(schemas(shared_types::EntityId, shared_types::RevocationListId)))]
     struct ApiDoc;
 
-    struct ApiDocModifier {
-        config: Arc<ServerConfig>,
-    }
+    let mut docs = ApiDoc::openapi();
+    docs.paths = Paths::new();
+    docs
+}
 
+pub(crate) fn gen_openapi_documentation(
+    mut docs: utoipa::openapi::OpenApi,
+    server_config: Arc<ServerConfig>,
+    core_config: Arc<CoreConfig>,
+) -> utoipa::openapi::OpenApi {
     struct SecurityAddon {
         config: Arc<ServerConfig>,
-    }
-
-    impl Modify for ApiDocModifier {
-        fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-            if !self.config.enable_management_endpoints || !self.config.enable_external_endpoints {
-                openapi.paths.paths.retain(|path, _| {
-                    if path.starts_with("/ssi") || path.starts_with("/.well-known") {
-                        return self.config.enable_external_endpoints;
-                    }
-
-                    if path.starts_with("/api") {
-                        return self.config.enable_management_endpoints;
-                    }
-
-                    true
-                });
-            }
-        }
     }
 
     impl Modify for SecurityAddon {
@@ -101,11 +88,6 @@ pub(crate) fn gen_openapi_documentation(
         }
     }
 
-    let mut docs = ApiDoc::openapi();
-    let modifier = ApiDocModifier {
-        config: server_config.clone(),
-    };
-    modifier.modify(&mut docs);
     let security_addon = SecurityAddon {
         config: server_config.clone(),
     };

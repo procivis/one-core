@@ -99,6 +99,39 @@ async fn test_openapi_schema_regressions() {
         schemas["JwkUse"]["type"].as_str(),
         "JwkUse should be a plain string, its unknown variant is untagged",
     );
+
+    let mut dangling = vec![];
+    collect_dangling_refs(&openapi, schemas, &mut dangling);
+    dangling.sort();
+    dangling.dedup();
+    assert!(
+        dangling.is_empty(),
+        "every $ref must point at a component schema, missing: {dangling:?}"
+    );
+}
+
+fn collect_dangling_refs(
+    value: &serde_json::Value,
+    schemas: &serde_json::Value,
+    dangling: &mut Vec<String>,
+) {
+    match value {
+        serde_json::Value::Object(object) => {
+            if let Some(reference) = object.get("$ref").and_then(|r| r.as_str())
+                && let Some(name) = reference.strip_prefix("#/components/schemas/")
+                && schemas.get(name).is_none()
+            {
+                dangling.push(name.to_string());
+            }
+            object
+                .values()
+                .for_each(|v| collect_dangling_refs(v, schemas, dangling));
+        }
+        serde_json::Value::Array(items) => items
+            .iter()
+            .for_each(|v| collect_dangling_refs(v, schemas, dangling)),
+        _ => {}
+    }
 }
 
 fn find_property<'a>(
