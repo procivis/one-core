@@ -43,9 +43,15 @@ use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
-    /// For verifiers, creates a proof request. Choose what information to
-    /// request via a proof schema, an identifier, and which protocol to use
-    /// for making the request.
+    /// For verifiers, creates a proof request and returns its ID. Choose
+    /// what information to request via a proof schema, an identifier, and
+    /// which protocol to use for making the request.
+    ///
+    /// For online protocols, the request is created in `CREATED` state;
+    /// share it with the wallet using `shareProof`. For `ISO_MDL`, the
+    /// wallet starts the exchange: pass the device engagement data from the
+    /// wallet in `isoMdlEngagement`. The request is created directly in
+    /// `PENDING` state and needs no sharing.
     #[uniffi::method]
     pub async fn create_proof(
         &self,
@@ -57,6 +63,8 @@ impl OneCore {
     }
 
     /// Returns detailed information about a proof request.
+    ///
+    /// Poll this method to follow the state of the request.
     #[uniffi::method]
     pub async fn get_proof(
         &self,
@@ -84,6 +92,8 @@ impl OneCore {
 
     /// Deletes an incomplete proof request. If the request is in `REQUESTED`
     /// state the proof is retracted instead, retaining history of the interaction.
+    ///
+    /// For `ISO_MDL`, this also closes the BLE session.
     #[uniffi::method]
     pub async fn delete_proof(&self, proof_id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;
@@ -102,7 +112,11 @@ impl OneCore {
         Ok(proofs.into())
     }
 
-    /// Rejects a proof request.
+    /// For wallets, rejects a proof request. Pass the `interactionId` of
+    /// the request, not the proof ID.
+    ///
+    /// For `ISO_MDL`, the wallet sends an empty response to the verifier and
+    /// closes the BLE session.
     #[uniffi::method]
     pub async fn holder_reject_proof(&self, interaction_id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;
@@ -112,8 +126,12 @@ impl OneCore {
             .await?)
     }
 
-    /// Submits a presentation using DCQL as a query language; this should
-    /// be used after `getPresentationDefinitionv2`.
+    /// For wallets, submits a presentation using DCQL as a query language.
+    /// Use this after `getPresentationDefinitionV2`. Pass the
+    /// `interactionId` of the request, not the proof ID.
+    ///
+    /// `submission` maps each credential query ID from the presentation
+    /// definition to the credentials chosen for it.
     #[uniffi::method]
     pub async fn holder_submit_proof_v2(
         &self,
@@ -135,6 +153,11 @@ impl OneCore {
     /// For wallets, initiates device engagement for offline flows. Reference
     /// the `verificationEngagement` entry of your configuration for your
     /// options for `engagement`.
+    ///
+    /// For `ISO_MDL`, this creates a proof in `PENDING` state and starts BLE
+    /// according to the `bleMode` set in your configuration. Poll `getProof`
+    /// until the state is `REQUESTED`, then call
+    /// `getPresentationDefinitionV2`.
     #[uniffi::method]
     pub async fn propose_proof(
         &self,
@@ -149,7 +172,7 @@ impl OneCore {
     }
 
     /// Creates a share URL from a proof request. A wallet holder can use this
-    /// URL to access the request.
+    /// URL to access the request. Not used for the `ISO_MDL` proximity flow.
     #[uniffi::method]
     pub async fn share_proof(
         &self,
@@ -162,6 +185,10 @@ impl OneCore {
         Ok(ShareProofResponseBindingDTO::from(response))
     }
 
+    /// Deletes the claim data shared by the wallet holder for a proof
+    /// request, without waiting for the retention period set by the
+    /// `expireDuration` of the proof schema. The proof request itself is
+    /// kept, and `claimsRemovedAt` records when the claims were deleted.
     #[uniffi::method]
     pub async fn delete_proof_claims(&self, proof_id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;
@@ -171,6 +198,13 @@ impl OneCore {
         Ok(())
     }
 
+    /// For wallets, returns what a proof request asks for and which of the
+    /// wallet's credentials can satisfy it. Use the result to build the
+    /// submission for `holderSubmitProofV2`.
+    ///
+    /// For `ISO_MDL` requests, every claim has `required: false`, since the
+    /// protocol cannot mark claims as mandatory. An incomplete submission
+    /// may be rejected if the verifier requires claims not submitted.
     #[uniffi::method]
     pub async fn get_presentation_definition_v2(
         &self,
@@ -187,7 +221,9 @@ impl OneCore {
     /// For wallets; returns the details of a single transaction data entry of a
     /// proof request, including human-readable display data and the raw
     /// transaction data received from the verifier. The `transactionDataId` is
-    /// obtained from `getPresentationDefinitionv2`.
+    /// obtained from `getPresentationDefinitionV2`. See
+    /// [Transaction Authorization for Wallets](https://docs.procivis.ch/hold/transaction-authorization)
+    /// for more information.
     #[uniffi::method]
     pub async fn holder_get_transaction_data(
         &self,
@@ -203,11 +239,8 @@ impl OneCore {
     }
 }
 
-/// If protocol is `ISO_MDL`, specify the device engagement type
-/// by referencing an entry from `verificationEngagement` of your
-/// configuration. `iso_mdl_engagement` accepts either QR code content
-/// (for QR device engagement) or NFC engagement parameters from
-/// `nfc_read_iso_mdl_engagement`.
+/// If `protocol` is `ISO_MDL`, also set `engagement`, `isoMdlEngagement`,
+/// and `transport`.
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "CreateProofRequest")]
 pub struct CreateProofRequestBindingDTO {
@@ -215,7 +248,12 @@ pub struct CreateProofRequestBindingDTO {
     pub proof_schema_id: String,
     /// Deprecated. Use `verifierIdentifierId`.
     pub verifier_did_id: Option<String>,
-    /// Choose the identifier to use to make the request.
+    /// Choose the identifier to use to make the request. Either this or
+    /// the deprecated `verifierDidId` must be set.
+    ///
+    /// For `ISO_MDL`, a certificate identifier enables reader
+    /// authentication, so the wallet can verify who is asking. Key
+    /// identifiers are not allowed.
     pub verifier_identifier_id: Option<String>,
     /// Choose the protocol to use for verification. Check the
     /// `verificationProtocol` object of your configuration for
@@ -230,21 +268,35 @@ pub struct CreateProofRequestBindingDTO {
     /// which key to use. If omitted, the first suitable key is used.
     pub verifier_key: Option<String>,
     /// If the identifier contains multiple certificates, use this to
-    /// specify which key to use. If omitted, the first suitable
+    /// specify which certificate to use. If omitted, the first suitable
     /// certificate is used.
     pub verifier_certificate: Option<String>,
-    /// Use to specify device engagement type.
+    /// For `ISO_MDL`, the device engagement data received from the
+    /// wallet: the scanned QR code content, or the result of
+    /// `nfcReadIsoMdlEngagement`.
     pub iso_mdl_engagement: Option<String>,
     /// Choose the transport protocol for the exchange. Check the
     /// `transport` object of your configuration for supported
-    /// options and reference the configuration instance.
+    /// options and reference the configuration instance. For
+    /// `ISO_MDL`, use `BLE`.
     pub transport: Option<Vec<String>>,
-    /// Country profile to associate with this request.
+    /// Country profile to associate with this request. See
+    /// [Country Profiles](https://docs.procivis.ch/profiles) for more
+    /// information.
     pub profile: Option<String>,
-    /// Use for ISO mDL verification over BLE.
+    /// For `ISO_MDL`, the device engagement method used to receive
+    /// `isoMdlEngagement`, such as `NFC` or `QR_CODE`. Reference an
+    /// entry from the `verificationEngagement` object of your configuration.
     pub engagement: Option<String>,
-    /// Optional transaction data to request authorization for.
+    /// Optional transaction data to request authorization for. Only
+    /// supported for OpenID4VP. See
+    /// [Transaction Authorization for Verifiers](https://docs.procivis.ch/verify/transaction-authorization)
+    /// for more information.
     pub transaction_data: Option<Vec<ProofRequestTransactionDataBindingDTO>>,
+    /// Use this to enforce the constraints of a regulatory ecosystem
+    /// for this request. See
+    /// [Enforcing an Ecosystem as a Verifier](https://docs.procivis.ch/verify/ecosystem-enforcement)
+    /// for more information.
     pub ecosystem: Option<String>,
 }
 
@@ -293,8 +345,13 @@ pub struct ProofListQueryBindingDTO {
     pub sort_direction: Option<SortDirection>,
     /// Return only proof requests with a name starting with this string.
     pub name: Option<String>,
-    /// Filter by one or more country profiles.
+    /// Filter by one or more country profiles. See
+    /// [Country Profiles](https://docs.procivis.ch/profiles) for more
+    /// information.
     pub profiles: Option<Vec<String>>,
+    /// Filter by ecosystem applied to proof. See
+    /// [Ecosystems](https://docs.procivis.ch/ecosystems)
+    /// for more information.
     pub ecosystems: Option<Vec<String>>,
     /// Filter by one or more UUIDs.
     pub ids: Option<Vec<String>>,
@@ -326,10 +383,10 @@ pub struct ProofListQueryBindingDTO {
     /// Return only proofs requested before this time. Timestamp in
     /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub requested_date_before: Option<String>,
-    /// Return only proofs requested completed after this time. Timestamp in
+    /// Return only proofs completed after this time. Timestamp in
     /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub completed_date_after: Option<String>,
-    /// Return only proofs requested completed before this time. Timestamp in
+    /// Return only proofs completed before this time. Timestamp in
     /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
     pub completed_date_before: Option<String>,
 }
@@ -368,8 +425,13 @@ pub struct ProofListItemBindingDTO {
     /// proof schema.
     #[from(with_fn = optional_time)]
     pub retain_until_date: Option<String>,
-    /// Country profile associated with this request.
+    /// Country profile associated with this request. See
+    /// [Country Profiles](https://docs.procivis.ch/profiles) for more
+    /// information.
     pub profile: Option<String>,
+    /// Ecosystem applied to this request. See
+    /// [Ecosystems](https://docs.procivis.ch/ecosystems)
+    /// for more information.
     #[from(with_fn = convert_inner)]
     pub ecosystem: Option<String>,
     pub redirect_uri: Option<String>,
@@ -409,12 +471,20 @@ pub struct ProofResponseBindingDTO {
     pub completed_date: Option<String>,
     /// When claim data was deleted.
     pub claims_removed_at: Option<String>,
-    /// Country profile associated with this request.
+    /// Country profile associated with this request. See
+    /// [Country Profiles](https://docs.procivis.ch/profiles) for more
+    /// information.
     pub profile: Option<String>,
     /// Trust information of the verifier, if any.
     pub trust_information: Option<TrustInformationBindingDTO>,
-    /// Transaction data attached to this proof request. Present only if the proof role is `VERIFIER`.
+    /// Transaction data attached to this proof request. Present only if the proof
+    /// role is `VERIFIER`. See
+    /// [Transaction Authorization for Verifiers](https://docs.procivis.ch/verify/transaction-authorization)
+    /// for more information.
     pub transaction_data: Option<Vec<TransactionDataResponseBindingDTO>>,
+    /// Ecosystem applied to this request. See
+    /// [Ecosystems](https://docs.procivis.ch/ecosystems)
+    /// for more information.
     pub ecosystem: Option<String>,
 }
 
@@ -457,18 +527,40 @@ pub struct ProofListBindingDTO {
     pub total_items: u64,
 }
 
+/// State of a proof request. Some states mean something different
+/// depending on whether the system is the holder or the verifier of the
+/// request. See [Proof States as a Verifier](https://docs.procivis.ch/verify/states)
+/// and [Proof States as a Holder](https://docs.procivis.ch/hold/manage-credentials-requests#proof-request-states-as-a-holder)
+/// for complete state diagrams.
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(ProofStateEnum)]
 #[into(ProofStateEnum)]
 #[uniffi(name = "ProofState")]
 pub enum ProofStateBindingEnum {
+    /// For verifiers, the request was created but not yet shared with a
+    /// wallet.
     Created,
+    /// Waiting for the other party. For verifiers, the request was shared
+    /// or, for `ISO_MDL`, created from the wallet's engagement data. For
+    /// holders, device engagement was started with `proposeProof`.
     Pending,
+    /// The request reached the wallet and is waiting for the holder to
+    /// respond.
     Requested,
+    /// For verifiers, the presentation was received and verified. For
+    /// holders, the presentation was submitted.
     Accepted,
+    /// The holder rejected the request. Not all protocols report a
+    /// rejection to the verifier.
     Rejected,
+    /// The request was cancelled with `deleteProof` after it reached
+    /// `REQUESTED`. The history of the interaction is retained.
     Retracted,
+    /// A technical error occurred or, for verifiers, the presentation
+    /// could not be verified.
     Error,
+    /// For verifiers, the shared request expired before a wallet
+    /// connected. Share it again with `shareProof`.
     InteractionExpired,
 }
 
@@ -477,7 +569,9 @@ pub enum ProofStateBindingEnum {
 #[into(ProofRole)]
 #[uniffi(name = "ProofRole")]
 pub enum ProofRoleBindingEnum {
+    /// The system received this request.
     Holder,
+    /// The system made this request.
     Verifier,
 }
 
@@ -492,9 +586,11 @@ pub struct PresentationSubmitV2CredentialRequestBindingDTO {
     /// optional claims.
     pub user_selections: Option<Vec<String>>,
     /// Optional ids of transaction-data entries to bind to this credential.
-    /// Entries not listed here are auto-assigned. Ids must reference transaction
+    /// Entries not listed here are auto-assigned. IDs must reference transaction
     /// data applicable to this credential. Omit entirely or use an empty array
-    /// to auto-assign all transaction data.
+    /// to auto-assign all transaction data. See
+    /// [Transaction Authorization for Wallets](https://docs.procivis.ch/hold/transaction-authorization)
+    /// for more information.
     pub transaction_data_ids: Option<Vec<String>>,
 }
 
@@ -502,14 +598,26 @@ pub struct PresentationSubmitV2CredentialRequestBindingDTO {
 #[try_into(T = ProposeProofRequestDTO, Error = ServiceError)]
 #[uniffi(name = "ProposeProofRequest")]
 pub struct ProposeProofRequestBindingDTO {
+    /// Choose the protocol to use. Check the `verificationProtocol`
+    /// object of your configuration for supported options and reference
+    /// the configuration instance.
     #[try_into(infallible)]
     pub protocol: String,
+    /// Specifies the organizational context for this operation.
     #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
+    /// The device engagement method to offer. Reference one or more entries
+    /// from the `verificationEngagement` object of your configuration.
     #[try_into(infallible)]
     pub engagement: Vec<String>,
+    /// Text shown on the iOS system overlay during NFC engagement. Has
+    /// no effect for QR code engagement or on Android.
     #[try_into(infallible)]
     pub ui_message: Option<String>,
+    /// Use this to enforce the constraints of a regulatory ecosystem
+    /// for this presentation. See
+    /// [Enforcing an Ecosystem as a Wallet](https://docs.procivis.ch/hold/ecosystem-enforcement)
+    /// for more information.
     #[try_into(infallible, with_fn = convert_inner)]
     pub ecosystem: Option<String>,
 }
@@ -518,10 +626,15 @@ pub struct ProposeProofRequestBindingDTO {
 #[from(ProposeProofResponseDTO)]
 #[uniffi(name = "ProposeProofResponse")]
 pub struct ProposeProofResponseBindingDTO {
+    /// ID of the proof, created in `PENDING` state. Use it with
+    /// `getProof` and `getPresentationDefinitionV2`.
     #[from(with_fn_ref = "ToString::to_string")]
     pub proof_id: String,
+    /// Use with `holderSubmitProofV2` and `holderRejectProof`.
     #[from(with_fn_ref = "ToString::to_string")]
     pub interaction_id: String,
+    /// For QR code engagement, the device engagement data to display as a
+    /// QR code. Not returned for NFC engagement.
     pub url: Option<String>,
 }
 
@@ -563,14 +676,22 @@ pub struct ShareProofResponseBindingDTO {
     pub expires_at: Option<String>,
 }
 
+/// What a proof request asks for, together with the wallet's credentials
+/// that can satisfy it.
 #[derive(Debug, From, uniffi::Record)]
 #[from(PresentationDefinitionV2ResponseDTO)]
 #[uniffi(name = "PresentationDefinitionV2")]
 pub(crate) struct PresentationDefinitionV2ResponseBindingDTO {
+    /// One entry per requested credential, keyed by credential query ID.
+    /// Use these IDs as the keys of the submission for
+    /// `holderSubmitProofV2`.
     #[from(with_fn = convert_inner)]
     pub credential_queries: HashMap<String, CredentialQueryResponseBindingDTO>,
+    /// Combinations of credential queries that satisfy the request.
     #[from(with_fn = convert_inner)]
     pub credential_sets: Vec<CredentialSetResponseBindingDTO>,
+    /// Transaction data entries attached to the request. Get the details
+    /// of an entry with `holderGetTransactionData`.
     #[from(with_fn = convert_inner)]
     pub transaction_data: Vec<PresentationDefinitionTransactionDataBindingDTO>,
 }
@@ -630,7 +751,10 @@ pub(crate) struct TransactionDataDisplayAttributeBindingDTO {
 #[from(CredentialQueryResponseDTO)]
 #[uniffi(name = "CredentialQuery")]
 pub(crate) struct CredentialQueryResponseBindingDTO {
+    /// Whether more than one credential can be submitted for this query.
     pub multiple: bool,
+    /// Either the wallet's credentials that match this query, or the
+    /// reason no credential matches.
     pub credential_or_failure_hint: ApplicableCredentialOrFailureHintBindingEnum,
 }
 
@@ -638,10 +762,12 @@ pub(crate) struct CredentialQueryResponseBindingDTO {
 #[allow(clippy::large_enum_variant)]
 #[uniffi(name = "ApplicableCredentialOrFailureHint")]
 pub(crate) enum ApplicableCredentialOrFailureHintBindingEnum {
+    /// The wallet's credentials that match the query.
     ApplicableCredentials {
         applicable_credentials: Vec<PresentationDefinitionV2CredentialDetailBindingDTO>,
         purpose: Option<HashMap<String, String>>,
     },
+    /// Why no credential in the wallet matches the query.
     FailureHint {
         failure_hint: CredentialQueryFailureHintResponseBindingDTO,
     },
@@ -689,10 +815,15 @@ pub struct DisclosurePolicyViolationBindingDTO {
 #[from(CredentialDetailClaimExtResponseDTO)]
 #[uniffi(name = "PresentationDefinitionV2Claim")]
 pub struct PresentationDefinitionV2ClaimBindingDTO {
+    /// Path of the claim. Use it in `userSelections` when submitting.
     pub path: String,
     pub schema: CredentialClaimSchemaBindingDTO,
     pub value: PresentationDefinitionV2ClaimValueBindingDTO,
+    /// Whether the holder can choose whether to share this claim. To
+    /// share it, include its `path` in `userSelections` when submitting.
     pub user_selection: bool,
+    /// Whether the verifier marked this claim as required. Always
+    /// `false` for `ISO_MDL` requests.
     pub required: bool,
 }
 
@@ -763,8 +894,13 @@ fn inner_to_string(value: Option<impl ToString>) -> Option<String> {
 #[from(CredentialQueryFailureReasonEnum)]
 #[uniffi(name = "CredentialQueryFailureReason")]
 pub(crate) enum CredentialQueryFailureReasonBindingEnum {
+    /// The wallet holds no credential of the requested type.
     NoCredential,
+    /// Credentials of the requested type exist, but none is currently
+    /// valid.
     Validity,
+    /// Credentials of the requested type exist, but none satisfies the
+    /// constraints of the request.
     Constraint,
 }
 
@@ -772,7 +908,11 @@ pub(crate) enum CredentialQueryFailureReasonBindingEnum {
 #[from(CredentialSetResponseDTO)]
 #[uniffi(name = "CredentialSet")]
 pub(crate) struct CredentialSetResponseBindingDTO {
+    /// Whether this set must be satisfied for the request to be
+    /// satisfied.
     pub required: bool,
+    /// Alternative combinations of credential query IDs. Satisfying any
+    /// one combination satisfies the set.
     pub options: Vec<Vec<String>>,
 }
 

@@ -18,6 +18,9 @@ impl OneCore {
     /// For a wallet, handles the interaction once the wallet connects to a share
     /// endpoint URL (for example, scans the QR code of an offered credential or
     /// request for proof).
+    ///
+    /// Not for use with `ISO_MDL` proximity flows, where the wallet initiates the
+    /// flow using `proposeProof` instead.
     #[uniffi::method]
     pub async fn handle_invitation(
         &self,
@@ -81,7 +84,7 @@ impl OneCore {
             .await?)
     }
 
-    /// Receive a new credential batch
+    /// Request a new credential batch.
     #[uniffi::method]
     pub async fn holder_refresh_credential(
         &self,
@@ -144,6 +147,11 @@ pub struct HandleInvitationRequestBindingDTO {
     /// to once authorization is complete. For example:
     /// "myapp://example".
     pub redirect_uri: Option<String>,
+    /// Use this to enforce the constraints of a regulatory ecosystem
+    /// for this interaction. If omitted, every ecosystem available to
+    /// the wallet checks the interaction. See
+    /// [Enforcing an Ecosystem as a Wallet](https://docs.procivis.ch/hold/ecosystem-enforcement)
+    /// for more information.
     pub ecosystem: Option<String>,
 }
 
@@ -151,7 +159,7 @@ pub struct HandleInvitationRequestBindingDTO {
 #[uniffi(name = "HandleInvitationResponse")]
 pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
-        /// For reference.
+        /// Use with `holderAcceptCredential` and `holderRejectCredential`.
         interaction_id: String,
         /// Key storage required to complete issuance.
         key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
@@ -166,6 +174,7 @@ pub enum HandleInvitationResponseBindingEnum {
         protocol: String,
         /// Whether a valid WIA is required to complete issuance.
         requires_wallet_instance_attestation: bool,
+        /// Ecosystem applied to this interaction.
         ecosystem: Option<String>,
         /// One entry per ecosystem provider that rejected the artifact, keyed by provider id.
         ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
@@ -178,17 +187,20 @@ pub enum HandleInvitationResponseBindingEnum {
         authorization_code_flow_url: String,
         /// Protocol used for issuance.
         protocol: String,
+        /// Ecosystem applied to this interaction.
         ecosystem: Option<String>,
         /// One entry per ecosystem provider that rejected the artifact, keyed by provider id.
         ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
     },
     ProofRequest {
-        /// For reference.
+        /// Use with `holderSubmitProofV2` and `holderRejectProof`.
         interaction_id: String,
-        /// Proof request.
+        /// ID of the proof request. Use it with `getProof` and
+        /// `getPresentationDefinitionV2`.
         proof_id: String,
         /// Protocol used for issuance.
         protocol: String,
+        /// Ecosystem applied to this interaction.
         ecosystem: Option<String>,
         /// One entry per ecosystem provider that rejected the artifact, keyed by provider id.
         ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
@@ -199,7 +211,7 @@ pub enum HandleInvitationResponseBindingEnum {
 #[from(ContinueIssuanceResponseDTO)]
 #[uniffi(name = "ContinueIssuanceResponse")]
 pub struct ContinueIssuanceResponseBindingDTO {
-    /// For reference.
+    /// Use with `holderAcceptCredential` and `holderRejectCredential`.
     #[from(with_fn_ref = "ToString::to_string")]
     pub interaction_id: String,
     /// Key storage required to complete issuance.
@@ -211,6 +223,7 @@ pub struct ContinueIssuanceResponseBindingDTO {
     pub requires_wallet_instance_attestation: bool,
     /// Protocol used for issuance.
     pub protocol: String,
+    /// Ecosystem applied to this interaction.
     #[from(with_fn = convert_inner )]
     pub ecosystem: Option<String>,
 }
@@ -253,6 +266,10 @@ pub struct InitiateIssuanceRequestBindingDTO {
     pub scope: Option<Vec<String>>,
     /// OpenID4VCI authorization request parameter.
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailBindingDTO>>,
+    /// Use this to enforce the constraints of a regulatory ecosystem
+    /// for this issuance. See
+    /// [Enforcing an Ecosystem as a Wallet](https://docs.procivis.ch/hold/ecosystem-enforcement)
+    /// for more information.
     pub ecosystem: Option<String>,
 }
 
@@ -278,6 +295,13 @@ pub struct HolderAcceptCredentialRequestBindingDTO {
     pub interaction_id: String,
     /// Deprecated. Use `identifierId`.
     pub did_id: Option<String>,
+    /// Pass nothing here for the recommended key auto-generation. See
+    /// [Auto-generate Keys for Issuance](https://docs.procivis.ch/configure/auto-generate-keys)
+    /// for more information.
+    ///
+    /// Alternatively, choose an existing identifier to hold the credential.
+    /// If neither this nor the deprecated `didId` is set, the system generates
+    /// a new identifier that matches the issuer's restrictions.
     pub identifier_id: Option<String>,
     /// If you are using an identifier with multiple keys for authentication,
     /// specify which key to use. If no key is specified, the first suitable
