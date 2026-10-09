@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use shared_types::IdentifierTrustInformationId;
 use standardized_types::etsi_119_475::registration_certificate::Payload;
@@ -30,19 +30,35 @@ impl EudiEcosystem {
             return Err(EcosystemError::NotApplicable);
         }
 
-        let rp_id = self.etsi_rp_id_for_identifier(identifier).await?;
-        let mut last_reg_cert_jwt: Option<Payload> = None;
+        let rp_ids = self.etsi_rp_ids_for_identifier(identifier).await?;
+        if rp_ids.is_empty() && !trust_information.is_empty() {
+            return Err(EcosystemError::InvalidTrustInformation(
+                "No ETSI wallet relying party organization_id specified".to_string(),
+            ));
+        }
+        let mut reg_certs_by_rp: HashMap<&str, Payload> = HashMap::new();
         let mut result = Vec::with_capacity(trust_information.len());
         for trust_info in trust_information {
+            // Use the unverified subject only to select an existing relying party. The
+            // validator below still verifies the JWT and checks that its subject matches.
+            let parsed: DecomposedJwt<()> = Jwt::decompose_token(&trust_info.data)
+                .error_while("parsing registration certificate")?;
+            let rp_id = parsed
+                .payload
+                .subject
+                .as_ref()
+                .and_then(|subject| rp_ids.get(subject))
+                .ok_or_else(|| {
+                    EcosystemError::InvalidTrustInformation(
+                        "No access certificate matches the registration certificate subject"
+                            .to_string(),
+                    )
+                })?;
             let reg_cert_info = self
                 .wrp_validator
                 .validate_registration_certificate(
                     &trust_info.data,
-                    rp_id.as_ref().ok_or_else(|| {
-                        EcosystemError::InvalidTrustInformation(
-                            "No organization_id specified".to_string(),
-                        )
-                    })?,
+                    rp_id,
                     None,
                     self.config
                         .global_settings
@@ -51,7 +67,7 @@ impl EudiEcosystem {
                 )
                 .await
                 .error_while("validating registration certificate")?;
-            if let Some(last_reg_cert) = &last_reg_cert_jwt {
+            if let Some(last_reg_cert) = reg_certs_by_rp.get(rp_id.as_str()) {
                 self.wrp_validator
                     .validate_registration_certificates_consistency(
                         last_reg_cert,
@@ -59,7 +75,7 @@ impl EudiEcosystem {
                     )
                     .error_while("validating registration certificates similarity")?;
             }
-            last_reg_cert_jwt = Some(reg_cert_info.payload.custom.clone());
+            reg_certs_by_rp.insert(rp_id.as_str(), reg_cert_info.payload.custom.clone());
 
             result.push(ParsedTrustInformation {
                 valid_from: reg_cert_info.payload.invalid_before,
@@ -90,7 +106,7 @@ impl EudiEcosystem {
             return Ok(vec![]);
         }
 
-        let rp_id = self.etsi_rp_id_for_identifier(identifier).await?;
+        let rp_ids = self.etsi_rp_ids_for_identifier(identifier).await?;
 
         let blob_storage = self
             .blob_storage_provider
@@ -113,10 +129,10 @@ impl EudiEcosystem {
             let parsed: DecomposedJwt<()> =
                 Jwt::decompose_token(blob_value).error_while("parsing trust information blob")?;
 
-            let covered = matches!(
-                (&rp_id, &parsed.payload.subject),
-                (Some(rp_id), Some(sub)) if rp_id == sub
-            );
+            let covered = parsed
+                .payload
+                .subject
+                .is_some_and(|subject| rp_ids.contains(&subject));
             if !covered {
                 orphaned.push(info.id);
             }
@@ -124,13 +140,13 @@ impl EudiEcosystem {
         Ok(orphaned)
     }
 
-    /// The single ETSI relying party id shared by all (non-deleted) access certificates of the
-    /// identifier, if any. Certificates that are not access certificates are tolerated (the
+    /// The ETSI relying party ids of all non-deleted access certificates of the
+    /// identifier. Certificates that are not access certificates are tolerated (the
     /// identifier might carry additional, unrelated certificates).
-    async fn etsi_rp_id_for_identifier(
+    async fn etsi_rp_ids_for_identifier(
         &self,
         identifier: &Identifier,
-    ) -> Result<Option<String>, EcosystemError> {
+    ) -> Result<HashSet<String>, EcosystemError> {
         let mut rp_ids = HashSet::new();
         let certificates = match &identifier.data {
             IdentifierData::Certificate(certificates)
@@ -159,12 +175,7 @@ impl EudiEcosystem {
                 Err(err) => return Err(err.error_while("validating access cert").into()),
             }
         }
-        if rp_ids.len() > 1 {
-            return Err(EcosystemError::InvalidTrustInformation(
-                "Conflicting organization identifier values specified".to_string(),
-            ));
-        };
-        Ok(rp_ids.into_iter().next())
+        Ok(rp_ids)
     }
 }
 
@@ -239,7 +250,7 @@ mod test {
             expires_at: None,
             invalid_before: None,
             issuer: None,
-            subject: Some("subject".to_string()),
+            subject: Some("rp1".to_string()),
             audience: None,
             jwt_id: None,
             proof_of_possession_key: None,
@@ -294,9 +305,12 @@ mod test {
     }
 
     fn fake_jwt(sub: &str) -> String {
+        fake_jwt_with_payload(json!({ "sub": sub }))
+    }
+
+    fn fake_jwt_with_payload(payload: serde_json::Value) -> String {
         let header = Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"none"}"#).unwrap();
-        let payload =
-            Base64UrlSafeNoPadding::encode_to_string(json!({ "sub": sub }).to_string()).unwrap();
+        let payload = Base64UrlSafeNoPadding::encode_to_string(payload.to_string()).unwrap();
         format!("{header}.{payload}.")
     }
 
@@ -426,6 +440,75 @@ mod test {
     }
 
     #[tokio::test]
+    async fn test_find_orphaned_trust_information_keeps_all_remaining_relying_parties() {
+        let identifier_id = Uuid::new_v4().into();
+        let certificates = [("rp1", false), ("rp2", false), ("rp1", true), ("rp3", true)].map(
+            |(rp_id, deleted)| {
+                let mut cert = dummy_certificate(identifier_id);
+                cert.chain = rp_id.to_string();
+                cert.deleted_at = deleted.then(crate::clock::now_utc);
+                cert
+            },
+        );
+        let mut identifier = identifier_with_certificates(certificates.into());
+        let trust_information = ["rp1", "rp2", "rp3"].map(|rp_id| {
+            (
+                dummy_trust_info(Uuid::new_v4().into(), identifier_id, Uuid::new_v4().into()),
+                rp_id,
+            )
+        });
+        let orphaned_id = trust_information[2].0.id;
+        identifier.trust_information = RelatedVec::from(
+            trust_information
+                .iter()
+                .map(|(info, _)| info.clone())
+                .collect::<Vec<_>>(),
+        );
+
+        let mut wrp_validator = MockWRPValidator::new();
+        wrp_validator
+            .expect_validate_access_certificate()
+            .times(2)
+            .returning(|chain, _| {
+                Ok(AccessCertificateResult {
+                    trust_entity: None,
+                    relying_party_id: chain.to_string(),
+                    registry_url: None,
+                })
+            });
+        let mut blob_storage = MockBlobStorage::default();
+        blob_storage.expect_get().times(3).returning(move |id| {
+            let (_, rp_id) = trust_information
+                .iter()
+                .find(|(info, _)| info.blob_id == *id)
+                .unwrap();
+            Ok(Some(Blob {
+                id: *id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                value: fake_jwt(rp_id).into_bytes(),
+                r#type: BlobType::RegistrationCertificate,
+            }))
+        });
+        let blob_storage = Arc::new(blob_storage);
+        let mut blob_storage_provider = MockBlobStorageProvider::default();
+        blob_storage_provider
+            .expect_get_blob_storage()
+            .returning(move |_| Ok(blob_storage.clone()));
+        let ecosystem = setup(Mocks {
+            wrp_validator,
+            blob_storage_provider,
+        });
+
+        let orphaned = ecosystem
+            .find_orphaned_trust_information(&identifier)
+            .await
+            .unwrap();
+
+        assert_eq!(orphaned, vec![orphaned_id]);
+    }
+
+    #[tokio::test]
     async fn test_parse_trust_information_accepts_valid_registration_certificate() {
         let identifier_id = Uuid::new_v4().into();
         let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
@@ -461,7 +544,7 @@ mod test {
             .parse_trust_information(
                 &identifier,
                 &[TrustInformationInput {
-                    data: "reg cert jwt".to_string(),
+                    data: fake_jwt("rp1"),
                     r#type: IdentifierTrustInformationType::RegistrationCertificate,
                 }],
             )
@@ -476,7 +559,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_parse_trust_information_fails_on_rp_id_conflict() {
+    async fn test_parse_trust_information_accepts_multiple_relying_parties() {
         let identifier_id = Uuid::new_v4().into();
         let mut cert_a = dummy_certificate(identifier_id);
         cert_a.chain = "chain-a".to_string();
@@ -496,6 +579,27 @@ mod test {
                     registry_url: None,
                 })
             });
+        wrp_validator
+            .expect_validate_registration_certificate()
+            .times(4)
+            .returning(|token, rp_id, _, _| {
+                assert_eq!(token, fake_jwt(rp_id));
+                let mut payload = dummy_reg_cert_payload();
+                payload.subject = Some(rp_id.to_string());
+                payload.custom.name = rp_id.to_string();
+                payload.custom.intended_use_id = Some(rp_id.to_string());
+                Ok(RegistrationCertificateResult {
+                    trust_entity: None,
+                    payload,
+                })
+            });
+        wrp_validator
+            .expect_validate_registration_certificates_consistency()
+            .times(2)
+            .returning(|first, second| {
+                assert_eq!(first.name, second.name);
+                Ok(())
+            });
 
         let ecosystem = setup(Mocks {
             wrp_validator,
@@ -505,14 +609,129 @@ mod test {
         let result = ecosystem
             .parse_trust_information(
                 &identifier,
+                // Interleave the relying parties to check consistency within each group.
+                &["rp1", "rp2", "rp1", "rp2"].map(|rp_id| TrustInformationInput {
+                    data: fake_jwt(rp_id),
+                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
+                }),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            result
+                .iter()
+                .map(|info| info.intended_use.as_deref())
+                .collect::<Vec<_>>(),
+            vec![Some("rp1"), Some("rp2"), Some("rp1"), Some("rp2")]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_parse_trust_information_rejects_inconsistent_certificates_for_same_rp() {
+        let identifier_id = Uuid::new_v4().into();
+        let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
+        let mut wrp_validator = access_certificate_validator("rp1");
+        wrp_validator
+            .expect_validate_registration_certificate()
+            .times(2)
+            .returning(|_, _, _, _| {
+                Ok(RegistrationCertificateResult {
+                    trust_entity: None,
+                    payload: dummy_reg_cert_payload(),
+                })
+            });
+        wrp_validator
+            .expect_validate_registration_certificates_consistency()
+            .once()
+            .returning(|_, _| {
+                Err(WRPValidatorError::RegistrationCertificateMissmatch {
+                    field_name: "name".to_string(),
+                    first_value: "first name".to_string(),
+                    second_value: "second name".to_string(),
+                })
+            });
+        let ecosystem = setup(Mocks {
+            wrp_validator,
+            ..Default::default()
+        });
+
+        let error = ecosystem
+            .parse_trust_information(
+                &identifier,
+                &["rp1", "rp1"].map(|rp_id| TrustInformationInput {
+                    data: fake_jwt(rp_id),
+                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
+                }),
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.error_code(), ErrorCode::BR_0224);
+    }
+
+    #[rstest::rstest]
+    #[case(json!({ "sub": "unknown-rp" }))]
+    #[case(json!({ "sub": "deleted-rp" }))]
+    #[case(json!({}))]
+    #[tokio::test]
+    async fn test_parse_trust_information_rejects_subject_without_access_certificate(
+        #[case] payload: serde_json::Value,
+    ) {
+        let identifier_id = Uuid::new_v4().into();
+        let mut deleted_cert = dummy_certificate(identifier_id);
+        deleted_cert.chain = "deleted-rp".to_string();
+        deleted_cert.deleted_at = Some(crate::clock::now_utc());
+        let identifier =
+            identifier_with_certificates(vec![dummy_certificate(identifier_id), deleted_cert]);
+        let ecosystem = setup(Mocks {
+            wrp_validator: access_certificate_validator("rp1"),
+            ..Default::default()
+        });
+
+        let error = ecosystem
+            .parse_trust_information(
+                &identifier,
                 &[TrustInformationInput {
-                    data: "reg cert jwt".to_string(),
+                    data: fake_jwt_with_payload(payload),
                     r#type: IdentifierTrustInformationType::RegistrationCertificate,
                 }],
             )
-            .await;
+            .await
+            .unwrap_err();
 
-        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0416);
+        assert_eq!(error.error_code(), ErrorCode::BR_0416);
+    }
+
+    #[tokio::test]
+    async fn test_parse_trust_information_propagates_registration_certificate_validation_error() {
+        let identifier_id = Uuid::new_v4().into();
+        let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
+        let mut wrp_validator = access_certificate_validator("rp1");
+        wrp_validator
+            .expect_validate_registration_certificate()
+            .once()
+            .returning(|_, rp_id, _, _| {
+                assert_eq!(rp_id, "rp1");
+                Err(WRPValidatorError::MissingIssuer)
+            });
+        let ecosystem = setup(Mocks {
+            wrp_validator,
+            ..Default::default()
+        });
+
+        let error = ecosystem
+            .parse_trust_information(
+                &identifier,
+                &[TrustInformationInput {
+                    data: fake_jwt("rp1"),
+                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
+                }],
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.error_code(), ErrorCode::BR_0492);
     }
 
     #[tokio::test]
