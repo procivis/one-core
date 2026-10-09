@@ -522,6 +522,7 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
     ),
     responses(
         (status = 200, description = "OK", body = NonceResponse),
+        (status = 404, description = "Invalid protocol"),
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci-final1_0",
@@ -543,6 +544,10 @@ pub(crate) async fn oid4vci_final1_0_nonce(
 
     match result {
         Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
+            tracing::error!("Not found error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -559,6 +564,7 @@ pub(crate) async fn oid4vci_final1_0_nonce(
     ),
     responses(
         (status = 200, description = "OK", body = ChallengeResponse),
+        (status = 404, description = "Invalid protocol"),
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci-final1_0",
@@ -580,6 +586,10 @@ pub(crate) async fn oid4vci_final1_0_oauth_attestation_challenge(
 
     match result {
         Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+        Err(error) if error.error_code() == ErrorCode::BR_0089 => {
+            tracing::error!("Not found error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
