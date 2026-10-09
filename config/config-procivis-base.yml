@@ -156,6 +156,8 @@ verificationProtocol:
     type: "OPENID4VP_FINAL1_SWIYU"
     params:
       public:
+        # Do not remove, used for FE validation
+        urlScheme: "swiyu-verify"
         webhookTask: "WEBHOOK_NOTIFY"
         redirectUri:
           enabled: true
