@@ -81,6 +81,87 @@ fn dummy_trust_list_publication(
 }
 
 #[tokio::test]
+async fn test_list_publications_containing_identifier() {
+    use sea_orm::{ActiveModelTrait, Set};
+
+    use crate::entity::trust_entry;
+
+    let TestSetup {
+        provider,
+        db,
+        org_id,
+        identifier_id,
+    } = setup().await;
+    let other_identifier_id = insert_identifier(&db, "other", Uuid::new_v4(), None, org_id, false)
+        .await
+        .unwrap();
+    let mut expected = Vec::new();
+    for (entry_identifier, state, deleted) in [
+        (identifier_id, trust_entry::TrustEntryState::Active, false),
+        (
+            identifier_id,
+            trust_entry::TrustEntryState::Suspended,
+            false,
+        ),
+        (
+            other_identifier_id,
+            trust_entry::TrustEntryState::Active,
+            false,
+        ),
+        (identifier_id, trust_entry::TrustEntryState::Active, true),
+    ] {
+        // The signing identifier alone must not match the entry filter.
+        let publication = dummy_trust_list_publication(org_id, identifier_id);
+        let publication_id = publication.id;
+        provider.create(publication).await.unwrap();
+        trust_entry::ActiveModel {
+            id: Set(Uuid::new_v4().into()),
+            created_date: Set(get_dummy_date()),
+            last_modified: Set(get_dummy_date()),
+            state: Set(state),
+            metadata: Set(vec![]),
+            trust_list_publication_id: Set(publication_id),
+            identifier_id: Set(entry_identifier),
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+        if deleted {
+            // Retain the entry to verify the publication's deletion filter.
+            crate::entity::trust_list_publication::ActiveModel {
+                id: sea_orm::ActiveValue::Unchanged(publication_id),
+                deleted_at: Set(Some(get_dummy_date())),
+                ..Default::default()
+            }
+            .update(&db)
+            .await
+            .unwrap();
+        } else if entry_identifier == identifier_id {
+            expected.push(publication_id);
+        }
+    }
+
+    let result = provider
+        .list(TrustListPublicationListQuery {
+            filtering: Some(
+                TrustListPublicationFilterValue::TrustEntryIdentifierId(identifier_id).condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let mut ids: Vec<_> = result
+        .values
+        .into_iter()
+        .map(|publication| publication.id)
+        .collect();
+    ids.sort_by_key(|id| id.to_string());
+    expected.sort_by_key(|id| id.to_string());
+    assert_eq!(ids, expected);
+    assert_eq!(result.total_items, Some(2));
+}
+
+#[tokio::test]
 async fn test_create_trust_list_publication() {
     let TestSetup {
         provider,

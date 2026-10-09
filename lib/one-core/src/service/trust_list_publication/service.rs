@@ -231,9 +231,9 @@ impl TrustListPublicationService {
         validate_provider_content_type(provider.get_capabilities(), accepted_content_types)?;
 
         let trust_list_content = provider
-            .generate_trust_list_content(trust_list)
+            .get_content(trust_list)
             .await
-            .error_while("generating trust list content")?;
+            .error_while("getting trust list content")?;
 
         Ok(trust_list_content)
     }

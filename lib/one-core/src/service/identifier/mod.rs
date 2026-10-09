@@ -5,6 +5,7 @@ use crate::error::ErrorCode;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
+use crate::proto::trust_list_regenerator::TrustListRegenerator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
@@ -48,6 +49,7 @@ pub struct IdentifierService {
     trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
     transaction_manager: Arc<dyn TransactionManager>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
+    trust_list_regenerator: Arc<dyn TrustListRegenerator>,
 }
 
 impl IdentifierService {
@@ -71,6 +73,7 @@ impl IdentifierService {
         trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
         transaction_manager: Arc<dyn TransactionManager>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
+        trust_list_regenerator: Arc<dyn TrustListRegenerator>,
     ) -> Self {
         Self {
             identifier_repository,
@@ -91,6 +94,7 @@ impl IdentifierService {
             identifier_trust_information_repository,
             transaction_manager,
             ecosystem_provider,
+            trust_list_regenerator,
         }
     }
 }

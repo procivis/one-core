@@ -5,4 +5,5 @@ mod delete_trust_list_publication;
 mod get_trust_list_publication;
 mod get_trust_list_publication_entries;
 mod get_trust_list_publications;
+mod regenerate_content;
 mod update_trust_entry;

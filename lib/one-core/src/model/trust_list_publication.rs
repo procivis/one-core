@@ -1,5 +1,5 @@
 use proc_macros::Model;
-use shared_types::{OrganisationId, TrustListPublicationId, TrustListPublisherId};
+use shared_types::{IdentifierId, OrganisationId, TrustListPublicationId, TrustListPublisherId};
 use time::OffsetDateTime;
 
 use crate::model::certificate::Certificate;
@@ -52,6 +52,7 @@ pub enum SortableTrustListPublicationColumn {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TrustListPublicationFilterValue {
     OrganisationId(OrganisationId),
+    TrustEntryIdentifierId(IdentifierId),
     Name(StringMatch),
     Type(Vec<TrustListPublisherId>),
     Role(Vec<TrustListRoleEnum>),

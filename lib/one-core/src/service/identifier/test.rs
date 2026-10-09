@@ -24,6 +24,7 @@ use crate::proto::identifier_creator::{
 };
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::proto::trust_list_regenerator::MockTrustListRegenerator;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -81,9 +82,17 @@ struct Mocks {
     localized_text_repository: MockLocalizedTextRepository,
     blob_storage_provider: MockBlobStorageProvider,
     ecosystem_provider: MockEcosystemDirectory,
+    trust_list_regenerator: Option<MockTrustListRegenerator>,
 }
 
 fn setup_service(mocks: Mocks) -> IdentifierService {
+    let trust_list_regenerator = mocks.trust_list_regenerator.unwrap_or_else(|| {
+        let mut regenerator = MockTrustListRegenerator::new();
+        regenerator
+            .expect_regenerate_for_identifier()
+            .returning(|_| Ok(()));
+        regenerator
+    });
     IdentifierService {
         identifier_repository: Arc::new(mocks.identifier_repository),
         certificate_repository: Arc::new(mocks.certificate_repository),
@@ -105,6 +114,7 @@ fn setup_service(mocks: Mocks) -> IdentifierService {
         trust_list_subscriber_provider: Arc::new(mocks.trust_list_subscriber_provider),
         transaction_manager: Arc::new(NoTransactionManager),
         ecosystem_provider: Arc::new(mocks.ecosystem_provider),
+        trust_list_regenerator: Arc::new(trust_list_regenerator),
     }
 }
 
@@ -1973,7 +1983,15 @@ async fn test_update_identifier_logo_updates_existing_blob_in_place() {
         .once()
         .returning(move |_| Ok(blob_storage.clone()));
 
+    let mut trust_list_regenerator = MockTrustListRegenerator::new();
+    trust_list_regenerator
+        .expect_regenerate_for_identifier()
+        .with(mockall::predicate::eq(identifier_id))
+        .once()
+        .returning(|_| Ok(()));
+
     let service = setup_service(Mocks {
+        trust_list_regenerator: Some(trust_list_regenerator),
         identifier_repository,
         blob_storage_provider,
         session_provider: StaticSessionProvider::new_with_org(organisation_id),
@@ -2390,7 +2408,15 @@ async fn test_add_certificates_happy_path() {
         .once()
         .returning(move |_, _| Ok(vec![cert_clone.clone()]));
 
+    let mut trust_list_regenerator = MockTrustListRegenerator::new();
+    trust_list_regenerator
+        .expect_regenerate_for_identifier()
+        .with(mockall::predicate::eq(identifier_id))
+        .once()
+        .returning(|_| Ok(()));
+
     let service = setup_service(Mocks {
+        trust_list_regenerator: Some(trust_list_regenerator),
         identifier_repository,
         certificate_repository,
         identifier_creator,
@@ -2550,7 +2576,15 @@ async fn test_remove_certificate_happy_path() {
         .expect_enabled_ecosystems()
         .returning(Vec::new);
 
+    let mut trust_list_regenerator = MockTrustListRegenerator::new();
+    trust_list_regenerator
+        .expect_regenerate_for_identifier()
+        .with(mockall::predicate::eq(identifier_id))
+        .once()
+        .returning(|_| Ok(()));
+
     let service = setup_service(Mocks {
+        trust_list_regenerator: Some(trust_list_regenerator),
         identifier_repository,
         certificate_repository,
         ecosystem_provider,
@@ -2633,10 +2667,12 @@ async fn test_remove_certificate_prunes_orphaned_trust_information() {
         .withf(move |id| *id == trust_info_id)
         .returning(|_| Ok(()));
 
+    let mut sequence = mockall::Sequence::new();
     let mut blob_storage = MockBlobStorage::default();
     blob_storage
         .expect_delete_many()
         .once()
+        .in_sequence(&mut sequence)
         .withf(move |ids| ids == [blob_id])
         .returning(|_| Ok(()));
     let blob_storage = Arc::new(blob_storage);
@@ -2646,7 +2682,16 @@ async fn test_remove_certificate_prunes_orphaned_trust_information() {
         .once()
         .returning(move |_| Ok(blob_storage.clone()));
 
+    let mut trust_list_regenerator = MockTrustListRegenerator::new();
+    trust_list_regenerator
+        .expect_regenerate_for_identifier()
+        .with(mockall::predicate::eq(identifier_id))
+        .once()
+        .in_sequence(&mut sequence)
+        .returning(|_| Ok(()));
+
     let service = setup_service(Mocks {
+        trust_list_regenerator: Some(trust_list_regenerator),
         identifier_repository,
         certificate_repository,
         ecosystem_provider,

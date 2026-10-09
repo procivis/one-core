@@ -11,10 +11,10 @@ use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
 use sea_orm::ColumnTrait;
-use sea_orm::sea_query::{ColumnRef, IntoCondition};
+use sea_orm::sea_query::{ColumnRef, IntoCondition, Query};
 
-use crate::entity::trust_list_publication;
 use crate::entity::trust_list_publication::TrustRoleEnum;
+use crate::entity::{trust_entry, trust_list_publication};
 use crate::list_query_generic::{
     ColumnSortingBehavior, IntoFilterCondition, IntoSortingColumn, get_comparison_condition,
     get_equals_condition, get_string_match_condition,
@@ -97,6 +97,15 @@ impl IntoFilterCondition for TrustListPublicationFilterValue {
             Self::OrganisationId(id) => {
                 get_equals_condition(trust_list_publication::Column::OrganisationId, id)
             }
+            Self::TrustEntryIdentifierId(id) => trust_list_publication::Column::Id
+                .in_subquery(
+                    Query::select()
+                        .column(trust_entry::Column::TrustListPublicationId)
+                        .from(trust_entry::Entity)
+                        .and_where(trust_entry::Column::IdentifierId.eq(id))
+                        .to_owned(),
+                )
+                .into_condition(),
             Self::Name(string_match) => {
                 get_string_match_condition(trust_list_publication::Column::Name, string_match)
             }

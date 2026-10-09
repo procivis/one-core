@@ -55,7 +55,14 @@ pub trait TrustListPublisher: Send + Sync {
 
     async fn remove_entry(&self, entry: &TrustEntry) -> Result<(), TrustListPublisherError>;
 
-    async fn generate_trust_list_content(
+    /// Regenerates and persists the content regardless of its age.
+    async fn regenerate_content(
+        &self,
+        publication_id: TrustListPublicationId,
+    ) -> Result<(), TrustListPublisherError>;
+
+    /// Returns the published content, refreshing it if required by the provider.
+    async fn get_content(
         &self,
         publication: TrustListPublication,
     ) -> Result<TrustListContent, TrustListPublisherError>;

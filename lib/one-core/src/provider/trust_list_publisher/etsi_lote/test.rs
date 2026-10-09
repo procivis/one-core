@@ -1081,7 +1081,7 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
 }
 
 #[tokio::test]
-async fn test_generate_trust_list_content_returns_fresh_content() {
+async fn test_get_content_returns_fresh_content() {
     let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
 
     let mut cert_with_key = certificate.clone();
@@ -1128,10 +1128,7 @@ async fn test_generate_trust_list_content_returns_fresh_content() {
         .sequence_number;
 
     let publication = repos.stored_publication.lock().unwrap().clone().unwrap();
-    let result = publisher
-        .generate_trust_list_content(publication)
-        .await
-        .unwrap();
+    let result = publisher.get_content(publication).await.unwrap();
 
     assert_eq!(result.content_type, LoteContentType::Jwt);
     assert!(!result.content.is_empty());
@@ -1148,7 +1145,7 @@ async fn test_generate_trust_list_content_returns_fresh_content() {
 }
 
 #[tokio::test]
-async fn test_generate_trust_list_content_resigns_stale_content() {
+async fn test_get_content_resigns_stale_content() {
     let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
 
     let mut cert_with_key = certificate.clone();
@@ -1199,13 +1196,74 @@ async fn test_generate_trust_list_content_resigns_stale_content() {
     }
 
     let publication = repos.stored_publication.lock().unwrap().clone().unwrap();
-    let result = publisher
-        .generate_trust_list_content(publication)
-        .await
-        .unwrap();
+    let result = publisher.get_content(publication).await.unwrap();
     assert_eq!(result.content_type, LoteContentType::Jwt);
     assert!(!result.content.is_empty());
     assert_eq!(result.content.split('.').count(), 3);
+
+    let seq_after_get = repos
+        .stored_publication
+        .lock()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .sequence_number;
+    assert_eq!(
+        seq_after_get,
+        seq_after_create + 1,
+        "should have re-signed (sequence incremented)"
+    );
+}
+
+#[tokio::test]
+async fn test_regenerate_content_resigns_fresh_content() {
+    let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
+
+    let mut cert_with_key = certificate.clone();
+    cert_with_key.key = Some(key.clone().into());
+
+    let identifier = Identifier {
+        data: IdentifierData::Certificate(RelatedVec::from(vec![cert_with_key])),
+        ..dummy_identifier()
+    };
+    let identifier_for_create = identifier.clone();
+
+    let repos = make_stateful_repos(key.clone(), certificate.clone());
+    let xades_proto = MockXAdESProto::new();
+
+    let publisher = make_publisher(
+        key_provider,
+        key_algorithm_provider,
+        repos.pub_repo,
+        repos.entry_repo,
+        xades_proto,
+    );
+
+    publisher
+        .create_trust_list(CreateTrustListRequest {
+            name: "Test List".into(),
+            role: TrustListRoleEnum::PidProvider,
+            organisation_id: Uuid::new_v4().into(),
+            identifier: identifier_for_create,
+            key_id: Some(key.id),
+            certificate_id: Some(certificate.id),
+            params: None,
+        })
+        .await
+        .unwrap();
+
+    let seq_after_create = repos
+        .stored_publication
+        .lock()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .sequence_number;
+
+    let publication = repos.stored_publication.lock().unwrap().clone().unwrap();
+    publisher.regenerate_content(publication.id).await.unwrap();
+    let regenerated = repos.stored_publication.lock().unwrap().clone().unwrap();
+    assert_ne!(publication.content, regenerated.content);
 
     let seq_after_get = repos
         .stored_publication

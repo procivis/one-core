@@ -231,7 +231,15 @@ impl TrustListPublisher for EtsiLotePublisher {
         Ok(())
     }
 
-    async fn generate_trust_list_content(
+    async fn regenerate_content(
+        &self,
+        publication_id: TrustListPublicationId,
+    ) -> Result<(), TrustListPublisherError> {
+        self.sign_trust_list(publication_id).await?;
+        Ok(())
+    }
+
+    async fn get_content(
         &self,
         publication: TrustListPublication,
     ) -> Result<TrustListContent, TrustListPublisherError> {

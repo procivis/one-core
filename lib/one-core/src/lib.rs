@@ -34,6 +34,7 @@ use crate::proto::proof_schema::importer::ProofSchemaImporterProto;
 use crate::proto::schema_import::SchemaImporterProto;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
+use crate::proto::trust_list_regenerator::TrustListRegeneratorImpl;
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
@@ -390,6 +391,11 @@ impl OneCore {
             data_provider.get_trust_entry_repository(),
             data_provider.get_organisation_repository(),
         )?;
+
+        let trust_list_regenerator = Arc::new(TrustListRegeneratorImpl::new(
+            data_provider.get_trust_list_publication_repository(),
+            trust_list_publisher_provider.clone(),
+        ));
 
         let trust_list_subscriber_provider = trust_list_subscriber_provider_from_config(
             &mut config,
@@ -873,6 +879,7 @@ impl OneCore {
                 trust_list_subscriber_provider.clone(),
                 data_provider.get_tx_manager(),
                 ecosystem_provider.clone(),
+                trust_list_regenerator,
             ),
             instance_service: InstanceService::new(
                 data_provider.get_organisation_repository(),

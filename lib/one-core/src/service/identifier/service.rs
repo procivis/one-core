@@ -710,6 +710,11 @@ impl IdentifierService {
                             .error_while("deleting identifier logo blob")?;
                     }
 
+                    self.trust_list_regenerator
+                        .regenerate_for_identifier(*id)
+                        .await
+                        .error_while("regenerating trust lists")?;
+
                     Ok::<_, IdentifierServiceError>(())
                 }
                 .boxed(),
@@ -1149,14 +1154,7 @@ impl IdentifierService {
         }
 
         self.remove_certificate_internal(identifier, certificate_id)
-            .await?;
-
-        let identifier = self
-            .identifier_repository
-            .get(*identifier_id)
             .await
-            .error_while("getting identifier")?;
-        self.prune_orphaned_trust_information(&identifier).await
     }
 
     /// Removes (soft-deletes) a certificate from an existing local CA identifier. Fails if it
@@ -1226,6 +1224,19 @@ impl IdentifierService {
                     .update(&identifier_id, UpdateIdentifierRequest::default())
                     .await
                     .error_while("updating identifier")?;
+
+                let identifier = self
+                    .identifier_repository
+                    .get(identifier_id)
+                    .await
+                    .error_while("getting identifier")?;
+
+                self.prune_orphaned_trust_information(&identifier).await?;
+
+                self.trust_list_regenerator
+                    .regenerate_for_identifier(identifier_id)
+                    .await
+                    .error_while("regenerating trust lists")?;
 
                 Ok::<_, IdentifierServiceError>(())
             }
@@ -1306,6 +1317,11 @@ impl IdentifierService {
             )
             .await
             .error_while("updating identifier")?;
+
+        self.trust_list_regenerator
+            .regenerate_for_identifier(identifier.id)
+            .await
+            .error_while("regenerating trust lists")?;
 
         Ok(ids)
     }
