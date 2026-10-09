@@ -39,7 +39,7 @@ pub(crate) struct CreateOrganisationRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct UpsertOrganisationRequestRestDTO {
+pub(crate) struct UpdateOrganisationRequestRestDTO {
     #[schema(value_type = bool, example = true)]
     pub deactivate: Option<bool>,
     /// Specify which configured wallet provider this organization will use
@@ -49,13 +49,13 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     // clients can express the explicit `null`; `options_not_nullable` skips fields with `schema`
     #[schema(nullable = true)]
     #[serde(default, with = "::serde_with::rust::double_option")]
-    pub wallet_provider: Option<Option<UpsertProviderRequestRestDTO>>,
+    pub wallet_provider: Option<Option<UpdateProviderRequestRestDTO>>,
     /// Specify which configured verifier provider this organization will
     /// use, and the identifier used to authenticate to it. Sending `null`
     /// clears the verifier provider association.
     #[schema(nullable = true)]
     #[serde(default, with = "::serde_with::rust::double_option")]
-    pub verifier_provider: Option<Option<UpsertProviderRequestRestDTO>>,
+    pub verifier_provider: Option<Option<UpdateProviderRequestRestDTO>>,
     /// Policy-level configuration for this organization.
     pub configuration: Option<SetOrganisationConfigurationRestDTO>,
     /// Optionally assign a parent organization to share policy-level
@@ -70,7 +70,7 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct UpsertProviderRequestRestDTO {
+pub(crate) struct UpdateProviderRequestRestDTO {
     #[schema(example = "PROCIVIS_ONE")]
     pub name: Option<String>,
     /// Identifier used by this organization to authenticate to the

@@ -14,7 +14,7 @@ use crate::service::managed_instance::dto::EcosystemMetadataDTO;
 use crate::service::organisation::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
-    SetOrganisationConfigurationDTO, UpsertOrganisationRequestDTO, VerifierInstanceFeatureFlagsDTO,
+    SetOrganisationConfigurationDTO, UpdateOrganisationRequestDTO, VerifierInstanceFeatureFlagsDTO,
     VerifierProviderDetailResponseDTO, WalletInstanceFeatureFlagsDTO,
     WalletProviderDetailResponseDTO,
 };
@@ -45,8 +45,8 @@ pub(super) fn request_to_model(
     }
 }
 
-impl From<UpsertOrganisationRequestDTO> for UpdateOrganisationRequest {
-    fn from(request: UpsertOrganisationRequestDTO) -> Self {
+impl From<UpdateOrganisationRequestDTO> for UpdateOrganisationRequest {
+    fn from(request: UpdateOrganisationRequestDTO) -> Self {
         Self {
             parent_organisation: request.parent_organisation,
             deactivate: request.deactivate,
@@ -58,36 +58,6 @@ impl From<UpsertOrganisationRequestDTO> for UpdateOrganisationRequest {
             // service, which has access to the organisation's current state.
             configuration: None,
         }
-    }
-}
-
-pub(super) fn upsert_request_to_fresh_model(
-    request: UpsertOrganisationRequestDTO,
-    organisation_repository: &Arc<dyn OrganisationRepository>,
-) -> Organisation {
-    let configuration = match request.configuration {
-        Some(request) => apply_configuration_update(request, None),
-        None => Default::default(),
-    };
-
-    let now = crate::clock::now_utc();
-    Organisation {
-        id: request.id,
-        created_date: now,
-        last_modified: now,
-        deactivated_at: request
-            .deactivate
-            .is_some_and(|deactivate| deactivate)
-            .then_some(now),
-        wallet_provider: request.wallet_provider.flatten(),
-        wallet_provider_issuer: None,
-        verifier_provider: request.verifier_provider.flatten(),
-        verifier_provider_issuer: None,
-        configuration,
-        parent_organisation: request
-            .parent_organisation
-            .flatten()
-            .map(|parent_id| Related::new(parent_id, organisation_repository.clone())),
     }
 }
 

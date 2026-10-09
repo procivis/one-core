@@ -29,17 +29,16 @@ impl OneCore {
             .to_string())
     }
 
-    /// Updates or deactivates an organization if it exists, otherwise
-    /// creates a new organization using the provided UUID and name.
+    /// Updates or deactivates an organization
     #[uniffi::method]
-    pub async fn upsert_organisation(
+    pub async fn update_organisation(
         &self,
-        request: UpsertOrganisationRequestBindingDTO,
+        request: UpdateOrganisationRequestBindingDTO,
     ) -> Result<(), BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .organisation_service
-            .upsert_organisation(request.try_into()?)
+            .update_organisation(request.try_into()?)
             .await?)
     }
 
@@ -68,8 +67,8 @@ pub struct CreateOrganisationRequestBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "UpsertOrganisationRequest")]
-pub struct UpsertOrganisationRequestBindingDTO {
+#[uniffi(name = "UpdateOrganisationRequest")]
+pub struct UpdateOrganisationRequestBindingDTO {
     /// Unique identifier of the organization to create or update.
     pub id: String,
     /// Set to `true` to deactivate the organization.

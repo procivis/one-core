@@ -2,4 +2,4 @@ mod create_organisation_tests;
 mod get_organisation_ecosystems_tests;
 mod get_organisation_tests;
 mod list_organisation_tests;
-mod upsert_organisation_tests;
+mod update_organisation_tests;

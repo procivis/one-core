@@ -21,7 +21,7 @@ use crate::service::instance::service::provider_metadata_url;
 use crate::util::key_selection::KeyFilter;
 
 pub(super) async fn validate_provider_issuer(
-    organisation: Option<&Organisation>,
+    organisation: &Organisation,
     issuer_id: &IdentifierId,
     requested_provider: Option<&String>,
     identifier_repository: &dyn IdentifierRepository,
@@ -29,10 +29,6 @@ pub(super) async fn validate_provider_issuer(
     wallet_provider_directory: &dyn WalletProviderDirectory,
     verifier_provider_directory: &dyn VerifierProviderDirectory,
 ) -> Result<(), OrganisationServiceError> {
-    let Some(organisation) = organisation else {
-        return Err(OrganisationServiceError::IdentifierOrganisationMismatch);
-    };
-
     let identifier = identifier_repository
         .get(*issuer_id)
         .await
@@ -128,14 +124,14 @@ pub(super) async fn validate_parent_organisation(
 
 #[expect(clippy::too_many_arguments)]
 pub(super) async fn validate_provider(
-    organisation_id: OrganisationId,
+    organisation: &Organisation,
     provider_id: &str,
     provider_type: InstanceRole,
     organisation_repository: &dyn OrganisationRepository,
     wallet_provider_directory: &dyn WalletProviderDirectory,
     verifier_provider_directory: &dyn VerifierProviderDirectory,
     identifier_repository: &dyn IdentifierRepository,
-    issuer_kept_from_current_org: Option<&Organisation>,
+    issuer_not_changing: bool,
 ) -> Result<(), OrganisationServiceError> {
     let (signer_identifier_types, current_provider_org) = match provider_type {
         InstanceRole::Wallet => {
@@ -163,7 +159,7 @@ pub(super) async fn validate_provider(
     };
 
     if let Some(org) = current_provider_org
-        && org.id != organisation_id
+        && org.id != organisation.id
     {
         return Err(OrganisationServiceError::ProviderAlreadyAssociated(
             org.id,
@@ -173,10 +169,10 @@ pub(super) async fn validate_provider(
 
     // check that current issuer matches the provider, when staying unchanged,
     // if the issuer changes the validation is covered in `validate_provider_issuer``
-    if let Some(current_org) = issuer_kept_from_current_org {
+    if issuer_not_changing {
         let current_identifier_id = match provider_type {
-            InstanceRole::Wallet => current_org.wallet_provider_issuer.as_ref(),
-            InstanceRole::Verifier => current_org.verifier_provider_issuer.as_ref(),
+            InstanceRole::Wallet => organisation.wallet_provider_issuer.as_ref(),
+            InstanceRole::Verifier => organisation.verifier_provider_issuer.as_ref(),
         };
 
         if let Some(current_identifier_id) = current_identifier_id {
@@ -202,17 +198,12 @@ pub(super) async fn validate_provider(
 /// is governed by the wallet provider, the verifier flag by the verifier provider. No provider
 /// mandates the issuer flag, which the organisation therefore governs on its own.
 pub(super) async fn validate_ecosystem_enforcement(
-    organisation: Option<&Organisation>,
+    organisation: &Organisation,
     update: &SetOrganisationConfigurationDTO,
     instance_repository: &dyn InstanceRepository,
     wallet_provider_client: &dyn WalletProviderClient,
     verifier_provider_client: &dyn VerifierProviderClient,
 ) -> Result<(), OrganisationServiceError> {
-    // A not-yet-existing organisation cannot have an instance linked to a provider.
-    let Some(organisation) = organisation else {
-        return Ok(());
-    };
-
     let disabled_roles = [
         (InstanceRole::Wallet, update.enforce_ecosystem_as_holder),
         (InstanceRole::Verifier, update.enforce_ecosystem_as_verifier),

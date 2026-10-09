@@ -38,7 +38,7 @@ use crate::service::managed_instance::dto::{
     WalletProviderMetadataResponseDTO, WalletUnitAttestationMetadataDTO,
 };
 use crate::service::organisation::dto::{
-    SetOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
+    SetOrganisationConfigurationDTO, UpdateOrganisationRequestDTO,
 };
 use crate::service::test_utilities::{dummy_key, dummy_organisation};
 use crate::service::verifier_provider::dto::{
@@ -701,7 +701,7 @@ async fn test_get_organisation_ecosystems_without_instances_lists_configured_eco
 /// A provider mandating ecosystem enforcement overrules the organisation: its instances
 /// must keep enforcing, so the flags cannot be turned off while it is linked.
 #[tokio::test]
-async fn test_upsert_organisation_cannot_disable_enforcement_mandated_by_provider() {
+async fn test_update_organisation_cannot_disable_enforcement_mandated_by_provider() {
     let organisation_id: OrganisationId = Uuid::new_v4().into();
     let organisation = organisation_selecting(organisation_id, &["EUDI"]);
 
@@ -736,7 +736,7 @@ async fn test_upsert_organisation_cannot_disable_enforcement_mandated_by_provide
     });
 
     let result = service
-        .upsert_organisation(upsert_configuration(
+        .update_organisation(update_configuration(
             organisation_id,
             SetOrganisationConfigurationDTO {
                 enforce_ecosystem_as_holder: Some(false),
@@ -750,7 +750,7 @@ async fn test_upsert_organisation_cannot_disable_enforcement_mandated_by_provide
 
 /// A provider leaving enforcement to the organisation lets it turn the flags off.
 #[tokio::test]
-async fn test_upsert_organisation_disables_enforcement_provider_leaves_optional() {
+async fn test_update_organisation_disables_enforcement_provider_leaves_optional() {
     let organisation_id: OrganisationId = Uuid::new_v4().into();
     let organisation = organisation_selecting(organisation_id, &["EUDI"]);
 
@@ -799,7 +799,7 @@ async fn test_upsert_organisation_disables_enforcement_provider_leaves_optional(
     });
 
     service
-        .upsert_organisation(upsert_configuration(
+        .update_organisation(update_configuration(
             organisation_id,
             SetOrganisationConfigurationDTO {
                 enforce_ecosystem_as_holder: Some(false),
@@ -813,7 +813,7 @@ async fn test_upsert_organisation_disables_enforcement_provider_leaves_optional(
 /// Enforcement is mandated per role: turning off the verifier flag is governed by the verifier
 /// provider alone, the wallet provider has no say in it.
 #[tokio::test]
-async fn test_upsert_organisation_disables_enforcement_of_role_without_mandating_provider() {
+async fn test_update_organisation_disables_enforcement_of_role_without_mandating_provider() {
     let organisation_id: OrganisationId = Uuid::new_v4().into();
 
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -846,7 +846,7 @@ async fn test_upsert_organisation_disables_enforcement_of_role_without_mandating
     });
 
     service
-        .upsert_organisation(upsert_configuration(
+        .update_organisation(update_configuration(
             organisation_id,
             SetOrganisationConfigurationDTO {
                 enforce_ecosystem_as_verifier: Some(false),
@@ -860,7 +860,7 @@ async fn test_upsert_organisation_disables_enforcement_of_role_without_mandating
 /// Changing the ecosystem selection syncs right away, rather than leaving the organisation
 /// to wait for the next run of the periodic task.
 #[tokio::test]
-async fn test_upsert_organisation_syncs_on_changed_ecosystem_selection() {
+async fn test_update_organisation_syncs_on_changed_ecosystem_selection() {
     let organisation_id: OrganisationId = Uuid::new_v4().into();
 
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -886,7 +886,7 @@ async fn test_upsert_organisation_syncs_on_changed_ecosystem_selection() {
     });
 
     service
-        .upsert_organisation(upsert_configuration(
+        .update_organisation(update_configuration(
             organisation_id,
             SetOrganisationConfigurationDTO {
                 selected_ecosystems: Some(vec!["EUDI".into(), "OTHER".into()]),
@@ -898,11 +898,11 @@ async fn test_upsert_organisation_syncs_on_changed_ecosystem_selection() {
 }
 
 /// An update touching nothing but the organisation configuration.
-fn upsert_configuration(
+fn update_configuration(
     id: OrganisationId,
     configuration: SetOrganisationConfigurationDTO,
-) -> UpsertOrganisationRequestDTO {
-    UpsertOrganisationRequestDTO {
+) -> UpdateOrganisationRequestDTO {
+    UpdateOrganisationRequestDTO {
         id,
         deactivate: None,
         wallet_provider: None,

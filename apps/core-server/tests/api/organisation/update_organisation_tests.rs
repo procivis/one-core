@@ -1,127 +1,55 @@
 use std::collections::HashSet;
 
-use futures::future::join_all;
 use maplit::hashset;
 use one_core::model::history::HistoryAction;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::api_clients::organisations::{
-    ProviderParams, SetOrganisationConfigurationParams, UpsertParams,
+    ProviderParams, SetOrganisationConfigurationParams, UpdateParams,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::organisations::TestingOrganisationParams;
 
 #[tokio::test]
-async fn test_upsert_organisation_success_not_existing() {
+async fn test_update_organisation_fail_not_existing() {
     // GIVEN
-    let (context, parent_organisation) = TestContext::new_with_organisation(None).await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let organisation_id = Uuid::new_v4();
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation_id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     issuer: None,
                 })),
-                verifier_provider: Some(Some(ProviderParams {
-                    name: Some("PROCIVIS_ONE".to_string()),
-                    issuer: None,
-                })),
-                configuration: Some(SetOrganisationConfigurationParams {
-                    selected_ecosystems: Some(vec!["EUDI".into()]),
-                    enforce_ecosystem_as_issuer: Some(true),
-                    enforce_ecosystem_as_holder: None,
-                    enforce_ecosystem_as_verifier: Some(true),
-                    ..Default::default()
-                }),
-                parent_organisation: Some(Some(parent_organisation.id)),
                 ..Default::default()
             },
         )
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 204);
-
-    let organisation = context.db.organisations.get(&organisation_id.into()).await;
-    assert_eq!(
-        organisation.parent_organisation.unwrap().id(),
-        parent_organisation.id
-    );
-    assert_eq!(organisation.wallet_provider.unwrap(), "PROCIVIS_ONE");
-    assert_eq!(organisation.verifier_provider.unwrap(), "PROCIVIS_ONE");
-    assert_eq!(
-        organisation.configuration.selected_ecosystems,
-        vec!["EUDI".into()]
-    );
-    assert_eq!(organisation.configuration.enforce_ecosystem_as_issuer, true);
-    assert_eq!(
-        organisation.configuration.enforce_ecosystem_as_holder,
-        false
-    );
-    assert_eq!(
-        organisation.configuration.enforce_ecosystem_as_verifier,
-        true
-    );
-
-    let history = context
-        .db
-        .histories
-        .get_by_entity_id(&organisation_id.into())
-        .await;
-    assert_eq!(
-        history.values.first().unwrap().action,
-        HistoryAction::Created
-    )
+    assert_eq!(resp.status(), 404);
+    assert_eq!(resp.error_code().await, "BR_0022");
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_not_existing_parallel_test() {
+async fn test_update_organisation_success_existing() {
     // GIVEN
-    let context = TestContext::new(None).await;
-
-    // WHEN
-    let mut requests = vec![];
-    for _ in 0..10 {
-        requests.push(async {
-            let org_id = Uuid::new_v4();
-            context
-                .api
-                .organisations
-                .upsert(
-                    &org_id,
-                    UpsertParams {
-                        ..Default::default()
-                    },
-                )
-                .await
-        });
-    }
-    let responses = join_all(requests).await;
-
-    // THEN
-    assert!(responses.iter().all(|resp| resp.status() == 204));
-}
-
-#[tokio::test]
-async fn test_upsert_organisation_success_existing() {
-    // GIVEN
-    let context = TestContext::new(None).await;
-    let organisation = context.db.organisations.create().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()
@@ -146,18 +74,17 @@ async fn test_upsert_organisation_success_existing() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_with_delete() {
+async fn test_update_organisation_with_deactivate() {
     // GIVEN
-    let context = TestContext::new(None).await;
-    let organisation = context.db.organisations.create().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation.id,
-            UpsertParams {
+            UpdateParams {
                 deactivate: Some(true),
                 ..Default::default()
             },
@@ -180,18 +107,17 @@ async fn test_upsert_organisation_with_delete() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_reactivate_deactivated() {
+async fn test_update_organisation_reactivate_deactivated() {
     // GIVEN
-    let context = TestContext::new(None).await;
-    let organisation = context.db.organisations.create().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // Deactivate the organisation first
     context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation.id,
-            UpsertParams {
+            UpdateParams {
                 deactivate: Some(true),
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
@@ -206,9 +132,9 @@ async fn test_upsert_organisation_reactivate_deactivated() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation.id,
-            UpsertParams {
+            UpdateParams {
                 deactivate: Some(false),
                 wallet_provider: Some(None),
                 ..Default::default()
@@ -240,18 +166,17 @@ async fn test_upsert_organisation_reactivate_deactivated() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_non_existing_identifier() {
+async fn test_update_organisation_fail_non_existing_identifier() {
     // GIVEN
-    let context = TestContext::new(None).await;
-    let organisation = context.db.organisations.create().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     issuer: Some(Uuid::new_v4().into()),
                     ..Default::default()
@@ -267,7 +192,7 @@ async fn test_upsert_organisation_fail_non_existing_identifier() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_existing_identifier() {
+async fn test_update_organisation_success_existing_identifier() {
     // GIVEN
     let (context, org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
 
@@ -275,9 +200,9 @@ async fn test_upsert_organisation_success_existing_identifier() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     issuer: Some(identifier.id),
                     name: Some("PROCIVIS_ONE".to_string()),
@@ -299,18 +224,18 @@ async fn test_upsert_organisation_success_existing_identifier() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_org_mismatched_identifier() {
+async fn test_update_organisation_fail_org_mismatched_identifier() {
     // GIVEN
-    let (context, _, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, _, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
+    let organisation = context.db.organisations.create().await;
 
     // WHEN
-    let organisation_id = Uuid::new_v4();
     let resp = context
         .api
         .organisations
-        .upsert(
-            &organisation_id,
-            UpsertParams {
+        .update(
+            &organisation.id,
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     issuer: Some(identifier.id),
                     ..Default::default()
@@ -326,7 +251,7 @@ async fn test_upsert_organisation_fail_org_mismatched_identifier() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_wallet_provider() {
+async fn test_update_organisation_success_wallet_provider() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 
@@ -334,9 +259,9 @@ async fn test_upsert_organisation_success_wallet_provider() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()
@@ -358,7 +283,7 @@ async fn test_upsert_organisation_success_wallet_provider() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_set_parent_organisation() {
+async fn test_update_organisation_success_set_parent_organisation() {
     // GIVEN
     let context = TestContext::new(None).await;
     let parent = context.db.organisations.create().await;
@@ -368,9 +293,9 @@ async fn test_upsert_organisation_success_set_parent_organisation() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &child.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(Some(parent.id)),
                 ..Default::default()
             },
@@ -393,7 +318,7 @@ async fn test_upsert_organisation_success_set_parent_organisation() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_clear_parent_organisation() {
+async fn test_update_organisation_success_clear_parent_organisation() {
     // GIVEN
     let context = TestContext::new(None).await;
     let parent = context.db.organisations.create().await;
@@ -401,9 +326,9 @@ async fn test_upsert_organisation_success_clear_parent_organisation() {
     context
         .api
         .organisations
-        .upsert(
+        .update(
             &child.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(Some(parent.id)),
                 ..Default::default()
             },
@@ -414,9 +339,9 @@ async fn test_upsert_organisation_success_clear_parent_organisation() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &child.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(None),
                 ..Default::default()
             },
@@ -430,7 +355,7 @@ async fn test_upsert_organisation_success_clear_parent_organisation() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_parent_already_has_parent() {
+async fn test_update_organisation_fail_parent_already_has_parent() {
     // GIVEN
     let context = TestContext::new(None).await;
     let grandparent = context.db.organisations.create().await;
@@ -440,9 +365,9 @@ async fn test_upsert_organisation_fail_parent_already_has_parent() {
     context
         .api
         .organisations
-        .upsert(
+        .update(
             &parent.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(Some(grandparent.id)),
                 ..Default::default()
             },
@@ -453,9 +378,9 @@ async fn test_upsert_organisation_fail_parent_already_has_parent() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &child.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(Some(parent.id)),
                 ..Default::default()
             },
@@ -470,7 +395,7 @@ async fn test_upsert_organisation_fail_parent_already_has_parent() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_organisation_has_children() {
+async fn test_update_organisation_fail_organisation_has_children() {
     // GIVEN
     let context = TestContext::new(None).await;
     let org = context.db.organisations.create().await;
@@ -488,9 +413,9 @@ async fn test_upsert_organisation_fail_organisation_has_children() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(Some(new_parent.id)),
                 ..Default::default()
             },
@@ -505,7 +430,7 @@ async fn test_upsert_organisation_fail_organisation_has_children() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_self_as_parent() {
+async fn test_update_organisation_fail_self_as_parent() {
     // GIVEN
     let context = TestContext::new(None).await;
     let organisation = context.db.organisations.create().await;
@@ -514,9 +439,9 @@ async fn test_upsert_organisation_fail_self_as_parent() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(Some(organisation.id)),
                 ..Default::default()
             },
@@ -529,7 +454,7 @@ async fn test_upsert_organisation_fail_self_as_parent() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_non_existing_parent_organisation() {
+async fn test_update_organisation_fail_non_existing_parent_organisation() {
     // GIVEN
     let context = TestContext::new(None).await;
     let organisation = context.db.organisations.create().await;
@@ -538,9 +463,9 @@ async fn test_upsert_organisation_fail_non_existing_parent_organisation() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &organisation.id,
-            UpsertParams {
+            UpdateParams {
                 parent_organisation: Some(Some(Uuid::new_v4().into())),
                 ..Default::default()
             },
@@ -553,7 +478,7 @@ async fn test_upsert_organisation_fail_non_existing_parent_organisation() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_configuration_partial_update() {
+async fn test_update_organisation_success_configuration_partial_update() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 
@@ -561,9 +486,9 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 configuration: Some(SetOrganisationConfigurationParams {
                     trusted_issuer_required: Some(true),
                     trusted_rp_required: Some(true),
@@ -582,9 +507,9 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 configuration: Some(SetOrganisationConfigurationParams {
                     trusted_issuer_required: None,
                     trusted_rp_required: Some(false),
@@ -603,7 +528,7 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_configuration_mixed_deprecated_and_new_fields() {
+async fn test_update_organisation_fail_configuration_mixed_deprecated_and_new_fields() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 
@@ -611,9 +536,9 @@ async fn test_upsert_organisation_fail_configuration_mixed_deprecated_and_new_fi
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 configuration: Some(SetOrganisationConfigurationParams {
                     trusted_rp_required: Some(true),
                     enforce_ecosystem_as_issuer: Some(true),
@@ -633,7 +558,7 @@ async fn test_upsert_organisation_fail_configuration_mixed_deprecated_and_new_fi
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_non_existing_wallet_provider() {
+async fn test_update_organisation_fail_non_existing_wallet_provider() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 
@@ -641,9 +566,9 @@ async fn test_upsert_organisation_fail_non_existing_wallet_provider() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("INVALID_VALUE".to_string()),
                     ..Default::default()
@@ -659,15 +584,15 @@ async fn test_upsert_organisation_fail_non_existing_wallet_provider() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_wallet_provider_issuer_rotation() {
+async fn test_update_organisation_success_wallet_provider_issuer_rotation() {
     // GIVEN
     let (context, org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()
@@ -682,9 +607,9 @@ async fn test_upsert_organisation_success_wallet_provider_issuer_rotation() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     issuer: Some(identifier.id),
@@ -702,15 +627,15 @@ async fn test_upsert_organisation_success_wallet_provider_issuer_rotation() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_wallet_provider_already_associated() {
+async fn test_update_organisation_fail_wallet_provider_already_associated() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()
@@ -726,9 +651,9 @@ async fn test_upsert_organisation_fail_wallet_provider_already_associated() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &other.id,
-            UpsertParams {
+            UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()
@@ -744,15 +669,15 @@ async fn test_upsert_organisation_fail_wallet_provider_already_associated() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_success_verifier_provider_issuer_rotation() {
+async fn test_update_organisation_success_verifier_provider_issuer_rotation() {
     // GIVEN
     let (context, org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 verifier_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()
@@ -767,9 +692,9 @@ async fn test_upsert_organisation_success_verifier_provider_issuer_rotation() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 verifier_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     issuer: Some(identifier.id),
@@ -787,15 +712,15 @@ async fn test_upsert_organisation_success_verifier_provider_issuer_rotation() {
 }
 
 #[tokio::test]
-async fn test_upsert_organisation_fail_verifier_provider_already_associated() {
+async fn test_update_organisation_fail_verifier_provider_already_associated() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &org.id,
-            UpsertParams {
+            UpdateParams {
                 verifier_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()
@@ -811,9 +736,9 @@ async fn test_upsert_organisation_fail_verifier_provider_already_associated() {
     let resp = context
         .api
         .organisations
-        .upsert(
+        .update(
             &other.id,
-            UpsertParams {
+            UpdateParams {
                 verifier_provider: Some(Some(ProviderParams {
                     name: Some("PROCIVIS_ONE".to_string()),
                     ..Default::default()

@@ -35,7 +35,7 @@ use one_core::service::identifier::dto::{
 };
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::organisation::dto::{
-    CreateOrganisationRequestDTO, SetOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
+    CreateOrganisationRequestDTO, SetOrganisationConfigurationDTO, UpdateOrganisationRequestDTO,
 };
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimValueDTO,
@@ -81,7 +81,7 @@ use super::interaction::{
 use super::key::KeyRequestBindingDTO;
 use super::organisation::{
     CreateOrganisationRequestBindingDTO, SetOrganisationConfigurationBindingDTO,
-    UpsertOrganisationRequestBindingDTO,
+    UpdateOrganisationRequestBindingDTO,
 };
 use super::proof::{
     ApplicableCredentialOrFailureHintBindingEnum, CreateProofRequestBindingDTO,
@@ -719,10 +719,10 @@ impl TryFrom<CreateOrganisationRequestBindingDTO> for CreateOrganisationRequestD
     }
 }
 
-impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestDTO {
+impl TryFrom<UpdateOrganisationRequestBindingDTO> for UpdateOrganisationRequestDTO {
     type Error = ErrorResponseBindingDTO;
 
-    fn try_from(value: UpsertOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
+    fn try_from(value: UpdateOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
         let wallet_provider_issuer = value
             .wallet_provider_issuer
             .map(Option::<String>::from)

@@ -1,7 +1,7 @@
 use one_core::service::error::ValidationError;
 use one_core::service::organisation::dto::{
     InstanceDetailResponseDTO, OrganisationConfigurationDTO, SetOrganisationConfigurationDTO,
-    UpsertOrganisationRequestDTO,
+    UpdateOrganisationRequestDTO,
 };
 use one_dto_mapper::try_convert_inner;
 use shared_types::{IdentifierId, OrganisationId};
@@ -9,7 +9,7 @@ use shared_types::{IdentifierId, OrganisationId};
 use super::dto::{
     CreateOrganisationResponseRestDTO, InstanceDetailResponseRestDTO,
     OrganisationConfigurationRestDTO, SetOrganisationConfigurationRestDTO,
-    UpsertOrganisationRequestRestDTO, UpsertProviderRequestRestDTO,
+    UpdateOrganisationRequestRestDTO, UpdateProviderRequestRestDTO,
 };
 
 impl From<OrganisationId> for CreateOrganisationResponseRestDTO {
@@ -29,20 +29,6 @@ impl From<OrganisationConfigurationDTO> for OrganisationConfigurationRestDTO {
             enforce_ecosystem_as_holder: value.enforce_ecosystem_as_holder,
             enforce_ecosystem_as_verifier: value.enforce_ecosystem_as_verifier,
         }
-    }
-}
-
-/// Unpacks a nested, double-optional provider update into the flat double-optional
-/// name/issuer pair the service layer expects: omitted key -> no change to either
-/// sub-field; `null` -> clear both; an object -> set name/issuer independently (each
-/// `None` inside the object clears just that one).
-fn unpack_provider(
-    provider: Option<Option<UpsertProviderRequestRestDTO>>,
-) -> (Option<Option<String>>, Option<Option<IdentifierId>>) {
-    match provider {
-        None => (None, None),
-        Some(None) => (Some(None), Some(None)),
-        Some(Some(provider)) => (Some(provider.name), Some(provider.issuer)),
     }
 }
 
@@ -100,14 +86,14 @@ impl TryFrom<SetOrganisationConfigurationRestDTO> for SetOrganisationConfigurati
     }
 }
 
-pub(crate) fn upsert_request_from_request(
+pub(crate) fn update_request_from_request(
     id: OrganisationId,
-    request: UpsertOrganisationRequestRestDTO,
-) -> Result<UpsertOrganisationRequestDTO, ValidationError> {
+    request: UpdateOrganisationRequestRestDTO,
+) -> Result<UpdateOrganisationRequestDTO, ValidationError> {
     let (wallet_provider, wallet_provider_issuer) = unpack_provider(request.wallet_provider);
     let (verifier_provider, verifier_provider_issuer) = unpack_provider(request.verifier_provider);
 
-    Ok(UpsertOrganisationRequestDTO {
+    Ok(UpdateOrganisationRequestDTO {
         id,
         deactivate: request.deactivate,
         wallet_provider,
@@ -117,6 +103,20 @@ pub(crate) fn upsert_request_from_request(
         configuration: try_convert_inner(request.configuration)?,
         parent_organisation: request.parent_organisation,
     })
+}
+
+/// Unpacks a nested, double-optional provider update into the flat double-optional
+/// name/issuer pair the service layer expects: omitted key -> no change to either
+/// sub-field; `null` -> clear both; an object -> set name/issuer independently (each
+/// `None` inside the object clears just that one).
+fn unpack_provider(
+    provider: Option<Option<UpdateProviderRequestRestDTO>>,
+) -> (Option<Option<String>>, Option<Option<IdentifierId>>) {
+    match provider {
+        None => (None, None),
+        Some(None) => (Some(None), Some(None)),
+        Some(Some(provider)) => (Some(provider.name), Some(provider.issuer)),
+    }
 }
 
 impl<IN, OUT> From<InstanceDetailResponseDTO<IN>> for InstanceDetailResponseRestDTO<OUT>

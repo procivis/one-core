@@ -50,7 +50,7 @@ pub struct SetOrganisationConfigurationParams {
 #[skip_serializing_none]
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpsertParams {
+pub struct UpdateParams {
     pub deactivate: Option<bool>,
     pub wallet_provider: Option<Option<ProviderParams>>,
     pub verifier_provider: Option<Option<ProviderParams>>,
@@ -88,7 +88,7 @@ impl OrganisationsApi {
         self.client.post("/api/organisation/v1", body).await
     }
 
-    pub async fn upsert(&self, id: &impl Display, params: UpsertParams) -> Response {
+    pub async fn update(&self, id: &impl Display, params: UpdateParams) -> Response {
         self.client
             .patch(
                 &format!("/api/organisation/v1/{id}"),

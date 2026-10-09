@@ -5,12 +5,12 @@ use shared_types::{EcosystemId, IdentifierId, OrganisationId};
 use super::OrganisationService;
 use super::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
-    GetOrganisationListResponseDTO, OrganisationFilterParamsDTO, UpsertOrganisationRequestDTO,
+    GetOrganisationListResponseDTO, OrganisationFilterParamsDTO, UpdateOrganisationRequestDTO,
 };
 use super::error::OrganisationServiceError;
 use super::mapper::{
     apply_configuration_update, detail_from_model, instance_detail_from_model,
-    list_item_from_model, merge_ecosystems, request_to_model, upsert_request_to_fresh_model,
+    list_item_from_model, merge_ecosystems, request_to_model,
 };
 use super::validator::{
     validate_ecosystem_enforcement, validate_parent_organisation, validate_provider,
@@ -214,17 +214,6 @@ impl OrganisationService {
         ))
     }
 
-    async fn get_organisation_if_exists(
-        &self,
-        id: &OrganisationId,
-    ) -> Result<Option<Organisation>, DataLayerError> {
-        match self.organisation_repository.get_organisation(id).await {
-            Ok(organisation) => Ok(Some(organisation)),
-            Err(DataLayerError::EntityNotFound { .. }) => Ok(None),
-            Err(error) => Err(error),
-        }
-    }
-
     /// Loads an organisation's linked wallet and verifier instance, in that order.
     async fn load_instances(
         &self,
@@ -280,18 +269,19 @@ impl OrganisationService {
         }
     }
 
-    pub async fn upsert_organisation(
+    pub async fn update_organisation(
         &self,
-        request: UpsertOrganisationRequestDTO,
+        request: UpdateOrganisationRequestDTO,
     ) -> Result<(), OrganisationServiceError> {
-        let existing_organisation = self
-            .get_organisation_if_exists(&request.id)
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.id)
             .await
             .error_while("getting organisation")?;
 
         if let Some(Some(issuer)) = &request.wallet_provider_issuer {
             validate_provider_issuer(
-                existing_organisation.as_ref(),
+                &organisation,
                 issuer,
                 request
                     .wallet_provider
@@ -307,25 +297,21 @@ impl OrganisationService {
 
         if let Some(Some(wallet_provider)) = &request.wallet_provider {
             validate_provider(
-                request.id,
+                &organisation,
                 wallet_provider,
                 InstanceRole::Wallet,
                 self.organisation_repository.as_ref(),
                 self.wallet_provider_directory.as_ref(),
                 self.verifier_provider_directory.as_ref(),
                 self.identifier_repository.as_ref(),
-                request
-                    .wallet_provider_issuer
-                    .is_none()
-                    .then_some(existing_organisation.as_ref())
-                    .flatten(),
+                request.wallet_provider_issuer.is_none(),
             )
             .await?;
         }
 
         if let Some(Some(issuer)) = &request.verifier_provider_issuer {
             validate_provider_issuer(
-                existing_organisation.as_ref(),
+                &organisation,
                 issuer,
                 request
                     .verifier_provider
@@ -341,18 +327,14 @@ impl OrganisationService {
 
         if let Some(Some(verifier_provider)) = &request.verifier_provider {
             validate_provider(
-                request.id,
+                &organisation,
                 verifier_provider,
                 InstanceRole::Verifier,
                 self.organisation_repository.as_ref(),
                 self.wallet_provider_directory.as_ref(),
                 self.verifier_provider_directory.as_ref(),
                 self.identifier_repository.as_ref(),
-                request
-                    .verifier_provider_issuer
-                    .is_none()
-                    .then_some(existing_organisation.as_ref())
-                    .flatten(),
+                request.verifier_provider_issuer.is_none(),
             )
             .await?;
         }
@@ -366,7 +348,7 @@ impl OrganisationService {
 
         if let Some(update) = &request.configuration {
             validate_ecosystem_enforcement(
-                existing_organisation.as_ref(),
+                &organisation,
                 update,
                 &*self.instance_repository,
                 &*self.wallet_provider_client,
@@ -375,51 +357,28 @@ impl OrganisationService {
             .await?;
         }
 
-        let existing_configuration = existing_organisation.as_ref().map(|org| &org.configuration);
         let configuration = request.configuration.as_ref().map(|update| {
-            apply_configuration_update(update.to_owned(), existing_configuration.cloned())
+            apply_configuration_update(
+                update.to_owned(),
+                Some(organisation.configuration.to_owned()),
+            )
         });
         let ecosystem_selection_changed = configuration.as_ref().is_some_and(|configuration| {
-            existing_configuration.is_some_and(|existing_configuration| {
-                configuration.selected_ecosystems != existing_configuration.selected_ecosystems
-            })
+            configuration.selected_ecosystems != organisation.configuration.selected_ecosystems
         });
 
-        let success_log = format!("Updated organisation {}", request.id);
         let mut update_request: UpdateOrganisationRequest = request.clone().into();
         update_request.configuration = configuration;
-        let result = self
-            .organisation_repository
+        self.organisation_repository
             .update_organisation(&request.id, update_request)
-            .await;
+            .await
+            .error_while("updating organisation")?;
 
-        let mut updated = true;
-        match result {
-            Ok(_) => tracing::info!(message = success_log),
-            Err(DataLayerError::AlreadyExists(_)) => {
-                return Err(OrganisationServiceError::AlreadyExists);
-            }
-            Err(DataLayerError::RecordNotUpdated(_)) => {
-                // Organisation does not exist, create a new one instead.
-                self.organisation_repository
-                    .create_organisation(upsert_request_to_fresh_model(
-                        request,
-                        &self.organisation_repository,
-                    ))
-                    .await
-                    .error_while("creating fresh organisation")?;
-
-                updated = false;
-            }
-            Err(err) => return Err(err.error_while("updating organisation").into()),
-        }
-
-        // An organisation just created has no instance to sync with yet, so only an update
-        // can change a selection that has anything to pull in.
-        if updated && ecosystem_selection_changed {
+        if ecosystem_selection_changed {
             self.sync_ecosystems(organisation_id).await?;
         }
 
+        tracing::info!("Updated organisation {organisation_id}");
         Ok(())
     }
 

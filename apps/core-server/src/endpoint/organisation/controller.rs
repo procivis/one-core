@@ -9,14 +9,14 @@ use shared_types::{OrganisationId, Permission};
 
 use super::dto::{
     CreateOrganisationRequestRestDTO, CreateOrganisationResponseRestDTO,
-    GetOrganisationDetailsResponseRestDTO, GetOrganisationsQuery, UpsertOrganisationRequestRestDTO,
+    GetOrganisationDetailsResponseRestDTO, GetOrganisationsQuery, UpdateOrganisationRequestRestDTO,
 };
 use crate::dto::common::GetOrganisationListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
 };
-use crate::endpoint::organisation::mapper::upsert_request_from_request;
+use crate::endpoint::organisation::mapper::update_request_from_request;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -136,30 +136,29 @@ pub(crate) async fn post_organisation(
     params(
         ("id" = OrganisationId, Path, description = "Organization id")
     ),
-    request_body = UpsertOrganisationRequestRestDTO,
+    request_body = UpdateOrganisationRequestRestDTO,
     responses(EmptyOrErrorResponse),
     tag = "organisation_management",
     security(
         ("bearer" = [])
     ),
-    summary = "Update or insert organization",
+    summary = "Update organization",
     description = indoc::formatdoc! {"
-        Updates the name or deactivates an organization if it exists, otherwise creates
-        a new organization using the provided UUID and name.
+        Updates or deactivates an organization
     "},
 )]
 pub(crate) async fn patch_organisation(
     state: State<AppState>,
     Path(id): Path<OrganisationId>,
     WithRejection(Json(request), _): WithRejection<
-        Json<UpsertOrganisationRequestRestDTO>,
+        Json<UpdateOrganisationRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
-    let request = match upsert_request_from_request(id, request) {
+    let request = match update_request_from_request(id, request) {
         Ok(request) => request,
         Err(error) => {
-            tracing::error!("Error while upserting organisation: {error}");
+            tracing::error!("Error while updating organisation: {error}");
             return EmptyOrErrorResponse::from_error(
                 &error,
                 state.config.hide_error_response_cause,
@@ -170,7 +169,7 @@ pub(crate) async fn patch_organisation(
     let result = state
         .core
         .organisation_service
-        .upsert_organisation(request)
+        .update_organisation(request)
         .await;
-    EmptyOrErrorResponse::from_result(result, state, "upserting organization")
+    EmptyOrErrorResponse::from_result(result, state, "updating organization")
 }

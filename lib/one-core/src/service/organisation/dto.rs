@@ -31,7 +31,7 @@ pub struct CreateOrganisationRequestDTO {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct UpsertOrganisationRequestDTO {
+pub struct UpdateOrganisationRequestDTO {
     pub id: OrganisationId,
     pub deactivate: Option<bool>,
     pub wallet_provider: Option<Option<String>>,
