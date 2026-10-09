@@ -113,9 +113,11 @@ fn on_struct_fields_allowed_values_fn(
     let ident_str = field_ident.strip_prefix("r#").unwrap_or(&field_ident);
     Some(quote! {
         if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_str) {
-            let old_values = std::mem::take(&mut field_obj.enum_values);
+            let old_values = field_obj.enum_values.clone();
             let values = #allowed_values_fn(core_config, old_values);
-            field_obj.enum_values = values;
+            if let Some(values) = values {
+                field_obj.examples = values;
+            }
         };
     })
 }
@@ -128,29 +130,34 @@ fn on_struct_fields_field(
     let ident_str = field_ident.strip_prefix("r#").unwrap_or(&field_ident);
     let ident_camel_case = to_camel_case(ident_str);
     Some(quote! {
-        if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_camel_case) {
-            let values: Vec<utoipa::r#gen::serde_json::Value> = core_config
-                .#field
-                .iter_enabled()
-                .map(|(k, _)| std::string::ToString::to_string(k))
-                .map(utoipa::r#gen::serde_json::Value::String)
-                .collect();
-            let values = if values.is_empty() { None } else { Some(values) };
-            field_obj.enum_values = values;
-        } else if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Array(field_obj))) = object.properties.get_mut(#ident_camel_case) {
-            if let utoipa::openapi::schema::ArrayItems::RefOrSchema(s) = &mut field_obj.items {
-                if let utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj)) = s.as_mut() {
-                    let values: Vec<utoipa::r#gen::serde_json::Value> = core_config
-                        .#field
-                        .iter_enabled()
-                        .map(|(k, _)| std::string::ToString::to_string(k))
-                        .map(utoipa::r#gen::serde_json::Value::String)
-                        .collect();
-                    let values = if values.is_empty() { None } else { Some(values) };
-                    field_obj.enum_values = values;
+        {
+            let modify_obj = |field_obj: &mut utoipa::openapi::Object| {
+                let values: Vec<String> = core_config
+                    .#field
+                    .iter_enabled()
+                    .map(|(k, _)| std::string::ToString::to_string(k))
+                    .collect();
+                if !values.is_empty() {
+                    let formatted: Vec<String> = values.iter().map(|value| format!("`{value}`")).collect();
+                    let description = format!("Possible values: {}", formatted.join(", "));
+                    field_obj.description = Some(match &field_obj.description {
+                        Some(current) => format!("{current}  \n{description}"),
+                        None => description,
+                    });
+                }
+                field_obj.examples = values.into_iter().map(utoipa::r#gen::serde_json::Value::String).collect();
+            };
+
+            if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_camel_case) {
+                modify_obj(field_obj);
+            } else if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Array(field_obj))) = object.properties.get_mut(#ident_camel_case) {
+                if let utoipa::openapi::schema::ArrayItems::RefOrSchema(s) = &mut field_obj.items {
+                    if let utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj)) = s.as_mut() {
+                        modify_obj(field_obj);
+                    }
                 }
             }
-        };
+        }
     })
 }
 
@@ -167,9 +174,11 @@ fn on_enum(item_enum: &ItemEnum) -> TokenStream {
         quote! {
             impl crate::openapi::CoreConfigModifySchema for #ident {
                 fn core_config_modify_schema(core_config: &one_core::config::core_config::CoreConfig, object: &mut utoipa::openapi::Object) {
-                    let old_values = std::mem::take(&mut object.enum_values);
+                    let old_values = object.enum_values.clone();
                     let values = #allowed_values_fn(core_config, old_values);
-                    object.enum_values = values;
+                    if let Some(values) = values {
+                        object.examples = values;
+                    }
                 }
             }
         }
@@ -179,7 +188,7 @@ fn on_enum(item_enum: &ItemEnum) -> TokenStream {
     }
 }
 
-pub fn to_camel_case(input: &str) -> String {
+fn to_camel_case(input: &str) -> String {
     let mut pascal = String::new();
     let mut capitalize = true;
     for ch in input.chars() {
