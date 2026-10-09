@@ -117,11 +117,18 @@ pub(crate) async fn post_organisation(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<CreateOrganisationResponseRestDTO> {
-    let result = state
-        .core
-        .organisation_service
-        .create_organisation(request.into())
-        .await;
+    let result = async {
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .organisation_service
+                .create_organisation(request.try_into()?)
+                .await
+                .error_while("creating organisation")?,
+        )
+    }
+    .await;
+
     CreatedOrErrorResponse::from_result(result, state, "creating organization")
 }
 

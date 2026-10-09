@@ -45,7 +45,7 @@ use crate::service::managed_instance::dto::{
     WalletProviderMetadataResponseDTO, WalletUnitAttestationMetadataDTO,
 };
 use crate::service::organisation::dto::{
-    TrustCollectionInfoDTO, UpsertOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
+    SetOrganisationConfigurationDTO, TrustCollectionInfoDTO, UpsertOrganisationRequestDTO,
 };
 use crate::service::test_utilities::{dummy_key, dummy_organisation};
 use crate::service::verifier_provider::dto::{
@@ -121,6 +121,7 @@ async fn test_create_organisation_id_set() {
         .create_organisation(CreateOrganisationRequestDTO {
             id: Some(id),
             parent_organisation: None,
+            configuration: None,
         })
         .await
         .unwrap();
@@ -149,6 +150,7 @@ async fn test_create_organisation_already_exists() {
         .create_organisation(CreateOrganisationRequestDTO {
             id: Some(id),
             parent_organisation: None,
+            configuration: None,
         })
         .await;
 
@@ -1115,7 +1117,7 @@ async fn test_upsert_organisation_cannot_disable_enforcement_mandated_by_provide
     let result = service
         .upsert_organisation(upsert_configuration(
             organisation_id,
-            UpsertOrganisationConfigurationDTO {
+            SetOrganisationConfigurationDTO {
                 enforce_ecosystem_as_holder: Some(false),
                 ..Default::default()
             },
@@ -1178,7 +1180,7 @@ async fn test_upsert_organisation_disables_enforcement_provider_leaves_optional(
     service
         .upsert_organisation(upsert_configuration(
             organisation_id,
-            UpsertOrganisationConfigurationDTO {
+            SetOrganisationConfigurationDTO {
                 enforce_ecosystem_as_holder: Some(false),
                 ..Default::default()
             },
@@ -1225,7 +1227,7 @@ async fn test_upsert_organisation_disables_enforcement_of_role_without_mandating
     service
         .upsert_organisation(upsert_configuration(
             organisation_id,
-            UpsertOrganisationConfigurationDTO {
+            SetOrganisationConfigurationDTO {
                 enforce_ecosystem_as_verifier: Some(false),
                 ..Default::default()
             },
@@ -1265,7 +1267,7 @@ async fn test_upsert_organisation_syncs_on_changed_ecosystem_selection() {
     service
         .upsert_organisation(upsert_configuration(
             organisation_id,
-            UpsertOrganisationConfigurationDTO {
+            SetOrganisationConfigurationDTO {
                 selected_ecosystems: Some(vec!["EUDI".into(), "OTHER".into()]),
                 ..Default::default()
             },
@@ -1277,7 +1279,7 @@ async fn test_upsert_organisation_syncs_on_changed_ecosystem_selection() {
 /// An update touching nothing but the organisation configuration.
 fn upsert_configuration(
     id: OrganisationId,
-    configuration: UpsertOrganisationConfigurationDTO,
+    configuration: SetOrganisationConfigurationDTO,
 ) -> UpsertOrganisationRequestDTO {
     UpsertOrganisationRequestDTO {
         id,

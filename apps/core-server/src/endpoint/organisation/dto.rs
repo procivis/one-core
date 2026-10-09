@@ -5,7 +5,7 @@ use one_core::service::organisation::dto::{
     VerifierInstanceFeatureFlagsDTO, VerifierProviderDetailResponseDTO,
     WalletInstanceFeatureFlagsDTO, WalletProviderDetailResponseDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId, TrustCollectionId};
@@ -22,17 +22,20 @@ use crate::endpoint::ssi::wallet_provider::dto::{
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, TryInto)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-#[into(CreateOrganisationRequestDTO)]
+#[try_into(T = CreateOrganisationRequestDTO, Error = ServiceError)]
 pub(crate) struct CreateOrganisationRequestRestDTO {
-    #[into(with_fn = convert_inner)]
+    #[try_into(infallible)]
     pub id: Option<OrganisationId>,
     /// Optionally assign a parent organization to share policy-level
     /// configuration, such as trust collections, across a one-level hierarchy.
     /// The provided organization must not have a parent organization.
-    #[into(with_fn = convert_inner)]
+    #[try_into(infallible)]
     pub parent_organisation: Option<OrganisationId>,
+    /// Policy-level configuration for this organization.
+    #[try_into(with_fn = try_convert_inner)]
+    pub configuration: Option<SetOrganisationConfigurationRestDTO>,
 }
 
 #[options_not_nullable]
@@ -56,7 +59,7 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub verifier_provider: Option<Option<UpsertProviderRequestRestDTO>>,
     /// Policy-level configuration for this organization.
-    pub configuration: Option<UpsertOrganisationConfigurationRestDTO>,
+    pub configuration: Option<SetOrganisationConfigurationRestDTO>,
     /// The trust collections this organization's wallet subscribes to,
     /// selected from those made available by the Wallet Provider. Omit to
     /// leave the current selection unchanged.
@@ -89,7 +92,7 @@ pub(crate) struct UpsertProviderRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct UpsertOrganisationConfigurationRestDTO {
+pub(crate) struct SetOrganisationConfigurationRestDTO {
     /// The ecosystems this organization participates in.
     // nullable so generated clients omit the list unless it is set explicitly: an empty list
     // replaces the current selection, `null` is equivalent to omitting the field

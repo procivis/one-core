@@ -5,7 +5,6 @@ use serde_json::json;
 use serde_with::skip_serializing_none;
 use shared_types::{EcosystemId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::{HttpClient, Response};
 use crate::utils::serialization::query_time_urlencoded;
@@ -38,7 +37,7 @@ pub struct ProviderParams {
 #[skip_serializing_none]
 #[derive(Debug, Default, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpsertOrganisationConfigurationParams {
+pub struct SetOrganisationConfigurationParams {
     pub trusted_issuer_required: Option<bool>,
     pub trusted_rp_required: Option<bool>,
     pub trusted_wallet_provider_required: Option<bool>,
@@ -55,9 +54,16 @@ pub struct UpsertParams {
     pub deactivate: Option<bool>,
     pub wallet_provider: Option<Option<ProviderParams>>,
     pub verifier_provider: Option<Option<ProviderParams>>,
-    pub configuration: Option<UpsertOrganisationConfigurationParams>,
+    pub configuration: Option<SetOrganisationConfigurationParams>,
     pub trust_collections: Option<Vec<shared_types::TrustCollectionId>>,
     pub parent_organisation: Option<Option<OrganisationId>>,
+}
+
+#[derive(Debug, Default)]
+pub struct CreateParams {
+    pub id: Option<OrganisationId>,
+    pub parent_organisation: Option<OrganisationId>,
+    pub configuration: Option<SetOrganisationConfigurationParams>,
 }
 
 impl OrganisationsApi {
@@ -65,22 +71,19 @@ impl OrganisationsApi {
         Self { client }
     }
 
-    pub async fn create(&self, id: impl Into<Option<Uuid>>) -> Response {
-        self.create_with_parent(id, None).await
-    }
+    pub async fn create(&self, params: CreateParams) -> Response {
+        let mut body = json!({});
 
-    pub async fn create_with_parent(
-        &self,
-        id: impl Into<Option<Uuid>>,
-        parent_organisation: Option<OrganisationId>,
-    ) -> Response {
-        let mut body = match id.into() {
-            Some(id) => json!({"id": id}),
-            None => json!({}),
-        };
+        if let Some(id) = params.id {
+            body["id"] = json!(id);
+        }
 
-        if let Some(parent) = parent_organisation {
+        if let Some(parent) = params.parent_organisation {
             body["parentOrganisation"] = json!(parent);
+        }
+
+        if let Some(configuration) = params.configuration {
+            body["configuration"] = json!(configuration);
         }
 
         self.client.post("/api/organisation/v1", body).await

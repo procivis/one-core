@@ -1,13 +1,14 @@
 use one_core::service::error::ValidationError;
 use one_core::service::organisation::dto::{
-    InstanceDetailResponseDTO, OrganisationConfigurationDTO, UpsertOrganisationConfigurationDTO,
+    InstanceDetailResponseDTO, OrganisationConfigurationDTO, SetOrganisationConfigurationDTO,
     UpsertOrganisationRequestDTO,
 };
+use one_dto_mapper::try_convert_inner;
 use shared_types::{IdentifierId, OrganisationId};
 
 use super::dto::{
     CreateOrganisationResponseRestDTO, InstanceDetailResponseRestDTO,
-    OrganisationConfigurationRestDTO, UpsertOrganisationConfigurationRestDTO,
+    OrganisationConfigurationRestDTO, SetOrganisationConfigurationRestDTO,
     UpsertOrganisationRequestRestDTO, UpsertProviderRequestRestDTO,
 };
 
@@ -48,52 +49,55 @@ fn unpack_provider(
 /// Maps the organization configuration update, accepting either the deprecated
 /// `trusted*` flags or their `enforceEcosystemAs*` replacements. Mixing the two
 /// generations in a single request is rejected, as the intent would be ambiguous.
-fn upsert_configuration_from_request(
-    request: UpsertOrganisationConfigurationRestDTO,
-) -> Result<UpsertOrganisationConfigurationDTO, ValidationError> {
+impl TryFrom<SetOrganisationConfigurationRestDTO> for SetOrganisationConfigurationDTO {
+    type Error = ValidationError;
+
     #[expect(deprecated)]
-    let UpsertOrganisationConfigurationRestDTO {
-        selected_ecosystems,
-        trusted_issuer_required,
-        trusted_rp_required,
-        trusted_wallet_provider_required,
-        enforce_ecosystem_as_issuer,
-        enforce_ecosystem_as_holder,
-        enforce_ecosystem_as_verifier,
-    } = request;
+    fn try_from(
+        SetOrganisationConfigurationRestDTO {
+            selected_ecosystems,
+            trusted_issuer_required,
+            trusted_rp_required,
+            trusted_wallet_provider_required,
+            enforce_ecosystem_as_issuer,
+            enforce_ecosystem_as_holder,
+            enforce_ecosystem_as_verifier,
+        }: SetOrganisationConfigurationRestDTO,
+    ) -> Result<Self, Self::Error> {
+        let deprecated_used = [
+            trusted_issuer_required.map(|_| "trustedIssuerRequired"),
+            trusted_rp_required.map(|_| "trustedRpRequired"),
+            trusted_wallet_provider_required.map(|_| "trustedWalletProviderRequired"),
+        ]
+        .into_iter()
+        .flatten()
+        .next();
+        let replacement_used = [
+            enforce_ecosystem_as_issuer.map(|_| "enforceEcosystemAsIssuer"),
+            enforce_ecosystem_as_holder.map(|_| "enforceEcosystemAsHolder"),
+            enforce_ecosystem_as_verifier.map(|_| "enforceEcosystemAsVerifier"),
+        ]
+        .into_iter()
+        .flatten()
+        .next();
 
-    let deprecated_used = [
-        trusted_issuer_required.map(|_| "trustedIssuerRequired"),
-        trusted_rp_required.map(|_| "trustedRpRequired"),
-        trusted_wallet_provider_required.map(|_| "trustedWalletProviderRequired"),
-    ]
-    .into_iter()
-    .flatten()
-    .next();
-    let replacement_used = [
-        enforce_ecosystem_as_issuer.map(|_| "enforceEcosystemAsIssuer"),
-        enforce_ecosystem_as_holder.map(|_| "enforceEcosystemAsHolder"),
-        enforce_ecosystem_as_verifier.map(|_| "enforceEcosystemAsVerifier"),
-    ]
-    .into_iter()
-    .flatten()
-    .next();
+        if let (Some(deprecated), Some(replacement)) = (deprecated_used, replacement_used) {
+            return Err(ValidationError::MixedDeprecatedAndReplacementFields {
+                deprecated: deprecated.to_string(),
+                replacement: replacement.to_string(),
+            });
+        }
 
-    if let (Some(deprecated), Some(replacement)) = (deprecated_used, replacement_used) {
-        return Err(ValidationError::MixedDeprecatedAndReplacementFields {
-            deprecated: deprecated.to_string(),
-            replacement: replacement.to_string(),
-        });
+        Ok(Self {
+            selected_ecosystems: selected_ecosystems
+                .map(|ecosystems| ecosystems.into_iter().map(Into::into).collect()),
+            enforce_ecosystem_as_issuer: enforce_ecosystem_as_issuer
+                .or(trusted_wallet_provider_required),
+            enforce_ecosystem_as_holder: enforce_ecosystem_as_holder.or(trusted_rp_required),
+            enforce_ecosystem_as_verifier: enforce_ecosystem_as_verifier
+                .or(trusted_issuer_required),
+        })
     }
-
-    Ok(UpsertOrganisationConfigurationDTO {
-        selected_ecosystems: selected_ecosystems
-            .map(|ecosystems| ecosystems.into_iter().map(Into::into).collect()),
-        enforce_ecosystem_as_issuer: enforce_ecosystem_as_issuer
-            .or(trusted_wallet_provider_required),
-        enforce_ecosystem_as_holder: enforce_ecosystem_as_holder.or(trusted_rp_required),
-        enforce_ecosystem_as_verifier: enforce_ecosystem_as_verifier.or(trusted_issuer_required),
-    })
 }
 
 #[expect(deprecated)]
@@ -111,10 +115,7 @@ pub(crate) fn upsert_request_from_request(
         wallet_provider_issuer,
         verifier_provider,
         verifier_provider_issuer,
-        configuration: request
-            .configuration
-            .map(upsert_configuration_from_request)
-            .transpose()?,
+        configuration: try_convert_inner(request.configuration)?,
         trust_collections: request.trust_collections,
         parent_organisation: request.parent_organisation,
     })

@@ -7,7 +7,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::api_clients::organisations::{
-    ProviderParams, UpsertOrganisationConfigurationParams, UpsertParams,
+    ProviderParams, SetOrganisationConfigurationParams, UpsertParams,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::organisations::TestingOrganisationParams;
@@ -33,7 +33,7 @@ async fn test_upsert_organisation_success_not_existing() {
                     name: Some("PROCIVIS_ONE".to_string()),
                     issuer: None,
                 })),
-                configuration: Some(UpsertOrganisationConfigurationParams {
+                configuration: Some(SetOrganisationConfigurationParams {
                     selected_ecosystems: Some(vec!["EUDI".into()]),
                     enforce_ecosystem_as_issuer: Some(true),
                     enforce_ecosystem_as_holder: None,
@@ -564,7 +564,7 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
         .upsert(
             &org.id,
             UpsertParams {
-                configuration: Some(UpsertOrganisationConfigurationParams {
+                configuration: Some(SetOrganisationConfigurationParams {
                     trusted_issuer_required: Some(true),
                     trusted_rp_required: Some(true),
                     ..Default::default()
@@ -585,7 +585,7 @@ async fn test_upsert_organisation_success_configuration_partial_update() {
         .upsert(
             &org.id,
             UpsertParams {
-                configuration: Some(UpsertOrganisationConfigurationParams {
+                configuration: Some(SetOrganisationConfigurationParams {
                     trusted_issuer_required: None,
                     trusted_rp_required: Some(false),
                     ..Default::default()
@@ -614,7 +614,7 @@ async fn test_upsert_organisation_fail_configuration_mixed_deprecated_and_new_fi
         .upsert(
             &org.id,
             UpsertParams {
-                configuration: Some(UpsertOrganisationConfigurationParams {
+                configuration: Some(SetOrganisationConfigurationParams {
                     trusted_rp_required: Some(true),
                     enforce_ecosystem_as_issuer: Some(true),
                     ..Default::default()

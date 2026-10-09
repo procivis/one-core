@@ -10,9 +10,10 @@ use super::dto::{
 };
 use super::error::OrganisationServiceError;
 use super::mapper::{
-    detail_from_model, group_remote_trust_collections_by_local_id, instance_detail_from_model,
-    list_item_from_model, merge_ecosystems, prepare_trust_collection_info, request_to_model,
-    set_active_trust_collections, upsert_request_to_fresh_model,
+    apply_configuration_update, detail_from_model, group_remote_trust_collections_by_local_id,
+    instance_detail_from_model, list_item_from_model, merge_ecosystems,
+    prepare_trust_collection_info, request_to_model, set_active_trust_collections,
+    upsert_request_to_fresh_model,
 };
 use super::validator::{
     validate_ecosystem_enforcement, validate_parent_organisation, validate_provider,
@@ -25,7 +26,7 @@ use crate::model::instance::{Instance, InstanceFilterValue, InstanceRole};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::organisation::{
-    Organisation, OrganisationConfiguration, SortableOrganisationColumn, UpdateOrganisationRequest,
+    Organisation, SortableOrganisationColumn, UpdateOrganisationRequest,
 };
 use crate::model::trust_collection::TrustCollectionFilterValue;
 use crate::repository::error::DataLayerError;
@@ -391,32 +392,14 @@ impl OrganisationService {
             .await?;
         }
 
-        let existing_configuration = existing_organisation
-            .as_ref()
-            .map(|org| org.configuration.clone())
-            .unwrap_or_default();
-        let previously_selected_ecosystems = existing_configuration.selected_ecosystems.clone();
-        let configuration =
-            request
-                .configuration
-                .as_ref()
-                .map(|update| OrganisationConfiguration {
-                    selected_ecosystems: update
-                        .selected_ecosystems
-                        .clone()
-                        .unwrap_or(existing_configuration.selected_ecosystems),
-                    enforce_ecosystem_as_issuer: update
-                        .enforce_ecosystem_as_issuer
-                        .unwrap_or(existing_configuration.enforce_ecosystem_as_issuer),
-                    enforce_ecosystem_as_holder: update
-                        .enforce_ecosystem_as_holder
-                        .unwrap_or(existing_configuration.enforce_ecosystem_as_holder),
-                    enforce_ecosystem_as_verifier: update
-                        .enforce_ecosystem_as_verifier
-                        .unwrap_or(existing_configuration.enforce_ecosystem_as_verifier),
-                });
+        let existing_configuration = existing_organisation.as_ref().map(|org| &org.configuration);
+        let configuration = request.configuration.as_ref().map(|update| {
+            apply_configuration_update(update.to_owned(), existing_configuration.cloned())
+        });
         let ecosystem_selection_changed = configuration.as_ref().is_some_and(|configuration| {
-            configuration.selected_ecosystems != previously_selected_ecosystems
+            existing_configuration.is_some_and(|existing_configuration| {
+                configuration.selected_ecosystems != existing_configuration.selected_ecosystems
+            })
         });
 
         let success_log = format!("Updated organisation {}", request.id);

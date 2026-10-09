@@ -34,6 +34,7 @@ pub struct EcosystemInfoDTO {
 pub struct CreateOrganisationRequestDTO {
     pub id: Option<OrganisationId>,
     pub parent_organisation: Option<OrganisationId>,
+    pub configuration: Option<SetOrganisationConfigurationDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -44,7 +45,7 @@ pub struct UpsertOrganisationRequestDTO {
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
     pub verifier_provider: Option<Option<String>>,
     pub verifier_provider_issuer: Option<Option<IdentifierId>>,
-    pub configuration: Option<UpsertOrganisationConfigurationDTO>,
+    pub configuration: Option<SetOrganisationConfigurationDTO>,
     pub trust_collections: Option<Vec<TrustCollectionId>>,
     pub parent_organisation: Option<Option<OrganisationId>>,
 }
@@ -150,7 +151,7 @@ pub struct OrganisationConfigurationDTO {
 
 /// Partial update for `OrganisationConfiguration`: fields left `None` keep their current value.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct UpsertOrganisationConfigurationDTO {
+pub struct SetOrganisationConfigurationDTO {
     pub selected_ecosystems: Option<Vec<EcosystemId>>,
     pub enforce_ecosystem_as_issuer: Option<bool>,
     pub enforce_ecosystem_as_holder: Option<bool>,

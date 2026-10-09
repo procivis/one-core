@@ -63,6 +63,8 @@ pub struct CreateOrganisationRequestBindingDTO {
     /// If no UUID is passed, one will be created.
     pub id: Option<String>,
     pub parent_organisation: Option<String>,
+    /// Policy-level configuration for this organization.
+    pub configuration: Option<SetOrganisationConfigurationBindingDTO>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -81,7 +83,7 @@ pub struct UpsertOrganisationRequestBindingDTO {
     /// Verifier Provider use only.
     pub verifier_provider_issuer: Option<OptionalString>,
     /// Policy-level configuration for this organization.
-    pub configuration: Option<UpsertOrganisationConfigurationBindingDTO>,
+    pub configuration: Option<SetOrganisationConfigurationBindingDTO>,
     /// The trust collections this organization's wallet subscribes to,
     /// selected from those made available by the Wallet Provider. Omit to
     /// leave the current selection unchanged.
@@ -92,8 +94,8 @@ pub struct UpsertOrganisationRequestBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "UpsertOrganisationConfiguration")]
-pub struct UpsertOrganisationConfigurationBindingDTO {
+#[uniffi(name = "SetOrganisationConfiguration")]
+pub struct SetOrganisationConfigurationBindingDTO {
     pub selected_ecosystems: Option<Vec<String>>,
     /// When true, the issuer will only issue credentials to wallet units of one of
     /// the selected ecosystems.

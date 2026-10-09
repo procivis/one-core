@@ -1,6 +1,6 @@
 use shared_types::{IdentifierId, OrganisationId};
 
-use super::dto::UpsertOrganisationConfigurationDTO;
+use super::dto::SetOrganisationConfigurationDTO;
 use super::error::OrganisationServiceError;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -203,11 +203,16 @@ pub(super) async fn validate_provider(
 /// mandates the issuer flag, which the organisation therefore governs on its own.
 pub(super) async fn validate_ecosystem_enforcement(
     organisation: Option<&Organisation>,
-    update: &UpsertOrganisationConfigurationDTO,
+    update: &SetOrganisationConfigurationDTO,
     instance_repository: &dyn InstanceRepository,
     wallet_provider_client: &dyn WalletProviderClient,
     verifier_provider_client: &dyn VerifierProviderClient,
 ) -> Result<(), OrganisationServiceError> {
+    // A not-yet-existing organisation cannot have an instance linked to a provider.
+    let Some(organisation) = organisation else {
+        return Ok(());
+    };
+
     let disabled_roles = [
         (InstanceRole::Wallet, update.enforce_ecosystem_as_holder),
         (InstanceRole::Verifier, update.enforce_ecosystem_as_verifier),
@@ -215,11 +220,6 @@ pub(super) async fn validate_ecosystem_enforcement(
     .into_iter()
     .filter(|(_, enforce)| enforce == &Some(false))
     .map(|(role, _)| role);
-
-    // A not-yet-existing organisation cannot have an instance linked to a provider.
-    let Some(organisation) = organisation else {
-        return Ok(());
-    };
 
     for role in disabled_roles {
         let enforced = provider_enforces_ecosystems(

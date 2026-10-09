@@ -2,6 +2,7 @@ use one_core::model::history::HistoryAction;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::utils::api_clients::organisations::{CreateParams, SetOrganisationConfigurationParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::organisations::TestingOrganisationParams;
 use crate::utils::field_match::FieldHelpers;
@@ -12,11 +13,14 @@ async fn test_create_organisation_success_id_set() {
     let context = TestContext::new(None).await;
 
     // WHEN
-    let organisation_id = Uuid::new_v4();
+    let organisation_id = Uuid::new_v4().into();
     let resp = context
         .api
         .organisations
-        .create(Some(organisation_id))
+        .create(CreateParams {
+            id: Some(organisation_id),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -41,7 +45,7 @@ async fn test_create_organisation_success_id_not_set() {
     let context = TestContext::new(None).await;
 
     // WHEN
-    let resp = context.api.organisations.create(None).await;
+    let resp = context.api.organisations.create(Default::default()).await;
 
     // THEN
     assert_eq!(resp.status(), 201);
@@ -53,18 +57,24 @@ async fn test_create_organisation_success_id_not_set() {
 async fn test_create_organisation_reject_duplicate_id() {
     // GIVEN
     let context = TestContext::new(None).await;
-    let organisation_id = Uuid::new_v4();
+    let organisation_id = Uuid::new_v4().into();
 
     // WHEN
     let resp = context
         .api
         .organisations
-        .create(Some(organisation_id))
+        .create(CreateParams {
+            id: Some(organisation_id),
+            ..Default::default()
+        })
         .await;
     let resp2 = context
         .api
         .organisations
-        .create(Some(organisation_id))
+        .create(CreateParams {
+            id: Some(organisation_id),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -80,16 +90,20 @@ async fn test_create_organisation_success_with_parent() {
     let parent = context.db.organisations.create().await;
 
     // WHEN
-    let child_id = Uuid::new_v4();
+    let child_id = Uuid::new_v4().into();
     let resp = context
         .api
         .organisations
-        .create_with_parent(Some(child_id), Some(parent.id))
+        .create(CreateParams {
+            id: Some(child_id),
+            parent_organisation: Some(parent.id),
+            ..Default::default()
+        })
         .await;
 
     // THEN
     assert_eq!(resp.status(), 201);
-    let stored = context.db.organisations.get(&child_id.into()).await;
+    let stored = context.db.organisations.get(&child_id).await;
     assert_eq!(stored.parent_organisation.unwrap().id(), parent.id);
 }
 
@@ -102,7 +116,10 @@ async fn test_create_organisation_fail_non_existing_parent() {
     let resp = context
         .api
         .organisations
-        .create_with_parent(None, Some(Uuid::new_v4().into()))
+        .create(CreateParams {
+            parent_organisation: Some(Uuid::new_v4().into()),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -128,7 +145,10 @@ async fn test_create_organisation_fail_parent_already_has_parent() {
     let resp = context
         .api
         .organisations
-        .create_with_parent(None, Some(parent.id))
+        .create(CreateParams {
+            parent_organisation: Some(parent.id),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -142,14 +162,62 @@ async fn test_create_organisation_fail_self_as_parent() {
     let context = TestContext::new(None).await;
 
     // WHEN - id and parent_organisation both refer to the same (not-yet-existing) organisation.
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let resp = context
         .api
         .organisations
-        .create_with_parent(Some(id), Some(id.into()))
+        .create(CreateParams {
+            id: Some(id),
+            parent_organisation: Some(id),
+            ..Default::default()
+        })
         .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0419");
+}
+
+#[tokio::test]
+async fn test_create_organisation_with_configuration() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .create(CreateParams {
+            configuration: Some(SetOrganisationConfigurationParams {
+                selected_ecosystems: Some(vec!["EUDI".into()]),
+                enforce_ecosystem_as_issuer: Some(false),
+                enforce_ecosystem_as_holder: Some(true),
+                enforce_ecosystem_as_verifier: None,
+                ..Default::default()
+            }),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let organisation_id = Uuid::parse_str(resp["id"].as_str().unwrap())
+        .unwrap()
+        .into();
+
+    let organisation = context.db.organisations.get(&organisation_id).await;
+    assert_eq!(
+        organisation.configuration.selected_ecosystems,
+        vec!["EUDI".into()]
+    );
+    assert_eq!(
+        organisation.configuration.enforce_ecosystem_as_issuer,
+        false
+    );
+    assert_eq!(organisation.configuration.enforce_ecosystem_as_holder, true);
+    assert_eq!(
+        organisation.configuration.enforce_ecosystem_as_verifier,
+        false
+    );
 }

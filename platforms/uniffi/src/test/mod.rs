@@ -137,6 +137,7 @@ impl TestContextWithOrganisation {
             .create_organisation(CreateOrganisationRequestBindingDTO {
                 id: None,
                 parent_organisation: None,
+                configuration: None,
             })
             .await
             .unwrap();

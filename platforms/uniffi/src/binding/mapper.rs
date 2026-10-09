@@ -35,7 +35,7 @@ use one_core::service::identifier::dto::{
 };
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::organisation::dto::{
-    CreateOrganisationRequestDTO, UpsertOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
+    CreateOrganisationRequestDTO, SetOrganisationConfigurationDTO, UpsertOrganisationRequestDTO,
 };
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimValueDTO,
@@ -80,7 +80,7 @@ use super::interaction::{
 };
 use super::key::KeyRequestBindingDTO;
 use super::organisation::{
-    CreateOrganisationRequestBindingDTO, UpsertOrganisationConfigurationBindingDTO,
+    CreateOrganisationRequestBindingDTO, SetOrganisationConfigurationBindingDTO,
     UpsertOrganisationRequestBindingDTO,
 };
 use super::proof::{
@@ -714,6 +714,7 @@ impl TryFrom<CreateOrganisationRequestBindingDTO> for CreateOrganisationRequestD
         Ok(Self {
             id: into_id_opt(value.id)?,
             parent_organisation: into_id_opt(value.parent_organisation)?,
+            configuration: convert_inner(value.configuration),
         })
     }
 }
@@ -756,8 +757,8 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
     }
 }
 
-impl From<UpsertOrganisationConfigurationBindingDTO> for UpsertOrganisationConfigurationDTO {
-    fn from(value: UpsertOrganisationConfigurationBindingDTO) -> Self {
+impl From<SetOrganisationConfigurationBindingDTO> for SetOrganisationConfigurationDTO {
+    fn from(value: SetOrganisationConfigurationBindingDTO) -> Self {
         Self {
             selected_ecosystems: convert_inner_of_inner(value.selected_ecosystems),
             enforce_ecosystem_as_issuer: value.enforce_ecosystem_as_issuer,

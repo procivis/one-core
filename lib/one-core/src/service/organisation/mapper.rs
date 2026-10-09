@@ -29,9 +29,9 @@ use crate::service::managed_instance::dto::{EcosystemMetadataDTO, ProviderTrustC
 use crate::service::organisation::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
-    TrustCollectionInfoDTO, UpsertOrganisationRequestDTO, VerifierInstanceFeatureFlagsDTO,
-    VerifierProviderDetailResponseDTO, WalletInstanceFeatureFlagsDTO,
-    WalletProviderDetailResponseDTO,
+    SetOrganisationConfigurationDTO, TrustCollectionInfoDTO, UpsertOrganisationRequestDTO,
+    VerifierInstanceFeatureFlagsDTO, VerifierProviderDetailResponseDTO,
+    WalletInstanceFeatureFlagsDTO, WalletProviderDetailResponseDTO,
 };
 use crate::service::organisation::error::OrganisationServiceError;
 
@@ -53,7 +53,10 @@ pub(super) fn request_to_model(
         }),
         verifier_provider: None,
         verifier_provider_issuer: None,
-        configuration: Default::default(),
+        configuration: request
+            .configuration
+            .map(|configuration| apply_configuration_update(configuration, None))
+            .unwrap_or_default(),
     }
 }
 
@@ -78,14 +81,7 @@ pub(super) fn upsert_request_to_fresh_model(
     organisation_repository: &Arc<dyn OrganisationRepository>,
 ) -> Organisation {
     let configuration = match request.configuration {
-        Some(request) => OrganisationConfiguration {
-            selected_ecosystems: request.selected_ecosystems.unwrap_or_default(),
-            enforce_ecosystem_as_issuer: request.enforce_ecosystem_as_issuer.unwrap_or_default(),
-            enforce_ecosystem_as_holder: request.enforce_ecosystem_as_holder.unwrap_or_default(),
-            enforce_ecosystem_as_verifier: request
-                .enforce_ecosystem_as_verifier
-                .unwrap_or_default(),
-        },
+        Some(request) => apply_configuration_update(request, None),
         None => Default::default(),
     };
 
@@ -178,6 +174,27 @@ pub(super) fn list_item_from_model(
         parent_organisation: organisation
             .parent_organisation
             .map(|parent_organisation| parent_organisation.id()),
+    }
+}
+
+pub(super) fn apply_configuration_update(
+    update: SetOrganisationConfigurationDTO,
+    current_settings: Option<OrganisationConfiguration>,
+) -> OrganisationConfiguration {
+    let existing_configuration = current_settings.unwrap_or_default();
+    OrganisationConfiguration {
+        selected_ecosystems: update
+            .selected_ecosystems
+            .unwrap_or(existing_configuration.selected_ecosystems),
+        enforce_ecosystem_as_issuer: update
+            .enforce_ecosystem_as_issuer
+            .unwrap_or(existing_configuration.enforce_ecosystem_as_issuer),
+        enforce_ecosystem_as_holder: update
+            .enforce_ecosystem_as_holder
+            .unwrap_or(existing_configuration.enforce_ecosystem_as_holder),
+        enforce_ecosystem_as_verifier: update
+            .enforce_ecosystem_as_verifier
+            .unwrap_or(existing_configuration.enforce_ecosystem_as_verifier),
     }
 }
 
