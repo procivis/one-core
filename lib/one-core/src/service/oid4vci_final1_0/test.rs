@@ -1647,8 +1647,10 @@ async fn test_create_credential_with_instance_attestation(
     let succeeds = has_wia && matching_issuer;
     let config = generic_config().core;
     let params: OpenID4VCIFinal1Params = config.issuance_protocol.get("OPENID4VCI_FINAL1").unwrap();
+    let nonce_params = params.nonce.unwrap();
     let nonce = super::nonce::generate_nonce(
-        params.nonce.unwrap(),
+        nonce_params.expiration_seconds,
+        nonce_params.signing_key,
         Some("http://127.0.0.1:3000".into()),
         super::nonce::Context::OpenID4VCINonce,
     )

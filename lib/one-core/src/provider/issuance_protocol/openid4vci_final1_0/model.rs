@@ -18,6 +18,7 @@ use time::{Duration, OffsetDateTime};
 use super::super::HolderBindingInput;
 use super::super::dto::ContinueIssuanceDTO;
 use super::super::model::{CommonParams, OpenID4VCRedirectUriParams, default_issuance_url_scheme};
+use crate::config::core_config::{KeyAlgorithmType, default_true};
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{CodeTypeEnum, CredentialSchema, LayoutProperties};
 use crate::model::identifier::Identifier;
@@ -63,6 +64,9 @@ pub(crate) struct OpenID4VCIFinal1Params {
 
     #[serde(flatten)]
     pub common: CommonParams,
+
+    #[serde(default)]
+    pub dpop: Option<OpenID4VCDpopParams>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -80,11 +84,35 @@ pub(crate) struct CredentialEndpointEncryptionParams {
 pub(crate) struct OpenID4VCNonceParams {
     #[serde(deserialize_with = "deserialize_encryption_key")]
     pub signing_key: SecretSlice<u8>,
-    #[serde_as(as = "Option<DurationSeconds<i64>>")]
-    pub expiration_seconds: Option<Duration>,
+    #[serde(default = "default_5_minutes")]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub expiration_seconds: Duration,
     #[serde(default)]
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway_seconds: Duration,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VCDpopParams {
+    #[expect(unused)]
+    #[serde(default = "default_true")]
+    pub enforced: bool,
+    #[serde(deserialize_with = "deserialize_encryption_key")]
+    pub signing_key: SecretSlice<u8>,
+    #[serde(default = "default_5_minutes")]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub nonce_validity_seconds: Duration,
+    #[expect(unused)]
+    #[serde(default)]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway_seconds: Duration,
+    pub signing_algorithms: Vec<KeyAlgorithmType>,
+}
+
+pub(super) fn default_5_minutes() -> Duration {
+    Duration::minutes(5)
 }
 
 #[skip_serializing_none]

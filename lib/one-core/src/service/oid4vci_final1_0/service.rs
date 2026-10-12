@@ -9,8 +9,8 @@ use one_crypto::utilities::{self, generate_alphanumeric};
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId, InteractionId,
-    NonceId,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DpopNonce, IdentifierId,
+    InteractionId, NonceId,
 };
 use standardized_types::iana::EncryptionKeyManagementAlgorithm;
 use standardized_types::oauth2::TokenType;
@@ -47,7 +47,9 @@ use super::validator::{
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{BlobStorageType, FormatType, IssuanceProtocolType};
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::error::{
+    ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError,
+};
 use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
     get_issuance_param_token_expires_in,
@@ -72,6 +74,7 @@ use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIde
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
+use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::model::{ProtocolArtifact, WalletAttestationArtifact};
 use crate::provider::issuance_protocol::IssuanceProtocol;
@@ -252,7 +255,7 @@ impl OID4VCIFinal1_0Service {
             challenge_endpoint,
             client_attestation_signing_alg_values_supported,
             client_attestation_pop_signing_alg_values_supported,
-            dpop_signing_alg_values_supported: Some(vec!["ES256".to_string()]), // necessary for the EUDI wallet to work
+            dpop_signing_alg_values_supported: self.dpop_signing_alg_values_supported(&params)?,
             signed_metadata: None,
         };
 
@@ -286,6 +289,26 @@ impl OID4VCIFinal1_0Service {
             signed_metadata,
             ..metadata
         })
+    }
+
+    fn dpop_signing_alg_values_supported(
+        &self,
+        params: &OpenID4VCIFinal1Params,
+    ) -> Result<Option<Vec<String>>, OID4VCIFinal1_0ServiceError> {
+        let Some(dpop_params) = &params.dpop else {
+            return Ok(None);
+        };
+        let dpop_signing_algs = dpop_params
+            .signing_algorithms
+            .iter()
+            .map(|alg| {
+                let key_algorithm = self.key_algorithm_provider.key_algorithm_from_type(*alg)?;
+                key_algorithm.ensure_enabled()?;
+                Ok::<_, NestedError>(key_algorithm.issuance_jose_alg_id())
+            })
+            .collect::<Result<_, _>>()
+            .error_while("collecting supported DPoP singing algorithms")?;
+        Ok(Some(dpop_signing_algs))
     }
 
     pub async fn get_credential_offer(
@@ -583,12 +606,12 @@ impl OID4VCIFinal1_0Service {
             // the wallet did not name a key, so there must be no ambiguity about which one it used
             None => candidates.into_iter().exactly_one().ok(),
         }
-        .ok_or_else(|| {
-            tracing::info!(
+            .ok_or_else(|| {
+                tracing::info!(
                 "No issuer key agreement key matching credential request JWE kid {requested_key_id:?}"
             );
-            OpenID4VCIError::InvalidEncryptionParameters
-        })?;
+                OpenID4VCIError::InvalidEncryptionParameters
+            })?;
 
         let payload = decrypt_jwe(&jwe, &key.key, &*self.key_provider)
             .await
@@ -1643,7 +1666,7 @@ impl OID4VCIFinal1_0Service {
     pub async fn generate_nonce(
         &self,
         protocol_id: &str,
-    ) -> Result<NonceResponse, OID4VCIFinal1_0ServiceError> {
+    ) -> Result<(NonceResponse, Option<DpopNonce>), OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
@@ -1656,15 +1679,33 @@ impl OID4VCIFinal1_0Service {
             .issuance_protocol
             .get(protocol_id)
             .error_while("getting protocol params")?;
+        let dpop_nonce = if let Some(dpop_params) = &params.dpop {
+            Some(DpopNonce::from(
+                generate_nonce(
+                    dpop_params.nonce_validity_seconds,
+                    dpop_params.signing_key.clone(),
+                    self.base_url.to_owned(),
+                    Context::DPoPNonce,
+                )
+                .await?,
+            ))
+        } else {
+            None
+        };
         let Some(params) = params.nonce else {
             return Err(ConfigValidationError::TypeNotFound(protocol_id.to_string())
                 .error_while("getting nonce params")
                 .into());
         };
 
-        let c_nonce =
-            generate_nonce(params, self.base_url.to_owned(), Context::OpenID4VCINonce).await?;
-        Ok(NonceResponse { c_nonce })
+        let c_nonce = generate_nonce(
+            params.expiration_seconds,
+            params.signing_key,
+            self.base_url.to_owned(),
+            Context::OpenID4VCINonce,
+        )
+        .await?;
+        Ok((NonceResponse { c_nonce }, dpop_nonce))
     }
 
     pub async fn generate_oauth_attestation_challenge(
@@ -1690,7 +1731,8 @@ impl OID4VCIFinal1_0Service {
         };
 
         let attestation_challenge = generate_nonce(
-            params,
+            params.expiration_seconds,
+            params.signing_key,
             self.base_url.to_owned(),
             Context::OAuthAttestationChallenge,
         )
@@ -2004,8 +2046,10 @@ impl OID4VCIFinal1_0Service {
         };
 
         let get_fresh_challenge = async || {
+            let params = params.to_owned();
             generate_nonce(
-                params.to_owned(),
+                params.expiration_seconds,
+                params.signing_key,
                 self.base_url.clone(),
                 Context::OAuthAttestationChallenge,
             )

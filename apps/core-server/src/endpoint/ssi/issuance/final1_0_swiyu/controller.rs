@@ -31,7 +31,7 @@ use crate::endpoint::ssi::issuance::final1_0::mapper::wallet_attestation_respons
 use crate::endpoint::ssi::issuance::final1_0_swiyu::dto::SwiyuOpenID4VCITokenResponseRestDTO;
 use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
 use crate::extractor::Accept;
-use crate::headers::APPLICATION_JWT;
+use crate::headers::{APPLICATION_JWT, with_dpop_nonce};
 use crate::router::AppState;
 
 #[endpoint(
@@ -425,7 +425,9 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
         ("protocol_id" = String, Path, description = "Issuance protocol id")
     ),
     responses(
-        (status = 200, description = "OK", body = NonceResponse),
+        (status = 200, description = "OK", body = NonceResponse,
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci-final1_0-swiyu",
@@ -446,7 +448,10 @@ pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
         .await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+        Ok((value, dpop_nonce)) => {
+            let response = (StatusCode::OK, Json(value)).into_response();
+            with_dpop_nonce(response, dpop_nonce)
+        }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()

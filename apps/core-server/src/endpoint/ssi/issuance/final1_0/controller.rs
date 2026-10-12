@@ -30,7 +30,7 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
 use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
 use crate::extractor::{Accept, AccessToken};
-use crate::headers::APPLICATION_JWT;
+use crate::headers::{APPLICATION_JWT, with_dpop_nonce};
 use crate::router::AppState;
 
 #[endpoint(
@@ -521,7 +521,9 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
         ("protocol_id" = String, Path, description = "Issuance protocol id")
     ),
     responses(
-        (status = 200, description = "OK", body = NonceResponse),
+        (status = 200, description = "OK", body = NonceResponse,
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Invalid protocol"),
         (status = 500, description = "Server error"),
     ),
@@ -543,7 +545,10 @@ pub(crate) async fn oid4vci_final1_0_nonce(
         .await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+        Ok((value, dpop_nonce)) => {
+            let response = (StatusCode::OK, Json(value)).into_response();
+            with_dpop_nonce(response, dpop_nonce)
+        }
         Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()

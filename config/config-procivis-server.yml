@@ -166,6 +166,21 @@ walletProvider:
           - SIGN8
         featureFlags:
           ecosystemsEnabled: true
+issuanceProtocol:
+  OPENID4VCI_FINAL1_SWIYU:
+    params:
+      private:
+        dpop:
+          enforced: true
+          signingAlgorithms:
+            - ECDSA
+  OPENID4VCI_FINAL1_HAIP:
+    params:
+      private:
+        dpop:
+          enforced: false
+          signingAlgorithms:
+            - ECDSA
 verifierProvider:
   PROCIVIS_ONE:
     type: PROCIVIS_ONE

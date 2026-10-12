@@ -6,6 +6,7 @@ use serde::Deserialize;
 use url::Url;
 
 pub const DPOP_HEADER: &str = "DPoP";
+pub const DPOP_NONCE_HEADER: &str = "DPoP-Nonce";
 pub const DPOP_JWT_TYPE: &str = "dpop+jwt";
 
 /// Spec: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#section-4.2)

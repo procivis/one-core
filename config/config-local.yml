@@ -102,6 +102,11 @@ issuanceProtocol:
           signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
           expirationSeconds: 300
           leewaySeconds: 0
+        dpop:
+          enforced: false
+          signingAlgorithms:
+            - ECDSA
+          signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
   OPENID4VCI_FINAL1:
     params:
       public:
@@ -123,6 +128,11 @@ issuanceProtocol:
         # this is the SHA-256 of "my encryption key"
         encryption: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
         nonce:
+          signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        dpop:
+          enforced: false
+          signingAlgorithms:
+            - ECDSA
           signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
 verificationProtocol:
   OPENID4VP_FINAL1_SWIYU:

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use one_crypto::utilities;
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
 use shared_types::NonceId;
 use strum::Display;
@@ -30,14 +30,17 @@ pub(super) enum Context {
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-11#name-challenges>
     #[serde(rename = "oauth-attestation-challenge")]
     OAuthAttestationChallenge,
+    /// <https://www.rfc-editor.org/rfc/rfc9449.html#name-authorization-server-provid>
+    #[serde(rename = "dpop-nonce")]
+    DPoPNonce,
 }
 
 pub(super) async fn generate_nonce(
-    params: OpenID4VCNonceParams,
+    expiration: Duration,
+    signing_key: SecretSlice<u8>,
     base_url: Option<String>,
     context: Context,
 ) -> Result<String, OID4VCIFinal1_0ServiceError> {
-    let expiration = params.expiration_seconds.unwrap_or(Duration::seconds(300));
     let now = crate::clock::now_utc();
 
     let payload = JWTPayload::<JwtPayload> {
@@ -54,7 +57,7 @@ pub(super) async fn generate_nonce(
     let jwt = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload);
 
     Ok(jwt
-        .tokenize(Some(&HS256Signer::new(params.signing_key)))
+        .tokenize(Some(&HS256Signer::new(signing_key)))
         .await
         .error_while("creating nonce token")?)
 }
@@ -139,6 +142,7 @@ pub(super) fn validate_nonce(
 #[cfg(test)]
 mod test {
     use similar_asserts::assert_eq;
+    use time::Duration;
 
     use super::*;
     use crate::error::{ErrorCode, ErrorCodeMixin};
@@ -146,8 +150,10 @@ mod test {
     #[tokio::test]
     async fn test_generate_and_validate_openid4vci_nonce() {
         let base_url = "http://test.com";
+        let params = params();
         let nonce = generate_nonce(
-            params(),
+            params.expiration_seconds,
+            params.signing_key.clone(),
             Some(base_url.to_string()),
             Context::OpenID4VCINonce,
         )
@@ -155,7 +161,7 @@ mod test {
         .unwrap();
 
         validate_nonce(
-            &params(),
+            &params,
             Some(&base_url.to_string()),
             &nonce,
             Context::OpenID4VCINonce,
@@ -166,8 +172,10 @@ mod test {
     #[tokio::test]
     async fn test_generate_and_validate_oauth_challenge() {
         let base_url = "http://test.com";
+        let params = params();
         let nonce = generate_nonce(
-            params(),
+            params.expiration_seconds,
+            params.signing_key.clone(),
             Some(base_url.to_string()),
             Context::OAuthAttestationChallenge,
         )
@@ -175,7 +183,7 @@ mod test {
         .unwrap();
 
         validate_nonce(
-            &params(),
+            &params,
             Some(&base_url.to_string()),
             &nonce,
             Context::OAuthAttestationChallenge,
@@ -186,8 +194,10 @@ mod test {
     #[tokio::test]
     async fn test_generate_and_validate_context_mismatch() {
         let base_url = "http://test.com";
+        let params = params();
         let nonce = generate_nonce(
-            params(),
+            params.expiration_seconds,
+            params.signing_key.clone(),
             Some(base_url.to_string()),
             Context::OpenID4VCINonce,
         )
@@ -195,7 +205,7 @@ mod test {
         .unwrap();
 
         let result = validate_nonce(
-            &params(),
+            &params,
             Some(&base_url.to_string()),
             &nonce,
             Context::OAuthAttestationChallenge,
@@ -210,7 +220,7 @@ mod test {
             )
             .unwrap()
             .into(),
-            expiration_seconds: Some(Duration::seconds(300)),
+            expiration_seconds: Duration::seconds(300),
             leeway_seconds: Default::default(),
         }
     }
