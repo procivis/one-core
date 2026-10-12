@@ -734,7 +734,7 @@ impl CredentialService {
 
         let history_id = credential.ecosystem_history_id();
         let mut result = TrustInformationDetailResponseDTO {
-            ecosystem_errors: recorded_ecosystem_outcomes(
+            ecosystem_outcomes: recorded_ecosystem_outcomes(
                 history_id.into(),
                 &*self.history_repository,
             )

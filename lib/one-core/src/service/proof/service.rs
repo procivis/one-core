@@ -1111,7 +1111,7 @@ impl ProofService {
         }
 
         let mut result = TrustInformationDetailResponseDTO {
-            ecosystem_errors: recorded_ecosystem_outcomes(id.into(), &*self.history_repository)
+            ecosystem_outcomes: recorded_ecosystem_outcomes(id.into(), &*self.history_repository)
                 .await?,
             ..Default::default()
         };

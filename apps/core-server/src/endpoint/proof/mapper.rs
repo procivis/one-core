@@ -104,7 +104,7 @@ impl From<TrustInformationDetailResponseDTO> for ProofTrustInformationDetailResp
             eudi_ecosystem,
             ecosystem: value.ecosystem,
             verifier,
-            ecosystem_errors: value.ecosystem_errors.into(),
+            ecosystem_errors: value.ecosystem_outcomes.into(),
         }
     }
 }

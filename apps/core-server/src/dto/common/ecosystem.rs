@@ -23,7 +23,7 @@ pub(crate) struct EcosystemErrorsRestDTO(IndexMap<String, EcosystemOutcomeRestDT
 #[serde(rename_all = "camelCase")]
 pub(crate) struct EcosystemOutcomeRestDTO {
     pub result: EcosystemTrustResultRestEnum,
-    /// Why the provider did not trust the interaction. Absent when it did.
+    /// Why the provider rejected the interaction. Absent when accepted.
     pub error: Option<EcosystemErrorRestDTO>,
 }
 
@@ -32,6 +32,7 @@ pub(crate) struct EcosystemOutcomeRestDTO {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum EcosystemTrustResultRestEnum {
     Trusted,
+    Compliant,
     NotTrusted,
 }
 

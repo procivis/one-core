@@ -328,7 +328,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 protocol,
                 requires_wallet_instance_attestation,
                 ecosystem,
-                ecosystem_errors,
+                ecosystem_outcomes,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 tx_code: convert_inner(tx_code),
@@ -337,33 +337,33 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 key_algorithms,
                 requires_wallet_instance_attestation,
                 ecosystem: convert_inner(ecosystem),
-                ecosystem_errors: convert_ecosystem_errors(&ecosystem_errors),
+                ecosystem_errors: convert_ecosystem_errors(&ecosystem_outcomes),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
                 authorization_code_flow_url,
                 protocol,
                 ecosystem,
-                ecosystem_errors,
+                ecosystem_outcomes,
             } => Self::AuthorizationCodeFlow {
                 interaction_id: interaction_id.to_string(),
                 authorization_code_flow_url,
                 protocol,
                 ecosystem: convert_inner(ecosystem),
-                ecosystem_errors: convert_ecosystem_errors(&ecosystem_errors),
+                ecosystem_errors: convert_ecosystem_errors(&ecosystem_outcomes),
             },
             HandleInvitationResultDTO::ProofRequest {
                 interaction_id,
                 proof_id,
                 protocol,
                 ecosystem,
-                ecosystem_errors,
+                ecosystem_outcomes,
             } => Self::ProofRequest {
                 interaction_id: interaction_id.to_string(),
                 proof_id: proof_id.to_string(),
                 protocol,
                 ecosystem: convert_inner(ecosystem),
-                ecosystem_errors: convert_ecosystem_errors(&ecosystem_errors),
+                ecosystem_errors: convert_ecosystem_errors(&ecosystem_outcomes),
             },
         }
     }

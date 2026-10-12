@@ -419,7 +419,8 @@ pub(crate) struct ProofDetailResponseRestDTO {
 
     #[try_from(infallible)]
     pub webhook_destination_url: Option<String>,
-    /// Trust information of the verifier, if any.
+    /// For holder proofs, trust information of the verifier. For verifier proofs,
+    /// aggregate issuer trust of the submitted inputs, if available.
     #[try_from(with_fn = convert_inner, infallible)]
     pub trust_information: Option<TrustInformationRestDTO>,
     #[try_from(infallible)]

@@ -22,6 +22,7 @@ use crate::model::certificate::Certificate;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::{History, TrustResolutionResult};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
@@ -448,6 +449,7 @@ pub(super) async fn get_verifier_proof_detail(
     let organisation_id = schema.organisation.id();
     drop(schema);
 
+    let trust_information = verifier_proof_trust_information(&proof, &proof_inputs);
     let list_item_response = list_item_from_proof(proof).await?;
 
     Ok(ProofDetailResponseDTO {
@@ -471,7 +473,7 @@ pub(super) async fn get_verifier_proof_detail(
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
-        trust_information: None,
+        trust_information,
         subscriber_information,
         transaction_data,
         ecosystem: list_item_response.ecosystem,
@@ -961,6 +963,37 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
     }
 }
 
+/// Aggregate the recorded issuer trust of the submitted proof inputs.
+fn verifier_proof_trust_information(
+    proof: &Proof,
+    inputs: &[ProofInputDTO],
+) -> Option<TrustInformation> {
+    let information: Vec<_> = inputs
+        .iter()
+        .filter_map(|input| input.trust_information.as_ref())
+        .collect();
+    let result = information
+        .iter()
+        .map(|info| info.result)
+        .reduce(|left, right| {
+            use TrustResolutionResult::*;
+            match (left, right) {
+                (Untrusted, _) | (_, Untrusted) => Untrusted,
+                (Unknown, _) | (_, Unknown) => Unknown,
+                (Trusted, _) | (_, Trusted) => Trusted,
+                (Compliant, Compliant) => Compliant,
+            }
+        })?;
+    Some(TrustInformation {
+        received_at: proof.completed_date.unwrap_or(proof.last_modified),
+        name: None,
+        result,
+        ecosystem_outcomes: EcosystemOutcomes::merged(
+            information.iter().map(|info| &info.ecosystem_outcomes),
+        ),
+    })
+}
+
 /// Trust information recorded by the holder about a verifier
 /// Verifiers call [`get_verifier_proof_detail`] instead
 pub(super) async fn get_proof_trust_information(
@@ -968,14 +1001,15 @@ pub(super) async fn get_proof_trust_information(
     ecosystem_directory: &dyn EcosystemDirectory,
     history_repository: &dyn HistoryRepository,
 ) -> Result<TrustInformation, ProofServiceError> {
-    let ecosystem_errors = recorded_ecosystem_outcomes(proof.id.into(), history_repository).await?;
+    let ecosystem_outcomes =
+        recorded_ecosystem_outcomes(proof.id.into(), history_repository).await?;
 
     let Some(ecosystem_id) = &proof.ecosystem else {
         return Ok(TrustInformation {
             received_at: proof.requested_date.unwrap_or(proof.last_modified),
             name: None,
             result: TrustResolutionResult::Untrusted,
-            ecosystem_errors,
+            ecosystem_outcomes,
         });
     };
     let (received_at, name) = match verifier_trust_detail(proof, ecosystem_id, ecosystem_directory)
@@ -994,7 +1028,7 @@ pub(super) async fn get_proof_trust_information(
         received_at,
         name,
         result: TrustResolutionResult::Trusted,
-        ecosystem_errors,
+        ecosystem_outcomes,
     })
 }
 

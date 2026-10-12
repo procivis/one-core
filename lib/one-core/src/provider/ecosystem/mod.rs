@@ -14,8 +14,8 @@ use crate::model::proof::Proof;
 use crate::provider::Provider;
 use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::ecosystem::model::{
-    EcosystemCapabilities, EcosystemRole, ParsedTrustInformation, ProtocolArtifact, SchemaFilter,
-    TrustDetail, TrustInformationInput,
+    EcosystemCapabilities, EcosystemRole, EcosystemValidationResult, ParsedTrustInformation,
+    ProtocolArtifact, SchemaFilter, TrustDetail, TrustInformationInput,
 };
 
 pub(crate) mod decorators;
@@ -32,13 +32,13 @@ pub trait Ecosystem: Provider + Send + Sync {
 
     fn get_capabilities(&self) -> EcosystemCapabilities;
 
-    /// Returns data for the later steps of this ecosystem, or `None`. The resolver stores it on
+    /// Returns the verdict and optional data for later steps. The resolver stores both on
     /// the interaction.
     async fn validate_interaction<'a>(
         &self,
         interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
-    ) -> Result<Option<serde_json::Value>, EcosystemError>;
+    ) -> Result<EcosystemValidationResult, EcosystemError>;
 
     /// validate credential before issuance (issuer)
     async fn validate_credential(&self, credential: &Credential) -> Result<(), EcosystemError>;

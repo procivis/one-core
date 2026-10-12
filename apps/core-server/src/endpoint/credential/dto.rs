@@ -277,7 +277,7 @@ pub struct TrustInformationRestDTO {
     received_at: OffsetDateTime,
     name: Option<String>,
     result: TrustResolutionResultRestEnum,
-    #[from(with_fn = "Into::into")]
+    #[from(rename = "ecosystem_outcomes", with_fn = "Into::into")]
     ecosystem_errors: EcosystemErrorsRestDTO,
 }
 

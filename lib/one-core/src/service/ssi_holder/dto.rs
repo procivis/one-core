@@ -28,7 +28,7 @@ pub struct IssuanceAcceptResponseDTO {
     pub credential_ids: Vec<CredentialId>,
     /// some of the offered credential configurations could not be issued, only set when several were offered
     pub partially_successful: Option<bool>,
-    pub ecosystem_errors: EcosystemOutcomes,
+    pub ecosystem_outcomes: EcosystemOutcomes,
 }
 
 #[derive(Clone, Debug)]
@@ -60,21 +60,21 @@ pub enum HandleInvitationResultDTO {
         protocol: String,
         requires_wallet_instance_attestation: bool,
         ecosystem: Option<EcosystemId>,
-        ecosystem_errors: EcosystemOutcomes,
+        ecosystem_outcomes: EcosystemOutcomes,
     },
     AuthorizationCodeFlow {
         interaction_id: InteractionId,
         authorization_code_flow_url: String,
         protocol: String,
         ecosystem: Option<EcosystemId>,
-        ecosystem_errors: EcosystemOutcomes,
+        ecosystem_outcomes: EcosystemOutcomes,
     },
     ProofRequest {
         interaction_id: InteractionId,
         proof_id: ProofId,
         protocol: String,
         ecosystem: Option<EcosystemId>,
-        ecosystem_errors: EcosystemOutcomes,
+        ecosystem_outcomes: EcosystemOutcomes,
     },
 }
 

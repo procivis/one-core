@@ -5,6 +5,7 @@ use super::{EudiEcosystem, pid_schema_ids};
 use crate::error::ContextWithErrorCode;
 use crate::model::claim::Claim;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::ecosystem::EcosystemTrustResult;
 use crate::model::relation::{Related, RelatedVec};
 use crate::proto::wrp_validator::credential_category;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -19,7 +20,7 @@ impl EudiEcosystem {
         schema_format: &Related<CredentialSchemaFormat>,
         issuer_details: &IdentifierDetails,
         organisation_id: OrganisationId,
-    ) -> Result<(), EcosystemError> {
+    ) -> Result<EcosystemTrustResult, EcosystemError> {
         let schema_format = schema_format.as_ref().await?;
         let format = &schema_format.format;
         let formatter = self.formatter_provider.get_credential_formatter(format)?;
@@ -32,7 +33,8 @@ impl EudiEcosystem {
             return Err(EcosystemError::MissingIdentifier);
         };
 
-        self.wrp_validator
+        let trust_entity = self
+            .wrp_validator
             .validate_credential_issuer(
                 Some(&issuer_certificate.chain),
                 &schema_format,
@@ -44,7 +46,11 @@ impl EudiEcosystem {
             .await
             .error_while("validating credential issuer")?;
 
-        Ok(())
+        Ok(if trust_entity.is_some() {
+            EcosystemTrustResult::Trusted
+        } else {
+            EcosystemTrustResult::Compliant
+        })
     }
 }
 
@@ -52,6 +58,7 @@ impl EudiEcosystem {
 mod test {
     use std::sync::Arc;
 
+    use rstest::rstest;
     use serde_json::json;
     use similar_asserts::assert_eq;
     use uuid::Uuid;
@@ -67,14 +74,21 @@ mod test {
     use crate::provider::credential_formatter::MockCredentialFormatter;
     use crate::provider::credential_formatter::model::CertificateDetails;
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+    use crate::provider::trust_list_subscriber::etsi_lotl::model::TslServiceEntry;
+    use crate::provider::trust_list_subscriber::{TrustEntityMetadata, TrustEntityResponse};
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
     use crate::repository::history_repository::MockHistoryRepository;
     use crate::repository::proof_schema_repository::MockProofSchemaRepository;
     use crate::service::test_utilities::{dummy_credential, generic_formatter_capabilities};
 
+    #[rstest]
+    #[case::trusted(EcosystemTrustResult::Trusted)]
+    #[case::compliant(EcosystemTrustResult::Compliant)]
     #[tokio::test]
-    async fn uses_concrete_format_from_multiformat_schema() {
+    async fn uses_concrete_format_and_preserves_issuer_verdict(
+        #[case] expected: EcosystemTrustResult,
+    ) {
         let mut credential = dummy_credential();
         let mut schema = credential
             .common()
@@ -112,7 +126,16 @@ mod test {
                 assert_eq!(format.id, selected.id);
                 assert_eq!(format.ecosystem_schema_id, "mdoc-pid");
                 assert_eq!(pid_ids, &["mdoc-pid".to_string()]);
-                Ok(None)
+                Ok(
+                    (expected == EcosystemTrustResult::Trusted).then(|| TrustEntityResponse {
+                        derived_role: None,
+                        metadata: TrustEntityMetadata::Tsl(TslServiceEntry {
+                            service_name: "PID provider".into(),
+                            service_type_identifier: "pid".into(),
+                            service_status: "active".into(),
+                        }),
+                    }),
+                )
             },
         );
         let ecosystem = EudiEcosystem::new(
@@ -145,7 +168,7 @@ mod test {
                 ..
             } = credential
         );
-        ecosystem
+        let result = ecosystem
             .resolve_verifier_submission(
                 &claims,
                 &credential.format,
@@ -154,5 +177,6 @@ mod test {
             )
             .await
             .unwrap();
+        assert_eq!(expected, result);
     }
 }

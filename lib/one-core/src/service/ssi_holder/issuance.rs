@@ -295,7 +295,7 @@ impl SSIHolderService {
             id,
             credential_ids,
             partially_successful,
-            ecosystem_errors: ecosystems.outcomes,
+            ecosystem_outcomes: ecosystems.outcomes,
         })
     }
 
@@ -720,7 +720,7 @@ impl SSIHolderService {
                 requires_wallet_instance_attestation,
                 ecosystem_artifact,
             } => {
-                let ecosystem_errors = self
+                let ecosystem_outcomes = self
                     .ecosystem_resolver
                     .resolve(
                         interaction_id,
@@ -739,7 +739,7 @@ impl SSIHolderService {
                     protocol: exchange,
                     requires_wallet_instance_attestation,
                     ecosystem: user_selected_ecosystem,
-                    ecosystem_errors,
+                    ecosystem_outcomes,
                 })
             }
             InvitationResponseEnum::AuthorizationFlow {
@@ -772,7 +772,7 @@ impl SSIHolderService {
                     .await?;
 
                 // `initiate_issuance` created the interaction carrying any user selection
-                let ecosystem_errors = self
+                let ecosystem_outcomes = self
                     .ecosystem_resolver
                     .resolve(interaction_id, &[ecosystem_artifact], None)
                     .await
@@ -784,7 +784,7 @@ impl SSIHolderService {
                     authorization_code_flow_url: url,
                     protocol: exchange,
                     ecosystem: user_selected_ecosystem,
-                    ecosystem_errors,
+                    ecosystem_outcomes,
                 })
             }
         }

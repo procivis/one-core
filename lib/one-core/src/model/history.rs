@@ -72,6 +72,8 @@ pub struct TrustResolutionMetadata {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrustResolutionResult {
     Trusted,
+    /// The ecosystem rules are satisfied without establishing issuer trust.
+    Compliant,
     Untrusted,
     Unknown,
 }

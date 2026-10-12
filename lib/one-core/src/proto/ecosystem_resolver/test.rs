@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use mockall::predicate::eq;
+use rstest::rstest;
 use shared_types::{CredentialId, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
@@ -12,6 +13,7 @@ use crate::clock::now_utc;
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorData, NestedError};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::WalletAttestation;
+use crate::model::ecosystem::EcosystemTrustResult;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionEcosystems, InteractionType};
 use crate::model::organisation::Organisation;
@@ -23,7 +25,9 @@ use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::MockEcosystem;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::ecosystem::error::EcosystemError;
-use crate::provider::ecosystem::model::{IssuerMetadataRepresentation, WalletAttestationArtifact};
+use crate::provider::ecosystem::model::{
+    EcosystemValidationResult, IssuerMetadataRepresentation, WalletAttestationArtifact,
+};
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::managed_instance::dto::WalletInstanceAttestationClaims;
@@ -187,7 +191,7 @@ fn ecosystem_directory(verdicts: &[(&str, bool)]) -> MockEcosystemDirectory {
                     .expect_validate_interaction()
                     .returning(move |_, _| {
                         accepts
-                            .then_some(None)
+                            .then(|| EcosystemTrustResult::Trusted.into())
                             .ok_or(EcosystemError::MissingIdentifier)
                     });
                 Ok(Arc::new(ecosystem))
@@ -446,7 +450,12 @@ async fn test_a_step_keeps_the_data_each_ecosystem_stores_for_its_later_steps() 
         let mut ecosystem = MockEcosystem::new();
         ecosystem
             .expect_validate_interaction()
-            .returning(move |_, _| Ok(Some(data.to_owned())));
+            .returning(move |_, _| {
+                Ok(EcosystemValidationResult {
+                    result: EcosystemTrustResult::Trusted,
+                    data: Some(data.to_owned()),
+                })
+            });
         Ok(Arc::new(ecosystem))
     });
 
@@ -745,7 +754,7 @@ fn submission_directory(accepts: &[(&str, &[usize])]) -> MockEcosystemDirectory 
                         };
                         accepted
                             .contains(issuer_details.as_ref())
-                            .then_some(None)
+                            .then(|| EcosystemTrustResult::Trusted.into())
                             .ok_or(EcosystemError::MissingIdentifier)
                     });
                 Ok(Arc::new(ecosystem))
@@ -753,6 +762,67 @@ fn submission_directory(accepts: &[(&str, &[usize])]) -> MockEcosystemDirectory 
     }
 
     directory
+}
+
+#[rstest]
+#[case::all_compliant([EcosystemTrustResult::Compliant, EcosystemTrustResult::Compliant], EcosystemTrustResult::Compliant)]
+#[case::trusted_first([EcosystemTrustResult::Trusted, EcosystemTrustResult::Compliant], EcosystemTrustResult::Trusted)]
+#[case::trusted_last([EcosystemTrustResult::Compliant, EcosystemTrustResult::Trusted], EcosystemTrustResult::Trusted)]
+#[tokio::test]
+async fn test_submission_preserves_compliant_verdicts(
+    #[case] verdicts: [EcosystemTrustResult; 2],
+    #[case] expected: EcosystemTrustResult,
+    #[values(None, Some("EUDI"))] committed: Option<&str>,
+) {
+    let (interaction_id, interaction_repository, persisted) = interaction_under_test(
+        organisation(&["EUDI"], true),
+        EcosystemOutcomes::default(),
+        committed,
+    );
+    let mut directory = MockEcosystemDirectory::new();
+    directory
+        .expect_get()
+        .with(eq(EcosystemId::from("EUDI")))
+        .returning(move |_| {
+            let mut ecosystem = MockEcosystem::new();
+            ecosystem
+                .expect_validate_interaction()
+                .returning(move |artifact, _| {
+                    let ProtocolArtifact::VerifierSubmission { credential_id, .. } = artifact
+                    else {
+                        panic!("expected submission");
+                    };
+                    let index = usize::from(*credential_id == submitted_credential(1));
+                    Ok(verdicts[index].into())
+                });
+            Ok(Arc::new(ecosystem))
+        });
+    let (history_repository, written) = recording_history();
+    let resolver = EcosystemResolverProto::new(
+        Arc::new(interaction_repository),
+        Arc::new(directory),
+        Arc::new(history_repository),
+        Arc::new(NoSessionProvider),
+    );
+    let resolved = resolver
+        .resolve(
+            interaction_id,
+            &[submission_artifact(0), submission_artifact(1)],
+            None,
+        )
+        .await
+        .unwrap();
+    let ecosystem = EcosystemId::from("EUDI");
+    assert_eq!(Some(ecosystem.clone()), resolved.ecosystem);
+    assert_eq!(vec![Some(ecosystem.clone()); 2], resolved.per_credential);
+    assert_eq!(expected, resolved.outcomes.get(&ecosystem).unwrap().result);
+    assert_eq!(resolved.outcomes, persisted.lock().unwrap().outcomes);
+    let recorded = recorded_on(&written);
+    assert_eq!(2, recorded.len());
+    for (index, (entity, outcomes)) in recorded.iter().enumerate() {
+        assert_eq!(EntityId::from(submitted_credential(index)), *entity);
+        assert_eq!(verdicts[index], outcomes.get(&ecosystem).unwrap().result);
+    }
 }
 
 #[tokio::test]

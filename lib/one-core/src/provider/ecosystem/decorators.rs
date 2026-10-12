@@ -9,8 +9,8 @@ use standardized_types::openid4vp::dcql::CredentialQueryId;
 use super::Ecosystem;
 use super::error::EcosystemError;
 use super::model::{
-    EcosystemCapabilities, EcosystemRole, ParsedTrustInformation, ProtocolArtifact, SchemaFilter,
-    TrustDetail, TrustInformationInput,
+    EcosystemCapabilities, EcosystemRole, EcosystemValidationResult, ParsedTrustInformation,
+    ProtocolArtifact, SchemaFilter, TrustDetail, TrustInformationInput,
 };
 use crate::model::credential::Credential;
 use crate::model::identifier::{Identifier, IdentifierFilterValue};
@@ -41,7 +41,7 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         &self,
         _interaction_artifact: &ProtocolArtifact<'a>,
         _interaction: &Interaction,
-    ) -> Result<Option<serde_json::Value>, EcosystemError> {
+    ) -> Result<EcosystemValidationResult, EcosystemError> {
         self.disabled_error()
     }
 
@@ -126,7 +126,7 @@ impl Ecosystem for CapabilityChecked {
         &self,
         interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
-    ) -> Result<Option<serde_json::Value>, EcosystemError> {
+    ) -> Result<EcosystemValidationResult, EcosystemError> {
         self.0
             .validate_interaction(interaction_artifact, interaction)
             .await

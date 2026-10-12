@@ -176,6 +176,7 @@ pub(crate) struct IssuanceRejectRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssuanceAcceptResponseRestDTO {
     /// One entry per ecosystem provider that rejected the artifact.
+    #[from(rename = "ecosystem_outcomes")]
     pub ecosystem_errors: EcosystemErrorsRestDTO,
     /// Deprecated. Use `credentialIds`.
     #[schema(deprecated = true)]

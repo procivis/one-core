@@ -20,7 +20,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 protocol,
                 requires_wallet_instance_attestation,
                 ecosystem,
-                ecosystem_errors,
+                ecosystem_outcomes,
             } => Self {
                 interaction_id,
                 proof_id: None,
@@ -32,14 +32,14 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 requires_wallet_instance_attestation: Some(requires_wallet_instance_attestation),
                 protocol: Some(protocol),
                 ecosystem,
-                ecosystem_errors: ecosystem_errors.into(),
+                ecosystem_errors: ecosystem_outcomes.into(),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
                 authorization_code_flow_url,
                 protocol,
                 ecosystem,
-                ecosystem_errors,
+                ecosystem_outcomes,
             } => Self {
                 interaction_id,
                 interaction_type: InteractionTypeRestEnum::Issuance,
@@ -51,14 +51,14 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 requires_wallet_instance_attestation: None,
                 protocol: Some(protocol),
                 ecosystem,
-                ecosystem_errors: ecosystem_errors.into(),
+                ecosystem_errors: ecosystem_outcomes.into(),
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,
                 interaction_id,
                 protocol,
                 ecosystem,
-                ecosystem_errors,
+                ecosystem_outcomes,
             } => Self {
                 interaction_id,
                 interaction_type: InteractionTypeRestEnum::Verification,
@@ -70,7 +70,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 requires_wallet_instance_attestation: None,
                 protocol: Some(protocol),
                 ecosystem,
-                ecosystem_errors: ecosystem_errors.into(),
+                ecosystem_errors: ecosystem_outcomes.into(),
             },
         }
     }

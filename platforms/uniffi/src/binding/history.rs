@@ -156,7 +156,7 @@ pub enum HistoryMetadataBinding {
 #[uniffi(name = "EcosystemOutcome")]
 pub struct EcosystemOutcomeBindingDTO {
     pub result: EcosystemTrustResultBindingEnum,
-    /// Why the provider did not trust the interaction. `None` when it did.
+    /// Why the provider rejected the interaction. `None` when accepted.
     pub error: Option<HistoryErrorMetadataBindingDTO>,
 }
 
@@ -165,6 +165,7 @@ pub struct EcosystemOutcomeBindingDTO {
 #[uniffi(name = "EcosystemTrustResult")]
 pub enum EcosystemTrustResultBindingEnum {
     Trusted,
+    Compliant,
     NotTrusted,
 }
 
@@ -201,6 +202,7 @@ pub struct TrustResolutionMetadataBindingDTO {
 #[uniffi(name = "TrustResolutionResult")]
 pub enum TrustResolutionResultBindingEnum {
     Trusted,
+    Compliant,
     Untrusted,
     Unknown,
 }

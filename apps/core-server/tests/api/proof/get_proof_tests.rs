@@ -5,10 +5,12 @@ use assert2::let_assert;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
-use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::model::ecosystem::{EcosystemOutcomes, EcosystemTrustResult};
+use one_core::model::history::{HistoryAction, HistoryEntityType, HistoryMetadata};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
+use rstest::rstest;
 use serde_json::json;
 use serde_json_path::JsonPath;
 use similar_asserts::assert_eq;
@@ -977,35 +979,54 @@ async fn test_get_proof_with_nested_optional_inputs() {
     assert_eq!(obj_input["schema"]["required"], false);
 }
 
+#[rstest]
+#[case::legacy([None, None], "TRUSTED")]
+#[case::trusted([Some(EcosystemTrustResult::Trusted), Some(EcosystemTrustResult::Trusted)], "TRUSTED")]
+#[case::compliant([Some(EcosystemTrustResult::Compliant), Some(EcosystemTrustResult::Compliant)], "COMPLIANT")]
+#[case::trusted_first([Some(EcosystemTrustResult::Trusted), Some(EcosystemTrustResult::Compliant)], "TRUSTED")]
+#[case::trusted_last([Some(EcosystemTrustResult::Compliant), Some(EcosystemTrustResult::Trusted)], "TRUSTED")]
 #[tokio::test]
-async fn test_get_proof_with_credentials() {
+async fn test_get_proof_with_credentials(
+    #[case] verdicts: [Option<EcosystemTrustResult>; 2],
+    #[case] expected: &str,
+) {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, Default::default())
-        .await;
-
-    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
-
+    let mut credential_schemas = Vec::new();
+    for index in 0..2 {
+        credential_schemas.push(
+            context
+                .db
+                .credential_schemas
+                .create(&format!("test {index}"), &organisation, Default::default())
+                .await,
+        );
+    }
+    let mut inputs = Vec::new();
+    for schema in &credential_schemas {
+        let claim = schema.claim_schemas.as_ref().await.unwrap()[0].clone();
+        inputs.push((schema, claim));
+    }
     let proof_schema = context
         .db
         .proof_schemas
         .create(
             "test",
             &organisation,
-            vec![CreateProofInputSchema {
-                claims: vec![CreateProofClaim {
-                    id: claim_schema.id,
-                    key: &claim_schema.key,
-                    required: true,
-                    data_type: &claim_schema.data_type,
-                    array: false,
-                }],
-                credential_schema: &credential_schema,
-            }],
+            inputs
+                .iter()
+                .map(|(schema, claim)| CreateProofInputSchema {
+                    claims: vec![CreateProofClaim {
+                        id: claim.id,
+                        key: &claim.key,
+                        required: true,
+                        data_type: &claim.data_type,
+                        array: false,
+                    }],
+                    credential_schema: schema,
+                })
+                .collect(),
         )
         .await;
 
@@ -1044,30 +1065,14 @@ async fn test_get_proof_with_credentials() {
         )
         .await;
 
-    let credential = context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Created,
-            &identifier,
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams {
-                role: Some(CredentialRole::Verifier),
-                ecosystem: Some("EUDI".into()),
-                ..Default::default()
-            },
-        )
-        .await;
-
     let proof = context
         .db
         .proofs
         .create(
-            ProofStateEnum::Created,
+            ProofStateEnum::Accepted,
             "OPENID4VP_FINAL1",
             TestingProofParams {
-                verifier_identifier: Some(identifier),
+                verifier_identifier: Some(identifier.clone()),
                 verifier_key: Some(verifier_key),
                 proof_schema: Some(proof_schema),
                 ecosystem: Some("EUDI".into()),
@@ -1076,23 +1081,60 @@ async fn test_get_proof_with_credentials() {
         )
         .await;
 
-    context
-        .db
-        .proofs
-        .set_proof_claims(
-            &proof.id,
-            credential.common().id,
-            credential
-                .verifier()
-                .unwrap()
-                .data
-                .claims
-                .as_ref()
-                .await
-                .unwrap()
-                .to_owned(),
-        )
-        .await;
+    let mut credentials = Vec::new();
+    for (schema, verdict) in credential_schemas.iter().zip(verdicts) {
+        let credential = context
+            .db
+            .credentials
+            .create(
+                schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    role: Some(CredentialRole::Verifier),
+                    ecosystem: Some("EUDI".into()),
+                    ..Default::default()
+                },
+            )
+            .await;
+        if let Some(verdict) = verdict {
+            let mut outcomes = EcosystemOutcomes::default();
+            outcomes.record("EUDI".into(), verdict);
+            context
+                .db
+                .histories
+                .create(
+                    &organisation,
+                    TestingHistoryParams {
+                        entity_id: Some(credential.common().id.into()),
+                        entity_type: Some(HistoryEntityType::Credential),
+                        action: Some(HistoryAction::EcosystemsResolved),
+                        metadata: Some(HistoryMetadata::EcosystemsResolved(outcomes)),
+                        ..Default::default()
+                    },
+                )
+                .await;
+        }
+        context
+            .db
+            .proofs
+            .set_proof_claims(
+                &proof.id,
+                credential.common().id,
+                credential
+                    .verifier()
+                    .unwrap()
+                    .data
+                    .claims
+                    .as_ref()
+                    .await
+                    .unwrap()
+                    .to_owned(),
+            )
+            .await;
+        credentials.push(credential);
+    }
 
     // WHEN
     let resp = context.api.proofs.get(proof.id).await;
@@ -1103,12 +1145,23 @@ async fn test_get_proof_with_credentials() {
     resp["id"].assert_eq(&proof.id);
     assert!(resp["profile"].is_null());
 
-    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
-    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.common().id);
-    assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
-    assert!(resp["proofInputs"][0]["credential"]["profile"].is_null());
-    resp["proofInputs"][0]["credential"]["trustInformation"]["result"]
-        .assert_eq(&"TRUSTED".to_string());
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 2);
+    resp["trustInformation"]["result"].assert_eq(&expected.to_string());
+    for (credential, verdict) in credentials.iter().zip(verdicts) {
+        let input = resp["proofInputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|input| input["credential"]["id"] == credential.common().id.to_string())
+            .unwrap();
+        let expected =
+            serde_json::to_value(verdict.unwrap_or(EcosystemTrustResult::Trusted)).unwrap();
+        assert_eq!(input["trustInformation"]["result"], expected);
+        assert_eq!(input["credential"]["trustInformation"]["result"], expected);
+        assert_eq!(input["trustInformation"]["ecosystemErrors"], json!({}));
+        assert!(input["credential"]["role"].is_string());
+        assert!(input["credential"]["profile"].is_null());
+    }
 }
 
 #[tokio::test]

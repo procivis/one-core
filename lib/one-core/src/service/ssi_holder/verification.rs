@@ -400,7 +400,7 @@ impl SSIHolderService {
             proof_id,
             protocol,
             ecosystem: resolved.ecosystem,
-            ecosystem_errors: resolved.outcomes,
+            ecosystem_outcomes: resolved.outcomes,
         })
     }
 

@@ -811,7 +811,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
     ecosystem
         .expect_validate_interaction()
         .times(2)
-        .returning(|_, _| Ok(None));
+        .returning(|_, _| Ok(crate::model::ecosystem::EcosystemTrustResult::Trusted.into()));
     let ecosystem = Arc::new(ecosystem);
     let mut ecosystem_provider = MockEcosystemDirectory::new();
     ecosystem_provider
@@ -2460,7 +2460,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
                     .unwrap()
                     .push((credential_configuration_id.clone(), credential.common().id));
             }
-            Ok(None)
+            Ok(crate::model::ecosystem::EcosystemTrustResult::Trusted.into())
         });
     let ecosystem = Arc::new(ecosystem);
     let mut ecosystems = MockEcosystemDirectory::new();

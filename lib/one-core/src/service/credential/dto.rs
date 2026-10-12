@@ -110,7 +110,9 @@ pub struct TrustInformation {
     pub received_at: OffsetDateTime,
     pub name: Option<String>,
     pub result: TrustResolutionResult,
-    pub ecosystem_errors: EcosystemOutcomes,
+    /// All consulted ecosystem outcomes; API mappers expose only rejections as errors.
+    #[serde(rename = "ecosystemErrors")]
+    pub ecosystem_outcomes: EcosystemOutcomes,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

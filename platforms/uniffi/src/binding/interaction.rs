@@ -61,7 +61,7 @@ impl OneCore {
                 .map(ToString::to_string)
                 .collect(),
             partially_successful: response.partially_successful,
-            ecosystem_errors: convert_ecosystem_errors(&response.ecosystem_errors),
+            ecosystem_errors: convert_ecosystem_errors(&response.ecosystem_outcomes),
         })
     }
 

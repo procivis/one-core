@@ -31,7 +31,7 @@ pub struct TrustInformationDetailResponseDTO {
     pub ecosystem: Option<EcosystemId>,
     pub issuer: Option<TrustInformationDetailResponseEnum>,
     pub verifier: Option<TrustInformationDetailResponseEnum>,
-    pub ecosystem_errors: EcosystemOutcomes,
+    pub ecosystem_outcomes: EcosystemOutcomes,
 }
 
 #[derive(Clone, Debug)]

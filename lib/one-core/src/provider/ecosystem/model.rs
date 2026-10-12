@@ -15,6 +15,7 @@ use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::WalletAttestation;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::ecosystem::EcosystemTrustResult;
 use crate::model::identifier_trust_information::SchemaFormat;
 use crate::model::relation::{Related, RelatedVec};
 use crate::proto::jwt::model::DecomposedJwt;
@@ -28,6 +29,18 @@ use crate::service::managed_instance::dto::{
 #[serde(rename_all = "camelCase")]
 pub struct EcosystemCapabilities {
     pub ecosystem_roles: Vec<EcosystemRole>,
+}
+
+/// A successful ecosystem check and any data needed by later protocol steps.
+pub struct EcosystemValidationResult {
+    pub result: EcosystemTrustResult,
+    pub data: Option<serde_json::Value>,
+}
+
+impl From<EcosystemTrustResult> for EcosystemValidationResult {
+    fn from(result: EcosystemTrustResult) -> Self {
+        Self { result, data: None }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq, Display)]

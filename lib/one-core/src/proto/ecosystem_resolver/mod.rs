@@ -239,8 +239,8 @@ impl EcosystemResolverProto {
         ensure_permitted(interaction, ecosystem_id).await?;
 
         let ecosystem = self.ecosystem_provider.get(ecosystem_id)?;
-        let data = match ecosystem.validate_interaction(artifact, interaction).await {
-            Ok(data) => data,
+        let validation = match ecosystem.validate_interaction(artifact, interaction).await {
+            Ok(validation) => validation,
             Err(error) => {
                 self.write_history(
                     interaction,
@@ -254,9 +254,10 @@ impl EcosystemResolverProto {
                 });
             }
         };
-        store_ecosystem_data(interaction, ecosystem_id, data);
+        store_ecosystem_data(interaction, ecosystem_id, validation.data);
 
-        let outcomes = EcosystemOutcomes::validated(ecosystem_id.to_owned());
+        let mut outcomes = EcosystemOutcomes::default();
+        outcomes.record(ecosystem_id.to_owned(), validation.result);
         self.write_history(interaction, history_entity(artifact), &outcomes)
             .await;
         Ok(outcomes)
@@ -282,17 +283,16 @@ impl EcosystemResolverProto {
                 }
             };
 
-            let outcome = match ecosystem.validate_interaction(artifact, interaction).await {
-                Ok(data) => {
-                    store_ecosystem_data(interaction, ecosystem_id, data);
-                    Ok(())
+            match ecosystem.validate_interaction(artifact, interaction).await {
+                Ok(validation) => {
+                    store_ecosystem_data(interaction, ecosystem_id, validation.data);
+                    outcomes.record(ecosystem_id.to_owned(), validation.result);
                 }
                 Err(ref err) => {
                     tracing::info!(ecosystem = %ecosystem_id, %err, "Ecosystem rejected the artifact, dropping candidate");
-                    Err(err.into())
+                    outcomes.record(ecosystem_id.to_owned(), Err(err.into()));
                 }
-            };
-            outcomes.record(ecosystem_id.to_owned(), outcome);
+            }
         }
 
         outcomes

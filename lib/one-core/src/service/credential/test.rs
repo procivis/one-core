@@ -4206,7 +4206,7 @@ async fn test_the_issuer_sees_why_the_wallet_provider_was_not_trusted() {
         .expect("the issuer is told about the wallet provider");
 
     assert_eq!(TrustResolutionResult::Untrusted, trust_information.result);
-    assert_eq!(outcomes, trust_information.ecosystem_errors);
+    assert_eq!(outcomes, trust_information.ecosystem_outcomes);
 }
 
 #[tokio::test]
@@ -4220,7 +4220,7 @@ async fn test_the_issuer_sees_a_trusted_wallet_provider() {
             .expect("an ecosystem was consulted, so there is something to report");
 
     assert_eq!(TrustResolutionResult::Trusted, trust_information.result);
-    assert_eq!(outcomes, trust_information.ecosystem_errors);
+    assert_eq!(outcomes, trust_information.ecosystem_outcomes);
 }
 
 #[tokio::test]
@@ -4243,7 +4243,7 @@ async fn test_the_verifier_sees_why_an_issuer_was_not_trusted() {
             .expect("an issuer no ecosystem trusted still says why");
 
     assert_eq!(TrustResolutionResult::Untrusted, trust_information.result);
-    assert_eq!(outcomes, trust_information.ecosystem_errors);
+    assert_eq!(outcomes, trust_information.ecosystem_outcomes);
 }
 
 #[tokio::test]
@@ -4394,5 +4394,5 @@ async fn test_a_batch_item_reads_the_ecosystem_history_of_its_batch() {
             .expect("the ecosystem trusted the issuer");
 
     assert_eq!(TrustResolutionResult::Trusted, trust_information.result);
-    assert_eq!(outcomes, trust_information.ecosystem_errors);
+    assert_eq!(outcomes, trust_information.ecosystem_outcomes);
 }

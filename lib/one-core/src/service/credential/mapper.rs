@@ -29,7 +29,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::ecosystem::{EcosystemOutcomes, EcosystemTrustResult};
 use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -1261,7 +1261,7 @@ pub(crate) async fn get_credential_trust_information(
     history_repository: &dyn HistoryRepository,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {
     let history_id = credential.ecosystem_history_id();
-    let ecosystem_errors =
+    let ecosystem_outcomes =
         recorded_ecosystem_outcomes(history_id.into(), history_repository).await?;
 
     match credential {
@@ -1270,16 +1270,16 @@ pub(crate) async fn get_credential_trust_information(
         | Credential::IssuerBatchItem { common, .. } => Ok(issuer_trust_information(
             common,
             wallet_name,
-            ecosystem_errors,
+            ecosystem_outcomes,
         )),
         Credential::HolderSingle { common, .. }
         | Credential::HolderBatchParent { common, .. }
         | Credential::HolderBatchItem { common, .. } => Ok(Some(
-            holder_trust_information(common, history_id, ecosystem_errors, ecosystem_provider)
+            holder_trust_information(common, history_id, ecosystem_outcomes, ecosystem_provider)
                 .await,
         )),
         Credential::Verifier { .. } => {
-            verifier_trust_information(credential.verifier()?, ecosystem_errors).await
+            verifier_trust_information(credential.verifier()?, ecosystem_outcomes).await
         }
     }
 }
@@ -1288,16 +1288,16 @@ pub(crate) async fn get_credential_trust_information(
 fn issuer_trust_information(
     common: &CredentialCommon,
     wallet_name: Option<String>,
-    ecosystem_errors: EcosystemOutcomes,
+    ecosystem_outcomes: EcosystemOutcomes,
 ) -> Option<TrustInformation> {
-    if ecosystem_errors.is_empty() {
+    if ecosystem_outcomes.is_empty() {
         return None;
     }
     Some(TrustInformation {
         received_at: common.issuance_date.unwrap_or(common.last_modified),
         name: wallet_name,
         result: resolution(&common.ecosystem),
-        ecosystem_errors,
+        ecosystem_outcomes,
     })
 }
 
@@ -1305,7 +1305,7 @@ fn issuer_trust_information(
 async fn holder_trust_information(
     common: &CredentialCommon,
     history_id: CredentialId,
-    ecosystem_errors: EcosystemOutcomes,
+    ecosystem_outcomes: EcosystemOutcomes,
     ecosystem_provider: &dyn EcosystemDirectory,
 ) -> TrustInformation {
     let fallback_date = common.issuance_date.unwrap_or(common.last_modified);
@@ -1314,7 +1314,7 @@ async fn holder_trust_information(
             received_at: fallback_date,
             name: None,
             result: TrustResolutionResult::Untrusted,
-            ecosystem_errors,
+            ecosystem_outcomes,
         };
     };
     let (received_at, name) = match issuer_trust_detail(
@@ -1337,17 +1337,17 @@ async fn holder_trust_information(
         received_at,
         name,
         result: TrustResolutionResult::Trusted,
-        ecosystem_errors,
+        ecosystem_outcomes,
     }
 }
 
 /// The verifier records trust information about the issuer of a received credential.
 async fn verifier_trust_information(
     credential: CredentialView<'_, VerifierCredentialData>,
-    ecosystem_errors: EcosystemOutcomes,
+    ecosystem_outcomes: EcosystemOutcomes,
 ) -> Result<Option<TrustInformation>, CredentialServiceError> {
     let CredentialView { common, data } = credential;
-    if common.ecosystem.is_none() && ecosystem_errors.is_empty() {
+    if common.ecosystem.is_none() && ecosystem_outcomes.is_empty() {
         return Ok(None);
     }
     let name = match &data.issuer.certificate {
@@ -1357,8 +1357,17 @@ async fn verifier_trust_information(
     Ok(Some(TrustInformation {
         received_at: common.created_date,
         name,
-        result: resolution(&common.ecosystem),
-        ecosystem_errors,
+        result: match common
+            .ecosystem
+            .as_ref()
+            .and_then(|id| ecosystem_outcomes.get(id))
+        {
+            Some(outcome) if outcome.result == EcosystemTrustResult::Compliant => {
+                TrustResolutionResult::Compliant
+            }
+            _ => resolution(&common.ecosystem),
+        },
+        ecosystem_outcomes,
     }))
 }
 

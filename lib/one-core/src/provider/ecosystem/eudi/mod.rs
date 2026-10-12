@@ -15,12 +15,13 @@ use time::Duration;
 use super::Ecosystem;
 use super::error::EcosystemError;
 use super::model::{
-    EcosystemCapabilities, EcosystemRole, ParsedTrustInformation, ProtocolArtifact, SchemaFilter,
-    TrustDetail, TrustInformationInput,
+    EcosystemCapabilities, EcosystemRole, EcosystemValidationResult, ParsedTrustInformation,
+    ProtocolArtifact, SchemaFilter, TrustDetail, TrustInformationInput,
 };
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
+use crate::model::ecosystem::EcosystemTrustResult;
 use crate::model::identifier::{Identifier, IdentifierFilterValue};
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterCondition;
@@ -188,7 +189,7 @@ impl Ecosystem for EudiEcosystem {
         &self,
         interaction_artifact: &ProtocolArtifact<'a>,
         interaction: &Interaction,
-    ) -> Result<Option<serde_json::Value>, EcosystemError> {
+    ) -> Result<EcosystemValidationResult, EcosystemError> {
         match interaction_artifact {
             ProtocolArtifact::HolderIssuanceInvitation {
                 issuer_metadata,
@@ -202,7 +203,10 @@ impl Ecosystem for EudiEcosystem {
                     )
                     .await
                     .error_while("resolving holder issuance trust")?;
-                return Ok(Some(data));
+                return Ok(EcosystemValidationResult {
+                    result: EcosystemTrustResult::Trusted,
+                    data: Some(data),
+                });
             }
             ProtocolArtifact::HolderIssuanceCredential {
                 credential,
@@ -252,17 +256,19 @@ impl Ecosystem for EudiEcosystem {
                 issuer_details,
                 ..
             } => {
-                self.resolve_verifier_submission(
-                    claims,
-                    format,
-                    issuer_details,
-                    interaction.organisation.id(),
-                )
-                .await?;
+                let result = self
+                    .resolve_verifier_submission(
+                        claims,
+                        format,
+                        issuer_details,
+                        interaction.organisation.id(),
+                    )
+                    .await?;
+                return Ok(result.into());
             }
         };
 
-        Ok(None)
+        Ok(EcosystemTrustResult::Trusted.into())
     }
 
     async fn validate_credential(&self, credential: &Credential) -> Result<(), EcosystemError> {

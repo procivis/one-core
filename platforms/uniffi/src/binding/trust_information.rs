@@ -20,7 +20,10 @@ pub struct TrustInformationDetailResponseBindingDTO {
     #[from(with_fn = convert_inner)]
     pub verifier: Option<TrustInformationDetailResponseBindingEnum>,
     /// One entry per ecosystem provider that rejected the artifact, keyed by provider id.
-    #[from(with_fn_ref = "convert_ecosystem_errors")]
+    #[from(
+        rename = "ecosystem_outcomes",
+        with_fn_ref = "convert_ecosystem_errors"
+    )]
     pub ecosystem_errors: HashMap<String, EcosystemOutcomeBindingDTO>,
 }
 
