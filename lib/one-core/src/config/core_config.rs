@@ -4,14 +4,14 @@ use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::path::Path;
 
-use figment::Figment;
+use figment2::Figment;
 #[cfg(feature = "config_env")]
-use figment::providers::Env;
+use figment2::providers::Env;
 #[cfg(feature = "config_json")]
-use figment::providers::Json;
+use figment2::providers::Json;
 #[cfg(feature = "config_yaml")]
-use figment::providers::Yaml;
-use figment::providers::{Data, Format};
+use figment2::providers::Yaml;
+use figment2::providers::{Data, Format};
 use one_dto_mapper::{From, Into};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -1496,7 +1496,7 @@ mod tests {
                             min: 2.0
         "};
 
-        let err = serde_yaml::from_str::<Fields<String>>(partial_config)
+        let err = serde_norway::from_str::<Fields<String>>(partial_config)
             .err()
             .unwrap();
 

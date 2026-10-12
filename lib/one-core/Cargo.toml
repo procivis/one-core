@@ -22,7 +22,7 @@ coset                        = { version = "0.4", features = ["std"] }
 crc                          = { version = "3.3" }
 ct-codecs.workspace          = true
 dashmap                      = "6.1.0"
-figment                      = { version = "0.10", default-features = false }
+figment2                     = { version = "0.11", default-features = false }
 flate2.workspace             = true
 futures.workspace            = true
 futures-util.workspace       = true
@@ -59,15 +59,15 @@ secrecy                      = { workspace = true }
 serde.workspace              = true
 serde_json.workspace         = true
 serde_json_path.workspace    = true
+serde_norway                 = { version = "0.9" }
 serde_qs.workspace           = true
 serde_repr                   = { version = "0.1" }
 serde_urlencoded.workspace   = true
 serde_with.workspace         = true
-serde_yaml                   = { version = "0.9" }
 sha2.workspace               = true
 shadow-rs.workspace          = true
 shared-types.workspace       = true
-similar-asserts               = { workspace = true, optional = true }
+similar-asserts              = { workspace = true, optional = true }
 sophia_api                   = { version = "0.9" }
 sophia_c14n                  = { version = "0.9" }
 standardized-types.workspace = true
@@ -99,9 +99,9 @@ wiremock.workspace        = true
 shadow-rs.workspace = true
 
 [features]
-config_env  = ["figment/env"]
-config_json = ["figment/json"]
-config_yaml = ["figment/yaml"]
+config_env  = ["figment2/env"]
+config_json = ["figment2/json"]
+config_yaml = ["figment2/yaml"]
 default     = ["config_yaml"]
 mock        = ["mockall", "one-crypto/mock", "dep:similar-asserts"]
 

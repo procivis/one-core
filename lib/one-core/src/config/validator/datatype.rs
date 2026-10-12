@@ -452,7 +452,7 @@ mod tests {
                     order: 200
                     params: null
             "};
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         let string_and_number_are_fine =
             validate_datatypes(["STRING", "NUMBER"].into_iter(), &datatype_config);
@@ -472,7 +472,7 @@ mod tests {
                     order: 100
                     params: null
             "};
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         let empty_value = validate_datatype_value("", "STRING", &datatype_config);
         assert!(empty_value.is_ok());
@@ -501,7 +501,7 @@ mod tests {
         };
 
         let datatype_config: DatatypeConfig =
-            serde_yaml::from_str(&datatype_config_with(invalid_regex)).unwrap();
+            serde_norway::from_str(&datatype_config_with(invalid_regex)).unwrap();
 
         let invalid_regex_pattern =
             validate_datatype_value("abc@abc.com", "EMAIL", &datatype_config);
@@ -513,7 +513,7 @@ mod tests {
         )));
 
         let datatype_config: DatatypeConfig =
-            serde_yaml::from_str(&datatype_config_with(valid_regex)).unwrap();
+            serde_norway::from_str(&datatype_config_with(valid_regex)).unwrap();
 
         let valid_email = validate_datatype_value("abc@abc.com", "EMAIL", &datatype_config);
         assert!(valid_email.is_ok());
@@ -539,7 +539,7 @@ mod tests {
                             min: 10.0 # optional
                             max: 15.0 # optional
         "};
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         let parse_failure = validate_datatype_value("not_a_number", "NUMBER", &datatype_config);
         assert!(parse_failure.is_err_and(|f| matches!(
@@ -581,7 +581,7 @@ mod tests {
                             min: '2022-12-31'
                             max: '2023-01-02'
         "};
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         assert!(validate_datatype_value("2023-01-01", "DATE", &datatype_config).is_ok());
 
@@ -608,7 +608,7 @@ mod tests {
                         public:
                             formats: ['date', 'datetime']
         "};
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         assert!(validate_datatype_value("2023-01-01", "DATE", &datatype_config).is_ok());
         assert!(
@@ -629,7 +629,7 @@ mod tests {
                             formats: ['datetime']
                             preferredFormat: 'date'
         "};
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         assert2::assert!(
             let Err( ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParams(
@@ -650,7 +650,7 @@ mod tests {
                             public:
                                 formats: []
             "};
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         assert2::assert!(
             let Err( ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParams(
@@ -676,7 +676,7 @@ mod tests {
                     showAs: IMAGE
         "#};
 
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         let valid = validate_datatype_value(
             "data:image/png;base64,dGVzdGNvbnRlbnQ=",
@@ -736,7 +736,7 @@ mod tests {
             params: null
         "#};
 
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         let valid = validate_datatype_value(
             "data:image/png;base64,dGVzdGNvbnRlbnQ=",
@@ -769,7 +769,7 @@ mod tests {
                           display: "datatype.category.qualified"
         "#};
 
-        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+        let datatype_config: DatatypeConfig = serde_norway::from_str(datatype_config).unwrap();
 
         let valid =
             validate_datatype_value("urn:etsi:esi:eaa:eu:pub", "CATEGORY", &datatype_config);

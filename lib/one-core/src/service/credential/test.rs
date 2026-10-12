@@ -6,7 +6,6 @@ use assert2::let_assert;
 use mockall::predicate::*;
 use rstest::rstest;
 use serde_json::json;
-use serde_yaml;
 use shared_types::{CredentialId, EcosystemId, EntityId};
 use similar_asserts::assert_eq;
 use time::Duration;
@@ -3998,7 +3997,7 @@ fn config_with_eaa_category() -> CoreConfig {
     use crate::config::core_config::DatatypeConfig;
 
     let mut config = generic_config().core;
-    let category_config: DatatypeConfig = serde_yaml::from_str(
+    let category_config: DatatypeConfig = serde_norway::from_str(
         r#"
 EAA_CATEGORY:
   display: "datatype.eaaCategory"

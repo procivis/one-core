@@ -27,8 +27,8 @@ pub enum ConfigParsingError {
 }
 
 // figment error is big, thus the conversion
-impl From<figment::Error> for ConfigParsingError {
-    fn from(e: figment::Error) -> Self {
+impl From<figment2::Error> for ConfigParsingError {
+    fn from(e: figment2::Error) -> Self {
         Self::ParsingError(format!("figment: {e}"))
     }
 }
