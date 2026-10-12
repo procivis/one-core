@@ -14,6 +14,7 @@ use tracing::warn;
 
 use crate::binding::OneCore;
 use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
+use crate::binding::credential_manager::{CredentialManager, CredentialManagerWrapper};
 use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
 use crate::binding::nfc::hce::{NfcHce, NfcHceWrapper};
 use crate::binding::nfc::scanner::{NfcScanner, NfcScannerWrapper};
@@ -46,6 +47,7 @@ pub struct InitParams {
     pub ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     pub nfc_hce: Option<Arc<dyn NfcHce>>,
     pub nfc_scanner: Option<Arc<dyn NfcScanner>>,
+    pub credential_manager: Option<Arc<dyn CredentialManager>>,
 }
 
 /// internal core initialization, to be called from the wrapping `initializeCore` function
@@ -121,6 +123,10 @@ async fn initialize(
         .nfc_scanner
         .map(|hce| Arc::new(NfcScannerWrapper(hce)) as _);
 
+    let credential_manager = params
+        .credential_manager
+        .map(|credential_manager| Arc::new(CredentialManagerWrapper(credential_manager)) as _);
+
     let cfg = build_config(params.config_json.as_deref().unwrap_or("{}"))?;
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -179,6 +185,7 @@ async fn initialize(
         let ble_central = ble_central.clone();
         let nfc_hce = nfc_hce.clone();
         let nfc_scanner = nfc_scanner.clone();
+        let credential_manager = credential_manager.clone();
 
         Box::pin(async move {
             let db_url = format!("sqlite:{db_path}?mode=rwc");
@@ -201,6 +208,7 @@ async fn initialize(
                 nfc_scanner,
                 native_secure_element,
                 remote_secure_element,
+                credential_manager,
             )
             .await
             .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())

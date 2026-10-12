@@ -38,7 +38,8 @@ public func initializeCore(params: InitParams, dataDirPath: String? = nil) throw
       bleCentral: params.bleCentral ?? IOSBLECentral(),
       blePeripheral: params.blePeripheral ?? IOSBLEPeripheral(),
       nfcHce: params.nfcHce,
-      nfcScanner: params.nfcScanner ?? NFCScanner()
+      nfcScanner: params.nfcScanner ?? NFCScanner(),
+      credentialManager: params.credentialManager
     )
   )
 }

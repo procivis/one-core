@@ -23,6 +23,7 @@ use crate::proto::history_decorator::decorator::decorate_data_provider as decora
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::creator::IdentifierCreatorProto;
 use crate::proto::mqtt_client::rumqttc_client::RumqttcClient;
+use crate::proto::native_credential_manager::NativeCredentialManager;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::scanner::NfcScanner;
 use crate::proto::notification_decorator::decorator::decorate_data_provider as decorate_notification;
@@ -180,6 +181,7 @@ impl OneCore {
         nfc_scanner: Option<Arc<dyn NfcScanner>>,
         native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
         remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+        _native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
     ) -> Result<OneCore, OneCoreInitializationError> {
         initialize_rustls()?;
 

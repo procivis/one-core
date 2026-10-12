@@ -1143,6 +1143,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Identifier must keep at least one certificate")]
     BR_0515,
+
+    #[strum(message = "Credential manager synchronization failure")]
+    BR_0516,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

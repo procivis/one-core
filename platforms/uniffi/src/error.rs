@@ -229,6 +229,24 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for NfcError {
     }
 }
 
+#[derive(Debug, Clone, From, Into, Error, uniffi::Error)]
+#[from(one_core::proto::native_credential_manager::CredentialManagerError)]
+#[into(one_core::proto::native_credential_manager::CredentialManagerError)]
+pub enum CredentialManagerError {
+    #[error("Credential manager synchronization failure: `{reason}`")]
+    SynchronizationError { reason: String },
+    #[error("Unknown credential manager error: {reason}")]
+    Unknown { reason: String },
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for CredentialManagerError {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        Self::Unknown {
+            reason: e.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use one_core::error::ErrorCode;

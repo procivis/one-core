@@ -34,6 +34,7 @@ pub async fn initialize_core(
         None,
         None,
         None,
+        None,
     )
     .await
 }

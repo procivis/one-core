@@ -38,7 +38,8 @@ public fun initializeCore(context: Context, params: InitParams, dataDirPath: Str
             blePeripheral = params.blePeripheral ?: AndroidBLEPeripheral(context),
             remoteSecureElement = params.remoteSecureElement,
             nfcHce = params.nfcHce,
-            nfcScanner = params.nfcScanner
+            nfcScanner = params.nfcScanner,
+            credentialManager = params.credentialManager
         )
     )
 }

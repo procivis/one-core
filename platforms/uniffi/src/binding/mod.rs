@@ -14,6 +14,7 @@ pub mod cache;
 mod common;
 pub mod config;
 pub mod credential;
+pub mod credential_manager;
 pub mod credential_schema;
 pub mod did;
 pub mod history;
