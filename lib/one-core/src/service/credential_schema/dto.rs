@@ -334,6 +334,7 @@ pub struct CredentialSchemaFormatRequestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaV2FormatDTO {
     pub format: CredentialFormat,
+    #[serde(alias = "schemaId")]
     pub ecosystem_schema_id: String,
 }
 
