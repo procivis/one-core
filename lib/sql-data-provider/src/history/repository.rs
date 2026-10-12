@@ -145,12 +145,13 @@ impl HistoryRepository for HistoryProvider {
         include_previous: bool,
     ) -> Result<OrganisationStats, DataLayerError> {
         let db_backend = self.db.get_database_backend();
+        let organisation_ids = Some(vec![organisation_id]);
         let issuance_count_query = self.window_counts(
             HistoryEntityType::Credential,
             &[history::HistoryAction::Issued],
             from,
             to,
-            Some(organisation_id),
+            organisation_ids.as_ref(),
             include_previous,
         );
         let verification_count_query = self.window_counts(
@@ -158,7 +159,7 @@ impl HistoryRepository for HistoryProvider {
             &[history::HistoryAction::Accepted],
             from,
             to,
-            Some(organisation_id),
+            organisation_ids.as_ref(),
             include_previous,
         );
         let credential_lifecycle_count_query = self.window_counts(
@@ -166,7 +167,7 @@ impl HistoryRepository for HistoryProvider {
             &CREDENTIAL_LIFECYCLE_OPS,
             from,
             to,
-            Some(organisation_id),
+            organisation_ids.as_ref(),
             include_previous,
         );
         let timelines_query =
@@ -218,6 +219,7 @@ impl HistoryRepository for HistoryProvider {
         from: Option<OffsetDateTime>,
         to: OffsetDateTime,
         organisation_count: usize,
+        organisation_ids: Option<Vec<OrganisationId>>,
     ) -> Result<SystemStats, DataLayerError> {
         let db_backend = self.db.get_database_backend();
         let top_issuers = top_orgs_query(
@@ -226,6 +228,7 @@ impl HistoryRepository for HistoryProvider {
             from,
             to,
             organisation_count,
+            organisation_ids.as_ref(),
         );
         let top_verifiers = top_orgs_query(
             HistoryEntityType::Proof,
@@ -233,6 +236,7 @@ impl HistoryRepository for HistoryProvider {
             from,
             to,
             organisation_count,
+            organisation_ids.as_ref(),
         );
         let (top_issuers, top_verifiers, (system_stats_current, system_stats_previous)) = tokio::try_join!(
             async {
@@ -247,7 +251,7 @@ impl HistoryRepository for HistoryProvider {
                     .await
                     .map_err(|err| DataLayerError::Db(err.into()))
             },
-            self.system_operations_counts(from, to)
+            self.system_operations_counts(from, to, organisation_ids)
         )?;
 
         let Some(from) = from else {
@@ -269,7 +273,7 @@ impl HistoryRepository for HistoryProvider {
                     &[history::HistoryAction::Issued],
                     Some(prev_window_start),
                     from,
-                    Some(issuer.organisation_id),
+                    Some(&vec![issuer.organisation_id]),
                 );
                 self.count(&query).await
             };
@@ -282,7 +286,7 @@ impl HistoryRepository for HistoryProvider {
                     &[history::HistoryAction::Accepted],
                     Some(prev_window_start),
                     from,
-                    Some(verifier.organisation_id),
+                    Some(&vec![verifier.organisation_id]),
                 );
                 self.count(&query).await
             };
@@ -415,18 +419,58 @@ impl HistoryProvider {
         &self,
         from: Option<OffsetDateTime>,
         to: OffsetDateTime,
+        organisation_ids: Option<Vec<OrganisationId>>,
     ) -> Result<(SystemOperationsCount, Option<SystemOperationsCount>), DataLayerError> {
         use HistoryEntityType::*;
         use history::HistoryAction::*;
-        let issuances = self.window_counts(Credential, &[Issued], from, to, None, true);
-        let verifications = self.window_counts(Proof, &[Accepted], from, to, None, true);
-        let credential_lifecycle =
-            self.window_counts(Credential, &CREDENTIAL_LIFECYCLE_OPS, from, to, None, true);
-        let sessions = self.window_counts(StsSession, &[Created], from, to, None, true);
-        let wallet_units_new =
-            self.window_counts(ManagedInstance, &[Created, Activated], from, to, None, true);
-        let wallet_units_revoked =
-            self.window_counts(ManagedInstance, &[Revoked], from, to, None, true);
+        let issuances = self.window_counts(
+            Credential,
+            &[Issued],
+            from,
+            to,
+            organisation_ids.as_ref(),
+            true,
+        );
+        let verifications = self.window_counts(
+            Proof,
+            &[Accepted],
+            from,
+            to,
+            organisation_ids.as_ref(),
+            true,
+        );
+        let credential_lifecycle = self.window_counts(
+            Credential,
+            &CREDENTIAL_LIFECYCLE_OPS,
+            from,
+            to,
+            organisation_ids.as_ref(),
+            true,
+        );
+        let sessions = self.window_counts(
+            StsSession,
+            &[Created],
+            from,
+            to,
+            organisation_ids.as_ref(),
+            true,
+        );
+        let wallet_units_new = self.window_counts(
+            ManagedInstance,
+            &[Created, Activated],
+            from,
+            to,
+            organisation_ids.as_ref(),
+            true,
+        );
+        let wallet_units_revoked = self.window_counts(
+            ManagedInstance,
+            &[Revoked],
+            from,
+            to,
+            organisation_ids.as_ref(),
+            true,
+        );
         let (
             issuance_count,
             verification_count,
@@ -489,10 +533,10 @@ impl HistoryProvider {
         actions: &[history::HistoryAction],
         from: Option<OffsetDateTime>,
         to: OffsetDateTime,
-        organisation_id: Option<OrganisationId>,
+        organisation_ids: Option<&Vec<OrganisationId>>,
         include_previous: bool,
     ) -> Result<WindowCount, DataLayerError> {
-        let current_query = count_ops_query(entity_type, actions, from, to, organisation_id);
+        let current_query = count_ops_query(entity_type, actions, from, to, organisation_ids);
         if !include_previous {
             return Ok(WindowCount {
                 current: self.count(&current_query).await?,
@@ -512,7 +556,7 @@ impl HistoryProvider {
             actions,
             Some(prev_window_start),
             from,
-            organisation_id,
+            organisation_ids,
         );
         let (current, prev) =
             tokio::try_join!(self.count(&current_query), self.count(&prev_query))?;

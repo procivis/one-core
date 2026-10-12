@@ -6,9 +6,10 @@ use crate::model::common::SortDirection;
 use crate::model::history::{
     IssuerStatsQuery, SystemInteractionStatsQuery, SystemManagementStatsQuery, VerifierStatsQuery,
 };
+use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
-use crate::model::organisation::OrganisationListQuery;
 use crate::model::organisation::SortableOrganisationColumn::CreatedDate;
+use crate::model::organisation::{OrganisationFilterValue, OrganisationListQuery};
 use crate::service::statistics::StatisticsService;
 use crate::service::statistics::dto::{
     GetIssuerStatsResponseDTO, GetSystemInteractionStatsResponseDTO,
@@ -68,12 +69,16 @@ impl StatisticsService {
                         column: CreatedDate,
                         direction: Some(SortDirection::Descending),
                     }),
+                    filtering: request.organisation_ids.as_ref().map(|organisation_ids| {
+                        OrganisationFilterValue::Ids(organisation_ids.to_owned()).condition()
+                    }),
                     ..Default::default()
                 }),
             self.history_repository.system_stats(
                 request.from,
                 request.to,
-                request.organisation_count
+                request.organisation_count,
+                request.organisation_ids
             )
         );
         let newest_orgs = newest_orgs.error_while("getting newest organisations")?;

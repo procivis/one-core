@@ -630,7 +630,7 @@ pub(super) fn count_ops_query(
     actions: &[history::HistoryAction],
     from_inclusive: Option<OffsetDateTime>,
     to_exclusive: OffsetDateTime,
-    organisation_id: Option<OrganisationId>,
+    organisation_ids: Option<&Vec<OrganisationId>>,
 ) -> CountOperationsQuery {
     let mut query = Query::select()
         .expr_as(Func::count(ColumnRef::Asterisk(None)), Alias::new("count"))
@@ -646,9 +646,9 @@ pub(super) fn count_ops_query(
             Expr::col((history::Entity, history::Column::CreatedDate)).gte(from_inclusive),
         );
     }
-    if let Some(organisation_id) = organisation_id {
+    if let Some(organisation_ids) = organisation_ids {
         query.and_where(
-            Expr::col((history::Entity, history::Column::OrganisationId)).eq(organisation_id),
+            Expr::col((history::Entity, history::Column::OrganisationId)).is_in(organisation_ids),
         );
     }
     CountOperationsQuery(query)
@@ -743,6 +743,7 @@ pub(super) fn top_orgs_query(
     from: Option<OffsetDateTime>,
     to: OffsetDateTime,
     num_orgs: usize,
+    organisation_ids: Option<&Vec<OrganisationId>>,
 ) -> SelectStatement {
     let count = Alias::new("count");
     let mut query = Query::select()
@@ -753,6 +754,11 @@ pub(super) fn top_orgs_query(
         .and_where(Expr::col(history::Column::Action).eq(action))
         .to_owned();
     credential_proof_role_conditions(&mut query, entity_type);
+    if let Some(organisation_ids) = organisation_ids {
+        query.and_where(
+            Expr::col((history::Entity, history::Column::OrganisationId)).is_in(organisation_ids),
+        );
+    }
     if let Some(from) = from {
         query.and_where(Expr::col((history::Entity, history::Column::CreatedDate)).gte(from));
     }
@@ -844,6 +850,9 @@ impl IntoFilterCondition for SystemStatsFilterValue {
         match self {
             Self::From(date) => get_comparison_condition(history::Column::CreatedDate, date),
             Self::To(date) => get_comparison_condition(history::Column::CreatedDate, date),
+            Self::OrganisationIds(organisation_ids) => history::Column::OrganisationId
+                .is_in(organisation_ids)
+                .into_condition(),
         }
     }
 }

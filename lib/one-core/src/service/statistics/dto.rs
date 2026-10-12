@@ -125,6 +125,7 @@ pub struct SystemStatsRequestDTO {
     pub from: Option<OffsetDateTime>,
     pub to: OffsetDateTime,
     pub organisation_count: usize,
+    pub organisation_ids: Option<Vec<OrganisationId>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

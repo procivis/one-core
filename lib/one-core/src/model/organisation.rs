@@ -49,6 +49,7 @@ pub enum SortableOrganisationColumn {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OrganisationFilterValue {
+    Ids(Vec<OrganisationId>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
     HasParentOrganisation(bool),

@@ -30,6 +30,7 @@ impl From<SystemStatsRequestQuery> for SystemStatsRequestDTO {
             from: value.from,
             to: value.to,
             organisation_count: value.organisation_count.unwrap_or(5),
+            organisation_ids: value.organisation_ids,
         }
     }
 }
@@ -189,7 +190,11 @@ impl TryFrom<SystemStatsFilterParamsRest> for ListFilterCondition<SystemStatsFil
             })
         });
 
-        Ok(to & from)
+        let organisation_ids = value
+            .organisation_ids
+            .map(SystemStatsFilterValue::OrganisationIds);
+
+        Ok(to & from & organisation_ids)
     }
 }
 

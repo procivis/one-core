@@ -234,6 +234,9 @@ pub struct SystemStatsRequestQuery {
     /// system-wide totals in `current` and `previous`.
     #[param(nullable = false)]
     pub organisation_count: Option<usize>,
+    /// Return only statistics about these organisations
+    #[param(rename = "organisationIds[]", inline, nullable = false)]
+    pub organisation_ids: Option<Vec<OrganisationId>>,
 }
 
 #[options_not_nullable]
@@ -316,6 +319,9 @@ pub(crate) enum SortableSystemInteractionStatisticsColumnRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
 pub struct SystemStatsFilterParamsRest {
+    /// Return only statistics about these organisations
+    #[param(rename = "organisationIds[]", inline, nullable = false)]
+    pub organisation_ids: Option<Vec<OrganisationId>>,
     /// Start of the reporting period (inclusive).
     #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]

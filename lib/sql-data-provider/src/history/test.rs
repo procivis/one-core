@@ -1321,7 +1321,10 @@ async fn test_system_history_empty() {
 
     let from = one_core::clock::now_utc();
     let to = from + Duration::days(2 * 365);
-    let result = provider.system_stats(Some(from), to, 5).await.unwrap();
+    let result = provider
+        .system_stats(Some(from), to, 5, None)
+        .await
+        .unwrap();
 
     assert_eq!(result.current.issuance_count, 0);
     assert_eq!(result.current.verification_count, 0);
@@ -1465,7 +1468,10 @@ async fn test_system_history_stats_dummy_data() {
 
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
-    let result = provider.system_stats(Some(from), to, 5).await.unwrap();
+    let result = provider
+        .system_stats(Some(from), to, 5, None)
+        .await
+        .unwrap();
     assert_eq!(result.current.issuance_count, 1);
     assert_eq!(result.current.verification_count, 1);
     assert_eq!(result.current.credential_lifecycle_operation_count, 3);
@@ -1512,7 +1518,12 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
 
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
-    let result = provider.system_stats(Some(from), to, 5).await.unwrap();
+
+    // all organisations
+    let result = provider
+        .system_stats(Some(from), to, 5, None)
+        .await
+        .unwrap();
     assert_eq!(result.current.issuance_count, 12);
     assert_eq!(result.current.verification_count, 9);
     assert_eq!(result.current.credential_lifecycle_operation_count, 1);
@@ -1553,6 +1564,39 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
                 current: 1,
             }
         ]
+    );
+
+    // only org2
+    let result = provider
+        .system_stats(Some(from), to, 5, Some(vec![org2_id]))
+        .await
+        .unwrap();
+    assert_eq!(result.current.issuance_count, 10);
+    assert_eq!(result.current.verification_count, 1);
+    assert_eq!(result.current.credential_lifecycle_operation_count, 1);
+    assert_eq!(result.current.session_token_count, 0);
+    assert_eq!(result.current.active_wallet_unit_count, 0);
+    let previous = result.previous.unwrap();
+    assert_eq!(previous.issuance_count, 0);
+    assert_eq!(previous.verification_count, 0);
+    assert_eq!(previous.credential_lifecycle_operation_count, 1);
+    assert_eq!(previous.session_token_count, 0);
+    assert_eq!(previous.active_wallet_unit_count, 0);
+    assert_eq!(
+        result.top_issuers,
+        vec![OrganisationOperationsCount {
+            organisation_id: org2_id,
+            previous: Some(0),
+            current: 10,
+        },]
+    );
+    assert_eq!(
+        result.top_verifiers,
+        vec![OrganisationOperationsCount {
+            organisation_id: org2_id,
+            previous: Some(0),
+            current: 1,
+        }]
     );
 }
 
@@ -1716,18 +1760,20 @@ async fn test_system_interaction_history_stats() {
     let from = now - Duration::days(1);
     let to = now + Duration::days(1);
     let diff = to - from;
-    let query = system_interaction_stats_query(
+    let mut query = system_interaction_stats_query(
         SortableSystemInteractionStatisticsColumn::CredentialLifecycleOperation,
         Some(from),
         to,
     );
-    let query_prev = system_interaction_stats_query(
+    let mut query_prev = system_interaction_stats_query(
         SortableSystemInteractionStatisticsColumn::CredentialLifecycleOperation,
         Some(from - diff),
         from,
     );
+
+    // all organisations
     let result = provider
-        .system_interaction_stats(query, Some(query_prev))
+        .system_interaction_stats(query.clone(), Some(query_prev.clone()))
         .await
         .unwrap();
     assert_eq!(result.total_items.unwrap(), 2);
@@ -1748,6 +1794,27 @@ async fn test_system_interaction_history_stats() {
     );
     assert_eq!(result.values[0].previous.as_ref().unwrap().issued_count, 0);
     assert_eq!(result.values[1].previous.as_ref().unwrap().issued_count, 2);
+
+    // only org2
+    query.filtering =
+        Some(query.filtering.unwrap() & SystemStatsFilterValue::OrganisationIds(vec![org2_id]));
+    query_prev.filtering = Some(
+        query_prev.filtering.unwrap() & SystemStatsFilterValue::OrganisationIds(vec![org2_id]),
+    );
+    let result = provider
+        .system_interaction_stats(query, Some(query_prev))
+        .await
+        .unwrap();
+    assert_eq!(result.total_items.unwrap(), 1);
+    assert_eq!(result.total_pages.unwrap(), 1);
+    assert_eq!(result.values[0].organisation_id, org2_id);
+    assert_eq!(
+        result.values[0]
+            .current
+            .credential_lifecycle_operation_count,
+        1
+    );
+    assert_eq!(result.values[0].previous.as_ref().unwrap().issued_count, 0);
 }
 
 #[rstest::rstest]

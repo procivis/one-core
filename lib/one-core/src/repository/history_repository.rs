@@ -35,6 +35,7 @@ pub trait HistoryRepository: Send + Sync {
         from: Option<OffsetDateTime>,
         to: OffsetDateTime,
         organisation_count: usize,
+        organisation_ids: Option<Vec<OrganisationId>>,
     ) -> Result<SystemStats, DataLayerError>;
 
     async fn issuer_stats(

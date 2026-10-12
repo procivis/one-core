@@ -396,6 +396,7 @@ pub enum SortableSystemInteractionStatisticsColumn {
 pub enum SystemStatsFilterValue {
     From(ValueComparison<OffsetDateTime>),
     To(ValueComparison<OffsetDateTime>),
+    OrganisationIds(Vec<OrganisationId>),
 }
 impl ListFilterValue for SystemStatsFilterValue {}
 

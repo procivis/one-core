@@ -134,6 +134,7 @@ impl IntoSortingColumn for SortableOrganisationColumn {
 impl IntoFilterCondition for OrganisationFilterValue {
     fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
         match self {
+            Self::Ids(value) => organisation::Column::Id.is_in(value).into_condition(),
             Self::CreatedDate(value) => {
                 get_comparison_condition(organisation::Column::CreatedDate, value)
             }
