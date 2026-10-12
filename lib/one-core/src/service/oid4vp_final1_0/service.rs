@@ -285,7 +285,6 @@ impl OID4VPFinal1_0Service {
             ))?
             .as_ref()
             .await?;
-        let organisation = proof_schema.organisation.as_ref().await?;
 
         let interaction = proof
             .interaction
@@ -392,7 +391,7 @@ impl OID4VPFinal1_0Service {
                 persist_accepted_proof(
                     &proof,
                     validated_proof_result,
-                    &organisation,
+                    &proof_schema.organisation,
                     proof_blob_id,
                     Some(ecosystem),
                     &*self.proof_repository,

@@ -6340,12 +6340,12 @@ async fn refresh_history_records_each_parent_once_per_operation() {
 
     for _ in 0..2 {
         protocol
-            .record_batch_refresh_history(&refreshed, &organisation)
+            .record_batch_refresh_history(&refreshed, organisation.id)
             .await
             .unwrap();
     }
     protocol
-        .record_batch_refresh_history(&[], &organisation)
+        .record_batch_refresh_history(&[], organisation.id)
         .await
         .unwrap();
 

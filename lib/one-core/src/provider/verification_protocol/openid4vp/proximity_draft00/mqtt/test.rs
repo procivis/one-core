@@ -415,7 +415,7 @@ async fn test_handle_invitation_certificate_verifier() {
         .once()
         .returning({
             let verifier_certificate = verifier_certificate.clone();
-            move |organisation, details, _, _, _, _| {
+            move |organisation_id, details, _, _, _, _| {
                 let IdentifierDetails::Certificate(details) = details else {
                     panic!("expected a certificate identifier");
                 };
@@ -426,7 +426,7 @@ async fn test_handle_invitation_certificate_verifier() {
                         created_date: now,
                         last_modified: now,
                         name: "verifier".to_string(),
-                        organisation: organisation.clone().into(),
+                        organisation: dummy_organisation(Some(organisation_id)).into(),
                         data: IdentifierData::Certificate(
                             vec![verifier_certificate.clone()].into(),
                         ),

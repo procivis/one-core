@@ -8,6 +8,7 @@ use crate::mapper::openid4vp::credential_from_proved;
 use crate::model::common::LockType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
+use crate::model::relation::Related;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
@@ -20,7 +21,7 @@ use crate::validator::throw_if_proof_state_not_in;
 pub(crate) async fn persist_accepted_proof(
     proof: &Proof,
     validated_proof_result: ValidatedProofResult,
-    organisation: &Organisation,
+    organisation: &Related<Organisation>,
     proof_blob_id: BlobId,
     ecosystem: Option<Option<EcosystemId>>,
     proof_repository: &dyn ProofRepository,

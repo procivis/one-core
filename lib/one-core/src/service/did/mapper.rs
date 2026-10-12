@@ -18,6 +18,7 @@ use crate::model::list_filter::{
     ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
 };
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::{DidCreated, DidKeys, DidUpdate};
 use crate::service::key::dto::KeyListItemResponseDTO;
@@ -111,7 +112,7 @@ pub(crate) fn related_keys_from_did_keys(
 pub(crate) fn did_from_did_request(
     did_id: DidId,
     request: CreateDidRequestDTO,
-    organisation: Organisation,
+    organisation: Related<Organisation>,
     did_create: DidCreated,
     found_keys: DidKeys,
     now: OffsetDateTime,
@@ -125,7 +126,7 @@ pub(crate) fn did_from_did_request(
         last_modified: now,
         deleted_at: None,
         name: request.name,
-        organisation: organisation.into(),
+        organisation,
         did: did_create.did,
         did_type: DidType::Local,
         did_method: request.did_method,

@@ -127,7 +127,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
 
     let (verifier_identifier, verifier_relation) = identifier_creator
         .get_or_create_remote_identifier(
-            &organisation,
+            organisation.id,
             &verifier_details,
             IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
             true,

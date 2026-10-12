@@ -138,7 +138,6 @@ impl ProofService {
             ))?
             .as_ref()
             .await?;
-        let organisation = proof_schema.organisation.as_ref().await?;
 
         let interaction = proof
             .interaction
@@ -247,7 +246,7 @@ impl ProofService {
                 persist_accepted_proof(
                     &proof,
                     accept_proof_result,
-                    &organisation,
+                    &proof_schema.organisation,
                     proof_blob_id,
                     Some(ecosystem),
                     &*self.proof_repository,

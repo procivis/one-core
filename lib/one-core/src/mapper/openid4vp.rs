@@ -6,6 +6,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::provider::verification_protocol::openid4vp::model::ProvedCredential;
 use crate::service::error::ServiceError;
@@ -13,7 +14,7 @@ use crate::service::error::ServiceError;
 pub(crate) async fn credential_from_proved(
     identifier_creator: &dyn IdentifierCreator,
     proved_credential: ProvedCredential,
-    organisation: &Organisation,
+    organisation: &Related<Organisation>,
 ) -> Result<Credential, ServiceError> {
     let ProvedCredential {
         common,
@@ -25,7 +26,7 @@ pub(crate) async fn credential_from_proved(
 
     let (issuer_identifier, issuer_relation) = identifier_creator
         .get_or_create_remote_identifier(
-            organisation,
+            organisation.id(),
             &issuer_details,
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
@@ -44,7 +45,7 @@ pub(crate) async fn credential_from_proved(
 
     let (holder_identifier, ..) = identifier_creator
         .get_or_create_remote_identifier(
-            organisation,
+            organisation.id(),
             &holder_details,
             IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
             true,
@@ -86,9 +87,12 @@ pub(crate) async fn credential_from_proved(
     })
 }
 
-fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) -> CredentialSchema {
+fn from_provider_schema(
+    schema: CredentialSchema,
+    organisation: Related<Organisation>,
+) -> CredentialSchema {
     CredentialSchema {
-        organisation: organisation.into(),
+        organisation,
         ..schema
     }
 }

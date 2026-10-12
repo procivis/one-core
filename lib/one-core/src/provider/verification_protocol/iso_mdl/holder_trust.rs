@@ -66,7 +66,7 @@ pub(super) async fn resolve_verifier_and_trust(
     let identifier = if let Some(verifier_details) = verifier_details {
         let (identifier, _) = identifier_creator
             .get_or_create_remote_identifier(
-                interaction.organisation.as_ref().await?.as_ref(),
+                interaction.organisation.id(),
                 &verifier_details,
                 IdentifierName::PrefixForId("ReaderAuth".to_string()),
                 true,

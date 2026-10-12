@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{ClaimSchemaId, CredentialId, SerializedCredential};
+use shared_types::{ClaimSchemaId, CredentialId, OrganisationId, SerializedCredential};
 use uuid::Uuid;
 
 use self::schema_matching::{
@@ -483,7 +483,7 @@ impl OpenID4VCIFinal1_0 {
     pub(super) async fn record_batch_refresh_history(
         &self,
         refreshed: &[IssuanceRefreshResponse],
-        organisation: &Organisation,
+        organisation_id: OrganisationId,
     ) -> Result<(), IssuanceProtocolError> {
         // Several configurations can refresh the same parent in one request. Record the
         // operation once per parent, after its refreshed items have been persisted.
@@ -506,7 +506,7 @@ impl OpenID4VCIFinal1_0 {
                     source: HistorySource::Core,
                     entity_id: Some(parent_id.into()),
                     entity_type: HistoryEntityType::Credential,
-                    organisation_id: Some(organisation.id),
+                    organisation_id: Some(organisation_id),
                     user: self.session_provider.session().user(),
                     target: None,
                     metadata: None,
@@ -609,7 +609,7 @@ impl OpenID4VCIFinal1_0 {
         let (issuer_identifier, issuer_identifier_relation) = self
             .identifier_creator
             .get_or_create_remote_identifier(
-                organisation,
+                organisation.id,
                 &identifier_details,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
                 true,

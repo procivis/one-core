@@ -43,8 +43,13 @@ impl IdentifierCreatorProto {
         params: CreateLocalIdentifierRequestParams,
     ) -> Result<Identifier, Error> {
         let now = params.now;
+        let organisation = Related::new(
+            params.organisation_id,
+            self.organisation_repository.to_owned(),
+        );
+
         let did = self
-            .create_did_without_identifier(request, params.organisation.clone(), now)
+            .create_did_without_identifier(request, organisation.clone(), now)
             .await?;
         let logo_id = if let Some(logo) = params.logo {
             Some(self.persist_identifier_logo(logo.0, now).await?)
@@ -58,7 +63,7 @@ impl IdentifierCreatorProto {
             created_date: now,
             last_modified: now,
             name: params.name.clone(),
-            organisation: params.organisation.into(),
+            organisation,
             data: IdentifierData::Did(did.into()),
             is_remote: false,
             state: IdentifierState::Active,
@@ -87,7 +92,7 @@ impl IdentifierCreatorProto {
             return Err(Error::KeyMustNotBeRemote(key.name));
         }
 
-        if key.organisation.id() != params.organisation.id {
+        if key.organisation.id() != params.organisation_id {
             return Err(Error::OrganisationMismatch);
         }
         let now = params.now;
@@ -102,7 +107,10 @@ impl IdentifierCreatorProto {
             created_date: now,
             last_modified: now,
             name: params.name.clone(),
-            organisation: params.organisation.into(),
+            organisation: Related::new(
+                params.organisation_id,
+                self.organisation_repository.to_owned(),
+            ),
             data: IdentifierData::Key(Related::from(key)),
             is_remote: false,
             state: IdentifierState::Active,
@@ -128,11 +136,15 @@ impl IdentifierCreatorProto {
         params: CreateLocalIdentifierRequestParams,
     ) -> Result<Identifier, Error> {
         let id = Uuid::new_v4().into();
+        let organisation = Related::new(
+            params.organisation_id,
+            self.organisation_repository.to_owned(),
+        );
 
         let mut certificates: Vec<Certificate> = vec![];
         for request in requests {
             let cert = self
-                .validate_and_prepare_certificate(id, params.organisation.clone(), request)
+                .validate_and_prepare_certificate(id, organisation.clone(), request)
                 .await?;
             validate_no_conflicts(&certificates, &cert)?;
             certificates.push(cert);
@@ -148,7 +160,7 @@ impl IdentifierCreatorProto {
             created_date: params.now,
             last_modified: params.now,
             name: params.name.clone(),
-            organisation: params.organisation.into(),
+            organisation,
             data: IdentifierData::Certificate(RelatedVec::from(certificates.clone())),
             is_remote: false,
             state: IdentifierState::Active,
@@ -184,15 +196,15 @@ impl IdentifierCreatorProto {
         params: CreateLocalIdentifierRequestParams,
     ) -> Result<Identifier, Error> {
         let id = Uuid::new_v4().into();
+        let organisation = Related::new(
+            params.organisation_id,
+            self.organisation_repository.to_owned(),
+        );
 
         let mut certificates = vec![];
         for request in requests {
             let cert = self
-                .validate_and_prepare_certificate_authority(
-                    id,
-                    params.organisation.clone(),
-                    request,
-                )
+                .validate_and_prepare_certificate_authority(id, organisation.clone(), request)
                 .await?;
             validate_no_conflicts(&certificates, &cert)?;
             certificates.push(cert);
@@ -208,7 +220,7 @@ impl IdentifierCreatorProto {
             created_date: params.now,
             last_modified: params.now,
             name: params.name.clone(),
-            organisation: params.organisation.into(),
+            organisation,
             data: IdentifierData::CertificateAuthority(RelatedVec::from(certificates.clone())),
             is_remote: false,
             state: IdentifierState::Active,
@@ -241,10 +253,10 @@ impl IdentifierCreatorProto {
     async fn create_did_without_identifier(
         &self,
         request: CreateDidRequestDTO,
-        organisation: Organisation,
+        organisation: Related<Organisation>,
         now: OffsetDateTime,
     ) -> Result<Did, Error> {
-        if request.organisation_id != organisation.id {
+        if request.organisation_id != organisation.id() {
             return Err(Error::MappingError("Organisation ID mismatch".to_string()));
         }
 
@@ -465,7 +477,7 @@ impl IdentifierCreatorProto {
     async fn validate_and_prepare_certificate(
         &self,
         identifier_id: IdentifierId,
-        organisation: Organisation,
+        organisation: Related<Organisation>,
         request: CreateCertificateRequestDTO,
     ) -> Result<Certificate, Error> {
         if request.roles.is_empty() {
@@ -477,7 +489,7 @@ impl IdentifierCreatorProto {
             .await
             .error_while("getting key")?;
 
-        if organisation.id != key.organisation.id() {
+        if organisation.id() != key.organisation.id() {
             return Err(Error::OrganisationMismatch);
         }
 
@@ -506,7 +518,7 @@ impl IdentifierCreatorProto {
                     return Err(Error::InvalidIdentifierType(identifier.data.r#type()));
                 }
 
-                if organisation.id != identifier.organisation.id() {
+                if organisation.id() != identifier.organisation.id() {
                     return Err(Error::OrganisationMismatch);
                 }
 
@@ -582,7 +594,7 @@ impl IdentifierCreatorProto {
         Ok(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation: organisation.into(),
+            organisation,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -599,7 +611,7 @@ impl IdentifierCreatorProto {
     async fn validate_and_prepare_certificate_authority(
         &self,
         identifier_id: IdentifierId,
-        organisation: Organisation,
+        organisation: Related<Organisation>,
         request: CreateCertificateAuthorityRequestDTO,
     ) -> Result<Certificate, Error> {
         let key = self
@@ -679,7 +691,7 @@ impl IdentifierCreatorProto {
         Ok(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation: organisation.into(),
+            organisation,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -702,7 +714,6 @@ impl IdentifierCreatorProto {
             return Err(Error::InvalidCertificateInput);
         }
 
-        let organisation = identifier.organisation.as_ref().await?.to_owned();
         let existing = match &identifier.data {
             IdentifierData::Certificate(certificates) => certificates.as_ref().await?.to_owned(),
             _ => vec![],
@@ -712,7 +723,11 @@ impl IdentifierCreatorProto {
         let mut prepared = Vec::with_capacity(requests.len());
         for request in requests {
             let cert = self
-                .validate_and_prepare_certificate(identifier.id, organisation.clone(), request)
+                .validate_and_prepare_certificate(
+                    identifier.id,
+                    identifier.organisation.clone(),
+                    request,
+                )
                 .await?;
             validate_no_conflicts(&certificates, &cert)?;
             certificates.push(cert.clone());
@@ -731,7 +746,6 @@ impl IdentifierCreatorProto {
             return Err(Error::InvalidCertificateInput);
         }
 
-        let organisation = identifier.organisation.as_ref().await?.to_owned();
         let existing = match &identifier.data {
             IdentifierData::CertificateAuthority(certificates) => {
                 certificates.as_ref().await?.to_owned()
@@ -745,7 +759,7 @@ impl IdentifierCreatorProto {
             let cert = self
                 .validate_and_prepare_certificate_authority(
                     identifier.id,
-                    organisation.clone(),
+                    identifier.organisation.clone(),
                     request,
                 )
                 .await?;

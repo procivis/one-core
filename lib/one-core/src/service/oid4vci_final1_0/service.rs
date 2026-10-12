@@ -804,14 +804,12 @@ impl OID4VCIFinal1_0Service {
             tracing::debug!("key attestation provided but not required, ignored");
         }
 
-        let organisation = schema.organisation.as_ref().await?.to_owned();
-
         let (identifier, key_id) = match holder_binding {
             OpenID4VCIProofHolderBinding::Did { did, key_id } => {
                 let (identifier, _) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        &organisation,
+                        schema.organisation.id(),
                         &IdentifierDetails::Did(did),
                         IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                         true,
@@ -826,7 +824,7 @@ impl OID4VCIFinal1_0Service {
                 let (identifier, RemoteIdentifierRelation::Key(key)) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        &organisation,
+                        schema.organisation.id(),
                         &IdentifierDetails::Key(jwk),
                         IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                         true,

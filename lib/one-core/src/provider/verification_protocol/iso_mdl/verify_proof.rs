@@ -283,7 +283,6 @@ pub(super) async fn accept_proof(
     ecosystem_resolver: &dyn EcosystemResolver,
 ) -> Result<(), ServiceError> {
     let proof_schema = proof.schema.as_required_ref().await?;
-    let organisation = proof_schema.organisation.as_ref().await?;
 
     let mut credential_schemas = HashMap::new();
     let input_schemas = proof_schema.input_schemas.as_ref().await?;
@@ -301,7 +300,7 @@ pub(super) async fn accept_proof(
     {
         let (issuer_identifier, issuer_identifier_relation) = identifier_creator
             .get_or_create_remote_identifier(
-                &organisation,
+                proof_schema.organisation.id(),
                 &credential.issuer,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
                 true,
@@ -319,7 +318,7 @@ pub(super) async fn accept_proof(
             ))?;
         let (holder_identifier, _) = identifier_creator
             .get_or_create_remote_identifier(
-                &organisation,
+                proof_schema.organisation.id(),
                 holder_details,
                 IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                 true,
