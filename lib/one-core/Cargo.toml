@@ -59,7 +59,6 @@ secrecy                      = { workspace = true }
 serde.workspace              = true
 serde_json.workspace         = true
 serde_json_path.workspace    = true
-serde_norway                 = { version = "0.9" }
 serde_qs.workspace           = true
 serde_repr                   = { version = "0.1" }
 serde_urlencoded.workspace   = true
@@ -94,6 +93,7 @@ rusty-fork                = { version = "0.3" }
 similar-asserts.workspace = true
 tokio                     = { workspace = true, features = ["rt-multi-thread", "macros"] }
 wiremock.workspace        = true
+yaml_serde                = { version = "0.10" }
 
 [build-dependencies]
 shadow-rs.workspace = true

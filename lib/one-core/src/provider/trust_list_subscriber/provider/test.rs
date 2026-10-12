@@ -11,7 +11,7 @@ use crate::repository::remote_entity_cache_repository::MockRemoteEntityCacheRepo
 
 fn config_with_subscribers(yaml: &str) -> CoreConfig {
     let trust_list_subscriber: TrustListSubscriberConfig =
-        serde_norway::from_str(yaml).expect("valid trustListSubscriber config");
+        yaml_serde::from_str(yaml).expect("valid trustListSubscriber config");
     CoreConfig {
         trust_list_subscriber,
         ..Default::default()

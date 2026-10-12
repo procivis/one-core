@@ -1496,7 +1496,7 @@ mod tests {
                             min: 2.0
         "};
 
-        let err = serde_norway::from_str::<Fields<String>>(partial_config)
+        let err = yaml_serde::from_str::<Fields<String>>(partial_config)
             .err()
             .unwrap();
 
