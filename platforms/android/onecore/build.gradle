@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace 'ch.procivis.one.core'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         minSdk 22
@@ -36,6 +36,13 @@ kotlin {
 }
 
 dependencies {
+    implementation "androidx.credentials.registry:registry-digitalcredentials-mdoc:1.0.0-alpha05"
+    implementation "androidx.credentials.registry:registry-digitalcredentials-openid:1.0.0-alpha05"
+    implementation "androidx.credentials.registry:registry-digitalcredentials-sdjwtvc:1.0.0-alpha05"
+    implementation "androidx.credentials.registry:registry-provider:1.0.0-alpha05"
+    implementation "androidx.credentials.registry:registry-provider-play-services:1.0.0-alpha05"
+    implementation "androidx.core:core-ktx:1.16.0"
+
     implementation 'net.java.dev.jna:jna:5.17.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
     implementation 'androidx.annotation:annotation:1.8.0'
