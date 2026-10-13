@@ -207,6 +207,7 @@ impl WalletProvider for ProcivisWalletProvider {
                     .params
                     .feature_flags
                     .ecosystems_enforcement_enabled,
+                dc_api_integration_enabled: self.params.feature_flags.dc_api_integration_enabled,
             },
             user_authentication: convert_inner(self.params.user_authentication.to_owned()),
             document_signers,

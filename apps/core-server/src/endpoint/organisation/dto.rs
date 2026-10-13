@@ -192,6 +192,7 @@ pub(crate) struct WalletInstanceFeatureFlagsRestDTO {
     pub ecosystems_enforcement_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
     pub document_signing_enabled: bool,
+    pub dc_api_integration_enabled: bool,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

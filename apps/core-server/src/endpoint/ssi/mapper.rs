@@ -33,6 +33,7 @@ impl From<dto::FeatureFlags> for FeatureFlagsRestDTO {
             refresh_credential_batch_enabled: value.refresh_credential_batch_enabled,
             document_signing_enabled: value.document_signing_enabled,
             ecosystems_enforcement_enabled: value.ecosystems_enforcement_enabled,
+            dc_api_integration_enabled: value.dc_api_integration_enabled,
         }
     }
 }

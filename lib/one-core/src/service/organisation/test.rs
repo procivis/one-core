@@ -262,6 +262,7 @@ async fn test_get_organisation_reports_provider_feature_flags() {
                     refresh_credential_batch_enabled: true,
                     document_signing_enabled: true,
                     ecosystems_enforcement_enabled: false,
+                    dc_api_integration_enabled: true,
                 },
                 ..wallet_metadata(vec![])
             })
@@ -297,6 +298,7 @@ async fn test_get_organisation_reports_provider_feature_flags() {
             ecosystems_enforcement_enabled: false,
             refresh_credential_batch_enabled: true,
             document_signing_enabled: true,
+            dc_api_integration_enabled: true
         }
     );
     assert_eq!(
@@ -462,6 +464,7 @@ fn wallet_metadata(
             refresh_credential_batch_enabled: true,
             document_signing_enabled: false,
             ecosystems_enforcement_enabled: false,
+            dc_api_integration_enabled: true,
         },
         user_authentication: None,
         ecosystems: vec![],

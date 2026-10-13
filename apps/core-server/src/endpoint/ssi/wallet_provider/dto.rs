@@ -221,6 +221,7 @@ pub(crate) struct FeatureFlagsRestDTO {
     pub document_signing_enabled: bool,
     /// Whether the wallet must enforce the ecosystems advertised in `ecosystems`.
     pub ecosystems_enforcement_enabled: bool,
+    pub dc_api_integration_enabled: bool,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

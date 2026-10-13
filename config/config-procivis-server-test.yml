@@ -26,6 +26,7 @@ walletProvider:
           refreshCredentialBatchEnabled: true
           documentSigningEnabled: true
           ecosystemsEnforcementEnabled: false
+          dcApiIntegrationEnabled: true
         documentSigners:
           - SIGN8
 verifierProvider:

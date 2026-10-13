@@ -44,7 +44,8 @@ async fn test_wallet_provider_metadata_success() {
               "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
               "documentSigningEnabled": true,
-              "ecosystemsEnforcementEnabled": false
+              "ecosystemsEnforcementEnabled": false,
+              "dcApiIntegrationEnabled": false
             },
             "trustCollections": []
         })
@@ -116,7 +117,8 @@ async fn test_wallet_provider_metadata_success_all_fields() {
               "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
               "documentSigningEnabled": true,
-              "ecosystemsEnforcementEnabled": false
+              "ecosystemsEnforcementEnabled": false,
+              "dcApiIntegrationEnabled": false
             },
             "trustCollections": []
         })
@@ -235,7 +237,8 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
               "ecosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
               "documentSigningEnabled": true,
-              "ecosystemsEnforcementEnabled": false
+              "ecosystemsEnforcementEnabled": false,
+              "dcApiIntegrationEnabled": false
             },
             "trustCollections": []
         })

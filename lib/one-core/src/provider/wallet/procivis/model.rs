@@ -88,4 +88,6 @@ pub(super) struct FeatureFlagsParams {
     pub document_signing_enabled: bool,
     #[serde(default)]
     pub ecosystems_enforcement_enabled: bool,
+    #[serde(default)]
+    pub dc_api_integration_enabled: bool,
 }

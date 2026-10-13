@@ -91,42 +91,24 @@ pub struct InstanceDetailResponseDTO<T> {
     pub feature_flags: T,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, From)]
+#[from(WalletProviderFeatureFlags)]
 pub struct WalletInstanceFeatureFlagsDTO {
     pub ecosystems_enabled: bool,
     /// Whether this instance must enforce the ecosystems advertised by its provider.
     pub ecosystems_enforcement_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
     pub document_signing_enabled: bool,
+    pub dc_api_integration_enabled: bool,
 }
 
-impl From<WalletProviderFeatureFlags> for WalletInstanceFeatureFlagsDTO {
-    fn from(value: WalletProviderFeatureFlags) -> Self {
-        Self {
-            ecosystems_enabled: value.ecosystems_enabled,
-            ecosystems_enforcement_enabled: value.ecosystems_enforcement_enabled,
-            refresh_credential_batch_enabled: value.refresh_credential_batch_enabled,
-            document_signing_enabled: value.document_signing_enabled,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, From)]
+#[from(VerifierProviderFeatureFlags)]
 pub struct VerifierInstanceFeatureFlagsDTO {
     pub ecosystems_enabled: bool,
     /// Whether this instance must enforce the ecosystems advertised by its provider.
     pub ecosystems_enforcement_enabled: bool,
     pub access_certificate_provisioning_enabled: bool,
-}
-
-impl From<VerifierProviderFeatureFlags> for VerifierInstanceFeatureFlagsDTO {
-    fn from(value: VerifierProviderFeatureFlags) -> Self {
-        Self {
-            ecosystems_enabled: value.ecosystems_enabled,
-            ecosystems_enforcement_enabled: value.ecosystems_enforcement_enabled,
-            access_certificate_provisioning_enabled: value.access_certificate_provisioning_enabled,
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

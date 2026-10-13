@@ -669,6 +669,7 @@ fn dummy_wallet_provider_metadata(
             refresh_credential_batch_enabled: true,
             document_signing_enabled: false,
             ecosystems_enforcement_enabled: false,
+            dc_api_integration_enabled: true,
         },
         user_authentication: None,
         ecosystems: dummy_ecosystems(collections),

@@ -95,6 +95,8 @@ pub struct FeatureFlags {
     /// advertised in `ecosystems`.
     #[serde(default)]
     pub ecosystems_enforcement_enabled: bool,
+    #[serde(default)]
+    pub dc_api_integration_enabled: bool,
 }
 
 /// Wire format of [`FeatureFlags`]. `ecosystemsEnabled` was previously named
@@ -110,6 +112,8 @@ struct FeatureFlagsWire {
     document_signing_enabled: bool,
     #[serde(default)]
     ecosystems_enforcement_enabled: bool,
+    #[serde(default)]
+    pub dc_api_integration_enabled: bool,
 }
 
 impl TryFrom<FeatureFlagsWire> for FeatureFlags {
@@ -124,6 +128,7 @@ impl TryFrom<FeatureFlagsWire> for FeatureFlags {
             refresh_credential_batch_enabled: value.refresh_credential_batch_enabled,
             document_signing_enabled: value.document_signing_enabled,
             ecosystems_enforcement_enabled: value.ecosystems_enforcement_enabled,
+            dc_api_integration_enabled: value.dc_api_integration_enabled,
         })
     }
 }
