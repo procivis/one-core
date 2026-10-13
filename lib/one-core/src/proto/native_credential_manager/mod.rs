@@ -13,6 +13,7 @@ pub struct DigitalCredentialRegistration {
 pub struct DigitalCredentialClaim {
     pub path: Vec<String>,
     pub display_name: Option<String>,
+    pub selectively_disclosable: bool,
 }
 
 pub struct DigitalCredentialDisplay {

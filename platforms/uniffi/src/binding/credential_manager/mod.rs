@@ -28,6 +28,7 @@ pub struct DigitalCredentialRegistrationBindingDTO {
 pub struct DigitalCredentialClaimBindingDTO {
     pub path: Vec<String>,
     pub display_name: Option<String>,
+    pub selectively_disclosable: bool,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

@@ -104,7 +104,7 @@ class AndroidCredentialManager(private val context: Context) : CredentialManager
 
     private fun buildMdocFields(claims: List<DigitalCredentialClaim>): List<MdocField> {
         val result = mutableListOf<MdocField>()
-        for ((path, displayName) in claims) {
+        for ((path, displayName, _) in claims) {
             if (path.size < 2) {
                 throw CredentialManagerException.SynchronizationException("Invalid claim path: $path");
             } else if (path.size > 2) {
@@ -131,7 +131,7 @@ class AndroidCredentialManager(private val context: Context) : CredentialManager
 
     private fun buildSdJwtClaims(claims: List<DigitalCredentialClaim>): List<SdJwtClaim> {
         val result = mutableListOf<SdJwtClaim>()
-        for ((path, displayName) in claims) {
+        for ((path, displayName, selectivelyDisclosable) in claims) {
             result.add(
                 SdJwtClaim(
                     path = path,
@@ -142,7 +142,7 @@ class AndroidCredentialManager(private val context: Context) : CredentialManager
                             displayValue = null
                         )
                     ),
-                    isSelectivelyDisclosable = true,
+                    isSelectivelyDisclosable = selectivelyDisclosable,
                 )
             )
         }
