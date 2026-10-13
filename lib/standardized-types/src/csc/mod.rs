@@ -165,7 +165,7 @@ impl<'de> Deserialize<'de> for SignatureAlgorithm {
 }
 
 #[derive(Serialize)]
-pub struct AuthorizeRequestRestDTO<'a> {
+pub struct AuthorizeRequest<'a> {
     pub response_type: &'a str,
     pub client_id: &'a str,
     pub redirect_uri: &'a str,
@@ -183,14 +183,14 @@ pub struct AuthorizeRequestRestDTO<'a> {
 }
 
 #[derive(Deserialize)]
-pub struct TokenResponseRestDTO {
+pub struct TokenResponse {
     pub access_token: String,
     #[serde(rename = "credentialID")]
     pub credential_id: String,
 }
 
 #[derive(Serialize)]
-pub struct CredentialInfoRequestRestDTO {
+pub struct CredentialInfoRequest {
     #[serde(rename = "credentialID")]
     pub credential_id: String,
     pub certificates: String,
@@ -199,34 +199,52 @@ pub struct CredentialInfoRequestRestDTO {
 }
 
 #[derive(Deserialize)]
-pub struct CredentialInfoResponseRestDTO {
-    pub key: CredentialKeyRestDTO,
-    pub cert: Option<CredentialCertificateRestDTO>,
+pub struct CredentialInfoResponse {
+    pub key: CredentialKey,
+    pub cert: Option<CredentialCertificate>,
+}
+
+impl CredentialInfoResponse {
+    pub fn signing_algorithm(&self, preferred_hash: HashAlgorithm) -> Option<SignatureAlgorithm> {
+        let supported: Vec<SignatureAlgorithm> = self
+            .key
+            .algo
+            .iter()
+            .filter_map(|oid| SignatureAlgorithm::from_oid(oid))
+            .collect();
+
+        supported
+            .iter()
+            .copied()
+            .find(|alg| alg.digest() == Some(preferred_hash))
+            .or_else(|| supported.iter().copied().find(|alg| alg.digest().is_none()))
+            .or_else(|| supported.first().copied())
+    }
 }
 
 #[derive(Deserialize)]
-pub struct CredentialKeyRestDTO {
+pub struct CredentialKey {
     pub algo: Vec<String>,
 }
 
 #[derive(Deserialize)]
-pub struct CredentialCertificateRestDTO {
+pub struct CredentialCertificate {
     pub certificates: Vec<String>,
 }
 
 #[derive(Serialize)]
-pub struct SignDocRequestRestDTO {
+pub struct SignDocRequest {
     #[serde(rename = "credentialID")]
     pub credential_id: String,
     #[serde(rename = "operationMode")]
     pub operation_mode: OperationMode,
     #[serde(rename = "returnValidationInfo")]
     pub return_validation_info: bool,
-    pub documents: Vec<SignDocDocumentRestDTO>,
+    pub documents: Vec<SignDocDocument>,
 }
 
 #[derive(Serialize)]
-pub struct SignDocDocumentRestDTO {
+pub struct SignDocDocument {
     pub document: String,
     #[serde(rename = "signAlgo")]
     pub sign_algo: String,
@@ -235,13 +253,13 @@ pub struct SignDocDocumentRestDTO {
 }
 
 #[derive(Deserialize)]
-pub struct SignDocResponseRestDTO {
+pub struct SignDocResponse {
     #[serde(rename = "DocumentWithSignatures", alias = "DocumentWithSignature")]
     pub document_with_signatures: Vec<String>,
 }
 
 #[derive(Serialize)]
-pub struct SignHashRequestRestDTO {
+pub struct SignHashRequest {
     #[serde(rename = "credentialID")]
     pub credential_id: String,
     #[serde(rename = "operationMode")]
@@ -254,7 +272,7 @@ pub struct SignHashRequestRestDTO {
 }
 
 #[derive(Deserialize)]
-pub struct SignHashResponseRestDTO {
+pub struct SignHashResponse {
     pub signatures: Vec<String>,
 }
 
@@ -358,5 +376,49 @@ mod test {
         assert_eq!(HashAlgorithm::Sha256.output_length(), 32);
         assert_eq!(HashAlgorithm::Sha384.output_length(), 48);
         assert_eq!(HashAlgorithm::Sha512.output_length(), 64);
+    }
+
+    fn info_with_algos(algos: &[&str]) -> CredentialInfoResponse {
+        CredentialInfoResponse {
+            key: CredentialKey {
+                algo: algos.iter().map(|s| s.to_string()).collect(),
+            },
+            cert: None,
+        }
+    }
+
+    #[test]
+    fn signing_algorithm_prefers_digest_matching_the_configured_hash() {
+        let chosen =
+            info_with_algos(&["1.2.840.10045.4.3.2"]).signing_algorithm(HashAlgorithm::Sha256);
+        assert_eq!(chosen, Some(SignatureAlgorithm::EcdsaSha256));
+    }
+
+    #[test]
+    fn signing_algorithm_picks_the_ecdsa_variant_matching_the_hash() {
+        let chosen = info_with_algos(&["1.2.840.10045.4.3.2", "1.2.840.10045.4.3.4"])
+            .signing_algorithm(HashAlgorithm::Sha512);
+        assert_eq!(chosen, Some(SignatureAlgorithm::EcdsaSha512));
+    }
+
+    #[test]
+    fn signing_algorithm_falls_back_to_rsa_when_no_digest_matches() {
+        let chosen =
+            info_with_algos(&["1.2.840.113549.1.1.1"]).signing_algorithm(HashAlgorithm::Sha256);
+        assert_eq!(chosen, Some(SignatureAlgorithm::Rsa));
+    }
+
+    #[test]
+    fn signing_algorithm_ignores_unmodeled_oids() {
+        let chosen = info_with_algos(&["1.3.6.1.4.1.99999", "1.2.840.10045.4.3.3"])
+            .signing_algorithm(HashAlgorithm::Sha384);
+        assert_eq!(chosen, Some(SignatureAlgorithm::EcdsaSha384));
+    }
+
+    #[test]
+    fn signing_algorithm_returns_none_when_nothing_recognized() {
+        let chosen =
+            info_with_algos(&["1.3.6.1.4.1.99999"]).signing_algorithm(HashAlgorithm::Sha256);
+        assert_eq!(chosen, None);
     }
 }

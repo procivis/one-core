@@ -256,7 +256,7 @@ impl DocumentSigner for Sign8 {
                         .ok_or_else(|| {
                             ServiceError::MappingError(format!(
                                 "credential exposes no supported signAlgo (key advertised {:?})",
-                                info.key_algorithms
+                                info.key.algo
                             ))
                             .error_while("selecting csc signing algorithm")
                         })?;

@@ -1,4 +1,4 @@
-//! Cloud Signature Consortium (CSC) v2 API client (SIGN8 Optimized Flow).
+//! Cloud Signature Consortium (CSC) v2 API client.
 
 use std::sync::Arc;
 
@@ -7,19 +7,19 @@ use one_crypto::utilities::ecdsa_sig_from_der;
 use one_crypto::{HasherError, SignerError};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use standardized_types::csc::{
-    AuthorizeRequestRestDTO, CredentialInfoRequestRestDTO, CredentialInfoResponseRestDTO,
-    HashAlgorithm, OperationMode, SignDocDocumentRestDTO, SignDocRequestRestDTO,
-    SignDocResponseRestDTO, SignHashRequestRestDTO, SignHashResponseRestDTO, TokenResponseRestDTO,
+    AuthorizeRequest, CredentialInfoRequest, CredentialInfoResponse, HashAlgorithm, OperationMode,
+    SignDocDocument, SignDocRequest, SignDocResponse, SignHashRequest, SignHashResponse,
+    TokenResponse,
 };
 use thiserror::Error;
 use url::Url;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::csc::model::{
-    Authorization, AuthorizationUrlRequest, CertificateInfo, CredentialInfo, CredentialToken,
-    SignDocumentRequest, SignHashRequest, TokenRequest,
+    Authorization, AuthorizationUrlRequest, CredentialToken, SignDocumentRequest,
+    SignHashesRequest, TokenRequest,
 };
-use crate::proto::http_client::HttpClient;
+use crate::proto::http_client::{HttpClient, RequestBuilder};
 use crate::proto::oauth_client::Pkce;
 
 pub mod model;
@@ -76,7 +76,7 @@ pub trait CscClient: Send + Sync {
         api_url: &str,
         access_token: &str,
         credential_id: &str,
-    ) -> Result<CredentialInfo, CscClientError>;
+    ) -> Result<CredentialInfoResponse, CscClientError>;
 
     async fn sign_document<'a>(
         &'a self,
@@ -85,7 +85,7 @@ pub trait CscClient: Send + Sync {
 
     async fn sign_hash<'a>(
         &'a self,
-        request: SignHashRequest<'a>,
+        request: SignHashesRequest<'a>,
     ) -> Result<Vec<Vec<u8>>, CscClientError>;
 
     async fn revoke_access_token(
@@ -101,6 +101,10 @@ impl CscClientImpl {
     pub(crate) fn new(client: Arc<dyn HttpClient>) -> Self {
         Self { client }
     }
+
+    fn post(&self, url: &str) -> RequestBuilder {
+        self.client.post(url).header("User-Agent", USER_AGENT)
+    }
 }
 
 #[async_trait::async_trait]
@@ -112,7 +116,7 @@ impl CscClient for CscClientImpl {
         let hash = encode_base64url(request.hash)?;
 
         let pkce = Pkce::generate()?;
-        let query = serde_urlencoded::to_string(AuthorizeRequestRestDTO {
+        let query = serde_urlencoded::to_string(AuthorizeRequest {
             response_type: "code",
             client_id: request.client_id,
             redirect_uri: request.redirect_uri,
@@ -139,10 +143,8 @@ impl CscClient for CscClientImpl {
         &'a self,
         request: TokenRequest<'a>,
     ) -> Result<CredentialToken, CscClientError> {
-        let token: TokenResponseRestDTO = async {
-            self.client
-                .post(&format!("{}/oauth2/token", request.oauth_url))
-                .header("User-Agent", USER_AGENT)
+        let token: TokenResponse = async {
+            self.post(&format!("{}/oauth2/token", request.oauth_url))
                 .form([
                     ("grant_type", "authorization_code"),
                     ("code", request.code),
@@ -169,13 +171,11 @@ impl CscClient for CscClientImpl {
         api_url: &str,
         access_token: &str,
         credential_id: &str,
-    ) -> Result<CredentialInfo, CscClientError> {
-        let info: CredentialInfoResponseRestDTO = async {
-            self.client
-                .post(&format!("{api_url}/csc/v2/credentials/info"))
-                .header("User-Agent", USER_AGENT)
+    ) -> Result<CredentialInfoResponse, CscClientError> {
+        async {
+            self.post(&format!("{api_url}/csc/v2/credentials/info"))
                 .bearer_auth(access_token)
-                .json(&CredentialInfoRequestRestDTO {
+                .json(&CredentialInfoRequest {
                     credential_id: credential_id.to_string(),
                     certificates: "single".to_string(),
                     cert_info: true,
@@ -186,13 +186,8 @@ impl CscClient for CscClientImpl {
                 .json()
         }
         .await
-        .error_while("credential info request")?;
-        Ok(CredentialInfo {
-            key_algorithms: info.key.algo,
-            certificate: info.cert.map(|cert| CertificateInfo {
-                x5c: cert.certificates,
-            }),
-        })
+        .error_while("credential info request")
+        .map_err(Into::into)
     }
 
     async fn sign_document<'a>(
@@ -201,17 +196,15 @@ impl CscClient for CscClientImpl {
     ) -> Result<Vec<u8>, CscClientError> {
         let document = Base64::encode_to_string(request.document)?;
 
-        let signed: SignDocResponseRestDTO = async {
-            self.client
-                .post(&format!("{}/csc/v2/signatures/signDoc", request.api_url))
-                .header("User-Agent", USER_AGENT)
+        let signed: SignDocResponse = async {
+            self.post(&format!("{}/csc/v2/signatures/signDoc", request.api_url))
                 .bearer_auth(request.access_token)
-                .json(&SignDocRequestRestDTO {
+                .json(&SignDocRequest {
                     credential_id: request.credential_id.to_string(),
                     operation_mode: OperationMode::Synchronous,
                     // We only consume the signed bytes; skip embedded revocation material.
                     return_validation_info: false,
-                    documents: vec![SignDocDocumentRestDTO {
+                    documents: vec![SignDocDocument {
                         document,
                         sign_algo: request.sign_algo.to_string(),
                         signature_format: request.signature_format,
@@ -236,7 +229,7 @@ impl CscClient for CscClientImpl {
 
     async fn sign_hash<'a>(
         &'a self,
-        request: SignHashRequest<'a>,
+        request: SignHashesRequest<'a>,
     ) -> Result<Vec<Vec<u8>>, CscClientError> {
         let hashes = request
             .hashes
@@ -244,12 +237,10 @@ impl CscClient for CscClientImpl {
             .map(Base64::encode_to_string)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let response: SignHashResponseRestDTO = async {
-            self.client
-                .post(&format!("{}/csc/v2/signatures/signHash", request.api_url))
-                .header("User-Agent", USER_AGENT)
+        let response: SignHashResponse = async {
+            self.post(&format!("{}/csc/v2/signatures/signHash", request.api_url))
                 .bearer_auth(request.access_token)
-                .json(&SignHashRequestRestDTO {
+                .json(&SignHashRequest {
                     credential_id: request.credential_id.to_string(),
                     operation_mode: OperationMode::Synchronous,
                     hashes,
@@ -285,9 +276,7 @@ impl CscClient for CscClientImpl {
         client_secret: &str,
     ) {
         let result = async {
-            self.client
-                .post(&format!("{oauth_url}/oauth2/revoke"))
-                .header("User-Agent", USER_AGENT)
+            self.post(&format!("{oauth_url}/oauth2/revoke"))
                 .bearer_auth(access_token)
                 .form([
                     ("token", access_token),
@@ -399,10 +388,7 @@ mod test {
             .await
             .unwrap();
 
-        assert_eq!(
-            info.key_algorithms,
-            vec!["1.2.840.113549.1.1.1".to_string()]
-        );
+        assert_eq!(info.key.algo, vec!["1.2.840.113549.1.1.1".to_string()]);
         assert_eq!(
             info.signing_algorithm(HashAlgorithm::Sha256),
             Some(SignatureAlgorithm::Rsa)

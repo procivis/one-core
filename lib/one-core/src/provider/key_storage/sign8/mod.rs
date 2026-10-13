@@ -20,7 +20,7 @@ use crate::proto::certificate_validator::{
     CertificatePurpose, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::proto::csc::CscClient;
-use crate::proto::csc::model::{CredentialToken, SignHashRequest, TokenRequest};
+use crate::proto::csc::model::{CredentialToken, SignHashesRequest, TokenRequest};
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::ecdsa::EcdsaPublicKeyHandle;
 use crate::provider::key_algorithm::key::{
@@ -129,7 +129,7 @@ impl Sign8KeyProvider {
 
         let sign_result = self
             .csc_client
-            .sign_hash(SignHashRequest {
+            .sign_hash(SignHashesRequest {
                 api_url: self.params.csc_base_url.as_str(),
                 access_token: &token.access_token,
                 credential_id,
@@ -220,13 +220,13 @@ impl KeyStorage for Sign8KeyProvider {
         let info = info_result.error_while("getting credential info")?;
         let chain = x5c_into_pem_chain(
             &info
-                .certificate
+                .cert
                 .ok_or_else(|| {
                     KeyStorageError::Failed(
                         "missing certificate in CSC credential info".to_string(),
                     )
                 })?
-                .x5c,
+                .certificates,
         )
         .error_while("parsing x5c")?;
 

@@ -4,6 +4,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
 use similar_asserts::assert_eq;
+use standardized_types::csc::{CredentialCertificate, CredentialInfoResponse, CredentialKey};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -15,7 +16,7 @@ use super::Sign8KeyProvider;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
-use crate::proto::csc::model::{CertificateInfo, CredentialInfo, CredentialToken};
+use crate::proto::csc::model::CredentialToken;
 use crate::proto::csc::{CscClientError, MockCscClient};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -113,10 +114,10 @@ async fn test_generate_success() {
         .expect_credential_info()
         .times(1)
         .returning(|_, _, _| {
-            Ok(CredentialInfo {
-                key_algorithms: vec![],
-                certificate: Some(CertificateInfo {
-                    x5c: vec![CERTIFICATE_B64.to_string()],
+            Ok(CredentialInfoResponse {
+                key: CredentialKey { algo: vec![] },
+                cert: Some(CredentialCertificate {
+                    certificates: vec![CERTIFICATE_B64.to_string()],
                 }),
             })
         });
