@@ -28,6 +28,7 @@ mod test;
 pub(crate) mod hmac;
 pub mod mapper;
 pub mod model;
+pub(crate) mod rsa;
 
 pub type AnyPayload = serde_json::Map<String, serde_json::Value>;
 

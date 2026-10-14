@@ -4059,6 +4059,7 @@ dependencies = [
  "aes",
  "aes-gcm",
  "async-trait",
+ "aws-lc-rs",
  "blstrs 0.7.1",
  "cbc",
  "chacha20poly1305",
