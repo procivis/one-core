@@ -142,8 +142,8 @@ pub(crate) struct HolderInteractionData {
     pub refresh_token: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
-    #[serde(default)]
-    pub token_endpoint_auth_methods_supported: Option<Vec<TokenEndpointAuthMethod>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
     #[serde(default)]
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
     #[serde(default)]

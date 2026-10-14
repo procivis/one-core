@@ -44,19 +44,19 @@ impl OpenID4VCIFinal1_0 {
             .is_some_and(|unit| unit.status == InstanceStatus::Active);
 
         // WIA requirements
-
-        // DEVIATION: RFC8414 specifies `client_secret_basic` as the default when
-        // token_endpoint_auth_methods_supported is absent, but some issuers (e.g. swiyu) don't publish this field.
-        // Treating empty/missing as `none` to avoid interop issues
-        let default_auth_methods = [TokenEndpointAuthMethod::None];
-        let token_endpoint_auth_methods = interaction_data
+        let mut token_endpoint_auth_methods = interaction_data
             .token_endpoint_auth_methods_supported
-            .as_deref()
-            .unwrap_or(&default_auth_methods);
+            .clone();
+        if token_endpoint_auth_methods.is_empty() {
+            // DEVIATION: RFC8414 specifies `client_secret_basic` as the default when
+            // token_endpoint_auth_methods_supported is absent, but some issuers (e.g. swiyu) don't publish this field.
+            // Treating empty/missing as `none` to avoid interop issues
+            token_endpoint_auth_methods.push(TokenEndpointAuthMethod::None);
+        }
 
         let wallet_attestation_supported =
             token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth);
-        let wallet_attestation_required = requires_wia(token_endpoint_auth_methods);
+        let wallet_attestation_required = requires_wia(&token_endpoint_auth_methods);
 
         if attestation_types.contains(&AttestationType::WalletInstanceAttestation)
             && wallet_attestation_required

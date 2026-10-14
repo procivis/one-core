@@ -2021,7 +2021,7 @@ fn dummy_interaction() -> HolderInteractionData {
         access_token_expires_at: None,
         refresh_token: None,
         refresh_token_expires_at: None,
-        token_endpoint_auth_methods_supported: None,
+        token_endpoint_auth_methods_supported: vec![],
         client_attestation_pop_signing_alg_values_supported: None,
         issuer_display: None,
         credential_request_encryption: None,

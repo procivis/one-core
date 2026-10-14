@@ -1696,13 +1696,11 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
-    #[expect(clippy::too_many_arguments)]
     async fn prepare_issuance_interaction(
         &self,
         organisation: Organisation,
-        token_endpoint: String,
         issuer_metadata: &IssuerMetadataRepresentation,
-        oauth_authorization_server_metadata: Option<AuthorizationServerMetadata>,
+        oauth_metadata: AuthorizationServerMetadata,
         grants: Grants,
         configuration_ids: &[String],
         continue_issuance: Option<ContinueIssuanceDTO>,
@@ -1774,21 +1772,15 @@ impl OpenID4VCIFinal1_0 {
             )));
         }
 
-        let token_endpoint_auth_methods_supported = oauth_authorization_server_metadata
-            .as_ref()
-            .map(|oauth_metadata| oauth_metadata.token_endpoint_auth_methods_supported.clone());
-        let client_attestation_pop_signing_alg_values_supported =
-            oauth_authorization_server_metadata
-                .as_ref()
-                .and_then(|oauth_metadata| {
-                    oauth_metadata
-                        .client_attestation_pop_signing_alg_values_supported
-                        .clone()
-                });
+        let token_endpoint_auth_methods_supported =
+            oauth_metadata.token_endpoint_auth_methods_supported.clone();
+        let client_attestation_pop_signing_alg_values_supported = oauth_metadata
+            .client_attestation_pop_signing_alg_values_supported
+            .clone();
 
-        let challenge_endpoint = oauth_authorization_server_metadata
+        let challenge_endpoint = oauth_metadata
+            .challenge_endpoint
             .as_ref()
-            .and_then(|oauth_metadata| oauth_metadata.challenge_endpoint.as_ref())
             .map(Url::to_string);
 
         let holder_data = HolderInteractionData {
@@ -1802,7 +1794,7 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref()
                 .map(|data| data.batch_size),
             challenge_endpoint,
-            token_endpoint: Some(token_endpoint),
+            token_endpoint: oauth_metadata.token_endpoint.map(|url| url.to_string()),
             grants: Some(grants),
             continue_issuance,
             access_token: None,
@@ -2081,11 +2073,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .fetch_issuer_metadata(&credential_offer.credential_issuer, &organisation)
             .await?;
 
-        let AuthorizationMetadata {
-            token_endpoint,
-            oauth_metadata,
-            ..
-        } = get_authorization_metadata(
+        let oauth_metadata = get_authorization_metadata(
             self.metadata_cache.as_ref(),
             issuer_metadata.metadata(),
             &credential_offer.credential_issuer,
@@ -2170,9 +2158,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         } = self
             .prepare_issuance_interaction(
                 organisation,
-                token_endpoint,
                 &issuer_metadata,
-                Some(oauth_metadata),
+                oauth_metadata,
                 credential_offer.grants,
                 &credential_offer.credential_configuration_ids,
                 None,
@@ -2601,11 +2588,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .fetch_issuer_metadata(&continue_issuance_dto.credential_issuer, &organisation)
             .await?;
 
-        let AuthorizationMetadata {
-            token_endpoint,
-            oauth_metadata,
-            ..
-        } = get_authorization_metadata(
+        let oauth_metadata = get_authorization_metadata(
             self.metadata_cache.as_ref(),
             issuer_metadata.metadata(),
             &continue_issuance_dto.credential_issuer,
@@ -2649,9 +2632,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         } = self
             .prepare_issuance_interaction(
                 organisation,
-                token_endpoint,
                 &issuer_metadata,
-                Some(oauth_metadata),
+                oauth_metadata,
                 Grants::AuthorizationCode(AuthorizationCodeGrant {
                     issuer_state: None, // issuer state was used at the authorization request stage so it is not relevant anymore
                     authorization_server: continue_issuance_dto.authorization_server.to_owned(),
@@ -2955,17 +2937,12 @@ impl IssuerMetadataRepresentation {
     }
 }
 
-struct AuthorizationMetadata {
-    token_endpoint: String,
-    oauth_metadata: AuthorizationServerMetadata,
-}
-
 async fn get_authorization_metadata(
     fetcher: &dyn OpenIDMetadataFetcher,
     issuer_metadata: &CredentialIssuerMetadata,
     credential_issuer: &str,
     authorization_server: Option<&String>,
-) -> Result<AuthorizationMetadata, IssuanceProtocolError> {
+) -> Result<AuthorizationServerMetadata, IssuanceProtocolError> {
     let authorization_server_url = get_authorization_server_url_from_issuer_metadata(
         issuer_metadata,
         credential_issuer,
@@ -2980,18 +2957,7 @@ async fn get_authorization_metadata(
     .await
     .error_while("fetching authorization server metadata")?;
 
-    let token_endpoint = oauth_metadata_response
-        .token_endpoint
-        .as_ref()
-        .ok_or(IssuanceProtocolError::Failed(
-            "Missing token_endpoint".to_string(),
-        ))?
-        .to_string();
-
-    Ok(AuthorizationMetadata {
-        token_endpoint,
-        oauth_metadata: oauth_metadata_response,
-    })
+    Ok(oauth_metadata_response)
 }
 
 fn get_authorization_server_url_from_issuer_metadata(
