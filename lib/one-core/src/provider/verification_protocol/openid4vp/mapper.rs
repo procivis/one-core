@@ -240,7 +240,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
         }
     };
 
-    let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
+    let now = crate::clock::now_utc();
 
     let request_jwt = Jwt {
         header: JWTHeader {
@@ -255,8 +255,8 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
             x5t_s256: None,
         },
         payload: JWTPayload {
-            issued_at: None,
-            expires_at,
+            issued_at: Some(now),
+            expires_at: Some(now.add(Duration::hours(1))),
             invalid_before: None,
             issuer: None,
             subject: None,
@@ -332,7 +332,8 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
 
     let key_id = verifier_did.verification_method_id(&key);
 
-    let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
+    let now = crate::clock::now_utc();
+    let expires_at = Some(now.add(Duration::hours(1)));
 
     let custom = OpenID4VCVerifierAttestationPayload {
         redirect_uris: vec![response_uri],
@@ -382,7 +383,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             x5t_s256: None,
         },
         payload: JWTPayload {
-            issued_at: None,
+            issued_at: Some(now),
             expires_at,
             invalid_before: None,
             issuer: Some(verifier_did.did.to_string()),
@@ -440,7 +441,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
 
     let key_id = verifier_did.verification_method_id(&key);
 
-    let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
+    let now = crate::clock::now_utc();
 
     let request_jwt = Jwt {
         header: JWTHeader {
@@ -455,8 +456,8 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
             x5t_s256: None,
         },
         payload: JWTPayload {
-            issued_at: None,
-            expires_at,
+            issued_at: Some(now),
+            expires_at: Some(now.add(Duration::hours(1))),
             invalid_before: None,
             issuer: Some(verifier_did.did.to_string()),
             subject: None,
@@ -489,7 +490,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
             x5t_s256: None,
         },
         payload: JWTPayload {
-            issued_at: None,
+            issued_at: Some(crate::clock::now_utc()),
             expires_at: None,
             invalid_before: None,
             issuer: None,

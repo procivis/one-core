@@ -148,6 +148,8 @@ async fn test_get_client_request_final1_x509_hash_includes_verifier_info() {
     assert_eq!(resp.status(), 200);
     let (_header, payload) = decode_jwt(&resp.text().await);
 
+    assert!(payload["iat"].is_i64());
+    assert!(payload["exp"].is_i64());
     let verifier_info = payload["verifier_info"]
         .as_array()
         .expect("verifier_info must be present for x509_hash scheme");
