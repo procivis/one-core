@@ -377,6 +377,7 @@ async fn test_create_credential_schema_success() {
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok("schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -468,6 +469,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok(custom_schema_id.to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -566,6 +568,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok("some schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -864,6 +867,7 @@ async fn test_create_credential_schema_unique_name_error() {
             datatypes: vec!["STRING".into()],
             ..generic_formatter_capabilities()
         });
+    formatter.expect_config_name().return_const("JWT".into());
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -1140,6 +1144,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
     formatter
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok("schema id".to_string()));
+    formatter.expect_config_name().return_const("JWT".into());
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -1222,6 +1227,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             datatypes: vec!["STRING".into()],
             ..generic_formatter_capabilities()
         });
+    formatter.expect_config_name().return_const("JWT".into());
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -1404,6 +1410,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
             true
         })
         .return_once(|_, _, _, _, _| Err(FormatterError::SchemaIdNotAllowed));
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -2749,6 +2756,7 @@ async fn test_import_credential_schema_success() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -2845,6 +2853,7 @@ async fn test_import_credential_schema_rehosts_source_url_when_enabled() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -2939,6 +2948,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
     formatter
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok("some schema id".to_string()));
+    formatter.expect_config_name().return_const("JWT".into());
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -3046,6 +3056,7 @@ async fn test_create_credential_schema_fail_tx_code_not_supported() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -3104,6 +3115,7 @@ async fn test_create_credential_schema_fail_tx_code_description_too_long() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()

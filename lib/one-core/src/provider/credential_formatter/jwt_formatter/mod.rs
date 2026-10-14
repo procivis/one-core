@@ -252,6 +252,8 @@ impl CredentialFormatter for JWTFormatter {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
+        let root_metadata_keys: Vec<_> = jwt_metadata_claims().into_iter().map(|c| c.key).collect();
+
         FormatterCapabilities {
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
@@ -301,7 +303,9 @@ impl CredentialFormatter for JWTFormatter {
                 "ARRAY".to_string(),
                 "EAA_CATEGORY".to_string(),
             ],
-            forbidden_claim_names: vec!["0".to_string(), "id".to_string()],
+            forbidden_claim_technical_keys: vec!["id".to_string()],
+            forbidden_root_claim_technical_keys: [root_metadata_keys, vec!["vc".to_string()]]
+                .concat(),
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],

@@ -53,7 +53,8 @@ impl FormatterCapabilities {
             verification_key_algorithms,
             verification_key_storages,
             datatypes,
-            forbidden_claim_names,
+            forbidden_claim_technical_keys,
+            forbidden_root_claim_technical_keys,
             issuance_identifier_types,
             verification_identifier_types,
             holder_identifier_types,
@@ -63,6 +64,13 @@ impl FormatterCapabilities {
 
         fn intersect<T: PartialEq>(s: &mut Vec<T>, o: &[T]) {
             s.retain(|x| o.contains(x));
+        }
+        fn merge<T: PartialEq + Clone>(s: &mut Vec<T>, o: &[T]) {
+            for item in o {
+                if !s.contains(item) {
+                    s.push(item.to_owned());
+                }
+            }
         }
 
         intersect(&mut self.features, features);
@@ -85,11 +93,14 @@ impl FormatterCapabilities {
         );
         intersect(&mut self.datatypes, datatypes);
 
-        for name in forbidden_claim_names {
-            if !self.forbidden_claim_names.contains(name) {
-                self.forbidden_claim_names.push(name.to_owned());
-            }
-        }
+        merge(
+            &mut self.forbidden_claim_technical_keys,
+            forbidden_claim_technical_keys,
+        );
+        merge(
+            &mut self.forbidden_root_claim_technical_keys,
+            forbidden_root_claim_technical_keys,
+        );
 
         intersect(
             &mut self.issuance_identifier_types,

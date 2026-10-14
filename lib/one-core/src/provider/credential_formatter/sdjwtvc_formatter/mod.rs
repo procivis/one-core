@@ -31,9 +31,12 @@ use super::mapper::{default_2_years, first_certificate, to_format_with_mappings}
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialStatus, DetailCredential, Features, FormatterCapabilities,
-    IdentifierDetails, IssuedClaimValue, SelectiveDisclosure, TokenVerifier, VerificationFn,
+    IdentifierDetails, IssuedClaimValue, ParsedCredential, SelectiveDisclosure, TokenVerifier,
+    VerificationFn,
 };
-use super::sdjwt::disclosures::parse_token;
+use super::sdjwt::disclosures::{
+    SELECTIVE_DISCLOSURE_ARRAY_MARKER, SELECTIVE_DISCLOSURE_MARKER, parse_token,
+};
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
 use super::sdjwt::{parse_holder_identifier, prepare_sd_presentation};
 use super::{CredentialFormatter, MetadataClaimSchema, sdjwt};
@@ -51,7 +54,6 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::jwt_metadata_claims;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
-use crate::provider::credential_formatter::model::ParsedCredential;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -396,6 +398,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::MlDsa]);
         }
 
+        let metadata_keys: Vec<_> = self
+            .get_metadata_claims()
+            .into_iter()
+            .map(|c| c.key)
+            .collect();
+
         FormatterCapabilities {
             signing_key_algorithms: signing_algorithms.clone(),
             datatypes,
@@ -411,7 +419,15 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 KeyStorageType::AzureVault,
                 KeyStorageType::SecureElement,
             ],
-            forbidden_claim_names: vec!["0".to_string()],
+            forbidden_claim_technical_keys: vec![
+                SELECTIVE_DISCLOSURE_MARKER.to_string(),
+                SELECTIVE_DISCLOSURE_ARRAY_MARKER.to_string(),
+            ],
+            forbidden_root_claim_technical_keys: [
+                metadata_keys,
+                vec!["_sd_alg".to_string(), "status".to_string()],
+            ]
+            .concat(),
             issuance_identifier_types,
             verification_identifier_types,
             holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],

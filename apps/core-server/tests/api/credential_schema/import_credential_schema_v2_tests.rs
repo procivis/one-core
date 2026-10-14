@@ -584,3 +584,54 @@ async fn test_import_credential_schema_v2_without_translation() {
     assert_eq!(name_translations.first().unwrap().lang, "en");
     assert_eq!(name_translations.first().unwrap().value, "plain schema");
 }
+
+#[tokio::test]
+async fn test_import_credential_schema_v2_sdjwtvc_forbidden_claim() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let import_schema = serde_json::json!(
+    {
+      "allowSuspension": false,
+      "claims": [
+        {
+          "array": false,
+          "claims": [],
+          "createdDate": "2026-05-18T13:58:17.758Z",
+          "datatype": "STRING",
+          "id": "355107ca-9872-4f09-b30a-647b8006b308",
+          "key": "root",
+          "lastModified": "2026-05-18T13:58:17.758Z",
+          "mappings": [
+            {
+              "format": "SD_JWT_VC",
+              "technicalKey": "status"
+            }
+          ],
+          "required": true
+        }
+      ],
+      "createdDate": "2026-05-18T13:58:17.758Z",
+      "formats": [
+        {
+          "format": "SD_JWT_VC",
+          "ecosystemSchemaId": "vct"
+        }
+      ],
+      "id": "ab3f4837-0a50-4218-bd90-6d0e60671946",
+      "importedSourceUrl": "http://random.url",
+      "lastModified": "2026-05-18T13:58:17.758Z",
+      "name": "schema",
+      "organisationId": "ca7493bb-2ae4-49b9-b26c-c0485e98f2d9"
+    }
+        );
+    // WHEN
+    let import_resp = context
+        .api
+        .credential_schemas
+        .import_v2(organisation.id, import_schema)
+        .await;
+
+    // THEN
+    assert_eq!(import_resp.status(), 400);
+    assert_eq!(import_resp.error_code().await, "BR_0145");
+}

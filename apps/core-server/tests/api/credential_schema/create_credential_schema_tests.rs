@@ -260,7 +260,7 @@ async fn test_fail_create_credential_schema_with_same_schema_id() {
 }
 
 #[tokio::test]
-async fn test_fail_create_credential_schema_with_firbidden_claim_name() {
+async fn test_fail_create_credential_schema_with_forbidden_claim_name() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 

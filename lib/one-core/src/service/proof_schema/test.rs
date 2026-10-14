@@ -1528,6 +1528,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
 
     let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();
@@ -1945,6 +1946,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
 
     let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();

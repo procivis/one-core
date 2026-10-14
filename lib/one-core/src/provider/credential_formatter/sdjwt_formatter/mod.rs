@@ -23,7 +23,9 @@ use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
     FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
-use super::sdjwt::disclosures::parse_token;
+use super::sdjwt::disclosures::{
+    SELECTIVE_DISCLOSURE_ARRAY_MARKER, SELECTIVE_DISCLOSURE_MARKER, parse_token,
+};
 use super::sdjwt::mapper::vc_from_credential;
 use super::sdjwt::model::*;
 use super::sdjwt::{format_credential, model, parse_holder_identifier, prepare_sd_presentation};
@@ -196,6 +198,8 @@ impl CredentialFormatter for SDJWTFormatter {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
+        let root_metadata_keys: Vec<_> = jwt_metadata_claims().into_iter().map(|c| c.key).collect();
+
         FormatterCapabilities {
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
@@ -246,7 +250,13 @@ impl CredentialFormatter for SDJWTFormatter {
                 KeyStorageType::AzureVault,
                 KeyStorageType::SecureElement,
             ],
-            forbidden_claim_names: vec!["0".to_string(), "id".to_string()],
+            forbidden_claim_technical_keys: vec![
+                "id".to_string(),
+                SELECTIVE_DISCLOSURE_MARKER.to_string(),
+                SELECTIVE_DISCLOSURE_ARRAY_MARKER.to_string(),
+            ],
+            forbidden_root_claim_technical_keys: [root_metadata_keys, vec!["vc".to_string()]]
+                .concat(),
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],

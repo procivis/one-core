@@ -58,6 +58,7 @@ async fn test_parse_import_credential_schema_success() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
@@ -135,6 +136,7 @@ async fn test_parse_import_with_nested_claims_success() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    formatter.expect_config_name().return_const("JWT".into());
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()

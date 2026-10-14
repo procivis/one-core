@@ -198,6 +198,12 @@ impl CredentialFormatter for JsonLdClassic {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
+        let metadata_claim_keys = self
+            .get_metadata_claims()
+            .into_iter()
+            .map(|c| c.key)
+            .collect();
+
         FormatterCapabilities {
             signing_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             features: vec![
@@ -239,7 +245,8 @@ impl CredentialFormatter for JsonLdClassic {
                 KeyStorageType::AzureVault,
                 KeyStorageType::SecureElement,
             ],
-            forbidden_claim_names: [jsonld_forbidden_claim_names(), vec!["0".to_string()]].concat(),
+            forbidden_claim_technical_keys: jsonld_forbidden_claim_names(),
+            forbidden_root_claim_technical_keys: metadata_claim_keys,
             issuance_identifier_types: vec![IdentifierType::Did],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did],

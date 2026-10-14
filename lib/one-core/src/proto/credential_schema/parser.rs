@@ -280,7 +280,7 @@ impl CredentialSchemaImportParserImpl {
         })
     }
 
-    pub(super) fn parse_allow_suspension(
+    fn parse_allow_suspension(
         &self,
         allow_suspension: Option<bool>,
         revocation_method: Option<&dyn RevocationMethod>,
@@ -305,7 +305,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(allow_suspension.unwrap_or(false))
     }
 
-    pub(super) fn parse_layout_properties(
+    fn parse_layout_properties(
         &self,
         layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
         claim_schemas: &[ClaimSchema],
@@ -353,7 +353,7 @@ impl CredentialSchemaImportParserImpl {
         }))
     }
 
-    pub(super) fn parse_schema_id(
+    fn parse_schema_id(
         &self,
         ecosystem_schema_id: String,
         formatter: &dyn CredentialFormatter,
@@ -369,7 +369,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(ecosystem_schema_id)
     }
 
-    pub(super) fn parse_format(&self, format: CredentialFormat) -> Result<CredentialFormat, Error> {
+    fn parse_format(&self, format: CredentialFormat) -> Result<CredentialFormat, Error> {
         self.config
             .format
             .get_if_enabled(&format)
@@ -422,7 +422,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(claim_schemas)
     }
 
-    pub(super) fn parse_all_claim_schemas_v2(
+    fn parse_all_claim_schemas_v2(
         &self,
         now: OffsetDateTime,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
@@ -434,7 +434,7 @@ impl CredentialSchemaImportParserImpl {
         self.parse_level_claim_schemas(now, None, claim_schemas, formatters)
     }
 
-    pub(super) fn parse_level_claim_schemas(
+    fn parse_level_claim_schemas(
         &self,
         now: OffsetDateTime,
         parent_key: Option<&str>,
@@ -452,7 +452,7 @@ impl CredentialSchemaImportParserImpl {
     }
 
     #[expect(clippy::too_many_arguments)]
-    pub(super) fn parse_format_with_claim_mappings(
+    fn parse_format_with_claim_mappings(
         &self,
         credential_schema_id: CredentialSchemaId,
         ecosystem_schema_id: String,
@@ -528,7 +528,7 @@ impl CredentialSchemaImportParserImpl {
         })
     }
 
-    pub(super) fn parse_claim_schema(
+    fn parse_claim_schema(
         &self,
         now: OffsetDateTime,
         parent_key: Option<&str>,
@@ -536,10 +536,14 @@ impl CredentialSchemaImportParserImpl {
         formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
     ) -> Result<Vec<(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)>, Error> {
         self.validate_claim_schema_mappings_unique_formats(&claim_schema_dto)?;
+        self.validate_claim_schema_key_not_forbidden(
+            &claim_schema_dto,
+            formatters,
+            parent_key.is_none(),
+        )?;
         let mut flattened_claim_schemas = vec![];
         let key = claim_schema_dto.key.clone();
-        let flattened_key =
-            self.parse_claim_schema_key(parent_key, claim_schema_dto.key, formatters)?;
+        let flattened_key = self.parse_claim_schema_key(parent_key, claim_schema_dto.key)?;
         let id = Uuid::new_v4().into();
         let translations = match &claim_schema_dto.translations {
             Some(t) => claim_name_translations_from_dto(id, t, now).into(),
@@ -573,20 +577,13 @@ impl CredentialSchemaImportParserImpl {
         Ok(flattened_claim_schemas)
     }
 
-    pub(super) fn parse_claim_schema_key(
+    fn parse_claim_schema_key(
         &self,
         parent_key: Option<&str>,
         key: String,
-        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
     ) -> Result<String, Error> {
         if key.find(NESTED_CLAIM_MARKER).is_some() {
             return Err(Error::ClaimSchemaSlashInKeyName(key));
-        }
-        if formatters
-            .iter()
-            .any(|(_, f)| f.get_capabilities().forbidden_claim_names.contains(&key))
-        {
-            return Err(Error::ForbiddenClaimName);
         }
 
         const MAX_KEY_LENGTH: usize = 255;
@@ -600,7 +597,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(flattened_key)
     }
 
-    pub(super) fn parse_claim_schema_array(
+    fn parse_claim_schema_array(
         &self,
         claim_name: &str,
         is_array: Option<bool>,
@@ -619,7 +616,7 @@ impl CredentialSchemaImportParserImpl {
         }
     }
 
-    pub(super) fn parse_claim_schema_datatype(
+    fn parse_claim_schema_datatype(
         &self,
         claim_shema_key: &str,
         claim_schema_claims: &[ImportCredentialSchemaClaimSchemaDTO],
@@ -647,7 +644,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(claim_schema_data_type)
     }
 
-    pub(super) fn validate_claim_schema_datatype(
+    fn validate_claim_schema_datatype(
         &self,
         claim_shema_key: &str,
         claim_type: &DatatypeType,
@@ -668,7 +665,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(())
     }
 
-    pub(super) fn validate_claim_schema_keys_unique(
+    fn validate_claim_schema_keys_unique(
         &self,
         claim_schemas: &[ImportCredentialSchemaClaimSchemaDTO],
     ) -> Result<(), Error> {
@@ -678,7 +675,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(())
     }
 
-    pub(super) fn validate_datatype_formatter_capabilities(
+    fn validate_datatype_formatter_capabilities(
         &self,
         claim_name: &str,
         datatype: &str,
@@ -727,7 +724,50 @@ impl CredentialSchemaImportParserImpl {
         Ok(())
     }
 
-    pub(super) fn parse_logo_properties(
+    fn validate_claim_schema_key_not_forbidden(
+        &self,
+        claim_schema: &ImportCredentialSchemaClaimSchemaDTO,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
+        is_root_claim: bool,
+    ) -> Result<(), Error> {
+        for (_, formatter) in formatters {
+            let mapping = claim_schema.mappings.as_ref().and_then(|mappings| {
+                mappings
+                    .iter()
+                    .find(|mapping| &mapping.format == formatter.config_name())
+            });
+
+            let technical_key = mapping
+                .map(
+                    |mapping| match mapping.technical_key.rsplit_once(NESTED_CLAIM_MARKER) {
+                        Some((_, leaf_key)) => leaf_key.to_string(),
+                        None => mapping.technical_key.to_owned(),
+                    },
+                )
+                .unwrap_or(claim_schema.key.to_owned());
+
+            let capabilities = formatter.get_capabilities();
+
+            if capabilities
+                .forbidden_claim_technical_keys
+                .contains(&technical_key)
+            {
+                return Err(Error::ForbiddenClaimName);
+            }
+
+            if is_root_claim
+                && capabilities
+                    .forbidden_root_claim_technical_keys
+                    .contains(&technical_key)
+            {
+                return Err(Error::ForbiddenClaimName);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn parse_logo_properties(
         &self,
         logo: CredentialSchemaLogoPropertiesRequestDTO,
     ) -> Result<LogoProperties, Error> {
@@ -746,7 +786,7 @@ impl CredentialSchemaImportParserImpl {
         }
     }
 
-    pub(super) fn parse_background_properties(
+    fn parse_background_properties(
         &self,
         background: CredentialSchemaBackgroundPropertiesRequestDTO,
     ) -> Result<BackgroundProperties, Error> {
@@ -763,7 +803,7 @@ impl CredentialSchemaImportParserImpl {
         }
     }
 
-    pub(super) fn parse_layout_attribute(
+    fn parse_layout_attribute(
         &self,
         attribute: String,
         claim_schemas: &[ClaimSchema],
@@ -776,7 +816,7 @@ impl CredentialSchemaImportParserImpl {
         }
     }
 
-    pub(super) fn parse_code_attribute(
+    fn parse_code_attribute(
         &self,
         code_properties: CredentialSchemaCodePropertiesDTO,
         claim_schemas: &[ClaimSchema],

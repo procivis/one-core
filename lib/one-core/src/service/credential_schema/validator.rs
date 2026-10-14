@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use itertools::Itertools;
-use shared_types::OrganisationId;
+use shared_types::{CredentialFormat, OrganisationId};
 use standardized_types::etsi_119_472::disclosure_policy::PolicyType;
 
 use super::dto::{
@@ -191,12 +191,59 @@ fn validate_claim_names_for_formatter(
     claims: &[CredentialClaimSchemaRequestDTO],
     formatter: &dyn CredentialFormatter,
 ) -> Result<(), CredentialSchemaServiceError> {
-    let forbidden_names = formatter.get_capabilities().forbidden_claim_names;
+    let capabilities = formatter.get_capabilities();
+    let format = formatter.config_name();
 
-    if forbidden_names
-        .into_iter()
-        .any(|forbidden_name| validate_claims_names_are_not_forbidden(&forbidden_name, claims))
-    {
+    for root_claim in claims {
+        check_claim_against_forbidden_technical_keys(
+            root_claim,
+            format,
+            &capabilities.forbidden_root_claim_technical_keys,
+        )?;
+
+        validate_technical_keys_are_not_forbidden_recursive(
+            root_claim,
+            format,
+            &capabilities.forbidden_claim_technical_keys,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn validate_technical_keys_are_not_forbidden_recursive(
+    claim: &CredentialClaimSchemaRequestDTO,
+    format: &CredentialFormat,
+    forbidden_technical_keys: &[String],
+) -> Result<(), CredentialSchemaServiceError> {
+    check_claim_against_forbidden_technical_keys(claim, format, forbidden_technical_keys)?;
+
+    for child_claim in &claim.claims {
+        validate_technical_keys_are_not_forbidden_recursive(
+            child_claim,
+            format,
+            forbidden_technical_keys,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn check_claim_against_forbidden_technical_keys(
+    claim: &CredentialClaimSchemaRequestDTO,
+    format: &CredentialFormat,
+    forbidden_technical_keys: &[String],
+) -> Result<(), CredentialSchemaServiceError> {
+    let mapping = claim
+        .mappings
+        .as_ref()
+        .and_then(|mappings| mappings.iter().find(|mapping| &mapping.format == format));
+
+    let technical_key = mapping
+        .map(|mapping| &mapping.technical_key)
+        .unwrap_or(&claim.key);
+
+    if forbidden_technical_keys.contains(technical_key) {
         return Err(CredentialSchemaServiceError::ForbiddenClaimName);
     }
 
@@ -415,16 +462,6 @@ fn handle_attribute_claim_validation(
         ));
     }
     Ok(())
-}
-
-fn validate_claims_names_are_not_forbidden(
-    forbidden_name: &str,
-    claims: &[CredentialClaimSchemaRequestDTO],
-) -> bool {
-    claims.iter().any(|claim| {
-        claim.key == forbidden_name
-            || validate_claims_names_are_not_forbidden(forbidden_name, &claim.claims)
-    })
 }
 
 fn validate_nested_claim_schemas(
