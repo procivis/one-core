@@ -736,7 +736,7 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential =
-        crate::service::test_utilities::issuer_credential(generic_credential().await).unwrap();
+        crate::service::test_utilities::issuer_credential(generic_credential().await);
     let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
     credential.common_mut().state = CredentialStateEnum::Suspended {
@@ -877,8 +877,7 @@ async fn test_share_credential_success() {
         .times(1)
         .returning(move |_| Ok(protocol.clone()));
 
-    let credential =
-        crate::service::test_utilities::issuer_credential(generic_credential().await).unwrap();
+    let credential = crate::service::test_utilities::issuer_credential(generic_credential().await);
     let credential_id = credential.common().id;
     {
         let clone = credential.clone();
@@ -981,7 +980,7 @@ async fn test_share_credential_failed_inactive_identifier() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential =
-        crate::service::test_utilities::issuer_credential(generic_credential().await).unwrap();
+        crate::service::test_utilities::issuer_credential(generic_credential().await);
     credential
         .issuer_mut()
         .unwrap()
@@ -4181,7 +4180,7 @@ async fn trust_information_of(
     }
     .build();
     let mut credential = if role == CredentialRole::Verifier {
-        crate::service::test_utilities::verifier_credential(credential).unwrap()
+        crate::service::test_utilities::verifier_credential(credential)
     } else {
         credential
     };
@@ -4264,7 +4263,7 @@ fn trusted_by(ecosystem: &str) -> EcosystemOutcomes {
 #[tokio::test]
 async fn test_the_verifier_sees_the_issuer_by_name() {
     let mut credential =
-        crate::service::test_utilities::verifier_credential(generic_credential().await).unwrap();
+        crate::service::test_utilities::verifier_credential(generic_credential().await);
     credential.common_mut().ecosystem = Some(EcosystemId::from("EUDI"));
     credential.verifier_mut().unwrap().data.issuer.certificate =
         Some(dummy_certificate(Uuid::new_v4().into()).into());

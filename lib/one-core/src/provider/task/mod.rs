@@ -3,6 +3,7 @@ use serde_json::Value;
 use crate::service::error::ServiceError;
 
 pub mod certificate_check;
+pub mod credential_registry_sync;
 pub mod ecosystem_lifecycle_check;
 pub mod ecosystem_sync;
 pub mod holder_check_credential_status;

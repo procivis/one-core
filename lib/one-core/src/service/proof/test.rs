@@ -103,7 +103,7 @@ async fn verifier_proof_rejects_unexpected_credential_variants(
     use crate::service::test_utilities::{dummy_credential, dummy_proof, verifier_credential};
 
     let mut invalid = dummy_credential();
-    let valid = verifier_credential(invalid.clone()).unwrap();
+    let valid = verifier_credential(invalid.clone());
     invalid = CredentialBuilder {
         role,
         r#type: credential_type,
@@ -568,7 +568,7 @@ async fn proof_detail_with_claims(
             );
         }
         ProofRole::Verifier => {
-            credential = crate::service::test_utilities::verifier_credential(credential).unwrap();
+            credential = crate::service::test_utilities::verifier_credential(credential);
             proof.schema = Some(
                 ProofSchema {
                     organisation,

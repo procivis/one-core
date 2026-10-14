@@ -2515,3 +2515,26 @@ async fn test_run_webhook_notify_failed() {
     assert_eq!(history.action, HistoryAction::Errored);
     assert_eq!(history.target.as_ref().unwrap(), "history-target");
 }
+
+#[tokio::test]
+async fn test_run_task_credential_registry_sync_fails_no_registry_manager() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .tasks
+        .run_with_params(
+            "CREDENTIAL_REGISTRY_SYNC",
+            json!({
+                "organisationId": organisation.id,
+                "language": "en"
+            }),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0323");
+}

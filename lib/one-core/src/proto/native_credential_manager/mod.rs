@@ -3,6 +3,7 @@ use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct DigitalCredentialRegistration {
     pub credential_id: CredentialId,
     pub metadata: DigitalCredentialMetadata,
@@ -10,18 +11,21 @@ pub struct DigitalCredentialRegistration {
     pub display: DigitalCredentialDisplay,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct DigitalCredentialClaim {
     pub path: Vec<String>,
     pub display_name: Option<String>,
     pub selectively_disclosable: bool,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct DigitalCredentialDisplay {
     pub credential_name: String,
     pub issuer_name: Option<String>,
     pub logo: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum DigitalCredentialMetadata {
     SdJwtVc { vct: String },
     Mdoc { doctype: String },

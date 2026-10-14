@@ -26,9 +26,6 @@ class AndroidCredentialManager(private val context: Context) : CredentialManager
     internal companion object {
         private const val TAG = "CredentialManager"
         private const val ID = "ch.procivis.one.core.CredentialManager.ID"
-
-        // taken from androidx.credentials.DigitalCredential.Companion.TYPE_DIGITAL_CREDENTIAL
-        private const val TYPE_DIGITAL_CREDENTIAL = "androidx.credentials.TYPE_DIGITAL_CREDENTIAL"
     }
 
     override suspend fun synchronize(credentials: List<DigitalCredentialRegistration>) {
@@ -36,30 +33,22 @@ class AndroidCredentialManager(private val context: Context) : CredentialManager
 
         try {
             val registryManager = RegistryManager.create(context)
+            val request = OpenId4VpRegistry(
+                buildCredentialEntries(credentials), id = ID
+            )
 
             // remove old entries
             registryManager.clearCredentialRegistry(
                 request = ClearCredentialRegistryRequest(
                     deletePerTypeConfig = ClearCredentialRegistryRequest.PerTypeConfig(
-                        isDeleteAll = false,
-                        type = TYPE_DIGITAL_CREDENTIAL,
-                        registryIds = listOf(ID)
+                        isDeleteAll = false, type = request.type, registryIds = listOf(ID)
                     )
                 )
             )
 
             // register new entries
-            val result = registryManager.registerCredentials(
-                request = OpenId4VpRegistry(
-                    buildCredentialEntries(credentials),
-                    id = ID
-                )
-            )
+            val result = registryManager.registerCredentials(request)
             Log.d(TAG, "Credentials registered: ${result.type}")
-
-            if (result.type != TYPE_DIGITAL_CREDENTIAL) {
-                Log.e(TAG, "Unexpected registration type: ${result.type}")
-            }
 
         } catch (e: CredentialManagerException) {
             Log.d(TAG, "CredentialManager::synchronize error", e)
@@ -114,15 +103,11 @@ class AndroidCredentialManager(private val context: Context) : CredentialManager
 
             result.add(
                 MdocField(
-                    namespace = path[0],
-                    identifier = path[1],
-                    fieldDisplayPropertySet = setOf(
+                    namespace = path[0], identifier = path[1], fieldDisplayPropertySet = setOf(
                         VerificationFieldDisplayProperties(
-                            displayName = displayName ?: path[1],
-                            displayValue = null
+                            displayName = displayName ?: path[1], displayValue = null
                         )
-                    ),
-                    fieldValue = null
+                    ), fieldValue = null
                 )
             )
         }
@@ -138,8 +123,7 @@ class AndroidCredentialManager(private val context: Context) : CredentialManager
                     value = null,
                     fieldDisplayPropertySet = setOf(
                         VerificationFieldDisplayProperties(
-                            displayName = displayName ?: path.joinToString("/"),
-                            displayValue = null
+                            displayName = displayName ?: path.joinToString("/"), displayValue = null
                         )
                     ),
                     isSelectivelyDisclosable = selectivelyDisclosable,

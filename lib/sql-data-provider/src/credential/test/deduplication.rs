@@ -289,7 +289,7 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
             ..single.into()
         }
         .build();
-        one_core::service::test_utilities::verifier_credential(single).unwrap()
+        one_core::service::test_utilities::verifier_credential(single)
     } else if role == CredentialRole::Issuer {
         let mut single = single;
         let schema = single.common().schema.as_ref().await.unwrap().clone();
@@ -313,9 +313,9 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
             ..single.into()
         }
         .build();
-        one_core::service::test_utilities::issuer_credential(single).unwrap()
+        one_core::service::test_utilities::issuer_credential(single)
     } else {
-        one_core::service::test_utilities::holder_single_credential(single).unwrap()
+        one_core::service::test_utilities::holder_single_credential(single)
     };
     let id = setup
         .repositories

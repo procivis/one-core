@@ -374,7 +374,7 @@ fn dummy_credential(
     }
     .build();
     if r#type == CredentialType::BatchParent {
-        crate::service::test_utilities::issuer_credential(credential).unwrap()
+        crate::service::test_utilities::issuer_credential(credential)
     } else {
         credential
     }

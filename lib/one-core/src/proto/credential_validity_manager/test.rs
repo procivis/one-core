@@ -1347,7 +1347,7 @@ async fn test_check_revocation_invalid_role() {
     };
 
     let credential_verifier_role =
-        crate::service::test_utilities::verifier_credential(generic_credential()).unwrap();
+        crate::service::test_utilities::verifier_credential(generic_credential());
 
     let issuer_credential_id = credential_issuer_role.common().id;
     let verifier_credential_id = credential_verifier_role.common().id;

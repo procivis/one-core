@@ -111,7 +111,7 @@ async fn test_issuer_submit_succeeds() {
             ..updated_credential.into()
         }
         .build();
-        crate::service::test_utilities::issuer_credential(updated_credential).unwrap()
+        crate::service::test_utilities::issuer_credential(updated_credential)
     };
 
     let credential_copy = credential.clone();
@@ -345,7 +345,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
             ..updated_credential.into()
         }
         .build();
-        crate::service::test_utilities::issuer_credential(updated_credential).unwrap()
+        crate::service::test_utilities::issuer_credential(updated_credential)
     }
 }
 

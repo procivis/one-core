@@ -181,7 +181,7 @@ impl OneCore {
         nfc_scanner: Option<Arc<dyn NfcScanner>>,
         native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
         remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
-        _native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
+        native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
     ) -> Result<OneCore, OneCoreInitializationError> {
         initialize_rustls()?;
 
@@ -606,6 +606,7 @@ impl OneCore {
             trust_list_subscriber_provider.clone(),
             ecosystem_sync.clone(),
             ecosystem_provider.clone(),
+            native_credential_manager,
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(

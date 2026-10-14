@@ -785,36 +785,30 @@ pub fn dummy_trust_list_publication() -> TrustListPublication {
 }
 
 /// Build a verifier fixture from an existing credential.
-pub fn verifier_credential(
-    credential: Credential,
-) -> Result<Credential, crate::repository::error::DataLayerError> {
-    Ok(CredentialBuilder {
+pub fn verifier_credential(credential: Credential) -> Credential {
+    CredentialBuilder {
         role: CredentialRole::Verifier,
         r#type: CredentialType::Single,
         ..credential.into()
     }
-    .build())
+    .build()
 }
 
-pub fn issuer_credential(
-    credential: Credential,
-) -> Result<Credential, crate::repository::error::DataLayerError> {
-    Ok(CredentialBuilder {
+pub fn issuer_credential(credential: Credential) -> Credential {
+    CredentialBuilder {
         role: CredentialRole::Issuer,
         ..credential.into()
     }
-    .build())
+    .build()
 }
 
-pub fn holder_single_credential(
-    credential: Credential,
-) -> Result<Credential, crate::repository::error::DataLayerError> {
-    Ok(CredentialBuilder {
+pub fn holder_single_credential(credential: Credential) -> Credential {
+    CredentialBuilder {
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
         ..credential.into()
     }
-    .build())
+    .build()
 }
 
 /// Shared fixture inputs for constructing the different credential variants.

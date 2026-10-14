@@ -18,10 +18,12 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::proto::ecosystem_sync::EcosystemSync;
+use crate::proto::native_credential_manager::NativeCredentialManager;
 use crate::proto::notification_sender::NotificationSender;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
+use crate::provider::task::credential_registry_sync::CredentialRegistrySync;
 use crate::provider::task::ecosystem_lifecycle_check::EcosystemLifecycleCheckTask;
 use crate::provider::task::ecosystem_sync::EcosystemSyncTask;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
@@ -89,7 +91,9 @@ pub(crate) fn task_provider_from_config(
     trust_list_subscription_provider: Arc<dyn TrustListSubscriberProvider>,
     ecosystem_sync: Arc<dyn EcosystemSync>,
     ecosystem_directory: Arc<dyn EcosystemDirectory>,
+    native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
+    let config_clone = Arc::new(config.clone());
     let mut tasks: HashMap<TaskId, Arc<dyn Task>> = HashMap::new();
     for (name, field) in config.task.iter() {
         if !field.enabled {
@@ -155,6 +159,11 @@ pub(crate) fn task_provider_from_config(
             )),
             TaskType::EcosystemLifecycleCheck => Arc::new(EcosystemLifecycleCheckTask::new(
                 ecosystem_directory.clone(),
+            )),
+            TaskType::CredentialRegistrySync => Arc::new(CredentialRegistrySync::new(
+                config_clone.clone(),
+                credential_repository.clone(),
+                native_credential_manager.clone(),
             )),
         };
         tasks.insert(name.to_owned(), task);

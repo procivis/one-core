@@ -606,6 +606,10 @@ task:
     type: "ECOSYSTEM_LIFECYCLE_CHECK"
     display: "task.ecosystemCheck"
     order: 8
+  CREDENTIAL_REGISTRY_SYNC:
+    type: "CREDENTIAL_REGISTRY_SYNC"
+    display: "task.credentialRegistrySync"
+    order: 9
 cacheEntities:
   X509_CRL:
     cacheType: DB

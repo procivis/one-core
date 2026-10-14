@@ -2053,8 +2053,7 @@ async fn accept_merges_same_schema_batches_changing_only_the_items_parent() {
     for (configuration_id, format_name) in [("jwt", "JWT"), ("mdoc", "MDOC")] {
         let mut credential = crate::service::test_utilities::holder_single_credential(
             crate::service::test_utilities::dummy_credential(),
-        )
-        .unwrap();
+        );
         let holder = credential.holder_mut().unwrap();
         holder.common.schema = schema.clone();
         holder.data.embedded_disclosure_policy = Some(format!("{configuration_id}-policy"));
