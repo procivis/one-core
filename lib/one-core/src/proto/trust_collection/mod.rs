@@ -4,7 +4,6 @@ use shared_types::{OrganisationId, TrustCollectionId};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 pub(crate) mod dto;
-pub(crate) mod legacy_selection;
 pub(crate) mod manager;
 #[cfg(test)]
 mod test;

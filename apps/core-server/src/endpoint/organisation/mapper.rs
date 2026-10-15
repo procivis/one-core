@@ -100,7 +100,6 @@ impl TryFrom<SetOrganisationConfigurationRestDTO> for SetOrganisationConfigurati
     }
 }
 
-#[expect(deprecated)]
 pub(crate) fn upsert_request_from_request(
     id: OrganisationId,
     request: UpsertOrganisationRequestRestDTO,
@@ -116,7 +115,6 @@ pub(crate) fn upsert_request_from_request(
         verifier_provider,
         verifier_provider_issuer,
         configuration: try_convert_inner(request.configuration)?,
-        trust_collections: request.trust_collections,
         parent_organisation: request.parent_organisation,
     })
 }

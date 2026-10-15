@@ -4,10 +4,9 @@
 //! Used both by the periodic `ECOSYSTEM_SYNC` task and by the organisation service, which
 //! runs a sync as soon as an ecosystem is enabled instead of waiting for the next task run.
 
-use std::collections::HashSet;
 use std::sync::Arc;
 
-use shared_types::{EcosystemId, OrganisationId, TrustCollectionId};
+use shared_types::EcosystemId;
 
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::instance::{Instance, InstanceRole};
@@ -16,7 +15,6 @@ use crate::model::organisation::Organisation;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
 use crate::proto::schema_import::SchemaImporter;
 use crate::proto::trust_collection::TrustCollectionManager;
-use crate::proto::trust_collection::legacy_selection::legacy_deselected_collections;
 use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
@@ -117,16 +115,6 @@ impl EcosystemSyncProto {
         let remote_ecosystems = self.fetch_remote_ecosystems(instance).await?;
         let selected_ecosystems = &organisation.configuration.selected_ecosystems;
 
-        // TODO (ONE-10972): remove together with the deprecated per-collection selection API.
-        // Read before syncing, so that collections created by this run - which have
-        // no subscriptions yet and would make their ecosystem look mixed - cannot be
-        // mistaken for a deselection.
-        let legacy_deselected = if selected_ecosystems.is_empty() {
-            HashSet::new()
-        } else {
-            self.legacy_deselected_collections(organisation.id).await?
-        };
-
         // All advertised collections are mirrored locally so that the organisation can
         // select their ecosystem later on, only the selected ones are subscribed to.
         let synced_collections = self
@@ -169,15 +157,8 @@ impl EcosystemSyncProto {
             .await
             .error_while("listing trust collections")?;
 
-        let to_sync = collections
-            .values
-            .iter()
-            // TODO (ONE-10972): remove together with the deprecated
-            // per-collection selection API.
-            .filter(|collection| !legacy_deselected.contains(&collection.id));
-
         let mut count = 0;
-        for collection in to_sync {
+        for collection in &collections.values {
             match self.subscription_sync.sync_subscriptions(collection).await {
                 Ok(()) => count += 1,
                 Err(error) => tracing::warn!(
@@ -212,51 +193,6 @@ impl EcosystemSyncProto {
                 )
                 .await;
         }
-    }
-
-    /// TODO (ONE-10972): remove together with the deprecated per-collection selection API.
-    ///
-    /// Collections an organisation excluded through the deprecated per-collection
-    /// selection, which the ecosystem selection must not silently re-subscribe.
-    async fn legacy_deselected_collections(
-        &self,
-        organisation_id: OrganisationId,
-    ) -> Result<HashSet<TrustCollectionId>, NestedError> {
-        let organisation_collections = TrustCollectionFilterValue::OrganisationId {
-            id: organisation_id,
-            include_inherited_collections: false,
-        };
-
-        let collections = self
-            .trust_collection_repository
-            .list(TrustCollectionListQuery {
-                include_count: false,
-                filtering: Some(organisation_collections.clone().condition()),
-                ..Default::default()
-            })
-            .await
-            .error_while("listing trust collections")?;
-
-        let subscribed = self
-            .trust_collection_repository
-            .list(TrustCollectionListQuery {
-                include_count: false,
-                filtering: Some(
-                    organisation_collections.condition() & TrustCollectionFilterValue::Empty(false),
-                ),
-                ..Default::default()
-            })
-            .await
-            .error_while("listing subscribed trust collections")?
-            .values
-            .into_iter()
-            .map(|collection| collection.id)
-            .collect();
-
-        Ok(legacy_deselected_collections(
-            &collections.values,
-            &subscribed,
-        ))
     }
 }
 

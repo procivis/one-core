@@ -55,7 +55,6 @@ pub struct UpsertParams {
     pub wallet_provider: Option<Option<ProviderParams>>,
     pub verifier_provider: Option<Option<ProviderParams>>,
     pub configuration: Option<SetOrganisationConfigurationParams>,
-    pub trust_collections: Option<Vec<shared_types::TrustCollectionId>>,
     pub parent_organisation: Option<Option<OrganisationId>>,
 }
 
@@ -139,16 +138,6 @@ impl OrganisationsApi {
 
     pub async fn get(&self, id: &impl Display) -> Response {
         let url = format!("/api/organisation/v1/{id}");
-        self.client.get(&url).await
-    }
-
-    pub async fn get_trust_collections(&self, id: &impl Display) -> Response {
-        let url = format!("/api/organisation/v1/{id}/trust-collections");
-        self.client.get(&url).await
-    }
-
-    pub async fn get_ecosystems(&self, id: &impl Display) -> Response {
-        let url = format!("/api/organisation/v1/{id}/ecosystems");
         self.client.get(&url).await
     }
 }

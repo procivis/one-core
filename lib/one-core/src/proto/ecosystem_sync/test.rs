@@ -186,78 +186,6 @@ async fn test_no_selected_ecosystem_mirrors_collections_without_subscribing() {
     assert_eq!(synced, 0);
 }
 
-/// A mix of subscribed and unsubscribed collections within one selected ecosystem can
-/// only come from the deprecated per-collection selection, which the ecosystem sync
-/// must honour rather than silently re-subscribe.
-/// TODO (ONE-10972): remove together with the deprecated per-collection selection API.
-#[tokio::test]
-async fn test_legacy_deselected_collection_is_not_subscribed() {
-    let instance = dummy_wallet_unit(organisation_selecting(&[ECOSYSTEM]));
-
-    let selected = dummy_collection("legacy selected".to_string());
-    let deselected = dummy_collection("legacy deselected".to_string());
-    let selected_id = selected.id;
-
-    let mut wallet_unit_client = MockWalletProviderClient::new();
-    let advertised = vec![selected.clone(), deselected.clone()];
-    wallet_unit_client
-        .expect_get_wallet_provider_metadata()
-        .once()
-        .returning(move |_| Ok(dummy_wallet_provider_metadata(&advertised)));
-
-    let mut collection_repository = MockTrustCollectionRepository::new();
-    let mut seq = Sequence::new();
-
-    // the legacy pre-state: both collections exist, only one is subscribed
-    let both = vec![selected.clone(), deselected.clone()];
-    collection_repository
-        .expect_list()
-        .once()
-        .returning(move |_| Ok(GetTrustCollectionList::one_page_of(both.clone())))
-        .in_sequence(&mut seq);
-    let subscribed = selected.clone();
-    collection_repository
-        .expect_list()
-        .once()
-        .returning(move |_| Ok(GetTrustCollectionList::one(subscribed.clone())))
-        .in_sequence(&mut seq);
-
-    // the manager's own read while mirroring, then the post-sync read
-    let both = vec![selected.clone(), deselected.clone()];
-    collection_repository
-        .expect_list()
-        .times(2)
-        .returning(move |_| Ok(GetTrustCollectionList::one_page_of(both.clone())))
-        .in_sequence(&mut seq);
-
-    let collection_repository = Arc::new(collection_repository);
-    let collection_sync = TrustCollectionManagerImpl::new(
-        collection_repository.clone(),
-        Arc::new(MockOrganisationRepository::default()),
-        Arc::new(NoTransactionManager),
-    );
-
-    let mut subscription_sync = MockTrustListSubscriptionSync::new();
-    subscription_sync
-        .expect_sync_subscriptions()
-        .once()
-        .withf(move |collection| collection.id == selected_id)
-        .returning(|_| Ok(()));
-
-    let ecosystem_sync = EcosystemSyncProto::new(
-        Arc::new(MockInstanceRepository::new()),
-        Arc::new(wallet_unit_client),
-        Arc::new(MockVerifierProviderClient::new()),
-        Arc::new(collection_sync),
-        collection_repository,
-        Arc::new(subscription_sync),
-        Arc::new(permissive_schema_importer()),
-    );
-
-    let synced = ecosystem_sync.sync_instance(&instance).await.unwrap();
-    assert_eq!(synced, 1);
-}
-
 /// Syncing pulls in the schemas the provider publishes for every ecosystem the
 /// organisation selected, and leaves the ones it did not select alone.
 #[tokio::test]
@@ -429,26 +357,6 @@ fn setup_collection_repository(
     let id_to_delete = collection_to_delete.id;
     let mut seq = Sequence::new();
     let mut collection_repository = MockTrustCollectionRepository::new();
-
-    // the two reads of the legacy per-collection selection: no collection is
-    // subscribed yet, so the ecosystem selection governs in full
-    let keep = collection_to_keep.clone();
-    let delete = collection_to_delete.clone();
-    collection_repository
-        .expect_list()
-        .once()
-        .returning(move |_| {
-            Ok(GetTrustCollectionList::one_page_of(vec![
-                keep.clone(),
-                delete.clone(),
-            ]))
-        })
-        .in_sequence(&mut seq);
-    collection_repository
-        .expect_list()
-        .once()
-        .returning(|_| Ok(GetTrustCollectionList::empty()))
-        .in_sequence(&mut seq);
 
     let keep = collection_to_keep.clone();
     collection_repository

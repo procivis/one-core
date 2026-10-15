@@ -1,19 +1,16 @@
 use std::collections::HashMap;
 
-use shared_types::{EcosystemId, IdentifierId, OrganisationId, TrustCollectionId};
+use shared_types::{EcosystemId, IdentifierId, OrganisationId};
 
 use super::OrganisationService;
 use super::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
-    GetOrganisationListResponseDTO, OrganisationFilterParamsDTO, TrustCollectionInfoDTO,
-    UpsertOrganisationRequestDTO,
+    GetOrganisationListResponseDTO, OrganisationFilterParamsDTO, UpsertOrganisationRequestDTO,
 };
 use super::error::OrganisationServiceError;
 use super::mapper::{
-    apply_configuration_update, detail_from_model, group_remote_trust_collections_by_local_id,
-    instance_detail_from_model, list_item_from_model, merge_ecosystems,
-    prepare_trust_collection_info, request_to_model, set_active_trust_collections,
-    upsert_request_to_fresh_model,
+    apply_configuration_update, detail_from_model, instance_detail_from_model,
+    list_item_from_model, merge_ecosystems, request_to_model, upsert_request_to_fresh_model,
 };
 use super::validator::{
     validate_ecosystem_enforcement, validate_parent_organisation, validate_provider,
@@ -22,22 +19,18 @@ use super::validator::{
 use crate::config::core_config::ConfigExt;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
-use crate::model::instance::{Instance, InstanceFilterValue, InstanceRole};
+use crate::model::instance::{Instance, InstanceRole};
 use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListQuery;
 use crate::model::organisation::{
     Organisation, SortableOrganisationColumn, UpdateOrganisationRequest,
 };
-use crate::model::trust_collection::TrustCollectionFilterValue;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::instance::service::provider_metadata_url;
 use crate::service::managed_instance::dto::{
-    EcosystemMetadataDTO, ProviderTrustCollectionDTO, WalletProviderMetadataResponseDTO,
+    EcosystemMetadataDTO, WalletProviderMetadataResponseDTO,
 };
-use crate::service::managed_instance::ecosystem_metadata::{
-    ecosystem_display, provider_trust_collections,
-};
+use crate::service::managed_instance::ecosystem_metadata::ecosystem_display;
 use crate::service::verifier_provider::dto::VerifierProviderMetadataResponseDTO;
 
 #[derive(Default)]
@@ -370,16 +363,6 @@ impl OrganisationService {
         }
 
         let organisation_id = request.id;
-        let trust_collections = request.trust_collections.clone();
-
-        if let Some(trust_collections) = &trust_collections {
-            // A not-yet-existing organisation can't have both a wallet and a verifier
-            // instance linked yet, so there's nothing to validate in that case.
-            if let Some(organisation) = &existing_organisation {
-                self.validate_single_provider_trust_collections(organisation, trust_collections)
-                    .await?;
-            }
-        }
 
         if let Some(update) = &request.configuration {
             validate_ecosystem_enforcement(
@@ -431,18 +414,6 @@ impl OrganisationService {
             Err(err) => return Err(err.error_while("updating organisation").into()),
         }
 
-        if let Some(trust_collections) = trust_collections {
-            set_active_trust_collections(
-                trust_collections,
-                organisation_id,
-                self.trust_collection_repository.as_ref(),
-                self.trust_subscription_repository.as_ref(),
-                self.trust_list_subscription_sync.as_ref(),
-            )
-            .await
-            .error_while("setting active trust collections")?;
-        }
-
         // An organisation just created has no instance to sync with yet, so only an update
         // can change a selection that has anything to pull in.
         if updated && ecosystem_selection_changed {
@@ -476,63 +447,11 @@ impl OrganisationService {
         Ok(())
     }
 
-    /// Returns the trust collections available to an organisation's wallet and/or verifier
-    /// provider, annotated with whether the organisation selected the ecosystem owning each
-    /// one.
-    /// Replaces the instance-scoped `GET /api/holder-wallet-instance/v1/{id}/trust-collections`.
-    pub async fn get_trust_collections(
-        &self,
-        id: &OrganisationId,
-    ) -> Result<Vec<TrustCollectionInfoDTO>, OrganisationServiceError> {
-        let Some(organisation) = self
-            .get_organisation_if_exists(id)
-            .await
-            .error_while("getting organisation")?
-        else {
-            return Ok(vec![]);
-        };
-
-        let remote_trust_collections = self.fetch_remote_trust_collections(&organisation).await?;
-        if remote_trust_collections.is_empty() {
-            return Ok(vec![]);
-        }
-
-        Ok(prepare_trust_collection_info(
-            self.trust_collection_repository.as_ref(),
-            remote_trust_collections
-                .into_iter()
-                .map(|(_, collection)| collection)
-                .collect(),
-            &organisation,
-        )
-        .await
-        .error_while("preparing trust collection info")?)
-    }
-
     /// Returns the ecosystems offered to an organisation by its wallet and/or verifier
     /// provider, annotated with whether the organisation currently selected each one.
     ///
     /// An organisation without any managed instance is offered the ecosystems this core is
     /// configured for.
-    pub async fn get_ecosystems(
-        &self,
-        id: &OrganisationId,
-    ) -> Result<Vec<EcosystemInfoDTO>, OrganisationServiceError> {
-        let organisation = self
-            .organisation_repository
-            .get_organisation(id)
-            .await
-            .error_while("getting organisation")?;
-
-        let (wallet_instance, verifier_instance) = self.load_instances(organisation.id).await?;
-        let metadata = self
-            .fetch_provider_metadata(wallet_instance.as_ref(), verifier_instance.as_ref())
-            .await?;
-
-        self.ecosystems_of_organisation(&organisation, &metadata)
-    }
-
-    /// Returns the ecosystems offered to an organisation, see [`Self::get_ecosystems`].
     fn ecosystems_of_organisation(
         &self,
         organisation: &Organisation,
@@ -629,126 +548,5 @@ impl OrganisationService {
         }
 
         Ok(result)
-    }
-
-    /// Fetches the trust collections advertised by an organisation's linked wallet and/or
-    /// verifier managed instance, each tagged with the provider role that exposes it.
-    async fn fetch_remote_trust_collections(
-        &self,
-        organisation: &Organisation,
-    ) -> Result<Vec<(InstanceRole, ProviderTrustCollectionDTO)>, OrganisationServiceError> {
-        let mut result = vec![];
-
-        let wallet_instance = self
-            .instance_repository
-            .get_by_role(InstanceRole::Wallet, organisation.id)
-            .await
-            .error_while("getting wallet instance")?;
-        if let Some(wallet_instance) = wallet_instance {
-            let metadata = self
-                .wallet_provider_client
-                .get_wallet_provider_metadata(wallet_instance.into())
-                .await
-                .error_while("getting wallet provider metadata")?;
-            result.extend(
-                provider_trust_collections(&metadata.ecosystems)
-                    .into_iter()
-                    .map(|collection| (InstanceRole::Wallet, collection)),
-            );
-        }
-
-        let verifier_instance = self
-            .instance_repository
-            .get_by_role(InstanceRole::Verifier, organisation.id)
-            .await
-            .error_while("getting wallet instance")?;
-        if let Some(verifier_instance) = verifier_instance {
-            let metadata_url = provider_metadata_url(
-                &verifier_instance.provider_url,
-                &verifier_instance.provider_name,
-                InstanceRole::Verifier,
-            );
-            let metadata = self
-                .verifier_provider_client
-                .get_verifier_provider_metadata(&metadata_url)
-                .await
-                .error_while("getting verifier provider metadata")?;
-            result.extend(
-                provider_trust_collections(&metadata.ecosystems)
-                    .into_iter()
-                    .map(|collection| (InstanceRole::Verifier, collection)),
-            );
-        }
-
-        Ok(result)
-    }
-
-    /// When an organisation has both a wallet and a verifier instance, each provider
-    /// may expose its own set of trust collections. Subscribing to collections from both
-    /// providers at once is not supported, so this rejects a request unless every requested
-    /// collection can be satisfied by a single provider (collections not tied to either
-    /// remote provider, e.g. locally managed ones, don't count against either side).
-    async fn validate_single_provider_trust_collections(
-        &self,
-        organisation: &Organisation,
-        trust_collections: &[TrustCollectionId],
-    ) -> Result<(), OrganisationServiceError> {
-        if trust_collections.is_empty() {
-            return Ok(());
-        }
-
-        let num_instances = self
-            .instance_repository
-            .list(ListQuery {
-                include_count: false,
-                filtering: Some(
-                    InstanceFilterValue::OrganisationIds(vec![organisation.id]).condition(),
-                ),
-                ..Default::default()
-            })
-            .await
-            .error_while("getting instances")?
-            .values
-            .len();
-        if num_instances <= 1 {
-            return Ok(());
-        }
-
-        let remote_trust_collections = self.fetch_remote_trust_collections(organisation).await?;
-        let local_trust_collections = self
-            .trust_collection_repository
-            .list(ListQuery {
-                include_count: false,
-                filtering: Some(
-                    TrustCollectionFilterValue::OrganisationId {
-                        id: organisation.id,
-                        include_inherited_collections: false,
-                    }
-                    .condition(),
-                ),
-                ..Default::default()
-            })
-            .await
-            .error_while("getting trust collections")?
-            .values;
-
-        let roles_by_local_id = group_remote_trust_collections_by_local_id(
-            &local_trust_collections,
-            remote_trust_collections,
-        )?;
-
-        let satisfied_by = |role: InstanceRole| {
-            trust_collections.iter().all(|id| {
-                roles_by_local_id
-                    .get(id)
-                    .is_none_or(|roles| roles.contains(&role))
-            })
-        };
-
-        if !satisfied_by(InstanceRole::Wallet) && !satisfied_by(InstanceRole::Verifier) {
-            return Err(OrganisationServiceError::TrustCollectionsSpanMultipleProviders);
-        }
-
-        Ok(())
     }
 }

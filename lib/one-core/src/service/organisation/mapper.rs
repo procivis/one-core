@@ -1,37 +1,22 @@
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use shared_types::{OrganisationId, TrustCollectionId};
 use uuid::Uuid;
 
-use crate::error::ContextWithErrorCode;
 use crate::model::identifier::Identifier;
-use crate::model::instance::{Instance, InstanceRole};
-use crate::model::list_filter::{
-    ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
-};
+use crate::model::instance::Instance;
+use crate::model::list_filter::{ComparisonType, ListFilterCondition, ValueComparison};
 use crate::model::organisation::{
     Organisation, OrganisationConfiguration, OrganisationFilterValue, UpdateOrganisationRequest,
 };
 use crate::model::relation::Related;
-use crate::model::trust_collection::{
-    TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
-};
-use crate::model::trust_list_subscription::{
-    TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
-};
-use crate::proto::trust_collection::legacy_selection::legacy_deselected_collections;
-use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::repository::organisation_repository::OrganisationRepository;
-use crate::repository::trust_collection_repository::TrustCollectionRepository;
-use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
-use crate::service::managed_instance::dto::{EcosystemMetadataDTO, ProviderTrustCollectionDTO};
+use crate::service::managed_instance::dto::EcosystemMetadataDTO;
 use crate::service::organisation::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListItemResponseDTO, InstanceDetailResponseDTO, OrganisationFilterParamsDTO,
-    SetOrganisationConfigurationDTO, TrustCollectionInfoDTO, UpsertOrganisationRequestDTO,
-    VerifierInstanceFeatureFlagsDTO, VerifierProviderDetailResponseDTO,
-    WalletInstanceFeatureFlagsDTO, WalletProviderDetailResponseDTO,
+    SetOrganisationConfigurationDTO, UpsertOrganisationRequestDTO, VerifierInstanceFeatureFlagsDTO,
+    VerifierProviderDetailResponseDTO, WalletInstanceFeatureFlagsDTO,
+    WalletProviderDetailResponseDTO,
 };
 use crate::service::organisation::error::OrganisationServiceError;
 
@@ -271,62 +256,6 @@ impl From<OrganisationFilterParamsDTO> for ListFilterCondition<OrganisationFilte
     }
 }
 
-/// Resolves a provider-supplied trust collection name to the local `TrustCollection` record
-/// it corresponds to. Local collection names aren't guaranteed unique, so `matched_local_ids`
-/// tracks rows already claimed by an earlier call in the same batch: this guarantees that
-/// when two remote entries share a name (e.g. one from the wallet provider, one from the
-/// verifier provider), each is attributed to a distinct local row instead of both colliding
-/// onto the first match (which would silently misattribute or drop the second one).
-///
-/// Returns `Ok(None)` when a same-named local collection exists but isn't remote-linked
-/// (a local collection takes precedence over a remote one with the same name, so it isn't
-/// shown as a selection option), and errors if no local collection matches the name at all.
-pub(super) fn match_local_trust_collection<'a>(
-    local_trust_collections: &'a [TrustCollection],
-    matched_local_ids: &mut HashSet<TrustCollectionId>,
-    name: &str,
-) -> Result<Option<&'a TrustCollection>, OrganisationServiceError> {
-    let local_collection = local_trust_collections
-        .iter()
-        .find(|collection| collection.name == name && !matched_local_ids.contains(&collection.id))
-        .ok_or(OrganisationServiceError::TrustCollectionsNotInSync)?;
-
-    if local_collection.remote_trust_collection_url.is_none() {
-        return Ok(None);
-    }
-
-    matched_local_ids.insert(local_collection.id);
-    Ok(Some(local_collection))
-}
-
-/// Groups an organisation's remote-provider trust collections by the local id they resolve
-/// to, recording every provider role that exposes each one (a collection not tied to any
-/// remote provider, or unmatched by `match_local_trust_collection`, simply has no entry).
-pub(super) fn group_remote_trust_collections_by_local_id(
-    local_trust_collections: &[TrustCollection],
-    remote_trust_collections: Vec<(InstanceRole, ProviderTrustCollectionDTO)>,
-) -> Result<HashMap<TrustCollectionId, Vec<InstanceRole>>, OrganisationServiceError> {
-    let mut matched_local_ids = HashSet::new();
-    let mut roles_by_local_id = HashMap::<TrustCollectionId, Vec<InstanceRole>>::new();
-    for (role, metadata) in remote_trust_collections {
-        let Some(local) = match_local_trust_collection(
-            local_trust_collections,
-            &mut matched_local_ids,
-            &metadata.name,
-        )?
-        else {
-            continue;
-        };
-
-        let roles = roles_by_local_id.entry(local.id).or_default();
-        if !roles.contains(&role) {
-            roles.push(role);
-        }
-    }
-
-    Ok(roles_by_local_id)
-}
-
 /// Folds ecosystems advertised by more than one provider into a single entry: an
 /// organisation with both a wallet and a verifier provider is offered the same ecosystem
 /// by each of them, and it participates in it as a whole rather than per provider.
@@ -366,148 +295,4 @@ fn extend_unique(target: &mut Vec<String>, values: Vec<String>) {
             target.push(value);
         }
     }
-}
-
-pub(super) async fn prepare_trust_collection_info(
-    trust_collection_repository: &dyn TrustCollectionRepository,
-    provider_metadata_trust_collections: Vec<ProviderTrustCollectionDTO>,
-    organisation: &Organisation,
-) -> Result<Vec<TrustCollectionInfoDTO>, OrganisationServiceError> {
-    let local_trust_collections = trust_collection_repository
-        .list(TrustCollectionListQuery {
-            include_count: false,
-            filtering: Some(
-                TrustCollectionFilterValue::OrganisationId {
-                    id: organisation.id,
-                    include_inherited_collections: false,
-                }
-                .condition(),
-            ),
-            ..Default::default()
-        })
-        .await
-        .error_while("getting local trust collections")?
-        .values;
-
-    let selected_ecosystems = &organisation.configuration.selected_ecosystems;
-
-    // TODO (ONE-10972): remove together with the deprecated per-collection selection API.
-    let subscribed = trust_collection_repository
-        .list(TrustCollectionListQuery {
-            include_count: false,
-            filtering: Some(
-                TrustCollectionFilterValue::OrganisationId {
-                    id: organisation.id,
-                    include_inherited_collections: false,
-                }
-                .condition()
-                    & TrustCollectionFilterValue::Empty(false),
-            ),
-            ..Default::default()
-        })
-        .await
-        .error_while("getting subscribed trust collections")?
-        .values
-        .into_iter()
-        .map(|collection| collection.id)
-        .collect();
-    let legacy_deselected = legacy_deselected_collections(&local_trust_collections, &subscribed);
-
-    let mut matched_local_ids = HashSet::new();
-    let mut result = vec![];
-    for metadata_collection in provider_metadata_trust_collections {
-        let Some(local_collection) = match_local_trust_collection(
-            &local_trust_collections,
-            &mut matched_local_ids,
-            &metadata_collection.name,
-        )?
-        else {
-            continue;
-        };
-
-        // A collection is in use when the organisation selected the ecosystem owning it,
-        // unless a selection made through the deprecated per-collection API excluded it.
-        let selected = selected_ecosystems.contains(&local_collection.ecosystem)
-            && !legacy_deselected.contains(&local_collection.id);
-
-        result.push(TrustCollectionInfoDTO {
-            selected,
-            default_selected: metadata_collection.default_selected,
-            collection: ProviderTrustCollectionDTO {
-                id: local_collection.id,
-                ..metadata_collection
-            },
-        });
-    }
-
-    Ok(result)
-}
-
-pub(super) async fn set_active_trust_collections(
-    trust_collections: Vec<TrustCollectionId>,
-    organisation_id: OrganisationId,
-    trust_collection_repository: &dyn TrustCollectionRepository,
-    trust_subscription_repository: &dyn TrustListSubscriptionRepository,
-    trust_list_subscription_sync: &dyn TrustListSubscriptionSync,
-) -> Result<(), OrganisationServiceError> {
-    let all_trust_collections = trust_collection_repository
-        .list(TrustCollectionListQuery {
-            include_count: false,
-            filtering: Some(
-                TrustCollectionFilterValue::OrganisationId {
-                    id: organisation_id,
-                    include_inherited_collections: false,
-                }
-                .condition(),
-            ),
-            ..Default::default()
-        })
-        .await
-        .error_while("getting trust collections")?
-        .values;
-
-    let collections_to_remove = all_trust_collections
-        .iter()
-        .filter(|c| !trust_collections.contains(&c.id))
-        .map(|c| c.id);
-
-    let mut subscriptions_to_remove = vec![];
-    for collection_id in collections_to_remove {
-        subscriptions_to_remove.extend(
-            trust_subscription_repository
-                .list(TrustListSubscriptionListQuery {
-                    include_count: false,
-                    filtering: Some(
-                        TrustListSubscriptionFilterValue::TrustCollectionId(vec![collection_id])
-                            .condition(),
-                    ),
-                    ..Default::default()
-                })
-                .await
-                .error_while("listing subscriptions")?
-                .values
-                .into_iter()
-                .map(|s| s.id)
-                .collect::<Vec<_>>(),
-        );
-    }
-
-    trust_subscription_repository
-        .delete_many(subscriptions_to_remove)
-        .await
-        .error_while("deleting subscriptions")?;
-
-    for requested in trust_collections {
-        let collection = all_trust_collections
-            .iter()
-            .find(|c| c.id == requested)
-            .ok_or(OrganisationServiceError::MissingTrustCollection(requested))?;
-
-        trust_list_subscription_sync
-            .sync_subscriptions(collection)
-            .await
-            .error_while("syncing trust collection")?;
-    }
-
-    Ok(())
 }

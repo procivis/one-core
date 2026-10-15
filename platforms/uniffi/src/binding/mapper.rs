@@ -741,8 +741,6 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
             .map(into_id_opt)
             .transpose()?;
 
-        let trust_collections = into_id_opt_vec(&value.trust_collections)?;
-
         Ok(Self {
             id: into_id(&value.id)?,
             deactivate: value.deactivate,
@@ -751,7 +749,6 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
             verifier_provider: convert_inner(value.verifier_provider),
             verifier_provider_issuer,
             configuration: convert_inner(value.configuration),
-            trust_collections,
             parent_organisation,
         })
     }

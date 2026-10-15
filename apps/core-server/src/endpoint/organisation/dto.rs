@@ -1,14 +1,14 @@
 use one_core::service::error::ServiceError;
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, EcosystemInfoDTO, GetOrganisationDetailsResponseDTO,
-    GetOrganisationListItemResponseDTO, OrganisationFilterParamsDTO, TrustCollectionInfoDTO,
+    GetOrganisationListItemResponseDTO, OrganisationFilterParamsDTO,
     VerifierInstanceFeatureFlagsDTO, VerifierProviderDetailResponseDTO,
     WalletInstanceFeatureFlagsDTO, WalletProviderDetailResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId, TrustCollectionId};
+use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -16,9 +16,7 @@ use uuid::Uuid;
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
-use crate::endpoint::ssi::wallet_provider::dto::{
-    DisplayNameRestDTO, ProviderTrustCollectionRestDTO,
-};
+use crate::endpoint::ssi::wallet_provider::dto::DisplayNameRestDTO;
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
@@ -60,14 +58,6 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     pub verifier_provider: Option<Option<UpsertProviderRequestRestDTO>>,
     /// Policy-level configuration for this organization.
     pub configuration: Option<SetOrganisationConfigurationRestDTO>,
-    /// The trust collections this organization's wallet subscribes to,
-    /// selected from those made available by the Wallet Provider. Omit to
-    /// leave the current selection unchanged.
-    // nullable so generated clients omit the list unless it is set explicitly: an empty list
-    // replaces the current selection, `null` is equivalent to omitting the field
-    #[schema(nullable = true)]
-    #[deprecated = "use configuration.selectedEcosystems instead"]
-    pub trust_collections: Option<Vec<TrustCollectionId>>,
     /// Optionally assign a parent organization to share policy-level
     /// configuration, such as trust collections, across a one-level hierarchy.
     /// The provided organization must not have a parent organization.
@@ -332,34 +322,6 @@ pub(crate) struct OrganisationListItemResponseRestDTO {
     /// The parent organization this organization inherits policy-level
     /// configuration from, if any.
     pub parent_organisation: Option<OrganisationId>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(TrustCollectionInfoDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OrganisationTrustCollectionRestDTO {
-    /// When true, the organization has selected the ecosystem this trust
-    /// collection belongs to.
-    pub selected: bool,
-    /// When true, the trust collection is selected by provider default (if any).
-    pub default_selected: bool,
-    #[serde(flatten)]
-    pub collection: ProviderTrustCollectionRestDTO,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OrganisationEcosystemListResponseRestDTO {
-    pub ecosystems: Vec<OrganisationEcosystemRestDTO>,
-}
-
-impl From<Vec<EcosystemInfoDTO>> for OrganisationEcosystemListResponseRestDTO {
-    fn from(value: Vec<EcosystemInfoDTO>) -> Self {
-        Self {
-            ecosystems: convert_inner(value),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

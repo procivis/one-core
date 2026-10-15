@@ -394,14 +394,6 @@ fn get_management_endpoints(
                 get(organisation::controller::get_organisation)
                     .patch(organisation::controller::patch_organisation),
             )
-            .route(
-                "/api/organisation/v1/{id}/trust-collections",
-                get(organisation::controller::get_organisation_trust_collections),
-            )
-            .route(
-                "/api/organisation/v1/{id}/ecosystems",
-                get(organisation::controller::get_organisation_ecosystems),
-            )
             .route("/api/did/v1/{id}", get(did::controller::get_did))
             .route("/api/did/v1/{id}", patch(did::controller::update_did))
             .route("/api/did/v1", get(did::controller::get_did_list))

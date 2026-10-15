@@ -1,21 +1,14 @@
 use one_dto_mapper::From;
-use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId, TrustCollectionId};
+use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::organisation::OrganisationConfiguration;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::managed_instance::dto::{
-    DisplayNameDTO, FeatureFlags as WalletProviderFeatureFlags, ProviderTrustCollectionDTO,
+    DisplayNameDTO, FeatureFlags as WalletProviderFeatureFlags,
 };
 use crate::service::verifier_provider::dto::FeatureFlags as VerifierProviderFeatureFlags;
-
-#[derive(Clone, Debug)]
-pub struct TrustCollectionInfoDTO {
-    pub selected: bool,
-    pub default_selected: bool,
-    pub collection: ProviderTrustCollectionDTO,
-}
 
 /// An ecosystem offered to an organisation by its wallet and/or verifier
 /// provider, annotated with whether the organisation currently selected it.
@@ -46,7 +39,6 @@ pub struct UpsertOrganisationRequestDTO {
     pub verifier_provider: Option<Option<String>>,
     pub verifier_provider_issuer: Option<Option<IdentifierId>>,
     pub configuration: Option<SetOrganisationConfigurationDTO>,
-    pub trust_collections: Option<Vec<TrustCollectionId>>,
     pub parent_organisation: Option<Option<OrganisationId>>,
 }
 

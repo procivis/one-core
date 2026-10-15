@@ -53,11 +53,7 @@ async fn test_get_organisation_ecosystems_without_instance_returns_configured_ec
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
-    let resp = context
-        .api
-        .organisations
-        .get_ecosystems(&organisation.id)
-        .await;
+    let resp = context.api.organisations.get(&organisation.id).await;
 
     // THEN
     // no instance is linked, so the ecosystems configured on this core are reported
@@ -113,11 +109,7 @@ async fn test_get_organisation_ecosystems_filters_locally_unknown_ecosystems() {
         .await;
 
     // WHEN
-    let resp = context
-        .api
-        .organisations
-        .get_ecosystems(&organisation.id)
-        .await;
+    let resp = context.api.organisations.get(&organisation.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -158,11 +150,7 @@ async fn test_get_organisation_ecosystems_not_selected() {
         .await;
 
     // WHEN
-    let resp = context
-        .api
-        .organisations
-        .get_ecosystems(&organisation.id)
-        .await;
+    let resp = context.api.organisations.get(&organisation.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);

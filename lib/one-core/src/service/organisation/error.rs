@@ -1,4 +1,4 @@
-use shared_types::{OrganisationId, TrustCollectionId};
+use shared_types::OrganisationId;
 
 use crate::config::core_config::IdentifierType;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
@@ -8,12 +8,6 @@ use crate::model::instance::InstanceRole;
 pub enum OrganisationServiceError {
     #[error("Organisation already exists")]
     AlreadyExists,
-    #[error("Trust collection `{0}` not found")]
-    MissingTrustCollection(TrustCollectionId),
-    #[error("Trust collections are not in sync with the wallet provider")]
-    TrustCollectionsNotInSync,
-    #[error("Trust collections must all belong to the same provider (wallet or verifier)")]
-    TrustCollectionsSpanMultipleProviders,
     #[error("Ecosystem enforcement is mandated by the organisation's provider")]
     EcosystemEnforcementMandated,
 
@@ -36,9 +30,6 @@ impl ErrorCodeMixin for OrganisationServiceError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::AlreadyExists => ErrorCode::BR_0023,
-            Self::MissingTrustCollection(_) => ErrorCode::BR_0391,
-            Self::TrustCollectionsNotInSync => ErrorCode::BR_0407,
-            Self::TrustCollectionsSpanMultipleProviders => ErrorCode::BR_0472,
             Self::EcosystemEnforcementMandated => ErrorCode::BR_0481,
             Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
             Self::ProviderAlreadyAssociated(_, InstanceRole::Wallet) => ErrorCode::BR_0283,

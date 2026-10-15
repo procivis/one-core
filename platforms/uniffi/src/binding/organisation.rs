@@ -84,10 +84,6 @@ pub struct UpsertOrganisationRequestBindingDTO {
     pub verifier_provider_issuer: Option<OptionalString>,
     /// Policy-level configuration for this organization.
     pub configuration: Option<SetOrganisationConfigurationBindingDTO>,
-    /// The trust collections this organization's wallet subscribes to,
-    /// selected from those made available by the Wallet Provider. Omit to
-    /// leave the current selection unchanged.
-    pub trust_collections: Option<Vec<String>>,
     /// The parent organization this organization inherits policy-level
     /// configuration from, if any.
     pub parent_organisation: Option<OptionalString>,
