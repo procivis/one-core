@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::dpop_handler::DpopHandler;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
@@ -21,7 +22,6 @@ use crate::service::oid4vci_final1_0::resolver::IssuerMetadataFetcher;
 pub mod dto;
 pub mod error;
 pub mod mapper;
-mod nonce;
 pub mod service;
 pub mod validator;
 
@@ -45,6 +45,7 @@ pub struct OID4VCIFinal1_0Service {
     issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
+    dpop_handler: Arc<dyn DpopHandler>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -68,6 +69,7 @@ impl OID4VCIFinal1_0Service {
         issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         ecosystem_resolver: Arc<dyn EcosystemResolver>,
+        dpop_handler: Arc<dyn DpopHandler>,
     ) -> Self {
         Self {
             credential_schema_repository,
@@ -88,6 +90,7 @@ impl OID4VCIFinal1_0Service {
             issuer_metadata_cache,
             formatter_provider,
             ecosystem_resolver,
+            dpop_handler,
         }
     }
 }

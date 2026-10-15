@@ -35,6 +35,7 @@ use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, Local
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
+use crate::proto::dpop_handler::MockDpopHandler;
 use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
@@ -100,6 +101,7 @@ struct Mocks {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub ecosystem_provider: MockEcosystemDirectory,
     pub history_repository: MockHistoryRepository,
+    pub dpop_handler: MockDpopHandler,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
@@ -128,6 +130,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
             Arc::new(mocks.history_repository),
             Arc::new(NoSessionProvider),
         )),
+        Arc::new(mocks.dpop_handler),
     )
 }
 
@@ -1365,7 +1368,7 @@ async fn test_create_token() {
 
     assert!(result.is_ok());
 
-    let result_content = result.unwrap();
+    let (result_content, _) = result.unwrap();
     assert_eq!(TokenType::Bearer, result_content.token_type);
     assert!(
         result_content
@@ -1643,16 +1646,18 @@ async fn test_create_credential_with_instance_attestation(
     use crate::provider::blob_storage::MockBlobStorage;
     use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
     use crate::service::credential::dto::WalletInstanceAttestationDTO;
+    use crate::util;
+    use crate::util::nonce::NonceContext;
 
     let succeeds = has_wia && matching_issuer;
     let config = generic_config().core;
     let params: OpenID4VCIFinal1Params = config.issuance_protocol.get("OPENID4VCI_FINAL1").unwrap();
     let nonce_params = params.nonce.unwrap();
-    let nonce = super::nonce::generate_nonce(
+    let nonce = util::nonce::generate_nonce(
         nonce_params.expiration_seconds,
         nonce_params.signing_key,
         Some("http://127.0.0.1:3000".into()),
-        super::nonce::Context::OpenID4VCINonce,
+        NonceContext::OpenID4VCINonce,
     )
     .await
     .unwrap();
@@ -1901,7 +1906,7 @@ async fn test_create_credential_with_instance_attestation(
             "{result:?}"
         );
     } else {
-        let_assert!(CredentialResponsePayload::Plain(response) = result.unwrap());
+        let_assert!((CredentialResponsePayload::Plain(response), _) = result.unwrap());
         assert_eq!(
             response.standard.credentials.unwrap()[0].credential,
             "issued-credential"
@@ -2095,7 +2100,7 @@ async fn test_create_credential_success() {
         )
         .await;
 
-    let_assert!(CredentialResponsePayload::Plain(result) = result.unwrap());
+    let_assert!((CredentialResponsePayload::Plain(result), _) = result.unwrap());
     assert_eq!(
         result
             .standard
@@ -2300,7 +2305,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         )
         .await;
 
-    let_assert!(CredentialResponsePayload::Plain(result) = result.unwrap());
+    let_assert!((CredentialResponsePayload::Plain(result), _) = result.unwrap());
     assert_eq!(
         result
             .standard
@@ -2551,7 +2556,7 @@ async fn test_create_credential_success_mdoc() {
         .await;
 
     assert!(result.is_ok());
-    let_assert!(CredentialResponsePayload::Plain(result) = result.unwrap());
+    let_assert!((CredentialResponsePayload::Plain(result), _) = result.unwrap());
     assert_eq!(
         result
             .standard
@@ -3361,7 +3366,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         )
         .await;
 
-    let result = result.unwrap();
+    let (result, _) = result.unwrap();
     assert_eq!(TokenType::Bearer, result.token_type);
     assert!(
         result
@@ -3445,7 +3450,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
         ..Default::default()
     });
 
-    let result = service
+    let (result, _) = service
         .create_token(
             &schema.id,
             TokenRequest::RefreshToken {

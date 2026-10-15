@@ -17,6 +17,7 @@ use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporterPr
 use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csc::CscClientImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
+use crate::proto::dpop_handler::DpopHandlerImpl;
 use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::ecosystem_sync::EcosystemSyncProto;
 use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
@@ -626,6 +627,11 @@ impl OneCore {
             key_algorithm_provider.clone(),
         )?;
 
+        let dpop_handler = Arc::new(DpopHandlerImpl::new(
+            key_algorithm_provider.clone(),
+            data_provider.get_interaction_repository(),
+        ));
+
         Ok(OneCore {
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
@@ -700,6 +706,7 @@ impl OneCore {
                 credential_issuer_metadata_cache.clone(),
                 credential_formatter_provider.clone(),
                 ecosystem_resolver.clone(),
+                dpop_handler,
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),

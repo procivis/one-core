@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::{
     CredentialIssuerMetadata, CredentialRequest, CredentialResponse,
 };
@@ -43,4 +44,15 @@ pub enum OID4VCIFinal1_0MetadataResponseTypeEnum {
 pub enum OID4VCIFinal1_0IssuerMetadataResponseEnum {
     Model(Box<CredentialIssuerMetadata>),
     Jwt(String),
+}
+
+pub enum AccessToken {
+    Bearer(String),
+    DPoP { token: String, proof: String },
+}
+
+pub enum ProtocolSelection {
+    ProtocolId(String),
+    AccessToken(String),
+    TokenRequest(TokenRequest),
 }

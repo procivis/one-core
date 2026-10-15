@@ -13,6 +13,7 @@ use one_crypto::hasher::sha256::SHA256;
 use reqwest::header::WWW_AUTHENTICATE;
 use serde_json::json;
 use similar_asserts::assert_eq;
+use standardized_types::oauth2::dpop::DPOP_NONCE_HEADER;
 use uuid::Uuid;
 
 use crate::api_oidc_tests::common::sign_jwt;
@@ -662,7 +663,7 @@ async fn test_oidc_issuer_create_token_fails_when_credential_is_expiring() {
     assert_eq!(credential.common().state, CredentialStateEnum::Expiring);
 }
 
-async fn dpop_proof(key: &KeyHandle, url: &str, access_token: Option<&str>) -> String {
+async fn dpop_proof(key: &KeyHandle, url: &str, nonce: &str, access_token: Option<&str>) -> String {
     let header = json!({
         "typ": "dpop+jwt",
         "alg": "ES256",
@@ -673,6 +674,7 @@ async fn dpop_proof(key: &KeyHandle, url: &str, access_token: Option<&str>) -> S
         "htu": url,
         "iat": one_core::clock::now_utc().unix_timestamp(),
         "jti": Uuid::new_v4().to_string(),
+        "nonce": nonce,
     });
     if let Some(access_token) = access_token {
         payload["ath"] = SHA256
@@ -686,7 +688,20 @@ async fn dpop_proof(key: &KeyHandle, url: &str, access_token: Option<&str>) -> S
 #[tokio::test]
 async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
     // GIVEN
-    let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let enable_dpop = Some(
+        indoc::indoc! {"
+        issuanceProtocol:
+            OPENID4VCI_FINAL1:
+                params:
+                    private:
+                        dpop:
+                          enforced: false
+                          signingAlgorithms:
+                            - ECDSA
+                          signingKey: \"93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e\"\
+        "}.to_string(),
+    );
+    let (context, org, _, identifier, ..) = TestContext::new_with_did(enable_dpop).await;
 
     let interaction_id = Uuid::new_v4().into();
     let data = json!({
@@ -741,11 +756,14 @@ async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
         ),
         ("pre-authorized_code", pre_authorized_code.as_str()),
     ];
-
+    let nonce_response = context.api.ssi.generate_nonce("OPENID4VCI_FINAL1").await;
+    let nonce = nonce_response.headers()[DPOP_NONCE_HEADER]
+        .to_str()
+        .unwrap();
     // WHEN
     let resp = http_client()
         .post(&token_url)
-        .header("DPoP", dpop_proof(&key, &token_url, None).await)
+        .header("DPoP", dpop_proof(&key, &token_url, nonce, None).await)
         .form(&token_request)
         .send()
         .await
@@ -779,13 +797,33 @@ async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
     );
 
     // WHEN
+    let resp = http_client()
+        .post(&notification_url)
+        .header("Authorization", format!("DPoP {access_token}"))
+        .header(
+            "DPoP",
+            dpop_proof(&key, &notification_url, "invalid-nonce", Some(access_token)).await,
+        )
+        .json(&notification)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(401, resp.status());
+    assert_eq!(
+        r#"DPoP error="use_dpop_nonce""#,
+        resp.headers()[WWW_AUTHENTICATE]
+    );
+
+    // WHEN
     let other_key = Ecdsa.generate_key().unwrap().key;
     let resp = http_client()
         .post(&notification_url)
         .header("Authorization", format!("DPoP {access_token}"))
         .header(
             "DPoP",
-            dpop_proof(&other_key, &notification_url, Some(access_token)).await,
+            dpop_proof(&other_key, &notification_url, nonce, Some(access_token)).await,
         )
         .json(&notification)
         .send()
@@ -796,13 +834,11 @@ async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
     assert_eq!(401, resp.status());
 
     // WHEN
+    let proof = dpop_proof(&key, &notification_url, nonce, Some(access_token)).await;
     let resp = http_client()
         .post(&notification_url)
         .header("Authorization", format!("DPoP {access_token}"))
-        .header(
-            "DPoP",
-            dpop_proof(&key, &notification_url, Some(access_token)).await,
-        )
+        .header("DPoP", proof.clone())
         .json(&notification)
         .send()
         .await
@@ -812,4 +848,21 @@ async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
     assert_eq!(400, resp.status());
     let resp: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(json!("invalid_notification_id"), resp["error"]);
+
+    // WHEN
+    let resp = http_client()
+        .post(&notification_url)
+        .header("Authorization", format!("DPoP {access_token}"))
+        .header("DPoP", proof) // Proof already used
+        .json(&notification)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(401, resp.status());
+    assert_eq!(
+        r#"DPoP error="invalid_dpop_proof""#,
+        resp.headers()[WWW_AUTHENTICATE]
+    );
 }

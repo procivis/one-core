@@ -96,7 +96,6 @@ pub(crate) struct OpenID4VCNonceParams {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCDpopParams {
-    #[expect(unused)]
     #[serde(default = "default_true")]
     pub enforced: bool,
     #[serde(deserialize_with = "deserialize_encryption_key")]
@@ -104,13 +103,18 @@ pub(crate) struct OpenID4VCDpopParams {
     #[serde(default = "default_5_minutes")]
     #[serde_as(as = "DurationSeconds<i64>")]
     pub nonce_validity_seconds: Duration,
-    #[expect(unused)]
+    #[serde(default = "default_1_minute")]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub nonce_refresh_threshold_seconds: Duration,
     #[serde(default)]
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway_seconds: Duration,
     pub signing_algorithms: Vec<KeyAlgorithmType>,
 }
 
+pub(super) fn default_1_minute() -> Duration {
+    Duration::minutes(1)
+}
 pub(super) fn default_5_minutes() -> Duration {
     Duration::minutes(5)
 }

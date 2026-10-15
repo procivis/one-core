@@ -1,11 +1,11 @@
 use std::str::FromStr;
 use std::sync::LazyLock;
 
-use axum::http::{HeaderValue, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use mime::Mime;
 use shared_types::DpopNonce;
-use standardized_types::oauth2::dpop::DPOP_NONCE_HEADER;
+use standardized_types::oauth2::dpop::{DPOP_HEADER, DPOP_NONCE_HEADER};
 
 #[allow(clippy::expect_used)]
 pub(crate) static APPLICATION_XML: LazyLock<Mime> = LazyLock::new(|| {
@@ -40,4 +40,8 @@ pub(crate) fn with_dpop_nonce(mut response: Response, dpop_nonce: Option<DpopNon
         response.headers_mut().insert(DPOP_NONCE_HEADER, value);
     }
     response
+}
+
+pub(crate) fn get_dpop_proof(headers: &HeaderMap) -> Option<&str> {
+    headers.get(DPOP_HEADER).and_then(|v| v.to_str().ok())
 }

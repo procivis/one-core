@@ -8,6 +8,7 @@ use axum_extra::typed_header::TypedHeader;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0MetadataResponseTypeEnum,
+    ProtocolSelection,
 };
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
@@ -16,7 +17,7 @@ use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dpop::DPOP_HEADER;
-use standardized_types::oauth2::token::TokenResponse;
+use standardized_types::oauth2::token::{TokenRequest, TokenResponse};
 use standardized_types::openid4vci::{
     CredentialOffer, CredentialRequest, NonceResponse, NotificationRequest,
 };
@@ -25,12 +26,12 @@ use super::dto::{
     OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
     OpenID4VCITokenRequestRestDTO,
 };
-use super::mapper::{dpop_proof_response, wallet_attestation_response};
+use super::mapper::{dpop_error_response, is_dpop_error, wallet_attestation_response};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
 use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
 use crate::extractor::{Accept, AccessToken};
-use crate::headers::{APPLICATION_JWT, with_dpop_nonce};
+use crate::headers::{APPLICATION_JWT, get_dpop_proof, with_dpop_nonce};
 use crate::router::AppState;
 
 #[endpoint(
@@ -228,15 +229,24 @@ pub(crate) async fn oid4vci_final1_0_get_credential_offer(
     ),
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("DPoP" = inline(Option<String>), Header, description = "DPoP Proof", nullable = false),
         ("OAuth-Client-Attestation" = inline(Option<String>), Header, description = "OAuth Client Attestation JWT for attestation-based client authentication", nullable = false),
         ("OAuth-Client-Attestation-PoP" = inline(Option<String>), Header, description = "OAuth Client Attestation Proof of Possession JWT", nullable = false)
     ),
     responses(
-        (status = 200, description = "OK", body = TokenResponse),
-        (status = 400, description = "OIDC token errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 200, description = "OK", body = TokenResponse,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 400, description = "OIDC token errors", body = OpenID4VCIErrorResponseRestDTO,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Credential schema not found"),
-        (status = 409, description = "Wrong credential state"),
-        (status = 500, description = "Server error"),
+        (status = 409, description = "Wrong credential state",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     tag = "openid4vci-final1_0",
     summary = "OID4VC - Create token",
@@ -263,25 +273,33 @@ pub(crate) async fn oid4vci_final1_0_create_token(
         .get("OAuth-Client-Attestation-PoP")
         .and_then(|v| v.to_str().ok());
 
-    let dpop_proof = headers.get(DPOP_HEADER).and_then(|v| v.to_str().ok());
-
-    let result = async {
-        state
-            .core
-            .oid4vci_final1_0_service
-            .create_token(
-                &id,
-                request.try_into()?,
-                oauth_client_attestation,
-                oauth_client_attestation_pop,
-                dpop_proof,
+    let request: TokenRequest = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            tracing::error!("Bad request: {err}",);
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO::from(err)),
             )
-            .await
-    }
-    .await;
+                .into_response();
+        }
+    };
+    let result = state
+        .core
+        .oid4vci_final1_0_service
+        .create_token(
+            &id,
+            request.clone(),
+            oauth_client_attestation,
+            oauth_client_attestation_pop,
+            get_dpop_proof(&headers),
+        )
+        .await;
 
-    match result {
-        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+    let response = match result {
+        Ok((response, dpop_nonce)) => {
+            return with_dpop_nonce((StatusCode::OK, Json(response)).into_response(), dpop_nonce);
+        }
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI token validation error: {:?}", error);
             (
@@ -291,9 +309,7 @@ pub(crate) async fn oid4vci_final1_0_create_token(
                 .into_response()
         }
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
-        Err(OID4VCIFinal1_0ServiceError::DpopProof(error)) => {
-            dpop_proof_response(StatusCode::BAD_REQUEST, &error)
-        }
+        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::BAD_REQUEST, &err),
         Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
             tracing::error!("Invalid credential state state error: {state}");
             (
@@ -317,7 +333,9 @@ pub(crate) async fn oid4vci_final1_0_create_token(
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::TokenRequest(request);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
 
 #[endpoint(
@@ -326,15 +344,24 @@ pub(crate) async fn oid4vci_final1_0_create_token(
     path = "/ssi/openid4vci/final-1.0/{id}/credential",
     request_body(content = CredentialRequest, description = "Credential request. May alternatively be sent JWE encrypted as `application/jwt`, see `credential_request_encryption` of the issuer metadata"),
     params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("DPoP" = inline(Option<String>), Header, description = "DPoP Proof", nullable = false),
     ),
     responses(
-        (status = 200, description = "OK. Returns JWE encrypted as `application/jwt` when using encryption", body = OpenID4VCIFinal1CredentialResponseRestDTO),
-        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 200, description = "OK. Returns JWE encrypted as `application/jwt` when using encryption", body = OpenID4VCIFinal1CredentialResponseRestDTO,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Credential schema not found"),
-        (status = 409, description = "Wrong credential state"),
+        (status = 409, description = "Wrong credential state",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 415, description = "Unsupported request content type"),
-        (status = 500, description = "Server error"),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     security(
         ("openID4VCI" = [])
@@ -378,11 +405,9 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
         )
         .await;
 
-    match result {
-        Ok(value) => credential_response(value),
-        Err(OID4VCIFinal1_0ServiceError::DpopProof(error)) => {
-            dpop_proof_response(StatusCode::UNAUTHORIZED, &error)
-        }
+    let response = match result {
+        Ok((value, dpop_nonce)) => return with_dpop_nonce(credential_response(value), dpop_nonce),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (
@@ -392,8 +417,8 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
                 .into_response()
         }
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
-        Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
-            tracing::error!("Invalid credential state error: {state}");
+        Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(credential_state)) => {
+            tracing::error!("Invalid credential state error: {credential_state}");
             (
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
@@ -401,7 +426,7 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
                     error_description: Some(format!(
                         "{} | Credential is in state: {}",
                         e.error_code(),
-                        state
+                        credential_state
                     )),
                 }),
             )
@@ -434,7 +459,9 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::AccessToken(access_token.token);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
 
 #[endpoint(
@@ -443,14 +470,23 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
     path = "/ssi/openid4vci/final-1.0/{id}/notification",
     request_body(content = NotificationRequest, description = "Notification request"),
     params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("DPoP" = inline(Option<String>), Header, description = "DPoP Proof", nullable = false),
     ),
     responses(
-        (status = 204, description = "OK"),
-        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 204, description = "OK",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Credential schema not found"),
-        (status = 409, description = "Wrong credential state"),
-        (status = 500, description = "Server error"),
+        (status = 409, description = "Wrong credential state",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     security(
         ("openID4VCI" = [])
@@ -489,11 +525,9 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
         )
         .await;
 
-    match result {
-        Ok(_) => (StatusCode::NO_CONTENT).into_response(),
-        Err(OID4VCIFinal1_0ServiceError::DpopProof(error)) => {
-            dpop_proof_response(StatusCode::UNAUTHORIZED, &error)
-        }
+    let response = match result {
+        Ok(nonce) => return with_dpop_nonce((StatusCode::NO_CONTENT).into_response(), nonce),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential notification error: {:?}", error);
             (
@@ -508,9 +542,12 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
+
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::AccessToken(access_token.token);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
 
 #[endpoint(
@@ -522,10 +559,12 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
     ),
     responses(
         (status = 200, description = "OK", body = NonceResponse,
-            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 404, description = "Invalid protocol"),
-        (status = 500, description = "Server error"),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     tag = "openid4vci-final1_0",
     summary = "OID4VC - Generate nonce",
@@ -544,11 +583,8 @@ pub(crate) async fn oid4vci_final1_0_nonce(
         .generate_nonce(&issuance_protocol_id)
         .await;
 
-    match result {
-        Ok((value, dpop_nonce)) => {
-            let response = (StatusCode::OK, Json(value)).into_response();
-            with_dpop_nonce(response, dpop_nonce)
-        }
+    let response = match result {
+        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
         Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Not found error: {error}");
             StatusCode::NOT_FOUND.into_response()
@@ -557,7 +593,9 @@ pub(crate) async fn oid4vci_final1_0_nonce(
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::ProtocolId(issuance_protocol_id);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
 
 #[endpoint(
@@ -568,9 +606,13 @@ pub(crate) async fn oid4vci_final1_0_nonce(
         ("protocol_id" = String, Path, description = "Issuance protocol id")
     ),
     responses(
-        (status = 200, description = "OK", body = ChallengeResponse),
+        (status = 200, description = "OK", body = ChallengeResponse,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Invalid protocol"),
-        (status = 500, description = "Server error"),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     tag = "openid4vci-final1_0",
     summary = "OID4VC - Generate OAuth attestation challenge",
@@ -589,7 +631,7 @@ pub(crate) async fn oid4vci_final1_0_oauth_attestation_challenge(
         .generate_oauth_attestation_challenge(&issuance_protocol_id)
         .await;
 
-    match result {
+    let response = match result {
         Ok(value) => (StatusCode::OK, Json(value)).into_response(),
         Err(error) if error.error_code() == ErrorCode::BR_0089 => {
             tracing::error!("Not found error: {error}");
@@ -599,5 +641,20 @@ pub(crate) async fn oid4vci_final1_0_oauth_attestation_challenge(
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::ProtocolId(issuance_protocol_id);
+    with_new_dpop_nonce(&state, protocol, response).await
+}
+
+pub(crate) async fn with_new_dpop_nonce(
+    state: &State<AppState>,
+    protocol: ProtocolSelection,
+    response: Response,
+) -> Response {
+    let nonce = state
+        .core
+        .oid4vci_final1_0_service
+        .generate_dpop_nonce(protocol)
+        .await;
+    with_dpop_nonce(response, nonce)
 }

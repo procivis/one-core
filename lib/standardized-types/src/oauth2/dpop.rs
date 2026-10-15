@@ -15,4 +15,5 @@ pub struct DPoPClaims {
     pub htm: String,
     pub htu: Url,
     pub ath: Option<String>,
+    pub nonce: Option<String>,
 }

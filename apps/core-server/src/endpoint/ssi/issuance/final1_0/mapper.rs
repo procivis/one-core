@@ -1,12 +1,10 @@
 use axum::Json;
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use one_core::error::ErrorCodeMixin;
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
-use one_core::service::oid4vci_final1_0::error::{
-    DpopProofError, OID4VCIFinal1_0ServiceError, WalletAttestationError,
-};
+use one_core::service::oid4vci_final1_0::error::WalletAttestationError;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::{CredentialConfiguration, CredentialIssuerMetadata};
@@ -42,7 +40,7 @@ impl From<CredentialIssuerMetadata> for OpenID4VCIIssuerMetadataResponseRestDTO 
 }
 
 impl TryFrom<OpenID4VCITokenRequestRestDTO> for TokenRequest {
-    type Error = OID4VCIFinal1_0ServiceError;
+    type Error = OpenID4VCIError;
 
     fn try_from(value: OpenID4VCITokenRequestRestDTO) -> Result<Self, Self::Error> {
         match (
@@ -64,12 +62,10 @@ impl TryFrom<OpenID4VCITokenRequestRestDTO> for TokenRequest {
                 Ok(Self::RefreshToken { refresh_token })
             }
             ("urn:ietf:params:oauth:grant-type:pre-authorized_code" | "refresh_token", _, _, _) => {
-                Err(OpenID4VCIError::InvalidRequest.into())
+                Err(OpenID4VCIError::InvalidRequest)
             }
-            (grant, _, _, _) if !grant.is_empty() => {
-                Err(OpenID4VCIError::UnsupportedGrantType.into())
-            }
-            _ => Err(OpenID4VCIError::InvalidRequest.into()),
+            (grant, _, _, _) if !grant.is_empty() => Err(OpenID4VCIError::UnsupportedGrantType),
+            _ => Err(OpenID4VCIError::InvalidRequest),
         }
     }
 }
@@ -133,21 +129,41 @@ pub(crate) fn wallet_attestation_response(wa: &WalletAttestationError) -> Respon
     }
 }
 
-pub(crate) fn dpop_proof_response(status: StatusCode, error: &DpopProofError) -> Response {
-    tracing::info!("DPoP proof validation error: {error}");
-
-    let body = Json(OpenID4VCIErrorResponseRestDTO::with_description(
-        OpenID4VCIError::InvalidDpopProof,
-        error.to_string(),
-    ));
+pub(crate) fn dpop_error_response(status: StatusCode, error: &impl ErrorCodeMixin) -> Response {
+    tracing::info!("DPoP error: {error}");
+    let is_dpop_nonce_error = error.error_code() == ErrorCode::BR_0520;
+    let body = if is_dpop_nonce_error {
+        OpenID4VCIErrorResponseRestDTO::with_description(
+            OpenID4VCIError::UseDpopNonce,
+            // https://www.rfc-editor.org/rfc/rfc9449.html#name-authorization-server-provid
+            "Authorization server requires nonce in DPoP proof".to_string(),
+        )
+    } else {
+        OpenID4VCIErrorResponseRestDTO::with_description(
+            OpenID4VCIError::InvalidDpopProof,
+            error.to_string(),
+        )
+    };
+    let body = Json(body);
     if status == StatusCode::UNAUTHORIZED {
         let challenge = [(
             header::WWW_AUTHENTICATE,
-            r#"DPoP error="invalid_dpop_proof""#,
+            if is_dpop_nonce_error {
+                r#"DPoP error="use_dpop_nonce""#
+            } else {
+                r#"DPoP error="invalid_dpop_proof""#
+            },
         )];
         return (status, challenge, body).into_response();
     }
     (status, body).into_response()
+}
+
+pub(crate) fn is_dpop_error(error: &impl ErrorCodeMixin) -> bool {
+    matches!(
+        error.error_code(),
+        ErrorCode::BR_0517 | ErrorCode::BR_0519 | ErrorCode::BR_0520
+    )
 }
 
 #[cfg(test)]

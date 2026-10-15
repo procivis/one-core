@@ -1,11 +1,10 @@
 use std::collections::HashSet;
-use std::str::FromStr;
 
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use itertools::Itertools;
 use one_crypto::jwe::{Header as JweHeader, extract_jwe_header};
-use one_crypto::utilities::{self, generate_alphanumeric};
+use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{
@@ -33,16 +32,16 @@ use super::dto::{
     CredentialRequestPayload, CredentialResponsePayload,
     OID4VCIFinal1_0IssuerMetadataResponseEnum as IssuerMetadataResponseEnum,
     OID4VCIFinal1_0MetadataResponseTypeEnum as IssuerMetadataResponseTypeEnum,
-    OpenID4VCICredentialResponseDTO,
+    OpenID4VCICredentialResponseDTO, ProtocolSelection,
 };
-use super::error::{DpopProofError, OID4VCIFinal1_0ServiceError, WalletAttestationError};
-use super::mapper::{interaction_data_to_dto, offered_formats};
-use super::nonce::{Context, generate_nonce, validate_nonce};
+use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
+use super::mapper::{
+    interaction_data_to_dto, interaction_id_from_token_request, map_dpop_params, offered_formats,
+};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
-    validate_credential_request_format, validate_dpop_proof, validate_pop_audience,
-    validate_response_encryption, validate_timestamps, verify_ka_wia_issuers_match,
-    verify_pop_signature, verify_wia_signature,
+    validate_credential_request_format, validate_pop_audience, validate_response_encryption,
+    validate_timestamps, verify_ka_wia_issuers_match, verify_pop_signature, verify_wia_signature,
 };
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
@@ -70,6 +69,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::relation::Related;
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
+use crate::proto::dpop_handler::{DpopParams, ExpectedProofValues, ProofValidationOutput};
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
@@ -86,7 +86,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::{
     OpenID4VCIProofHolderBinding, OpenID4VCIProofJWTFormatter, OpenID4VCIVerifiedProof,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
-    create_credential_offer, oidc_issuer_create_token, parse_access_token, parse_refresh_token,
+    create_credential_offer, oidc_issuer_create_token, parse_access_token,
 };
 use crate::provider::revocation::model::{Operation, RevocationState};
 use crate::repository::error::DataLayerError;
@@ -95,6 +95,7 @@ use crate::service::managed_instance::dto::WalletInstanceAttestationClaims;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::util::jwe::{build_jwe, decrypt_jwe};
 use crate::util::key_agreement::key_agreement_keys;
+use crate::util::nonce::{NonceContext, generate_nonce, validate_nonce};
 use crate::validator::throw_if_credential_state_not_eq;
 
 impl OID4VCIFinal1_0Service {
@@ -385,7 +386,7 @@ impl OID4VCIFinal1_0Service {
         access_token: &str,
         dpop_proof: Option<&str>,
         request: CredentialRequestPayload,
-    ) -> Result<CredentialResponsePayload, OID4VCIFinal1_0ServiceError> {
+    ) -> Result<(CredentialResponsePayload, Option<DpopNonce>), OID4VCIFinal1_0ServiceError> {
         let schema = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id)
@@ -423,13 +424,16 @@ impl OID4VCIFinal1_0Service {
                 OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
             );
         };
-        self.validate_access_token_binding(
-            &interaction_data,
-            access_token,
-            dpop_proof,
-            &credential.common().protocol,
-            &format!("{credential_schema_id}/credential"),
-        )?;
+        let dpop_nonce = self
+            .validate_access_token_binding(
+                interaction_id,
+                interaction_data.dpop_jkt.as_deref(),
+                access_token,
+                dpop_proof,
+                &credential.common().protocol,
+                &format!("{credential_schema_id}/credential"),
+            )
+            .await?;
 
         self.validate_credential_state(credential, &interaction)
             .await?;
@@ -537,6 +541,7 @@ impl OID4VCIFinal1_0Service {
                 // errors stay plain JSON, only the successful response is encrypted
                 self.encrypt_credential_response(result, request.credential_response_encryption)
                     .await
+                    .map(|result| (result, dpop_nonce))
             }
             Err(error) => {
                 let error = error.error_while("issuing credential");
@@ -708,15 +713,17 @@ impl OID4VCIFinal1_0Service {
             );
         };
         let nonce_id = validate_nonce(
-            nonce_params,
+            nonce_params.leeway_seconds,
+            nonce_params.signing_key.clone(),
             self.base_url.as_ref(),
             &nonce,
-            Context::OpenID4VCINonce,
+            NonceContext::OpenID4VCINonce,
         )
         .map_err(|e| {
             tracing::debug!("Nonce validation failed: {e}");
             OpenID4VCIError::InvalidNonce
-        })?;
+        })?
+        .id;
 
         // Key attestation is expected if wallet storage type is set
         if let Some(key_storage_security) = schema.wallet_attestation.key_storage_security_level {
@@ -1154,7 +1161,7 @@ impl OID4VCIFinal1_0Service {
         access_token: &str,
         dpop_proof: Option<&str>,
         request: NotificationRequest,
-    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+    ) -> Result<Option<DpopNonce>, OID4VCIFinal1_0ServiceError> {
         let interaction_id = parse_access_token(access_token)?;
         let interaction = self
             .interaction_repository
@@ -1183,13 +1190,16 @@ impl OID4VCIFinal1_0Service {
         let Some(credential) = credentials.first() else {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
         };
-        self.validate_access_token_binding(
-            &interaction_data,
-            access_token,
-            dpop_proof,
-            &credential.common().protocol,
-            &format!("{credential_schema_id}/notification"),
-        )?;
+        let dpop_nonce = self
+            .validate_access_token_binding(
+                interaction_id,
+                interaction_data.dpop_jkt.as_deref(),
+                access_token,
+                dpop_proof,
+                &credential.common().protocol,
+                &format!("{credential_schema_id}/notification"),
+            )
+            .await?;
 
         // interactions created before multi-format support have a single entry without format
         let format_id = interaction_data
@@ -1212,7 +1222,7 @@ impl OID4VCIFinal1_0Service {
         }
 
         tracing::info!(message = success_log);
-        Ok(())
+        Ok(dpop_nonce)
     }
 
     pub async fn create_token(
@@ -1222,26 +1232,14 @@ impl OID4VCIFinal1_0Service {
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
         dpop_proof: Option<&str>,
-    ) -> Result<TokenResponse, OID4VCIFinal1_0ServiceError> {
+    ) -> Result<(TokenResponse, Option<DpopNonce>), OID4VCIFinal1_0ServiceError> {
         let credential_schema = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?;
 
-        let interaction_id = match &request {
-            TokenRequest::PreAuthorizedCode {
-                pre_authorized_code,
-                tx_code: _,
-            } => Uuid::from_str(pre_authorized_code)
-                .map_err(|_| OpenID4VCIError::InvalidRequest)?
-                .into(),
-            TokenRequest::AuthorizationCode { .. } => {
-                return Err(OpenID4VCIError::InvalidGrant.into());
-            }
-            TokenRequest::RefreshToken { refresh_token } => parse_refresh_token(refresh_token)?,
-        };
-
+        let interaction_id = interaction_id_from_token_request(&request)?;
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(&interaction_id)
@@ -1293,25 +1291,9 @@ impl OID4VCIFinal1_0Service {
             )
             .await?;
 
-        let dpop_jkt = dpop_proof
-            .map(|proof| {
-                self.validate_endpoint_dpop_proof(
-                    proof,
-                    &credential.common().protocol,
-                    &format!("{credential_schema_id}/token"),
-                    None,
-                )
-            })
-            .transpose()?;
-
         // both refresh and access token have the same structure
-        let generate_new_token = || {
-            SecretString::from(format!(
-                "{}.{}",
-                interaction_id,
-                utilities::generate_alphanumeric(32)
-            ))
-        };
+        let generate_new_token =
+            || SecretString::from(format!("{}.{}", interaction_id, generate_alphanumeric(32)));
 
         let pre_authorization_expires_in = get_issuance_param_pre_authorization_expires_in(
             &self.config,
@@ -1336,16 +1318,35 @@ impl OID4VCIFinal1_0Service {
                 .error_while("getting interaction")?;
             let interaction_data = interaction_data_to_dto(&interaction)?;
 
-            if request.is_refresh_token()
-                && interaction_data.dpop_jkt.is_some()
-                && interaction_data.dpop_jkt != dpop_jkt
-            {
-                return Err(match dpop_jkt {
-                    Some(_) => DpopProofError::KeyMismatch,
-                    None => DpopProofError::MissingProof,
+            let (token_type, dpop_nonce, dpop_jkt) = if let Some(dpop_params) = params.dpop {
+                let expected_dpop_values = self.expected_dpop_values(
+                    &credential.common().protocol,
+                    &format!("{credential_schema_id}/token"),
+                    interaction_data.dpop_jkt.as_deref(),
+                )?;
+                if let Some(dpop_proof) = dpop_proof {
+                    let dpop_params = map_dpop_params(dpop_params, self.base_url.clone());
+                    let dpop_output = self
+                        .dpop_handler
+                        .validate_proof(
+                            interaction_id,
+                            dpop_proof,
+                            None,
+                            expected_dpop_values,
+                            dpop_params,
+                        )
+                        .await
+                        .error_while("validating DPoP proof")?;
+                    (TokenType::DPoP, dpop_output.nonce, Some(dpop_output.jkt))
+                } else {
+                    if dpop_params.enforced {
+                        return Err(OID4VCIFinal1_0ServiceError::DpopRequired);
+                    }
+                    (TokenType::Bearer, None, None)
                 }
-                .into());
-            }
+            } else {
+                (TokenType::Bearer, None, None)
+            };
 
             let mut response = oidc_issuer_create_token(
                 &interaction_data,
@@ -1356,11 +1357,9 @@ impl OID4VCIFinal1_0Service {
                 access_token_expires_in,
                 refresh_token_expires_in,
             )?;
-            if dpop_jkt.is_some() {
-                response.token_type = TokenType::DPoP;
-            }
+            response.token_type = token_type;
 
-            let now = crate::clock::now_utc();
+            let now = now_utc();
 
             for credential in &credentials {
                 // If a wallet instance attestation token is provided, we create a new blob and update the credential
@@ -1430,7 +1429,7 @@ impl OID4VCIFinal1_0Service {
             let mut new_interaction_data: OpenID4VCIIssuerInteractionDataDTO =
                 (&response).try_into()?;
             new_interaction_data.formats = interaction_data.formats;
-            new_interaction_data.dpop_jkt = dpop_jkt.clone();
+            new_interaction_data.dpop_jkt = dpop_jkt;
             let data = serde_json::to_vec(&new_interaction_data)
                 .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
             interaction.data = Some(data);
@@ -1439,7 +1438,7 @@ impl OID4VCIFinal1_0Service {
                 .update_interaction(interaction.id, interaction.into())
                 .await
                 .error_while("updating credential interaction")?;
-            Ok(response)
+            Ok((response, dpop_nonce))
         }
         .boxed();
         let result = self
@@ -1448,7 +1447,7 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("creating token")?;
 
-        let result = match result {
+        let (response, dpop_nonce) = match result {
             Ok(result) => result,
             // Invalid tx-code entry means the issuance failed, we do not allow to retry
             Err(
@@ -1490,16 +1489,15 @@ impl OID4VCIFinal1_0Service {
             "Issued access token for issuance of credential {}",
             credential.common().id
         );
-        Ok(result)
+        Ok((response, dpop_nonce))
     }
 
-    fn validate_endpoint_dpop_proof(
+    fn expected_dpop_values<'a>(
         &self,
-        proof: &str,
         protocol_id: &str,
         endpoint: &str,
-        access_token: Option<&str>,
-    ) -> Result<String, OID4VCIFinal1_0ServiceError> {
+        jkt: Option<&'a str>,
+    ) -> Result<ExpectedProofValues<'a>, OID4VCIFinal1_0ServiceError> {
         let base_url = self
             .protocol_provider
             .get_protocol(protocol_id)?
@@ -1509,33 +1507,57 @@ impl OID4VCIFinal1_0Service {
             ))?;
         let url = Url::parse(&format!("{base_url}/{endpoint}"))
             .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
-        validate_dpop_proof(
-            proof,
-            "POST",
-            &url,
-            access_token,
-            &*self.key_algorithm_provider,
-        )
+        Ok(ExpectedProofValues {
+            method: "POST",
+            url,
+            jkt,
+        })
     }
 
-    fn validate_access_token_binding(
+    fn dpop_params(
         &self,
-        interaction_data: &OpenID4VCIIssuerInteractionDataDTO,
+        protocol_id: &str,
+    ) -> Result<Option<DpopParams>, OID4VCIFinal1_0ServiceError> {
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(protocol_id)
+            .error_while("getting protocol params")?;
+        Ok(params
+            .dpop
+            .map(|p| map_dpop_params(p, self.base_url.clone())))
+    }
+
+    async fn validate_access_token_binding(
+        &self,
+        interaction_id: InteractionId,
+        jkt: Option<&str>,
         access_token: &str,
         dpop_proof: Option<&str>,
         protocol_id: &str,
         endpoint: &str,
-    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
-        let Some(jkt) = &interaction_data.dpop_jkt else {
-            return Ok(());
+    ) -> Result<Option<DpopNonce>, OID4VCIFinal1_0ServiceError> {
+        let Some(params) = self.dpop_params(protocol_id)? else {
+            return Ok(None);
         };
-        let proof = dpop_proof.ok_or(DpopProofError::MissingProof)?;
-        let proof_jkt =
-            self.validate_endpoint_dpop_proof(proof, protocol_id, endpoint, Some(access_token))?;
-        if proof_jkt != *jkt {
-            return Err(DpopProofError::KeyMismatch.into());
-        }
-        Ok(())
+        // Already ongoing interactions are not validated against the protocol enforcement flag, but
+        // rather the state of key binding.
+        if jkt.is_none() {
+            return Ok(None);
+        };
+        let proof = dpop_proof.ok_or(OID4VCIFinal1_0ServiceError::DpopRequired)?;
+        let ProofValidationOutput { nonce, .. } = self
+            .dpop_handler
+            .validate_proof(
+                interaction_id,
+                proof,
+                Some(access_token),
+                self.expected_dpop_values(protocol_id, endpoint, jkt)?,
+                params,
+            )
+            .await
+            .error_while("validating DPoP proof")?;
+        Ok(nonce)
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -1666,7 +1688,7 @@ impl OID4VCIFinal1_0Service {
     pub async fn generate_nonce(
         &self,
         protocol_id: &str,
-    ) -> Result<(NonceResponse, Option<DpopNonce>), OID4VCIFinal1_0ServiceError> {
+    ) -> Result<NonceResponse, OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
@@ -1679,19 +1701,6 @@ impl OID4VCIFinal1_0Service {
             .issuance_protocol
             .get(protocol_id)
             .error_while("getting protocol params")?;
-        let dpop_nonce = if let Some(dpop_params) = &params.dpop {
-            Some(DpopNonce::from(
-                generate_nonce(
-                    dpop_params.nonce_validity_seconds,
-                    dpop_params.signing_key.clone(),
-                    self.base_url.to_owned(),
-                    Context::DPoPNonce,
-                )
-                .await?,
-            ))
-        } else {
-            None
-        };
         let Some(params) = params.nonce else {
             return Err(ConfigValidationError::TypeNotFound(protocol_id.to_string())
                 .error_while("getting nonce params")
@@ -1702,10 +1711,11 @@ impl OID4VCIFinal1_0Service {
             params.expiration_seconds,
             params.signing_key,
             self.base_url.to_owned(),
-            Context::OpenID4VCINonce,
+            NonceContext::OpenID4VCINonce,
         )
-        .await?;
-        Ok((NonceResponse { c_nonce }, dpop_nonce))
+        .await
+        .error_while("generating nonce")?;
+        Ok(NonceResponse { c_nonce })
     }
 
     pub async fn generate_oauth_attestation_challenge(
@@ -1734,9 +1744,10 @@ impl OID4VCIFinal1_0Service {
             params.expiration_seconds,
             params.signing_key,
             self.base_url.to_owned(),
-            Context::OAuthAttestationChallenge,
+            NonceContext::OAuthAttestationChallenge,
         )
-        .await?;
+        .await
+        .error_while("generating attestation challenge")?;
         Ok(ChallengeResponse {
             attestation_challenge,
         })
@@ -2051,9 +2062,10 @@ impl OID4VCIFinal1_0Service {
                 params.expiration_seconds,
                 params.signing_key,
                 self.base_url.clone(),
-                Context::OAuthAttestationChallenge,
+                NonceContext::OAuthAttestationChallenge,
             )
             .await
+            .error_while("generating fresh attestation challenge")
         };
 
         let Some(challenge) = &pop_token_claims.challenge else {
@@ -2064,12 +2076,13 @@ impl OID4VCIFinal1_0Service {
         };
 
         let challenge_id = match validate_nonce(
-            &params,
+            params.leeway_seconds,
+            params.signing_key.clone(),
             self.base_url.as_ref(),
             challenge,
-            Context::OAuthAttestationChallenge,
+            NonceContext::OAuthAttestationChallenge,
         ) {
-            Ok(challenge_id) => challenge_id,
+            Ok(info) => info.id,
             Err(err) => {
                 return Err(WalletAttestationError::InvalidChallenge {
                     fresh_challenge: get_fresh_challenge().await?,
@@ -2094,6 +2107,51 @@ impl OID4VCIFinal1_0Service {
         }
 
         Ok(())
+    }
+
+    pub async fn generate_dpop_nonce(&self, protocol: ProtocolSelection) -> Option<DpopNonce> {
+        let protocol = match protocol {
+            ProtocolSelection::ProtocolId(id) => id,
+            ProtocolSelection::AccessToken(access_token) => {
+                let interaction_id = parse_access_token(&access_token)
+                    .inspect_err(|err| tracing::warn!("Failed to parse access token: {err}"))
+                    .ok()?;
+                self.protocol_from_interaction_lenient(&interaction_id)
+                    .await?
+            }
+            ProtocolSelection::TokenRequest(request) => {
+                let interaction_id = interaction_id_from_token_request(&request)
+                    .inspect_err(|err| tracing::warn!("Failed to parse token request: {err}"))
+                    .ok()?;
+                self.protocol_from_interaction_lenient(&interaction_id)
+                    .await?
+            }
+        };
+        let params = self
+            .dpop_params(&protocol)
+            .inspect_err(|err| tracing::warn!("Failed to collect DPoP params: {err}"))
+            .ok()??;
+        self.dpop_handler
+            .generate_nonce(params)
+            .await
+            .inspect_err(|err| tracing::warn!("Failed to generate DPoP nonce: {err}"))
+            .ok()
+    }
+
+    async fn protocol_from_interaction_lenient(
+        &self,
+        interaction_id: &InteractionId,
+    ) -> Option<String> {
+        let credential = self
+            .credential_repository
+            .get_credentials_by_interaction_id(interaction_id)
+            .await
+            .inspect_err(|err| {
+                tracing::warn!("Failed to load credentials for interaction {interaction_id}: {err}")
+            })
+            .ok()
+            .and_then(|mut v| v.pop())?;
+        Some(credential.common().protocol.clone())
     }
 }
 

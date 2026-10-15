@@ -95,6 +95,7 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     UseAttestationChallenge,
     UseFreshAttestation,
     InvalidDpopProof,
+    UseDpopNonce,
     RuntimeError(String),
 }
 

@@ -1146,6 +1146,18 @@ pub enum ErrorCode {
 
     #[strum(message = "Credential manager synchronization failure")]
     BR_0516,
+
+    #[strum(message = "DPoP Proof validation failure")]
+    BR_0517,
+
+    #[strum(message = "Nonce validation error")]
+    BR_0518,
+
+    #[strum(message = "DPoP is required")]
+    BR_0519,
+
+    #[strum(message = "Missing or invalid DPoP nonce")]
+    BR_0520,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

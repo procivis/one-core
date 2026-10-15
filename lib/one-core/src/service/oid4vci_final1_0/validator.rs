@@ -1,16 +1,13 @@
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
-use standardized_types::oauth2::dpop::{DPOP_JWT_TYPE, DPoPClaims};
 use standardized_types::openid4vci::{
     CredentialRequest, CredentialRequestIdentifier, KeyStorageSecurityLevel, ResponseEncryption,
 };
 use time::Duration;
-use url::Url;
 
-use super::error::{DpopProofError, OID4VCIFinal1_0ServiceError, WalletAttestationError};
+use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -71,81 +68,6 @@ pub(crate) fn throw_if_access_token_invalid(
         return Err(OpenID4VCIError::InvalidToken.into());
     }
     Ok(())
-}
-
-const DPOP_SIGNING_ALG: &str = "ES256";
-
-const DPOP_PROOF_MAX_AGE: Duration = Duration::minutes(5);
-const DPOP_PROOF_LEEWAY: Duration = Duration::minutes(1);
-
-// Our issuer does not currently support DPoP-Nonce, but this will change in ONE-10769
-// TODO(ONE-11460, ONE-11461): validate `nonce`, and `jti` for replay.
-pub(crate) fn validate_dpop_proof(
-    proof: &str,
-    method: &str,
-    url: &Url,
-    access_token: Option<&str>,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<String, OID4VCIFinal1_0ServiceError> {
-    let proof = Jwt::<DPoPClaims>::decompose_token(proof).map_err(DpopProofError::InvalidJwt)?;
-    if !proof
-        .header
-        .r#type
-        .as_deref()
-        .is_some_and(|r#type| r#type.eq_ignore_ascii_case(DPOP_JWT_TYPE))
-    {
-        return Err(DpopProofError::InvalidType.into());
-    }
-    let jwk = proof
-        .header
-        .jwk
-        .as_ref()
-        .ok_or(DpopProofError::MissingJwk)?;
-
-    let claims = &proof.payload.custom;
-    if claims.htm != method {
-        return Err(DpopProofError::MethodMismatch.into());
-    }
-    if claims.htu != *url {
-        return Err(DpopProofError::UrlMismatch.into());
-    }
-    let issued_at = proof
-        .payload
-        .issued_at
-        .ok_or(DpopProofError::MissingIssuedAt)?;
-    validate_issuance_time(&Some(issued_at), DPOP_PROOF_LEEWAY)
-        .map_err(|_| DpopProofError::IssuedAtOutOfWindow)?;
-    validate_expiration_time(&Some(issued_at + DPOP_PROOF_MAX_AGE), DPOP_PROOF_LEEWAY)
-        .map_err(|_| DpopProofError::IssuedAtOutOfWindow)?;
-    if proof.payload.jwt_id.is_none() {
-        return Err(DpopProofError::MissingJwtId.into());
-    }
-    if let Some(access_token) = access_token {
-        let ath = SHA256
-            .hash_base64_url(access_token.as_bytes())
-            .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
-        if claims.ath.as_deref() != Some(ath.as_str()) {
-            return Err(DpopProofError::AccessTokenMismatch.into());
-        }
-    }
-
-    if proof.header.algorithm != DPOP_SIGNING_ALG {
-        return Err(DpopProofError::UnsupportedAlgorithm.into());
-    }
-    let (_, key_algorithm) = key_algorithm_provider
-        .key_algorithm_from_jose_alg(DPOP_SIGNING_ALG)
-        .ok_or(DpopProofError::UnsupportedAlgorithm)?;
-    key_algorithm
-        .parse_jwk(jwk)
-        .map_err(DpopProofError::InvalidJwk)?
-        .verify(proof.unverified_jwt.as_bytes(), &proof.signature)
-        .map_err(DpopProofError::InvalidSignature)?;
-
-    let thumbprint = jwk
-        .thumbprint()
-        .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
-    Base64UrlSafeNoPadding::encode_to_string(thumbprint)
-        .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))
 }
 
 pub(crate) fn validate_timestamps(
@@ -354,6 +276,3 @@ pub(crate) fn validate_response_encryption(
 
     Ok(())
 }
-
-#[cfg(test)]
-mod test;

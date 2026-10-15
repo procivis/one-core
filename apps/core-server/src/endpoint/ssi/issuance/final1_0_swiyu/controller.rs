@@ -5,32 +5,35 @@ use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
-use headers::authorization::Bearer;
 use mime::APPLICATION_JSON;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0MetadataResponseTypeEnum,
+    ProtocolSelection,
 };
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
-use standardized_types::oauth2::token::TokenResponse;
+use standardized_types::oauth2::token::{TokenRequest, TokenResponse};
 use standardized_types::openid4vci::{
     CredentialOffer, CredentialRequest, NonceResponse, NotificationRequest,
 };
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::dto::OpenID4VCIErrorResponseRestDTO;
+use crate::endpoint::ssi::issuance::final1_0::controller::with_new_dpop_nonce;
 use crate::endpoint::ssi::issuance::final1_0::dto::{
     OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
     OpenID4VCITokenRequestRestDTO,
 };
-use crate::endpoint::ssi::issuance::final1_0::mapper::wallet_attestation_response;
+use crate::endpoint::ssi::issuance::final1_0::mapper::{
+    dpop_error_response, is_dpop_error, wallet_attestation_response,
+};
 use crate::endpoint::ssi::issuance::final1_0_swiyu::dto::SwiyuOpenID4VCITokenResponseRestDTO;
 use crate::endpoint::ssi::issuance::mapper::{credential_response, parse_credential_request};
-use crate::extractor::Accept;
+use crate::extractor::{Accept, AccessToken};
 use crate::headers::{APPLICATION_JWT, with_dpop_nonce};
 use crate::router::AppState;
 
@@ -269,16 +272,25 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_credential_offer(
     path = "/ssi/openid4vci/final-1.0-swiyu/{id}/token",
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("DPoP" = inline(Option<String>), Header, description = "DPoP Proof", nullable = false),
         ("grant_type" = String, Query, example = "urn:ietf:params:oauth:grant-type:pre-authorized_code"),
         ("pre-authorized_code" = Option<String>, Query, nullable = false),
         ("refresh_token" = Option<String>, Query, nullable = false)
     ),
     responses(
-        (status = 200, description = "OK", body = TokenResponse),
-        (status = 400, description = "OIDC token errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 200, description = "OK", body = TokenResponse,
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 400, description = "OIDC token errors", body = OpenID4VCIErrorResponseRestDTO,
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Credential schema not found"),
-        (status = 409, description = "Wrong credential state"),
-        (status = 500, description = "Server error"),
+        (status = 409, description = "Wrong credential state",
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     tag = "openid4vci-final1_0-swiyu",
     summary = "OID4VC - Create token",
@@ -304,27 +316,41 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
     let oauth_client_attestation_pop = headers
         .get("OAuth-Client-Attestation-PoP")
         .and_then(|v| v.to_str().ok());
-    let result = async {
-        state
-            .core
-            .oid4vci_final1_0_service
-            .create_token(
-                &id,
-                request.try_into()?,
-                oauth_client_attestation,
-                oauth_client_attestation_pop,
-                None,
+    let request: TokenRequest = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            tracing::error!("Bad request: {err}",);
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO::from(err)),
             )
-            .await
-    }
-    .await;
-
-    match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(SwiyuOpenID4VCITokenResponseRestDTO::from(value)),
+                .into_response();
+        }
+    };
+    let result = state
+        .core
+        .oid4vci_final1_0_service
+        .create_token(
+            &id,
+            request.clone(),
+            oauth_client_attestation,
+            oauth_client_attestation_pop,
+            None,
         )
-            .into_response(),
+        .await;
+
+    let response = match result {
+        Ok((response, dpop_nonce)) => {
+            return with_dpop_nonce(
+                (
+                    StatusCode::OK,
+                    Json(SwiyuOpenID4VCITokenResponseRestDTO::from(response)),
+                )
+                    .into_response(),
+                dpop_nonce,
+            );
+        }
+        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI token validation error: {:?}", error);
@@ -342,7 +368,8 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    with_new_dpop_nonce(&state, ProtocolSelection::TokenRequest(request), response).await
 }
 
 #[endpoint(
@@ -351,15 +378,24 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
     path = "/ssi/openid4vci/final-1.0-swiyu/{id}/credential",
     request_body(content = CredentialRequest, description = "Credential request. May alternatively be sent JWE encrypted as `application/jwt`, see `credential_request_encryption` of the issuer metadata"),
     params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("DPoP" = inline(Option<String>), Header, description = "DPoP Proof", nullable = false),
     ),
     responses(
-        (status = 200, description = "OK. Returned JWE encrypted as `application/jwt` when the request asked for `credential_response_encryption`", body = OpenID4VCIFinal1CredentialResponseRestDTO),
-        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 200, description = "OK. Returns JWE encrypted as `application/jwt` when using encryption", body = OpenID4VCIFinal1CredentialResponseRestDTO,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Credential schema not found"),
-        (status = 409, description = "Wrong credential state"),
+        (status = 409, description = "Wrong credential state",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 415, description = "Unsupported request content type"),
-        (status = 500, description = "Server error"),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     security(
         ("openID4VCI" = [])
@@ -377,8 +413,8 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
         Path<CredentialSchemaId>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(TypedHeader(token), _): WithRejection<
-        TypedHeader<headers::Authorization<Bearer>>,
+    WithRejection(TypedHeader(access_token), _): WithRejection<
+        TypedHeader<AccessToken>,
         ErrorResponseRestDTO,
     >,
     headers: HeaderMap,
@@ -389,15 +425,15 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
         Err(response) => return *response,
     };
 
-    let access_token = token.token();
     let result = state
         .core
         .oid4vci_final1_0_service
-        .create_credential(&credential_schema_id, access_token, None, request)
+        .create_credential(&credential_schema_id, &access_token.token, None, request)
         .await;
 
-    match result {
-        Ok(value) => credential_response(value),
+    let response = match result {
+        Ok((value, nonce)) => return with_dpop_nonce(credential_response(value), nonce),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (
@@ -414,7 +450,9 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::AccessToken(access_token.token);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
 
 #[endpoint(
@@ -428,7 +466,9 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
         (status = 200, description = "OK", body = NonceResponse,
             headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
-        (status = 500, description = "Server error"),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     tag = "openid4vci-final1_0-swiyu",
     summary = "OID4VC - Generate nonce",
@@ -447,16 +487,15 @@ pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
         .generate_nonce(&issuance_protocol_id)
         .await;
 
-    match result {
-        Ok((value, dpop_nonce)) => {
-            let response = (StatusCode::OK, Json(value)).into_response();
-            with_dpop_nonce(response, dpop_nonce)
-        }
+    let response = match result {
+        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::ProtocolId(issuance_protocol_id);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
 
 #[endpoint(
@@ -467,8 +506,12 @@ pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
         ("protocol_id" = String, Path, description = "Issuance protocol id")
     ),
     responses(
-        (status = 200, description = "OK", body = ChallengeResponse),
-        (status = 500, description = "Server error"),
+        (status = 200, description = "OK", body = ChallengeResponse,
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     tag = "openid4vci-final1_0-swiyu",
     summary = "OID4VC - Generate OAuth attestation challenge",
@@ -487,13 +530,15 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_attestation_challenge(
         .generate_oauth_attestation_challenge(&issuance_protocol_id)
         .await;
 
-    match result {
+    let response = match result {
         Ok(value) => (StatusCode::OK, Json(value)).into_response(),
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::ProtocolId(issuance_protocol_id);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
 
 #[endpoint(
@@ -502,14 +547,23 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_attestation_challenge(
     path = "/ssi/openid4vci/final-1.0-swiyu/{id}/notification",
     request_body(content = NotificationRequest, description = "Notification request"),
     params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("DPoP" = inline(Option<String>), Header, description = "DPoP Proof", nullable = false),
     ),
     responses(
-        (status = 204, description = "OK"),
-        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 204, description = "OK",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO,
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
         (status = 404, description = "Credential schema not found"),
-        (status = 409, description = "Wrong credential state"),
-        (status = 500, description = "Server error"),
+        (status = 409, description = "Wrong credential state",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
+        (status = 500, description = "Server error",
+            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+        ),
     ),
     security(
         ("openID4VCI" = [])
@@ -527,21 +581,21 @@ pub(crate) async fn oid4vci_final1_0_swiyu_credential_notification(
         Path<CredentialSchemaId>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(TypedHeader(token), _): WithRejection<
-        TypedHeader<headers::Authorization<Bearer>>,
+    WithRejection(TypedHeader(access_token), _): WithRejection<
+        TypedHeader<AccessToken>,
         ErrorResponseRestDTO,
     >,
     WithRejection(Json(request), _): WithRejection<Json<NotificationRequest>, ErrorResponseRestDTO>,
 ) -> Response {
-    let access_token = token.token();
     let result = state
         .core
         .oid4vci_final1_0_service
-        .handle_notification(credential_schema_id, access_token, None, request)
+        .handle_notification(credential_schema_id, &access_token.token, None, request)
         .await;
 
-    match result {
-        Ok(_) => (StatusCode::NO_CONTENT).into_response(),
+    let response = match result {
+        Ok(nonce) => return with_dpop_nonce((StatusCode::NO_CONTENT).into_response(), nonce),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential notification error: {:?}", error);
             (
@@ -558,5 +612,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_credential_notification(
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-    }
+    };
+    let protocol = ProtocolSelection::AccessToken(access_token.token);
+    with_new_dpop_nonce(&state, protocol, response).await
 }
