@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use futures::FutureExt;
 use num_traits::pow;
 use shared_types::NotificationId;
 use time::{Duration, OffsetDateTime};
@@ -17,7 +16,7 @@ use crate::proto::http_client;
 use crate::proto::http_client::{HttpClient, StatusCode};
 use crate::proto::notification_scheduler::scheduler::validate_url;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
-use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::task::webhook_notify::model::{Retries, WebhookNotifyParams};
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::notification_repository::NotificationRepository;
@@ -293,11 +292,7 @@ impl NotificationSender for NotificationSenderImpl {
         params: WebhookNotifyParams,
     ) -> Result<NotificationResult, Error> {
         self.tx_manager
-            .tx_with_config(
-                self.send_internal(notification_id, params).boxed(),
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+            .tx(self.send_internal(notification_id, params))
             .await
             .error_while("processing notification")?
     }

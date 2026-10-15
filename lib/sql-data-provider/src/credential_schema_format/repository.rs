@@ -1,7 +1,5 @@
 use autometrics::autometrics;
-use futures::FutureExt;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
-use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_schema_format_repository::CredentialSchemaFormatRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
@@ -25,28 +23,23 @@ impl CredentialSchemaFormatRepository for CredentialSchemaFormatProvider {
 
         let inserted_id = self
             .db
-            .tx_with_config(
-                async {
-                    let inserted = format_active
-                        .insert(&self.db)
+            .tx(async {
+                let inserted = format_active
+                    .insert(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
+
+                if !claim_mappings.is_empty() {
+                    let mappings: Vec<credential_schema_format_claim_schema::ActiveModel> =
+                        claim_mappings.into_iter().map(Into::into).collect();
+                    credential_schema_format_claim_schema::Entity::insert_many(mappings)
+                        .exec(&self.db)
                         .await
-                        .map_err(to_data_layer_error)?;
-
-                    if !claim_mappings.is_empty() {
-                        let mappings: Vec<credential_schema_format_claim_schema::ActiveModel> =
-                            claim_mappings.into_iter().map(Into::into).collect();
-                        credential_schema_format_claim_schema::Entity::insert_many(mappings)
-                            .exec(&self.db)
-                            .await
-                            .map_err(|e| DataLayerError::Db(e.into()))?;
-                    }
-
-                    Ok::<_, DataLayerError>(inserted.id)
+                        .map_err(|e| DataLayerError::Db(e.into()))?;
                 }
-                .boxed(),
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+
+                Ok::<_, DataLayerError>(inserted.id)
+            })
             .await??;
 
         Ok(inserted_id)

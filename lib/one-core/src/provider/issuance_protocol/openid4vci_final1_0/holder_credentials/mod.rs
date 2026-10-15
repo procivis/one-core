@@ -46,7 +46,6 @@ use crate::proto::identifier_creator::{
     issuer_display_to_identifier_translations,
 };
 use crate::proto::session_provider::SessionExt;
-use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -455,40 +454,36 @@ impl OpenID4VCIFinal1_0 {
         // Persist one configuration atomically, including blobs. Other configurations
         // can still succeed independently if this refresh fails.
         self.tx_manager
-            .tx_with_config(
-                async {
-                    let mut result = Vec::with_capacity(batch_credentials.len());
-                    for batch_credential in batch_credentials {
-                        let CredentialWithBlob {
-                            mut credential,
-                            serialized,
-                        } = batch_credential;
-                        self.change_to_batch_item(&mut credential, batch_parent.common().id)?;
-                        let credential_blob_id = if let Some(token) = serialized {
-                            let blob = Blob::new(token.as_ref(), BlobType::Credential);
-                            let blob_id = blob.id;
-                            db_blob_storage
-                                .create(blob)
-                                .await
-                                .error_while("creating credential blob")?;
-                            Some(blob_id)
-                        } else {
-                            None
-                        };
-                        let holder = credential.holder_mut()?;
-                        holder.common.state = CredentialStateEnum::Accepted;
-                        holder.data.credential_blob_id = credential_blob_id;
-                        result.push(credential);
-                    }
-                    self.credential_repository
-                        .create_credentials(result.clone())
-                        .await
-                        .error_while("creating credentials")?;
-                    Ok::<_, IssuanceProtocolError>(result)
-                },
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+            .tx(async {
+                let mut result = Vec::with_capacity(batch_credentials.len());
+                for batch_credential in batch_credentials {
+                    let CredentialWithBlob {
+                        mut credential,
+                        serialized,
+                    } = batch_credential;
+                    self.change_to_batch_item(&mut credential, batch_parent.common().id)?;
+                    let credential_blob_id = if let Some(token) = serialized {
+                        let blob = Blob::new(token.as_ref(), BlobType::Credential);
+                        let blob_id = blob.id;
+                        db_blob_storage
+                            .create(blob)
+                            .await
+                            .error_while("creating credential blob")?;
+                        Some(blob_id)
+                    } else {
+                        None
+                    };
+                    let holder = credential.holder_mut()?;
+                    holder.common.state = CredentialStateEnum::Accepted;
+                    holder.data.credential_blob_id = credential_blob_id;
+                    result.push(credential);
+                }
+                self.credential_repository
+                    .create_credentials(result.clone())
+                    .await
+                    .error_while("creating credentials")?;
+                Ok::<_, IssuanceProtocolError>(result)
+            })
             .await
             .error_while("persisting refreshed credentials")?
     }

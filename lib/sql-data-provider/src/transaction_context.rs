@@ -43,21 +43,6 @@ impl TransactionManagerImpl {
     {
         (self as &dyn TransactionManager).tx(future.boxed()).await
     }
-
-    pub async fn tx_with_config<T, E>(
-        &self,
-        future: impl Future<Output = Result<T, E>> + Send,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<Result<T, E>, DataLayerError>
-    where
-        T: Send + 'static,
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        (self as &dyn TransactionManager)
-            .tx_with_config(future.boxed(), isolation_level, access_mode)
-            .await
-    }
 }
 
 impl WithSupportedDbType for TransactionManagerImpl {
@@ -129,7 +114,11 @@ impl TransactionManager for TransactionManagerImpl {
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<Result<(), anyhow::Error>, DataLayerError> {
-        let mut requested_isolation = isolation_level.map(map_isolation_level);
+        // SQLite does not support isolation levels, ignore them
+        let supports_isolation = self.get_database_backend() != DbBackend::Sqlite;
+        let mut requested_isolation = isolation_level
+            .filter(|_| supports_isolation)
+            .map(map_isolation_level);
         let access_mode = access_mode.map(map_access_mode);
         // Check if we are already in a transaction. If we are, we need to nest deeper on the existing one.
         let new_tx = if let Ok((tx, parent_isolation, _)) = TX_CONTEXT.try_with(|v| v.clone()) {
@@ -155,6 +144,11 @@ impl TransactionManager for TransactionManagerImpl {
 
             tx.begin_with_config(None, access_mode).await
         } else {
+            if supports_isolation && requested_isolation.is_none() {
+                // READ COMMITTED is the default: it avoids InnoDB gap locks, which cause deadlocks
+                // during parallel inserts
+                requested_isolation = Some(sea_orm::IsolationLevel::ReadCommitted);
+            }
             tracing::trace!(
                 "Non-nested transaction, isolation_level:{requested_isolation:?}, access_mode:{access_mode:?}"
             );

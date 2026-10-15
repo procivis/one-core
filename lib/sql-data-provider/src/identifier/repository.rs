@@ -5,7 +5,6 @@ use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::identifier::{
     GetIdentifierList, Identifier, IdentifierListQuery, UpdateIdentifierRequest,
 };
-use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::identifier_repository::IdentifierRepository;
 use sea_orm::{
@@ -45,24 +44,19 @@ impl IdentifierRepository for IdentifierProvider {
         let localized_texts = request.translations.as_ref().await?.to_owned();
         let identifier = self
             .db
-            .tx_with_config(
-                async {
-                    let identifier = identifier::ActiveModel::from(request)
-                        .insert(&self.db)
-                        .await
-                        .map_err(to_data_layer_error)?;
+            .tx(async {
+                let identifier = identifier::ActiveModel::from(request)
+                    .insert(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
 
-                    if !localized_texts.is_empty() {
-                        self.localized_text_repository
-                            .upsert_many(localized_texts)
-                            .await?;
-                    }
-                    Ok::<_, DataLayerError>(identifier)
+                if !localized_texts.is_empty() {
+                    self.localized_text_repository
+                        .upsert_many(localized_texts)
+                        .await?;
                 }
-                .boxed(),
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+                Ok::<_, DataLayerError>(identifier)
+            })
             .await??;
         Ok(identifier.id)
     }

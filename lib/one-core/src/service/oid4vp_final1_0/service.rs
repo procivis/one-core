@@ -26,7 +26,6 @@ use crate::model::identifier::Identifier;
 use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
-use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
@@ -426,36 +425,32 @@ impl OID4VPFinal1_0Service {
     ) {
         let result = self
             .transaction_manager
-            .tx_with_config(
-                async {
-                    // A concurrent submission may have completed the proof while this one
-                    // was being validated. Serialize this transition with acceptance.
-                    let proof = self
-                        .proof_repository
-                        .get_proof(id, Some(LockType::Update))
-                        .await?;
-                    if !matches!(
-                        proof.state,
-                        ProofStateEnum::Pending | ProofStateEnum::Requested
-                    ) {
-                        return Ok(());
-                    }
+            .tx(async {
+                // A concurrent submission may have completed the proof while this one
+                // was being validated. Serialize this transition with acceptance.
+                let proof = self
+                    .proof_repository
+                    .get_proof(id, Some(LockType::Update))
+                    .await?;
+                if !matches!(
+                    proof.state,
+                    ProofStateEnum::Pending | ProofStateEnum::Requested
+                ) {
+                    return Ok(());
+                }
 
-                    self.proof_repository
-                        .update_proof(
-                            id,
-                            UpdateProofRequest {
-                                state: Some(ProofStateEnum::Error),
-                                proof_blob_id: Some(Some(proof_blob_id)),
-                                ..Default::default()
-                            },
-                            Some(error_metadata),
-                        )
-                        .await
-                },
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+                self.proof_repository
+                    .update_proof(
+                        id,
+                        UpdateProofRequest {
+                            state: Some(ProofStateEnum::Error),
+                            proof_blob_id: Some(Some(proof_blob_id)),
+                            ..Default::default()
+                        },
+                        Some(error_metadata),
+                    )
+                    .await
+            })
             .await
             .flatten();
         if let Err(err) = result {

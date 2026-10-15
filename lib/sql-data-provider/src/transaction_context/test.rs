@@ -180,3 +180,27 @@ async fn failed_commit_discards_callbacks() {
         Err(mpsc::TryRecvError::Disconnected)
     ));
 }
+
+#[tokio::test]
+async fn sqlite_ignores_isolation_levels() {
+    let manager = setup().await;
+    let manager_ref = &manager as &dyn TransactionManager;
+
+    manager_ref
+        .tx_with_config(
+            async {
+                manager_ref
+                    .tx_with_config(
+                        async { Ok::<_, DataLayerError>(()) },
+                        Some(IsolationLevel::ReadCommitted),
+                        None,
+                    )
+                    .await?
+            },
+            Some(IsolationLevel::Serializable),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+}

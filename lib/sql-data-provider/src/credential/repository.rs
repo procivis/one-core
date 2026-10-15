@@ -1,14 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use autometrics::autometrics;
-use futures::FutureExt;
 use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::credential::{
     Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
     GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
 };
 use one_core::model::relation::BatchModelLoader;
-use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::ActiveValue::NotSet;
@@ -260,12 +258,7 @@ impl CredentialRepository for CredentialProvider {
         let ids = requests.iter().map(|request| request.common().id).collect();
         let credentials = prepare_credentials(requests).await?;
         self.db
-            .tx_with_config(
-                insert_credentials_with_claims(&self.db, credentials).boxed(),
-                // READ COMMITTED avoids InnoDB gap locks during parallel inserts.
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+            .tx(insert_credentials_with_claims(&self.db, credentials))
             .await??;
         Ok(ids)
     }

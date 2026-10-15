@@ -1,9 +1,7 @@
 use autometrics::autometrics;
-use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::common::LockType;
 use one_core::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
-use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::{
@@ -103,39 +101,31 @@ impl DidRepository for DidProvider {
 
         let did = self
             .db
-            .tx_with_config(
-                async {
-                    let did = did::ActiveModel::from(request)
-                        .insert(&self.db)
-                        .await
-                        .map_err(to_data_layer_error)?;
+            .tx(async {
+                let did = did::ActiveModel::from(request)
+                    .insert(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
 
-                    let keys = keys.as_ref().await?;
-                    if !keys.is_empty() {
-                        key_did::Entity::insert_many(
-                            keys.into_iter()
-                                .map(|key| key_did::ActiveModel {
-                                    did_id: Set(did.id),
-                                    key_id: Set(key.key.id),
-                                    role: Set(key.role.into()),
-                                    reference: Set(key.reference.to_owned()),
-                                })
-                                .collect::<Vec<_>>(),
-                        )
-                        .exec(&self.db)
-                        .await
-                        .map_err(to_data_layer_error)?;
-                    }
-
-                    Ok::<_, DataLayerError>(did)
+                let keys = keys.as_ref().await?;
+                if !keys.is_empty() {
+                    key_did::Entity::insert_many(
+                        keys.into_iter()
+                            .map(|key| key_did::ActiveModel {
+                                did_id: Set(did.id),
+                                key_id: Set(key.key.id),
+                                role: Set(key.role.into()),
+                                reference: Set(key.reference.to_owned()),
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
                 }
-                .boxed(),
-                // In isolation mode "read committed" InnoDB will _not_ create gap locks. Given there
-                // are multiple unique indexes, this is necessary to avoid deadlocks during parallel
-                // inserts.
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+
+                Ok::<_, DataLayerError>(did)
+            })
             .await??;
 
         Ok(did.id)

@@ -73,7 +73,6 @@ use crate::proto::dpop_handler::{DpopParams, ExpectedProofValues, ProofValidatio
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
-use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::model::{ProtocolArtifact, WalletAttestationArtifact};
@@ -526,12 +525,7 @@ impl OID4VCIFinal1_0Service {
 
         let result = self
             .transaction_manager
-            .tx_with_config(
-                self.issue_tx(interaction_id, holder_identifiers, credential, format)
-                    .boxed(),
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+            .tx(self.issue_tx(interaction_id, holder_identifiers, credential, format))
             .await
             .error_while("issuing credential")?;
 

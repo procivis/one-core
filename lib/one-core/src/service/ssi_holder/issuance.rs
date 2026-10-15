@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use futures_util::FutureExt;
 use shared_types::{CredentialId, DidId, EcosystemId, IdentifierId, InteractionId, KeyId};
 use standardized_types::oauth2::authorization_request::AuthorizationRequest;
 use standardized_types::openid4vci::SigningAlgValue;
@@ -33,7 +32,6 @@ use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
 use crate::proto::oauth_client::OAuthClientProvider;
-use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::blob_storage::BlobStorage;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
@@ -261,34 +259,26 @@ impl SSIHolderService {
             .get_blob_storage(BlobStorageType::Db)?;
 
         self.transaction_manager
-            .tx_with_config(
-                async {
-                    let mut prepared = Vec::with_capacity(credentials.len());
-                    for credential in credentials {
-                        prepared.push(
-                            self.prepare_credential(credential, db_blob_storage.as_ref())
-                                .await?,
-                        );
-                    }
-                    self.credential_repository
-                        .create_credentials(prepared)
-                        .await
-                        .error_while("creating credentials")?;
-                    if !configuration_parents.is_empty() {
-                        protocol
-                            .regroup_configurations(interaction_id, configuration_parents)
-                            .await
-                            .error_while("regrouping credential configurations")?;
-                    }
-                    Ok::<_, HolderServiceError>(())
+            .tx(async {
+                let mut prepared = Vec::with_capacity(credentials.len());
+                for credential in credentials {
+                    prepared.push(
+                        self.prepare_credential(credential, db_blob_storage.as_ref())
+                            .await?,
+                    );
                 }
-                .boxed(),
-                // `CredentialRepository::create_credentials` opens a READ COMMITTED
-                // transaction to avoid InnoDB gap-lock deadlocks (ONES-54). Nesting
-                // requires the enclosing transaction to use the same isolation level.
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+                self.credential_repository
+                    .create_credentials(prepared)
+                    .await
+                    .error_while("creating credentials")?;
+                if !configuration_parents.is_empty() {
+                    protocol
+                        .regroup_configurations(interaction_id, configuration_parents)
+                        .await
+                        .error_while("regrouping credential configurations")?;
+                }
+                Ok::<_, HolderServiceError>(())
+            })
             .await
             .error_while("creating credentials")??;
         Ok(IssuanceAcceptResponseDTO {

@@ -38,7 +38,6 @@ use crate::model::organisation::Organisation;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::session_provider::SessionExt;
-use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::model::RevocationState;
@@ -790,69 +789,60 @@ impl ManagedInstanceService {
             .get_provider(&managed_instance.provider)?;
 
         let mut result = IssueWalletUnitAttestationResponseDTO::default();
-        // READ COMMITTED, so the status list index read includes entries committed while waiting for the lock
+        // Relies on the default READ COMMITTED isolation, so the status list index read includes entries committed while waiting for the lock
         self.tx_manager
-            .tx_with_config(
-                async {
-                    // locks the wallet unit row before the status list lock, so concurrent
-                    // issuances for one unit wait here instead of deadlocking (shared FK lock)
-                    self.managed_instance_repository
-                        .update(
-                            &instance_id,
-                            UpdateManagedInstanceRequest {
-                                last_issuance: Some(crate::clock::now_utc()),
-                                ..Default::default()
-                            },
+            .tx(async {
+                // locks the wallet unit row before the status list lock, so concurrent
+                // issuances for one unit wait here instead of deadlocking (shared FK lock)
+                self.managed_instance_repository
+                    .update(
+                        &instance_id,
+                        UpdateManagedInstanceRequest {
+                            last_issuance: Some(crate::clock::now_utc()),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("updating wallet unit")?;
+
+                for wia_request in request.wia {
+                    let attestation = wallet_provider
+                        .issue_instance_attestation(
+                            wia_request,
+                            issuer_identifier,
+                            &managed_instance,
                         )
                         .await
-                        .error_while("updating wallet unit")?;
+                        .error_while("issuing instance attestation")?;
 
-                    for wia_request in request.wia {
-                        let attestation = wallet_provider
-                            .issue_instance_attestation(
-                                wia_request,
-                                issuer_identifier,
-                                &managed_instance,
-                            )
-                            .await
-                            .error_while("issuing instance attestation")?;
+                    self.create_instance_history(
+                        &managed_instance,
+                        HistoryAction::WiaCreated,
+                        Some(HistoryMetadata::ManagedInstanceAttestation(attestation.id)),
+                    )
+                    .await;
 
-                        self.create_instance_history(
-                            &managed_instance,
-                            HistoryAction::WiaCreated,
-                            Some(HistoryMetadata::ManagedInstanceAttestation(attestation.id)),
-                        )
-                        .await;
-
-                        result.wia.push(attestation.jwt);
-                    }
-
-                    for wua_request in request.wua {
-                        let attestation = wallet_provider
-                            .issue_key_attestation(
-                                wua_request,
-                                issuer_identifier,
-                                &managed_instance,
-                            )
-                            .await
-                            .error_while("issuing key attestation")?;
-
-                        self.create_instance_history(
-                            &managed_instance,
-                            HistoryAction::KaCreated,
-                            Some(HistoryMetadata::ManagedInstanceAttestation(attestation.id)),
-                        )
-                        .await;
-
-                        result.wua.push(attestation.jwt);
-                    }
-
-                    Ok::<_, ManagedInstanceError>(())
+                    result.wia.push(attestation.jwt);
                 }
-                .boxed(),
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
+
+                for wua_request in request.wua {
+                    let attestation = wallet_provider
+                        .issue_key_attestation(wua_request, issuer_identifier, &managed_instance)
+                        .await
+                        .error_while("issuing key attestation")?;
+
+                    self.create_instance_history(
+                        &managed_instance,
+                        HistoryAction::KaCreated,
+                        Some(HistoryMetadata::ManagedInstanceAttestation(attestation.id)),
+                    )
+                    .await;
+
+                    result.wua.push(attestation.jwt);
+                }
+
+                Ok::<_, ManagedInstanceError>(())
+            })
             .await
             .error_while("issuing attestations")??;
 
