@@ -1,4 +1,10 @@
-use shared_types::{ClaimSchemaId, CredentialSchemaFormatId, CredentialSchemaId, EntityId};
+use std::collections::HashSet;
+use std::sync::Arc;
+
+use mockall::predicate::eq;
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId, EntityId,
+};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vci::{
     ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialMetadata,
@@ -16,7 +22,12 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
-use crate::service::test_utilities::{CredentialBuilder, dummy_credential, dummy_organisation};
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::service::test_utilities::{
+    CredentialBuilder, dummy_credential, dummy_organisation, generic_formatter_capabilities,
+};
 
 #[test]
 fn rejects_holder_batch_parent() {
@@ -56,10 +67,23 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
         ..Default::default()
     };
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq::<CredentialFormat>("JWT".into()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_get_capabilities()
+                .return_const(generic_formatter_capabilities());
+            Ok(Arc::new(formatter))
+        });
+
     let format = schema.formats.as_ref().await.unwrap()[0].clone();
-    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
-        .await
-        .unwrap();
+    let issuer_claim_metadata =
+        map_issuer_claim_metadata(&schema, &metadata, &format, &formatter_provider)
+            .await
+            .unwrap();
     let mandatory_claim_ids = issuer_mandatory_claim_ids(&issuer_claim_metadata).unwrap();
 
     assert_eq!(mandatory_claim_ids, vec![claim_id]);
@@ -157,10 +181,23 @@ async fn applies_wildcard_metadata_to_array_children_and_skips_concrete_indices(
         ..Default::default()
     };
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq::<CredentialFormat>("JWT".into()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_get_capabilities()
+                .return_const(generic_formatter_capabilities());
+            Ok(Arc::new(formatter))
+        });
+
     let format = schema.formats.as_ref().await.unwrap()[0].clone();
-    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
-        .await
-        .unwrap();
+    let issuer_claim_metadata =
+        map_issuer_claim_metadata(&schema, &metadata, &format, &formatter_provider)
+            .await
+            .unwrap();
     let translations =
         apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
             .await
@@ -209,10 +246,23 @@ async fn array_child_path_without_wildcard_is_skipped() {
         ..Default::default()
     };
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq::<CredentialFormat>("JWT".into()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_get_capabilities()
+                .return_const(generic_formatter_capabilities());
+            Ok(Arc::new(formatter))
+        });
+
     let format = schema.formats.as_ref().await.unwrap()[0].clone();
-    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
-        .await
-        .unwrap();
+    let issuer_claim_metadata =
+        map_issuer_claim_metadata(&schema, &metadata, &format, &formatter_provider)
+            .await
+            .unwrap();
     let translations =
         apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
             .await
@@ -254,10 +304,23 @@ async fn wildcard_metadata_requires_an_array_parent() {
         ..Default::default()
     };
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq::<CredentialFormat>("JWT".into()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_get_capabilities()
+                .return_const(generic_formatter_capabilities());
+            Ok(Arc::new(formatter))
+        });
+
     let format = schema.formats.as_ref().await.unwrap()[0].clone();
-    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
-        .await
-        .unwrap();
+    let issuer_claim_metadata =
+        map_issuer_claim_metadata(&schema, &metadata, &format, &formatter_provider)
+            .await
+            .unwrap();
     let translations =
         apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
             .await
@@ -314,10 +377,23 @@ async fn errors_when_mandatory_issuer_metadata_claims_are_missing_from_parsed_sc
         ..Default::default()
     };
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq::<CredentialFormat>("JWT".into()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_get_capabilities()
+                .return_const(generic_formatter_capabilities());
+            Ok(Arc::new(formatter))
+        });
+
     let format = schema.formats.as_ref().await.unwrap()[0].clone();
-    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
-        .await
-        .unwrap();
+    let issuer_claim_metadata =
+        map_issuer_claim_metadata(&schema, &metadata, &format, &formatter_provider)
+            .await
+            .unwrap();
     // Display enrichment does not validate issuer requirements.
     apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
         .await
@@ -371,10 +447,23 @@ async fn returns_all_issuer_metadata_translations_for_persistence() {
         }]),
     };
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq::<CredentialFormat>("JWT".into()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_get_capabilities()
+                .return_const(generic_formatter_capabilities());
+            Ok(Arc::new(formatter))
+        });
+
     let format = schema.formats.as_ref().await.unwrap()[0].clone();
-    let issuer_claim_metadata = map_issuer_claim_metadata(&schema, &metadata, &format)
-        .await
-        .unwrap();
+    let issuer_claim_metadata =
+        map_issuer_claim_metadata(&schema, &metadata, &format, &formatter_provider)
+            .await
+            .unwrap();
     let translations =
         apply_issuer_metadata_to_schema(&mut schema, Some(&metadata), "en", &issuer_claim_metadata)
             .await
@@ -393,6 +482,83 @@ async fn returns_all_issuer_metadata_translations_for_persistence() {
             && translation.lang == "en"
             && translation.value == "Given name"
     }));
+}
+
+#[tokio::test]
+async fn filters_out_forbidden_technical_keys_from_issuer_metadata() {
+    let claim = claim_schema("givenName", "STRING");
+    let claim_id = claim.id;
+    let format_id = Uuid::new_v4().into();
+    let schema = credential_schema(
+        Uuid::new_v4().into(),
+        format_id,
+        "SD_JWT_VC",
+        vec![claim],
+        vec![mapping(format_id, claim_id, "given_name", None)],
+    );
+    let metadata = CredentialMetadata {
+        display: None,
+        claims: Some(vec![
+            ClaimMetadata {
+                path: vec!["given_name".to_string()].into(),
+                display: None,
+                mandatory: None,
+                additional_values: Default::default(),
+            },
+            ClaimMetadata {
+                path: vec!["vct".to_string()].into(),
+                display: None,
+                mandatory: None,
+                additional_values: Default::default(),
+            },
+            ClaimMetadata {
+                path: vec!["_sd".to_string()].into(),
+                display: None,
+                mandatory: None,
+                additional_values: Default::default(),
+            },
+            ClaimMetadata {
+                path: vec!["nested".to_string(), "vct".to_string()].into(),
+                display: None,
+                mandatory: None,
+                additional_values: Default::default(),
+            },
+            ClaimMetadata {
+                path: vec!["nested".to_string(), "_sd".to_string()].into(),
+                display: None,
+                mandatory: None,
+                additional_values: Default::default(),
+            },
+        ]),
+    };
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq::<CredentialFormat>("SD_JWT_VC".into()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter
+                .expect_get_capabilities()
+                .return_const(FormatterCapabilities {
+                    forbidden_claim_technical_keys: vec!["_sd".to_string()],
+                    forbidden_root_claim_technical_keys: vec!["vct".to_string()],
+                    ..generic_formatter_capabilities()
+                });
+            Ok(Arc::new(formatter))
+        });
+
+    let format = schema.formats.as_ref().await.unwrap()[0].clone();
+    let issuer_claim_metadata =
+        map_issuer_claim_metadata(&schema, &metadata, &format, &formatter_provider)
+            .await
+            .unwrap();
+
+    let formatted_keys: HashSet<_> = issuer_claim_metadata
+        .iter()
+        .map(|claim| claim.formatted_key.as_str())
+        .collect();
+    assert_eq!(formatted_keys, ["given_name", "nested/vct"].into());
 }
 
 fn claim_schema(key: &str, data_type: &str) -> ClaimSchema {

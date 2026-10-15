@@ -117,7 +117,7 @@ use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::managed_instance::dto::IssueWalletUnitAttestationResponseDTO;
 use crate::service::test_utilities::{
     CredentialBuilder, dummy_claim_schema, dummy_did, dummy_identifier, dummy_key,
-    dummy_organisation, get_dummy_date,
+    dummy_organisation, generic_formatter_capabilities, get_dummy_date,
 };
 
 #[derive(Default)]
@@ -768,6 +768,9 @@ async fn test_holder_accept_credential_success() {
             ))
         }
     });
+    formatter
+        .expect_get_capabilities()
+        .return_const(generic_formatter_capabilities());
 
     let formatter = Arc::new(formatter);
     let formatter_clone = formatter.clone();
@@ -4701,6 +4704,9 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
             ))
         }
     });
+    formatter
+        .expect_get_capabilities()
+        .return_const(generic_formatter_capabilities());
 
     let formatter = Arc::new(formatter);
     let formatter_clone = formatter.clone();
@@ -5469,6 +5475,9 @@ async fn provider_for_credential_acceptance(
             ))
         }
     });
+    formatter
+        .expect_get_capabilities()
+        .return_const(generic_formatter_capabilities());
     let formatter = Arc::new(formatter);
     let formatter_clone = formatter.clone();
     let mut formatter_provider = MockCredentialFormatterProvider::default();

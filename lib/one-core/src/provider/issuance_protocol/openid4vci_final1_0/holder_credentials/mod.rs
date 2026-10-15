@@ -49,6 +49,7 @@ use crate::proto::session_provider::SessionExt;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::model::{CredentialWithBlob, IssuanceRefreshResponse};
 use crate::provider::issuance_protocol::{IssuanceAcceptResponse, IssuanceProtocolError};
 use crate::validator::validate_issuance_time;
@@ -175,7 +176,13 @@ impl OpenID4VCIFinal1_0 {
         let parsed_format = data.format.as_ref().await?.to_owned();
         let issuer_claim_metadata = if let Some(metadata) = &configuration.credential_metadata {
             let schema = common.schema.as_ref().await?;
-            map_issuer_claim_metadata(&schema, metadata, &parsed_format).await?
+            map_issuer_claim_metadata(
+                &schema,
+                metadata,
+                &parsed_format,
+                self.formatter_provider.as_ref(),
+            )
+            .await?
         } else {
             vec![]
         };
@@ -235,7 +242,13 @@ impl OpenID4VCIFinal1_0 {
         // claim IDs.
         let current_format = data.format.as_ref().await?.to_owned();
         let issuer_claim_metadata = if let Some(metadata) = metadata {
-            map_issuer_claim_metadata(schema, metadata, &current_format).await?
+            map_issuer_claim_metadata(
+                schema,
+                metadata,
+                &current_format,
+                self.formatter_provider.as_ref(),
+            )
+            .await?
         } else {
             vec![]
         };
@@ -742,11 +755,16 @@ async fn map_issuer_claim_metadata<'a>(
     schema: &CredentialSchema,
     metadata: &'a CredentialMetadata,
     current_format: &CredentialSchemaFormat,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<Vec<IssuerClaimMetadata<'a>>, IssuanceProtocolError> {
     let issuer_metadata_claims = metadata.claims.as_deref().unwrap_or(&[]);
     if issuer_metadata_claims.is_empty() {
         return Ok(vec![]);
     }
+
+    let formatter_capabilities = formatter_provider
+        .get_credential_formatter(&current_format.format)?
+        .get_capabilities();
 
     let claim_schemas = schema.claim_schemas.as_ref().await?;
     let mappings = current_format.claim_mappings.as_ref().await?;
@@ -775,6 +793,36 @@ async fn map_issuer_claim_metadata<'a>(
 
     Ok(issuer_metadata_claims
         .iter()
+        // skip forbidden keys (e.g. meta claims)
+        .filter(|claim| {
+            let claim_path = &claim.path.segments;
+            if let Some(PathSegment::PropertyName(root_key)) = claim_path.first()
+                && formatter_capabilities
+                    .forbidden_root_claim_technical_keys
+                    .contains(root_key)
+            {
+                tracing::warn!("Forbidden claim in issuer metadata: `{claim:?}`");
+                return false;
+            }
+
+            if claim_path
+                .iter()
+                .filter_map(|key| match key {
+                    PathSegment::PropertyName(key) => Some(key),
+                    PathSegment::ArrayIndex(_) | PathSegment::ArrayAll => None,
+                })
+                .any(|key| {
+                    formatter_capabilities
+                        .forbidden_claim_technical_keys
+                        .contains(key)
+                })
+            {
+                tracing::warn!("Forbidden claim in issuer metadata: `{claim:?}`");
+                return false;
+            }
+
+            true
+        })
         .filter_map(|claim| {
             let Some(key) =
                 metadata_path_to_formatted_technical_key(&claim.path, &array_technical_keys)
