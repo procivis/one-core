@@ -9,6 +9,7 @@ use one_core::model::interaction::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
+use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
 use shared_types::{EcosystemId, InteractionId};
@@ -25,6 +26,7 @@ use crate::transaction_context::TransactionManagerImpl;
 #[derive(Default)]
 struct Repositories {
     pub organisation_repository: MockOrganisationRepository,
+    pub key_repository: MockKeyRepository,
 }
 
 struct TestSetup {
@@ -40,6 +42,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
         provider: InteractionProvider {
             db: TransactionManagerImpl::new(db.clone()),
             organisation_repository: Arc::from(repositories.organisation_repository),
+            key_repository: Arc::from(repositories.key_repository),
         },
         db,
     }
@@ -89,6 +92,7 @@ async fn test_create_interaction() {
 
     let id = Uuid::new_v4().into();
     let interaction = Interaction {
+        dpop_key: None,
         id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),

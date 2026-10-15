@@ -168,9 +168,15 @@ impl DataLayer {
             db: transaction_manager.clone(),
         });
 
+        let key_repository = Arc::new(KeyProvider {
+            db: transaction_manager.clone(),
+            organisation_repository: organisation_repository.clone(),
+        });
+
         let interaction_repository = Arc::new(InteractionProvider {
             db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
+            key_repository: key_repository.clone(),
         });
 
         let credential_schema_repository = Arc::new(CredentialSchemaProvider {
@@ -181,11 +187,6 @@ impl DataLayer {
 
         let credential_schema_format_repository = Arc::new(CredentialSchemaFormatProvider {
             db: transaction_manager.clone(),
-        });
-
-        let key_repository = Arc::new(KeyProvider {
-            db: transaction_manager.clone(),
-            organisation_repository: organisation_repository.clone(),
         });
 
         let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider {

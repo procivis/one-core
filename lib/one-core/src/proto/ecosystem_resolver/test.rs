@@ -105,6 +105,7 @@ fn interaction(earlier_outcomes: EcosystemOutcomes) -> Interaction {
     ecosystem_data.merge_outcomes(&earlier_outcomes);
 
     Interaction {
+        dpop_key: None,
         id: Uuid::new_v4().into(),
         created_date: now_utc(),
         last_modified: now_utc(),

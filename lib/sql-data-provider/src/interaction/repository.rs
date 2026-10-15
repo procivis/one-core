@@ -68,6 +68,7 @@ impl InteractionRepository for InteractionProvider {
         Ok(interaction_from_model(
             interaction,
             &self.organisation_repository,
+            &self.key_repository,
         ))
     }
 

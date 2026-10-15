@@ -324,6 +324,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let interaction = Interaction {
+        dpop_key: None,
         id: Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
             .unwrap()
             .into(),

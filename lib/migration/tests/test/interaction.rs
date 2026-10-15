@@ -16,6 +16,7 @@ async fn test_db_schema_interaction() {
             "expires_at",
             "ecosystem",
             "ecosystem_data",
+            "dpop_key_id",
         ])
         .index("index-Interaction-ExpiresAt", false, &["expires_at"]);
     interaction
@@ -61,6 +62,11 @@ async fn test_db_schema_interaction() {
         .column("ecosystem_data")
         .r#type(ColumnType::Blob)
         .nullable(true);
+    interaction
+        .column("dpop_key_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-Interaction-DpopKeyId", "key", "id");
 }
 
 #[tokio::test]

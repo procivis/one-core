@@ -321,6 +321,7 @@ fn dummy_interaction(
     }
 
     Interaction {
+        dpop_key: None,
         id: id.unwrap_or(Uuid::new_v4().into()),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),

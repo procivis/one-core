@@ -35,6 +35,7 @@ impl InteractionsDB {
         params: TestingInteractionParams,
     ) -> Interaction {
         let interaction = Interaction {
+            dpop_key: None,
             id: params.id.unwrap_or(Uuid::new_v4().into()),
             created_date: params.created_date.unwrap_or(one_core::clock::now_utc()),
             last_modified: params.last_modified.unwrap_or(one_core::clock::now_utc()),

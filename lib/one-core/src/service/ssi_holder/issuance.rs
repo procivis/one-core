@@ -856,6 +856,7 @@ impl SSIHolderService {
         let now = crate::clock::now_utc();
         self.interaction_repository
             .create_interaction(Interaction {
+                dpop_key: None,
                 id: interaction_id,
                 created_date: now,
                 last_modified: now,

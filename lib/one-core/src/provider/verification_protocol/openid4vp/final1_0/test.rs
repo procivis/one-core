@@ -291,6 +291,7 @@ fn test_holder_proof(
     format: CredentialFormat,
 ) -> Proof {
     let interaction = Interaction {
+        dpop_key: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),

@@ -709,6 +709,7 @@ pub async fn create_interaction_with_id(
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let interaction = Interaction {
+        dpop_key: None,
         id,
         created_date: one_core::clock::now_utc(),
         last_modified: one_core::clock::now_utc(),

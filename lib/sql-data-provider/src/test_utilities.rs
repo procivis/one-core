@@ -656,6 +656,7 @@ pub async fn insert_interaction(
         expires_at: Set(None),
         ecosystem: Set(None),
         ecosystem_data: Set(None),
+        dpop_key_id: Set(None),
     }
     .insert(database)
     .await?;

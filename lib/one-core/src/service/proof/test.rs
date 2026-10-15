@@ -554,6 +554,7 @@ async fn proof_detail_with_claims(
             proof.schema = None;
             proof.interaction = Some(
                 Interaction {
+                    dpop_key: None,
                     id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -2824,6 +2825,7 @@ async fn test_delete_proof_ok_for_allowed_state(
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(
         Interaction {
+            dpop_key: None,
             id: interaction_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -2894,6 +2896,7 @@ async fn test_delete_proof_ok_for_requested_state() {
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(
         Interaction {
+            dpop_key: None,
             id: interaction_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -2967,6 +2970,7 @@ async fn test_delete_proof_fails_for_invalid_state(
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(
         Interaction {
+            dpop_key: None,
             id: interaction_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -3017,6 +3021,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
     proof.transport = "BLE".to_string();
     proof.interaction = Some(
         Interaction {
+            dpop_key: None,
             id: interaction_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -3139,6 +3144,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     proof.role = ProofRole::Holder;
     proof.interaction = Some(
         Interaction {
+            dpop_key: None,
             id: interaction_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),

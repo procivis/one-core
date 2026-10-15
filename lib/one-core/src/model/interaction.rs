@@ -3,11 +3,12 @@ use std::collections::HashMap;
 use proc_macros::Model;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shared_types::{EcosystemId, InteractionId};
+use shared_types::{EcosystemId, InteractionId, KeyId};
 use strum::{AsRefStr, EnumString};
 use time::OffsetDateTime;
 
 use crate::model::ecosystem::EcosystemOutcomes;
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
 
@@ -29,6 +30,8 @@ pub struct Interaction {
     /// ecosystem state carried across the steps of the interaction: the outcome of every step,
     /// plus the data the ecosystem providers manage themselves
     pub ecosystem_data: InteractionEcosystems,
+    /// key the interaction's tokens are bound to, for protocols that use DPoP (RFC 9449)
+    pub dpop_key: Option<Related<Key>>,
 }
 
 /// Ecosystem state carried across the steps of an interaction.
@@ -99,6 +102,7 @@ pub struct UpdateInteractionRequest {
     pub data: Option<Option<Vec<u8>>>,
     pub ecosystem: Option<Option<EcosystemId>>,
     pub ecosystem_data: Option<InteractionEcosystems>,
+    pub dpop_key: Option<Option<KeyId>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumString, AsRefStr, Serialize, Deserialize)]
@@ -115,6 +119,7 @@ impl From<Interaction> for UpdateInteractionRequest {
             data: Some(value.data),
             ecosystem: Some(value.ecosystem),
             ecosystem_data: Some(value.ecosystem_data),
+            dpop_key: Some(value.dpop_key.map(|key| key.id())),
         }
     }
 }

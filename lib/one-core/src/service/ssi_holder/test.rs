@@ -104,6 +104,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                 state: ProofStateEnum::Requested,
                 interaction: Some(
                     Interaction {
+                        dpop_key: None,
                         id: interaction_id,
                         created_date: crate::clock::now_utc(),
                         last_modified: crate::clock::now_utc(),
@@ -156,6 +157,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .expect_get_interaction()
         .returning(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: interaction_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -201,6 +203,7 @@ async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
         .expect_get_interaction()
         .returning(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: interaction_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -383,6 +386,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                     state,
                     interaction: Some(
                         Interaction {
+                            dpop_key: None,
                             id: interaction_id,
                             created_date: crate::clock::now_utc(),
                             last_modified: crate::clock::now_utc(),
@@ -437,6 +441,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                 state: ProofStateEnum::Requested,
                 interaction: Some(
                     Interaction {
+                        dpop_key: None,
                         id: interaction_id,
                         created_date: crate::clock::now_utc(),
                         last_modified: crate::clock::now_utc(),
@@ -489,6 +494,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
         .expect_get_interaction()
         .returning(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: interaction_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -623,6 +629,7 @@ async fn test_accept_credential() {
         .expect_get_interaction()
         .returning(|_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -782,6 +789,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
         .expect_get_interaction()
         .returning(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: interaction_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -970,6 +978,7 @@ async fn test_accept_credential_with_did() {
         .expect_get_interaction()
         .returning(|_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1086,6 +1095,7 @@ async fn test_accept_credential_batch() {
         .expect_get_interaction()
         .returning(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: interaction_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1204,6 +1214,7 @@ async fn test_accept_credential_wrong_tx_code() {
         .expect_get_interaction()
         .returning(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1441,6 +1452,7 @@ async fn test_continue_issuance() {
         .expect_get_interaction()
         .returning(move |id, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: *id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1729,6 +1741,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             .into(),
             interaction: Some(
                 Interaction {
+                    dpop_key: None,
                     id: Uuid::new_v4().into(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
@@ -1898,6 +1911,7 @@ async fn test_accept_interaction_credential_org_mismatch() {
         .expect_get_interaction()
         .returning(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -2419,6 +2433,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
         .expect_get_interaction()
         .return_once(move |_, _| {
             Ok(Interaction {
+                dpop_key: None,
                 id: interaction_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),

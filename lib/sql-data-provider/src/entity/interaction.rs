@@ -1,6 +1,6 @@
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::{EcosystemId, InteractionId, NonceId, OrganisationId};
+use shared_types::{EcosystemId, InteractionId, KeyId, NonceId, OrganisationId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -18,6 +18,7 @@ pub struct Model {
     pub ecosystem: Option<EcosystemId>,
     #[sea_orm(column_type = "Blob")]
     pub ecosystem_data: Option<Vec<u8>>,
+    pub dpop_key_id: Option<KeyId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -34,6 +35,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
+    #[sea_orm(
+        belongs_to = "super::key::Entity",
+        from = "Column::DpopKeyId",
+        to = "super::key::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    DpopKey,
 }
 
 impl Related<super::credential::Entity> for Entity {
@@ -51,6 +60,12 @@ impl Related<super::proof::Entity> for Entity {
 impl Related<super::organisation::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Organisation.def()
+    }
+}
+
+impl Related<super::key::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::DpopKey.def()
     }
 }
 

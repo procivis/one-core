@@ -977,6 +977,7 @@ async fn dummy_credential() -> Credential {
             .into(),
             interaction: Some(
                 Interaction {
+                    dpop_key: None,
                     id: Uuid::new_v4().into(),
                     created_date: crate::clock::now_utc(),
                     data: Some(b"interaction data".to_vec()),

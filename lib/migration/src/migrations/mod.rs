@@ -64,3 +64,4 @@ pub mod m20260924_130000_deduplicate_holder_claims;
 pub mod m20260926_120000_credential_organisation_id;
 pub mod m20260928_090000_rename_webvh_to_tdw;
 pub mod m20260928_120000_drop_holder_claim_deduplication_progress;
+pub mod m20261015_120000_interaction_dpop_key;

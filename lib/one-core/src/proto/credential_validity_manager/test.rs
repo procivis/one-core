@@ -500,6 +500,7 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -690,6 +691,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -873,6 +875,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -1062,6 +1065,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
             Some(crate::clock::now_utc() + Duration::days(30));
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
+                dpop_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
