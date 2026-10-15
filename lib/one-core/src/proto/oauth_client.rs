@@ -16,6 +16,7 @@ use url::Url;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::http_client::HttpClient;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 
 /// A PKCE (RFC 7636) `S256` verifier/challenge pair.
 pub(crate) struct Pkce {
@@ -38,6 +39,7 @@ impl Pkce {
 
 pub(crate) struct OAuthClient {
     http_client: Arc<dyn HttpClient>,
+    metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
 }
 
 impl OAuthClient {
@@ -46,7 +48,6 @@ impl OAuthClient {
         authorization_server: Url,
         request: AuthorizationRequest,
     ) -> Result<OAuthAuthorizationResponse, OAuthClientError> {
-        // TODO ONE-9131: Use metadata cache here
         let metadata = self
             .fetch_authorization_server_metadata(authorization_server.clone())
             .await?;
@@ -114,55 +115,23 @@ impl OAuthClient {
         issuer_url: Url,
     ) -> Result<AuthorizationServerMetadata, OAuthClientError> {
         // obtain OAuth 2.0 Authorization server metadata (https://datatracker.ietf.org/doc/html/rfc8414#section-3)
-        // prepend `.well-known/oauth-authorization-server` to path to construct provider metadata endpoint
-        let original_path_segments: Vec<_> = issuer_url
-            .path_segments()
-            .ok_or(OAuthClientError::InvalidURL)?
-            .filter_map(|segment| {
-                if segment.is_empty() {
-                    None
-                } else {
-                    Some(segment.to_string())
-                }
-            })
-            .collect();
-
-        let mut authorization_server_metadata_endpoint = issuer_url;
-        {
-            let mut segments = authorization_server_metadata_endpoint
-                .path_segments_mut()
-                .map_err(|_| OAuthClientError::InvalidURL)?;
-
-            segments
-                .clear()
-                .push(".well-known")
-                .push("oauth-authorization-server");
-            if !original_path_segments.is_empty() {
-                segments.extend(&original_path_segments);
-            }
-        }
-
-        Ok(async {
-            self.http_client
-                .get(authorization_server_metadata_endpoint.as_str())
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-        }
-        .await
-        .error_while("fetching authorization server metadata")?)
+        Ok(self
+            .metadata_cache
+            .fetch_json_well_known(&issuer_url, "oauth-authorization-server")
+            .await
+            .error_while("fetching authorization server metadata")?)
     }
 }
 
 pub(crate) trait OAuthClientProvider {
-    fn oauth_client(&self) -> OAuthClient;
+    fn oauth_client(&self, metadata_cache: Arc<dyn OpenIDMetadataFetcher>) -> OAuthClient;
 }
 
 impl OAuthClientProvider for Arc<dyn HttpClient> {
-    fn oauth_client(&self) -> OAuthClient {
+    fn oauth_client(&self, metadata_cache: Arc<dyn OpenIDMetadataFetcher>) -> OAuthClient {
         OAuthClient {
             http_client: self.clone(),
+            metadata_cache,
         }
     }
 }
@@ -171,8 +140,6 @@ impl OAuthClientProvider for Arc<dyn HttpClient> {
 pub(crate) enum OAuthClientError {
     #[error("OAuth issuer mismatch between request and authorization server metadata")]
     IssuerMismatch,
-    #[error("Invalid OAuth issuer URL")]
-    InvalidURL,
     #[error("OAuth Authorization endpoint not found in authorization server metadata")]
     MissingURL,
 
@@ -189,9 +156,7 @@ impl ErrorCodeMixin for OAuthClientError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::HasherError(_) => ErrorCode::BR_0000,
-            Self::IssuerMismatch | Self::InvalidURL | Self::MissingURL | Self::Serialization(_) => {
-                ErrorCode::BR_0360
-            }
+            Self::IssuerMismatch | Self::MissingURL | Self::Serialization(_) => ErrorCode::BR_0360,
             Self::Nested(nested) => nested.error_code(),
         }
     }
@@ -205,6 +170,7 @@ pub(crate) struct OAuthAuthorizationResponse {
 
 #[cfg(test)]
 mod tests {
+    use mockall::predicate::eq;
     use reqwest::Method;
     use serde_json::json;
     use wiremock::matchers::{body_string_contains, method, path};
@@ -212,40 +178,49 @@ mod tests {
 
     use super::*;
     use crate::proto::http_client::reqwest_client::ReqwestClient;
+    use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
+
+    fn authorization_server_metadata(issuer: &str) -> AuthorizationServerMetadata {
+        AuthorizationServerMetadata {
+            issuer: issuer.parse().unwrap(),
+            authorization_endpoint: Some(Url::parse("https://authorize.com/authorize").unwrap()),
+            token_endpoint: None,
+            pushed_authorization_request_endpoint: None,
+            jwks_uri: None,
+            code_challenge_methods_supported: vec![],
+            scopes_supported: vec![],
+            response_types_supported: vec![],
+            grant_types_supported: vec![],
+            token_endpoint_auth_methods_supported: vec![],
+            challenge_endpoint: None,
+            client_attestation_signing_alg_values_supported: None,
+            client_attestation_pop_signing_alg_values_supported: None,
+            dpop_signing_alg_values_supported: None,
+            signed_metadata: None,
+        }
+    }
+
+    /// An OAuth client whose metadata cache serves `metadata` for the `issuer` well-known endpoint.
+    fn oauth_client(issuer: &str, metadata: AuthorizationServerMetadata) -> OAuthClient {
+        let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+        metadata_cache
+            .expect_get()
+            .with(
+                eq(format!("{issuer}/.well-known/oauth-authorization-server")),
+                eq("application/json"),
+            )
+            .once()
+            .return_once(move |_, _| Ok(serde_json::to_vec(&metadata).unwrap()));
+
+        (Arc::new(ReqwestClient::default()) as Arc<dyn HttpClient>)
+            .oauth_client(Arc::new(metadata_cache))
+    }
 
     #[tokio::test]
     async fn send_authorization_request_plain() {
         // given
-        let client = (Arc::new(ReqwestClient::default()) as Arc<dyn HttpClient>).oauth_client();
-        let mock_server = MockServer::start().await;
-
-        let issuer = mock_server.uri();
-        Mock::given(method(Method::GET))
-            .and(path("/.well-known/oauth-authorization-server"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(AuthorizationServerMetadata {
-                    issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Some(
-                        Url::parse("https://authorize.com/authorize").unwrap(),
-                    ),
-                    token_endpoint: None,
-                    pushed_authorization_request_endpoint: None,
-                    jwks_uri: None,
-                    code_challenge_methods_supported: vec![],
-                    scopes_supported: vec![],
-                    response_types_supported: vec![],
-                    grant_types_supported: vec![],
-                    token_endpoint_auth_methods_supported: vec![],
-                    challenge_endpoint: None,
-                    client_attestation_signing_alg_values_supported: None,
-                    client_attestation_pop_signing_alg_values_supported: None,
-                    dpop_signing_alg_values_supported: None,
-                    signed_metadata: None,
-                }),
-            )
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+        let issuer = "https://issuer.com";
+        let client = oauth_client(issuer, authorization_server_metadata(issuer));
 
         // when
         let result = client
@@ -288,36 +263,14 @@ mod tests {
     #[tokio::test]
     async fn send_authorization_request_pkce() {
         // given
-        let client = (Arc::new(ReqwestClient::default()) as Arc<dyn HttpClient>).oauth_client();
-        let mock_server = MockServer::start().await;
-
-        let issuer = mock_server.uri();
-        Mock::given(method(Method::GET))
-            .and(path("/.well-known/oauth-authorization-server"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(AuthorizationServerMetadata {
-                    issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Some(
-                        Url::parse("https://authorize.com/authorize").unwrap(),
-                    ),
-                    token_endpoint: None,
-                    pushed_authorization_request_endpoint: None,
-                    jwks_uri: None,
-                    code_challenge_methods_supported: vec![CodeChallengeMethod::S256],
-                    scopes_supported: vec![],
-                    response_types_supported: vec![],
-                    grant_types_supported: vec![],
-                    token_endpoint_auth_methods_supported: vec![],
-                    challenge_endpoint: None,
-                    client_attestation_signing_alg_values_supported: None,
-                    client_attestation_pop_signing_alg_values_supported: None,
-                    dpop_signing_alg_values_supported: None,
-                    signed_metadata: None,
-                }),
-            )
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+        let issuer = "https://issuer.com";
+        let client = oauth_client(
+            issuer,
+            AuthorizationServerMetadata {
+                code_challenge_methods_supported: vec![CodeChallengeMethod::S256],
+                ..authorization_server_metadata(issuer)
+            },
+        );
 
         // when
         let result = client
@@ -358,38 +311,19 @@ mod tests {
     #[tokio::test]
     async fn send_authorization_request_par() {
         // given
-        let client = (Arc::new(ReqwestClient::default()) as Arc<dyn HttpClient>).oauth_client();
         let mock_server = MockServer::start().await;
-
         let issuer = mock_server.uri();
-        Mock::given(method(Method::GET))
-            .and(path("/.well-known/oauth-authorization-server"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(AuthorizationServerMetadata {
-                    issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Some(
-                        Url::parse("https://authorize.com/authorize").unwrap(),
-                    ),
-                    token_endpoint: None,
-                    pushed_authorization_request_endpoint: Some(
-                        Url::parse(&format!("{issuer}/par")).unwrap(),
-                    ),
-                    jwks_uri: None,
-                    code_challenge_methods_supported: vec![CodeChallengeMethod::S256],
-                    scopes_supported: vec![],
-                    response_types_supported: vec![],
-                    grant_types_supported: vec![],
-                    token_endpoint_auth_methods_supported: vec![],
-                    challenge_endpoint: None,
-                    client_attestation_signing_alg_values_supported: None,
-                    client_attestation_pop_signing_alg_values_supported: None,
-                    dpop_signing_alg_values_supported: None,
-                    signed_metadata: None,
-                }),
-            )
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+
+        let client = oauth_client(
+            &issuer,
+            AuthorizationServerMetadata {
+                pushed_authorization_request_endpoint: Some(
+                    Url::parse(&format!("{issuer}/par")).unwrap(),
+                ),
+                code_challenge_methods_supported: vec![CodeChallengeMethod::S256],
+                ..authorization_server_metadata(&issuer)
+            },
+        );
 
         Mock::given(method(Method::POST))
             .and(path("/par"))
@@ -447,38 +381,19 @@ mod tests {
     #[tokio::test]
     async fn send_authorization_request_par_with_issuer_state() {
         // given
-        let client = (Arc::new(ReqwestClient::default()) as Arc<dyn HttpClient>).oauth_client();
         let mock_server = MockServer::start().await;
-
         let issuer = mock_server.uri();
-        Mock::given(method(Method::GET))
-            .and(path("/.well-known/oauth-authorization-server"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(AuthorizationServerMetadata {
-                    issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Some(
-                        Url::parse("https://authorize.com/authorize").unwrap(),
-                    ),
-                    token_endpoint: None,
-                    pushed_authorization_request_endpoint: Some(
-                        Url::parse(&format!("{issuer}/par")).unwrap(),
-                    ),
-                    jwks_uri: None,
-                    code_challenge_methods_supported: vec![CodeChallengeMethod::S256],
-                    scopes_supported: vec![],
-                    response_types_supported: vec![],
-                    grant_types_supported: vec![],
-                    token_endpoint_auth_methods_supported: vec![],
-                    challenge_endpoint: None,
-                    client_attestation_signing_alg_values_supported: None,
-                    client_attestation_pop_signing_alg_values_supported: None,
-                    dpop_signing_alg_values_supported: None,
-                    signed_metadata: None,
-                }),
-            )
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+
+        let client = oauth_client(
+            &issuer,
+            AuthorizationServerMetadata {
+                pushed_authorization_request_endpoint: Some(
+                    Url::parse(&format!("{issuer}/par")).unwrap(),
+                ),
+                code_challenge_methods_supported: vec![CodeChallengeMethod::S256],
+                ..authorization_server_metadata(&issuer)
+            },
+        );
 
         Mock::given(method(Method::POST))
             .and(path("/par"))

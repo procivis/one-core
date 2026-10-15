@@ -832,7 +832,7 @@ impl SSIHolderService {
 
         let authorization_response = self
             .client
-            .oauth_client()
+            .oauth_client(self.openid_metadata_cache.clone())
             .initiate_authorization_code_flow(authorization_server, authorization_request)
             .await
             .error_while("initiating authorization code flow")?;

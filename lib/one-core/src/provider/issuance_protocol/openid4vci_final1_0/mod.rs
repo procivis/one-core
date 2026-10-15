@@ -24,7 +24,6 @@ use one_crypto::jwe::{Header as JweHeader, decrypt_jwe_payload};
 use proc_macros::Provider;
 use proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use secrecy::{ExposeSecret, SecretString};
-use serde::de::DeserializeOwned;
 use service::{
     build_issuer_display, create_credential_offer, create_issuer_metadata_response,
     credential_configuration_supported, get_protocol_base_url,
@@ -71,7 +70,7 @@ use crate::clock::now_utc;
 use crate::config::core_config::{
     BlobStorageType, CoreConfig, DidType as ConfigDidType, FormatType, KeyAlgorithmType,
 };
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::credential::{
@@ -1644,24 +1643,21 @@ impl OpenID4VCIFinal1_0 {
 
         let trust_mandatory = organisation.configuration.enforce_ecosystem_as_holder;
 
-        let jwt_result = fetch_metadata_jwt_with_fallback(
-            self.metadata_cache.as_ref(),
-            &credential_issuer_endpoint,
-            "openid-credential-issuer",
-        )
-        .await;
+        let jwt_result = self
+            .metadata_cache
+            .fetch_jwt_well_known(&credential_issuer_endpoint, "openid-credential-issuer")
+            .await
+            .error_while("fetching signed issuer metadata");
 
         if !trust_mandatory && let Err(err) = &jwt_result {
             tracing::warn!(
                 "Failed to fetch signed issuer metadata, falling back to unsigned metadata: {err}"
             );
             return Ok(IssuerMetadataRepresentation::Unsigned(
-                fetch_metadata_json_with_fallback(
-                    self.metadata_cache.as_ref(),
-                    &credential_issuer_endpoint,
-                    "openid-credential-issuer",
-                )
-                .await?,
+                self.metadata_cache
+                    .fetch_json_well_known(&credential_issuer_endpoint, "openid-credential-issuer")
+                    .await
+                    .error_while("fetching issuer metadata")?,
             ));
         }
 
@@ -2949,13 +2945,10 @@ async fn get_authorization_metadata(
         authorization_server,
     )?;
 
-    let oauth_metadata_response: AuthorizationServerMetadata = fetch_metadata_json_with_fallback(
-        fetcher,
-        &authorization_server_url,
-        "oauth-authorization-server",
-    )
-    .await
-    .error_while("fetching authorization server metadata")?;
+    let oauth_metadata_response: AuthorizationServerMetadata = fetcher
+        .fetch_json_well_known(&authorization_server_url, "oauth-authorization-server")
+        .await
+        .error_while("fetching authorization server metadata")?;
 
     Ok(oauth_metadata_response)
 }
@@ -2999,85 +2992,6 @@ fn get_authorization_server_url_from_issuer_metadata(
             "Invalid authorization_server url {server_url}",
         ))
     })
-}
-
-async fn fetch_metadata_json_with_fallback<T: DeserializeOwned>(
-    fetcher: &dyn OpenIDMetadataFetcher,
-    issuer_url: &Url,
-    well_known_path: &str,
-) -> Result<T, IssuanceProtocolError> {
-    let issuer_metadata_endpoint = prepend_well_known_path(issuer_url, well_known_path);
-    Ok(match fetcher.fetch_json(&issuer_metadata_endpoint).await {
-        Ok(response) => response,
-        Err(err) => {
-            let error_code = err.error_code();
-            if error_code == ErrorCode::BR_0347 || error_code == ErrorCode::BR_0395 {
-                let fallback_metadata_endpoint = append_well_known(issuer_url, well_known_path)?;
-                tracing::warn!(
-                    "Failed to fetch from `{issuer_metadata_endpoint}`, falling back to legacy endpoint `{fallback_metadata_endpoint}`: {err}"
-                );
-                fetcher
-                    .fetch_json(&fallback_metadata_endpoint)
-                    .await
-                    .error_while("fetching metadata from fallback URL")?
-            } else {
-                Err(err).error_while("fetching metadata")?
-            }
-        }
-    })
-}
-
-async fn fetch_metadata_jwt_with_fallback<T: DeserializeOwned + Debug>(
-    fetcher: &dyn OpenIDMetadataFetcher,
-    issuer_url: &Url,
-    well_known_path: &str,
-) -> Result<DecomposedJwt<T>, IssuanceProtocolError> {
-    let issuer_metadata_endpoint = prepend_well_known_path(issuer_url, well_known_path);
-    Ok(match fetcher.fetch_jwt(&issuer_metadata_endpoint).await {
-        Ok(response) => response,
-        Err(err) => {
-            let error_code = err.error_code();
-            if error_code == ErrorCode::BR_0347 || error_code == ErrorCode::BR_0395 {
-                let fallback_metadata_endpoint = append_well_known(issuer_url, well_known_path)?;
-                tracing::warn!(
-                    "Failed to fetch from `{issuer_metadata_endpoint}`, falling back to legacy endpoint `{fallback_metadata_endpoint}`: {err}"
-                );
-                fetcher
-                    .fetch_jwt(&fallback_metadata_endpoint)
-                    .await
-                    .error_while("fetching metadata from fallback URL")?
-            } else {
-                Err(err).error_while("fetching metadata")?
-            }
-        }
-    })
-}
-
-fn prepend_well_known_path(credential_issuer: &Url, well_known_path_segment: &str) -> String {
-    let origin = {
-        let mut url = credential_issuer.clone();
-        url.set_path("");
-        url.to_string()
-    };
-    let path = match credential_issuer.path() {
-        "/" => "", // do not append trailing slash for empty path
-        path => path,
-    };
-    format!("{origin}.well-known/{well_known_path_segment}{path}")
-}
-
-fn append_well_known(credential_issuer: &Url, path: &str) -> Result<String, IssuanceProtocolError> {
-    let mut url = credential_issuer.to_owned();
-    url.path_segments_mut()
-        .map_err(move |_| {
-            IssuanceProtocolError::Failed(format!(
-                "Invalid credential_issuer URL: {credential_issuer}",
-            ))
-        })?
-        .push(".well-known")
-        .extend(path.split("/"));
-
-    Ok(url.to_string())
 }
 
 async fn create_and_store_interaction(

@@ -14,9 +14,6 @@ use standardized_types::openid4vci::{AuthorizationDetail, CredentialIssuerMetada
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use url::Url;
 use uuid::Uuid;
-use wiremock::http::Method;
-use wiremock::matchers::{method, path};
-use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::dto::HandleInvitationRequestDTO;
 use crate::config::core_config::TransportType;
@@ -45,6 +42,9 @@ use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
+use crate::provider::caching_loader::openid_metadata::{
+    MockOpenIDMetadataFetcher, OpenIDMetadataFetcher,
+};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::ecosystem::MockEcosystem;
@@ -1354,40 +1354,21 @@ async fn test_initiate_issuance() {
         .expect_create_interaction()
         .return_once(|i| Ok(i.id));
 
+    let issuer = "https://issuer.com".to_string();
     let service = SSIHolderService {
         organisation_repository: Arc::new(organisation_repository),
         interaction_repository: Arc::new(interaction_repository),
+        openid_metadata_cache: authorization_server_metadata_cache(
+            &issuer,
+            AuthorizationServerMetadata {
+                authorization_endpoint: Some(
+                    Url::parse("https://authorize.com/authorize").unwrap(),
+                ),
+                ..authorization_server_metadata(&issuer)
+            },
+        ),
         ..mock_ssi_holder_service()
     };
-
-    let mock_server = MockServer::start().await;
-
-    let authorization_endpoint = "https://authorize.com/authorize";
-    let issuer = mock_server.uri();
-    Mock::given(method(Method::GET))
-        .and(path("/.well-known/oauth-authorization-server"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(AuthorizationServerMetadata {
-                issuer: issuer.parse().unwrap(),
-                authorization_endpoint: Some(Url::parse(authorization_endpoint).unwrap()),
-                token_endpoint: None,
-                pushed_authorization_request_endpoint: None,
-                jwks_uri: None,
-                code_challenge_methods_supported: vec![],
-                scopes_supported: vec![],
-                response_types_supported: vec![],
-                grant_types_supported: vec![],
-                token_endpoint_auth_methods_supported: vec![],
-                challenge_endpoint: None,
-                client_attestation_signing_alg_values_supported: None,
-                client_attestation_pop_signing_alg_values_supported: None,
-                dpop_signing_alg_values_supported: None,
-                signed_metadata: None,
-            }),
-        )
-        .expect(1)
-        .mount(&mock_server)
-        .await;
 
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
@@ -1568,41 +1549,22 @@ async fn test_initiate_issuance_pkce() {
         })
         .return_once(|_| Ok(Uuid::new_v4().into()));
 
+    let issuer = "https://issuer.com".to_string();
     let service = SSIHolderService {
         organisation_repository: Arc::new(organisation_repository),
         interaction_repository: Arc::new(interaction_repository),
-        ..mock_ssi_holder_service()
-    };
-
-    let mock_server = MockServer::start().await;
-
-    let issuer = mock_server.uri();
-    Mock::given(method(Method::GET))
-        .and(path("/.well-known/oauth-authorization-server"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(AuthorizationServerMetadata {
-                issuer: issuer.parse().unwrap(),
+        openid_metadata_cache: authorization_server_metadata_cache(
+            &issuer,
+            AuthorizationServerMetadata {
                 authorization_endpoint: Some(
                     Url::parse("https://authorize.com/authorize").unwrap(),
                 ),
-                token_endpoint: None,
-                pushed_authorization_request_endpoint: None,
-                jwks_uri: None,
                 code_challenge_methods_supported: vec![CodeChallengeMethod::S256],
-                scopes_supported: vec![],
-                response_types_supported: vec![],
-                grant_types_supported: vec![],
-                token_endpoint_auth_methods_supported: vec![],
-                challenge_endpoint: None,
-                client_attestation_signing_alg_values_supported: None,
-                client_attestation_pop_signing_alg_values_supported: None,
-                dpop_signing_alg_values_supported: None,
-                signed_metadata: None,
-            }),
-        )
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+                ..authorization_server_metadata(&issuer)
+            },
+        ),
+        ..mock_ssi_holder_service()
+    };
 
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
@@ -1624,6 +1586,44 @@ async fn test_initiate_issuance_pkce() {
     assert!(result.url.contains("code_challenge_method=S256"));
 }
 
+fn authorization_server_metadata(issuer: &str) -> AuthorizationServerMetadata {
+    AuthorizationServerMetadata {
+        issuer: issuer.parse().unwrap(),
+        authorization_endpoint: None,
+        token_endpoint: None,
+        pushed_authorization_request_endpoint: None,
+        jwks_uri: None,
+        code_challenge_methods_supported: vec![],
+        scopes_supported: vec![],
+        response_types_supported: vec![],
+        grant_types_supported: vec![],
+        token_endpoint_auth_methods_supported: vec![],
+        challenge_endpoint: None,
+        client_attestation_signing_alg_values_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
+        dpop_signing_alg_values_supported: None,
+        signed_metadata: None,
+    }
+}
+
+/// A metadata cache serving `metadata` for the `issuer` well-known endpoint.
+fn authorization_server_metadata_cache(
+    issuer: &str,
+    metadata: AuthorizationServerMetadata,
+) -> Arc<dyn OpenIDMetadataFetcher> {
+    let mut cache = MockOpenIDMetadataFetcher::new();
+    cache
+        .expect_get()
+        .with(
+            eq(format!("{issuer}/.well-known/oauth-authorization-server")),
+            eq("application/json"),
+        )
+        .once()
+        .return_once(move |_, _| Ok(serde_json::to_vec(&metadata).unwrap()));
+
+    Arc::new(cache)
+}
+
 fn mock_ssi_holder_service() -> SSIHolderService {
     let client = Arc::new(ReqwestClient::default());
 
@@ -1641,6 +1641,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         blob_storage_provider: Arc::new(MockBlobStorageProvider::new()),
         config: Arc::new(generic_config().core),
         client,
+        openid_metadata_cache: Arc::new(MockOpenIDMetadataFetcher::new()),
         session_provider: Arc::new(NoSessionProvider),
         identifier_creator: Arc::new(MockIdentifierCreator::new()),
         transaction_manager: Arc::new(NoTransactionManager),

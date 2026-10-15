@@ -7,6 +7,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
@@ -44,6 +45,7 @@ pub struct SSIHolderService {
     verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
     client: Arc<dyn HttpClient>,
+    openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
     identifier_creator: Arc<dyn IdentifierCreator>,
@@ -67,6 +69,7 @@ impl SSIHolderService {
         verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
         client: Arc<dyn HttpClient>,
+        openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
         identifier_creator: Arc<dyn IdentifierCreator>,
@@ -86,6 +89,7 @@ impl SSIHolderService {
             verification_protocol_provider,
             config,
             client,
+            openid_metadata_cache,
             blob_storage_provider,
             session_provider,
             key_security_level_provider,

@@ -1639,7 +1639,7 @@ async fn test_handle_invitation_authorization_code() {
                 "token_endpoint": format!("{issuer}/token"),
             }
         )))
-        .expect(2)
+        .expect(1)
         .mount(&mock_server)
         .await;
 
@@ -1726,7 +1726,7 @@ async fn test_handle_invitation_authorization_code_issuer_state() {
                 "token_endpoint": format!("{issuer}/token"),
             }
         )))
-        .expect(2)
+        .expect(1)
         .mount(&mock_server)
         .await;
 
@@ -1813,7 +1813,7 @@ async fn test_handle_invitation_authorization_code_authorization_server() {
                 "token_endpoint": format!("{authorization_server_uri}/token"),
             }
         )))
-        .expect(2)
+        .expect(1)
         .mount(&mock_authorization_server)
         .await;
 

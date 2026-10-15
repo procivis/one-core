@@ -834,6 +834,7 @@ impl OneCore {
                 verification_provider,
                 config.clone(),
                 client.clone(),
+                openid_metadata_cache.clone(),
                 blob_storage_provider.clone(),
                 session_provider.clone(),
                 identifier_creator.clone(),

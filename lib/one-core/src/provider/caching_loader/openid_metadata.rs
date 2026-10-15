@@ -8,7 +8,7 @@ use url::Url;
 
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
 use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::proto::http_client::{HttpClient, is_media_type};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
@@ -37,6 +37,87 @@ impl<'a> dyn OpenIDMetadataFetcher + 'a {
         let jwt = String::from_utf8(content)?;
         Ok(Jwt::decompose_token(&jwt)?)
     }
+
+    /// Fetches JSON metadata from the `.well-known/{well_known_path}` endpoint of `issuer_url`,
+    /// falling back to the legacy endpoint if the standard one is unreachable.
+    pub(crate) async fn fetch_json_well_known<T: DeserializeOwned>(
+        &self,
+        issuer_url: &Url,
+        well_known_path: &str,
+    ) -> Result<T, CacheError> {
+        let endpoint = prepend_well_known_path(issuer_url, well_known_path);
+        match self.fetch_json(&endpoint).await {
+            Err(err) if is_endpoint_unavailable(&err) => {
+                let fallback_endpoint = legacy_well_known_fallback(issuer_url, well_known_path)?;
+                tracing::warn!(
+                    "Failed to fetch from `{endpoint}`, falling back to legacy endpoint `{fallback_endpoint}`: {err}"
+                );
+                Ok(self
+                    .fetch_json(&fallback_endpoint)
+                    .await
+                    .error_while("fetching metadata from fallback URL")?)
+            }
+            result => result,
+        }
+    }
+
+    /// Fetches signed metadata from the `.well-known/{well_known_path}` endpoint of `issuer_url`,
+    /// falling back to the legacy endpoint if the standard one is unreachable.
+    pub(crate) async fn fetch_jwt_well_known<CustomPayload: DeserializeOwned + Debug>(
+        &self,
+        issuer_url: &Url,
+        well_known_path: &str,
+    ) -> Result<DecomposedJwt<CustomPayload>, CacheError> {
+        let endpoint = prepend_well_known_path(issuer_url, well_known_path);
+        match self.fetch_jwt(&endpoint).await {
+            Err(err) if is_endpoint_unavailable(&err) => {
+                let fallback_endpoint = legacy_well_known_fallback(issuer_url, well_known_path)?;
+                tracing::warn!(
+                    "Failed to fetch from `{endpoint}`, falling back to legacy endpoint `{fallback_endpoint}`: {err}"
+                );
+                Ok(self
+                    .fetch_jwt(&fallback_endpoint)
+                    .await
+                    .error_while("fetching metadata from fallback URL")?)
+            }
+            result => result,
+        }
+    }
+}
+
+/// Whether the metadata endpoint could not be reached, meaning the legacy endpoint is worth a try.
+fn is_endpoint_unavailable(error: &CacheError) -> bool {
+    matches!(error.error_code(), ErrorCode::BR_0347 | ErrorCode::BR_0395)
+}
+
+/// `https://issuer.com/path` -> `https://issuer.com/.well-known/{well_known_path}/path`
+fn prepend_well_known_path(issuer_url: &Url, well_known_path: &str) -> String {
+    let origin = {
+        let mut url = issuer_url.clone();
+        url.set_path("");
+        url.to_string()
+    };
+    // a trailing slash of the issuer URL would end up in the middle of the well-known URL
+    let path = issuer_url.path().trim_end_matches('/');
+
+    format!("{origin}.well-known/{well_known_path}{path}")
+}
+
+/// `https://issuer.com/path` -> `https://issuer.com/path/.well-known/{well_known_path}`
+fn legacy_well_known_fallback(
+    issuer_url: &Url,
+    well_known_path: &str,
+) -> Result<String, CacheError> {
+    let mut url = issuer_url.to_owned();
+    url.path_segments_mut()
+        .map_err(|_| ResolverError::MappingError(format!("Invalid issuer URL: {issuer_url}")))
+        .error_while("building legacy well-known URL")?
+        // a trailing slash of the issuer URL would double up with the one added by `push`
+        .pop_if_empty()
+        .push(".well-known")
+        .extend(well_known_path.split("/"));
+
+    Ok(url.to_string())
 }
 
 struct OpenIDMetadataCache {
@@ -166,4 +247,181 @@ pub(crate) fn openid_metadata_cache_from_config(
         config.cache_refresh_timeout_seconds,
         config.refresh_after_seconds,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use mockall::predicate::eq;
+    use serde_json::json;
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::error::ErrorCodeMixinExt;
+    use crate::proto::http_client;
+
+    /// Error of an endpoint that could not be reached, i.e. one worth retrying on the legacy URL.
+    fn unreachable_endpoint() -> CacheError {
+        http_client::Error::Timeout.error_while("test").into()
+    }
+
+    fn fetcher(mock: MockOpenIDMetadataFetcher) -> Arc<dyn OpenIDMetadataFetcher> {
+        Arc::new(mock)
+    }
+
+    #[tokio::test]
+    async fn fetch_json_well_known_prepends_the_well_known_path() {
+        // given
+        let mut mock = MockOpenIDMetadataFetcher::new();
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
+                eq("application/json"),
+            )
+            .once()
+            .return_once(|_, _| {
+                Ok(json!({ "issuer": "https://issuer.com" })
+                    .to_string()
+                    .into_bytes())
+            });
+
+        // when
+        let metadata: serde_json::Value = fetcher(mock)
+            .fetch_json_well_known(
+                &"https://issuer.com/path".parse().unwrap(),
+                "oauth-authorization-server",
+            )
+            .await
+            .unwrap();
+
+        // then
+        assert_eq!(metadata["issuer"], "https://issuer.com");
+    }
+
+    #[tokio::test]
+    async fn fetch_json_well_known_ignores_a_trailing_slash_of_the_issuer_url() {
+        // given
+        let mut mock = MockOpenIDMetadataFetcher::new();
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
+                eq("application/json"),
+            )
+            .once()
+            .return_once(|_, _| Err(unreachable_endpoint()));
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/path/.well-known/oauth-authorization-server"),
+                eq("application/json"),
+            )
+            .once()
+            .return_once(|_, _| {
+                Ok(json!({ "issuer": "https://issuer.com" })
+                    .to_string()
+                    .into_bytes())
+            });
+
+        // when
+        let metadata: serde_json::Value = fetcher(mock)
+            .fetch_json_well_known(
+                &"https://issuer.com/path/".parse().unwrap(),
+                "oauth-authorization-server",
+            )
+            .await
+            .unwrap();
+
+        // then
+        assert_eq!(metadata["issuer"], "https://issuer.com");
+    }
+
+    #[tokio::test]
+    async fn fetch_json_well_known_falls_back_to_the_legacy_endpoint() {
+        // given
+        let mut mock = MockOpenIDMetadataFetcher::new();
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
+                eq("application/json"),
+            )
+            .once()
+            .return_once(|_, _| Err(unreachable_endpoint()));
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/path/.well-known/oauth-authorization-server"),
+                eq("application/json"),
+            )
+            .once()
+            .return_once(|_, _| {
+                Ok(json!({ "issuer": "https://issuer.com" })
+                    .to_string()
+                    .into_bytes())
+            });
+
+        // when
+        let metadata: serde_json::Value = fetcher(mock)
+            .fetch_json_well_known(
+                &"https://issuer.com/path".parse().unwrap(),
+                "oauth-authorization-server",
+            )
+            .await
+            .unwrap();
+
+        // then
+        assert_eq!(metadata["issuer"], "https://issuer.com");
+    }
+
+    #[tokio::test]
+    async fn fetch_json_well_known_does_not_fall_back_on_unrelated_errors() {
+        // given: the endpoint responded, but with something that is not JSON
+        let mut mock = MockOpenIDMetadataFetcher::new();
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
+                eq("application/json"),
+            )
+            .once()
+            .return_once(|_, _| Ok(b"not json".to_vec()));
+
+        // when
+        let result = fetcher(mock)
+            .fetch_json_well_known::<serde_json::Value>(
+                &"https://issuer.com/path".parse().unwrap(),
+                "oauth-authorization-server",
+            )
+            .await;
+
+        // then: no second request against the legacy endpoint
+        assert!(matches!(result, Err(CacheError::SerdeJson(_))));
+    }
+
+    #[tokio::test]
+    async fn fetch_jwt_well_known_falls_back_to_the_legacy_endpoint() {
+        // given
+        let mut mock = MockOpenIDMetadataFetcher::new();
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/.well-known/openid-credential-issuer/path"),
+                eq("application/jwt"),
+            )
+            .once()
+            .return_once(|_, _| Err(unreachable_endpoint()));
+        // the legacy endpoint is tried next; the `once()` expectation asserts the request happens
+        mock.expect_get()
+            .with(
+                eq("https://issuer.com/path/.well-known/openid-credential-issuer"),
+                eq("application/jwt"),
+            )
+            .once()
+            .return_once(|_, _| Ok(b"not-a-jwt".to_vec()));
+
+        // when
+        let result = fetcher(mock)
+            .fetch_jwt_well_known::<serde_json::Value>(
+                &"https://issuer.com/path".parse().unwrap(),
+                "openid-credential-issuer",
+            )
+            .await;
+
+        // then
+        assert!(result.is_err());
+    }
 }
