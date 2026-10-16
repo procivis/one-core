@@ -222,9 +222,50 @@ impl CredentialInfoResponse {
     }
 }
 
+#[derive(Serialize)]
+pub struct CredentialListRequest {
+    #[serde(rename = "credentialInfo")]
+    pub credential_info: bool,
+    pub certificates: String,
+    #[serde(rename = "certInfo")]
+    pub cert_info: bool,
+}
+
+#[derive(Deserialize)]
+pub struct CredentialListResponse {
+    #[serde(rename = "credentialInfos", default)]
+    pub credential_infos: Vec<CredentialListInfo>,
+}
+
+#[derive(Deserialize)]
+pub struct CredentialListInfo {
+    #[serde(rename = "credentialID")]
+    pub credential_id: String,
+    #[serde(flatten)]
+    pub info: CredentialInfoResponse,
+}
+
 #[derive(Deserialize)]
 pub struct CredentialKey {
     pub algo: Vec<String>,
+}
+
+/// RFC 9396 authorization details of type `credential` (CSC v2)
+#[derive(Serialize)]
+pub struct CredentialAuthorizationDetails {
+    pub r#type: String,
+    #[serde(rename = "credentialID")]
+    pub credential_id: String,
+    #[serde(rename = "hashAlgorithmOID")]
+    pub hash_algorithm: HashAlgorithm,
+    #[serde(rename = "documentDigests")]
+    pub document_digests: Vec<DocumentDigest>,
+}
+
+#[derive(Serialize)]
+pub struct DocumentDigest {
+    pub hash: String,
+    pub label: String,
 }
 
 #[derive(Deserialize)]

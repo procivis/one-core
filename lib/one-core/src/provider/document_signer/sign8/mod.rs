@@ -9,8 +9,8 @@ use standardized_types::csc::{
 use standardized_types::mapper::secret_string;
 
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::proto::csc::CscClient;
 use crate::proto::csc::model::{AuthorizationUrlRequest, SignDocumentRequest, TokenRequest};
+use crate::proto::csc::{CscClient, build_sign8_account_token};
 use crate::provider::document_signer::DocumentSigner;
 use crate::provider::document_signer::error::DocumentSignerError;
 use crate::provider::document_signer::model::{
@@ -18,7 +18,6 @@ use crate::provider::document_signer::model::{
 };
 use crate::provider::provider_directory::InitializationError;
 use crate::service::error::ServiceError;
-use crate::util::sign8;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -184,7 +183,7 @@ impl DocumentSigner for Sign8 {
     ) -> Result<Authorization, DocumentSignerError> {
         let hash = self.document_hash(&request.document)?;
 
-        let account_token = sign8::build_account_token(
+        let account_token = build_sign8_account_token(
             &self.params.account_id,
             &self.params.client_id,
             &self.params.client_secret,

@@ -241,12 +241,10 @@ impl OneCore {
                 err.error_while("creating certificate validator").into(),
             )
         })?;
-        let csc_client = Arc::new(CscClientImpl::new(client.clone()));
         let key_provider = key_provider_from_config(
             &mut config,
             key_algorithm_provider.clone(),
             client.clone(),
-            csc_client.clone(),
             certificate_validator.clone(),
             native_secure_element,
             remote_secure_element,
@@ -353,8 +351,10 @@ impl OneCore {
             did_method_provider.clone(),
         )?;
 
-        let document_signer_provider =
-            document_signer_provider_from_config(&mut config, csc_client)?;
+        let document_signer_provider = document_signer_provider_from_config(
+            &mut config,
+            Arc::new(CscClientImpl::new(client.clone())),
+        )?;
 
         let blob_storage_provider =
             blob_storage_provider_from_config(&mut config, data_provider.get_blob_repository())?;

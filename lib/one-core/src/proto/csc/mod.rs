@@ -2,30 +2,40 @@
 
 use std::sync::Arc;
 
-use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
+use ct_codecs::{Base64, Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::utilities::ecdsa_sig_from_der;
 use one_crypto::{HasherError, SignerError};
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use standardized_types::csc::{
-    AuthorizeRequest, CredentialInfoRequest, CredentialInfoResponse, HashAlgorithm, OperationMode,
-    SignDocDocument, SignDocRequest, SignDocResponse, SignHashRequest, SignHashResponse,
-    TokenResponse,
+    AuthorizeRequest, CredentialInfoRequest, CredentialInfoResponse, CredentialListInfo,
+    CredentialListRequest, CredentialListResponse, HashAlgorithm, OperationMode, SignDocDocument,
+    SignDocRequest, SignDocResponse, SignHashRequest, SignHashResponse, TokenResponse,
 };
+use standardized_types::oauth2::token::TokenResponse as OAuth2TokenResponse;
 use thiserror::Error;
+use time::OffsetDateTime;
 use url::Url;
+use uuid::Uuid;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::csc::model::{
-    Authorization, AuthorizationUrlRequest, CredentialToken, SignDocumentRequest,
-    SignHashesRequest, TokenRequest,
+    Authorization, AuthorizationCode, AuthorizationUrlRequest, AuthorizeTlsRequest,
+    ClientCredentialsRequest, CredentialToken, SignDocumentRequest, SignHashesRequest,
+    TokenRequest,
 };
 use crate::proto::http_client::{HttpClient, RequestBuilder};
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::hmac::HS256Signer;
+use crate::proto::jwt::model::JWTPayload;
 use crate::proto::oauth_client::Pkce;
 
 pub mod model;
 
 /// SIGN8's gateway rejects requests without a `User-Agent`, reqwest sends none by default.
 const USER_AGENT: &str = "procivis-one-core";
+const CLIENT_ASSERTION_TYPE: &str = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
 pub(crate) struct CscClientImpl {
     client: Arc<dyn HttpClient>,
@@ -66,10 +76,23 @@ pub trait CscClient: Send + Sync {
         request: AuthorizationUrlRequest<'a>,
     ) -> Result<Authorization, CscClientError>;
 
+    /// SIGN8's headless variant of the authorization code flow: the code comes from
+    /// `/oauth2/authorize_tls` over mTLS, no browser redirect.
+    async fn authorize_tls<'a>(
+        &'a self,
+        request: AuthorizeTlsRequest<'a>,
+    ) -> Result<AuthorizationCode, CscClientError>;
+
     async fn exchange_code<'a>(
         &'a self,
         request: TokenRequest<'a>,
     ) -> Result<CredentialToken, CscClientError>;
+
+    /// Client credentials grant with a `private_key_jwt` client assertion ([RFC 7523](https://www.rfc-editor.org/rfc/rfc7523))
+    async fn client_credentials_token<'a>(
+        &'a self,
+        request: ClientCredentialsRequest<'a>,
+    ) -> Result<String, CscClientError>;
 
     async fn credential_info(
         &self,
@@ -77,6 +100,12 @@ pub trait CscClient: Send + Sync {
         access_token: &str,
         credential_id: &str,
     ) -> Result<CredentialInfoResponse, CscClientError>;
+
+    async fn credential_list(
+        &self,
+        api_url: &str,
+        access_token: &str,
+    ) -> Result<Vec<CredentialListInfo>, CscClientError>;
 
     async fn sign_document<'a>(
         &'a self,
@@ -139,6 +168,47 @@ impl CscClient for CscClientImpl {
         })
     }
 
+    async fn authorize_tls<'a>(
+        &'a self,
+        request: AuthorizeTlsRequest<'a>,
+    ) -> Result<AuthorizationCode, CscClientError> {
+        let pkce = Pkce::generate()?;
+        let hashes = request
+            .hashes
+            .iter()
+            .map(Base64UrlSafe::encode_to_string)
+            .collect::<Result<Vec<_>, _>>()?
+            .join(",");
+        let num_signatures = request.hashes.len().to_string();
+
+        let response: CodeResponse = async {
+            self.post(&format!("{}/oauth2/authorize_tls", request.oauth_url))
+                .form([
+                    ("scope", "credential"),
+                    ("account_token", request.account_token),
+                    ("response_type", "code"),
+                    ("client_id", request.client_id),
+                    ("code_challenge", &pkce.challenge),
+                    ("code_challenge_method", "S256"),
+                    ("credentialID", request.credential_id),
+                    ("numSignatures", &num_signatures),
+                    ("hashes", &hashes),
+                    ("hashAlgorithmOID", request.hash_algorithm.oid()),
+                    ("redirect_uri", request.redirect_uri),
+                ])?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("authorize tls request")?;
+        Ok(AuthorizationCode {
+            code: response.code,
+            code_verifier: pkce.verifier,
+        })
+    }
+
     async fn exchange_code<'a>(
         &'a self,
         request: TokenRequest<'a>,
@@ -166,6 +236,33 @@ impl CscClient for CscClientImpl {
         })
     }
 
+    async fn client_credentials_token<'a>(
+        &'a self,
+        request: ClientCredentialsRequest<'a>,
+    ) -> Result<String, CscClientError> {
+        let mut form = vec![
+            ("grant_type", "client_credentials"),
+            ("client_id", request.client_id),
+            ("client_assertion_type", CLIENT_ASSERTION_TYPE),
+            ("client_assertion", request.client_assertion),
+            ("scope", request.scope),
+        ];
+        if let Some(authorization_details) = request.authorization_details {
+            form.push(("authorization_details", authorization_details));
+        }
+        let token: OAuth2TokenResponse = async {
+            self.post(request.token_url)
+                .form(form)?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("client credentials token request")?;
+        Ok(token.access_token.expose_secret().to_string())
+    }
+
     async fn credential_info(
         &self,
         api_url: &str,
@@ -188,6 +285,29 @@ impl CscClient for CscClientImpl {
         .await
         .error_while("credential info request")
         .map_err(Into::into)
+    }
+
+    async fn credential_list(
+        &self,
+        api_url: &str,
+        access_token: &str,
+    ) -> Result<Vec<CredentialListInfo>, CscClientError> {
+        let list: CredentialListResponse = async {
+            self.post(&format!("{api_url}/csc/v2/credentials/list"))
+                .bearer_auth(access_token)
+                .json(&CredentialListRequest {
+                    credential_info: true,
+                    certificates: "single".to_string(),
+                    cert_info: true,
+                })?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("credential list request")?;
+        Ok(list.credential_infos)
     }
 
     async fn sign_document<'a>(
@@ -295,6 +415,11 @@ impl CscClient for CscClientImpl {
     }
 }
 
+#[derive(Deserialize)]
+struct CodeResponse {
+    code: String,
+}
+
 fn encode_base64url(bytes: &[u8]) -> Result<String, CscClientError> {
     Base64UrlSafeNoPadding::encode_to_string(bytes).map_err(Into::into)
 }
@@ -307,10 +432,41 @@ pub(crate) fn hash(algorithm: HashAlgorithm, data: &[u8]) -> Vec<u8> {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct AccountTokenClaims {
+    azp: String,
+}
+
+/// SIGN8-proprietary gateway-auth token (not part of CSC); the CSC client forwards it.
+pub(crate) async fn build_sign8_account_token(
+    account_id: &str,
+    client_id: &str,
+    client_secret: &SecretString,
+    now: OffsetDateTime,
+) -> Result<String, NestedError> {
+    let payload = JWTPayload::<AccountTokenClaims> {
+        subject: Some(account_id.to_owned()),
+        issued_at: Some(now),
+        jwt_id: Some(Uuid::new_v4().to_string()),
+        custom: AccountTokenClaims {
+            azp: client_id.to_owned(),
+        },
+        ..Default::default()
+    };
+
+    let signing_key =
+        SecretSlice::from(Sha256::digest(client_secret.expose_secret().as_bytes()).to_vec());
+
+    Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload)
+        .tokenize(Some(&HS256Signer::new(signing_key)))
+        .await
+        .error_while("creating account token")
+}
+
 #[cfg(test)]
 mod test {
     use similar_asserts::assert_eq;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
@@ -392,6 +548,42 @@ mod test {
         assert_eq!(
             info.signing_algorithm(HashAlgorithm::Sha256),
             Some(SignatureAlgorithm::Rsa)
+        );
+    }
+
+    #[tokio::test]
+    async fn credential_list_returns_credential_ids_with_their_info() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/csc/v2/credentials/list"))
+            .and(body_json(serde_json::json!({
+                "credentialInfo": true, "certificates": "single", "certInfo": true
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "credentialIDs": ["cred-1"],
+                "credentialInfos": [{
+                    "credentialID": "cred-1",
+                    "key": { "status": "enabled", "algo": ["1.2.840.10045.4.3.2"] },
+                    "cert": { "status": "valid", "certificates": ["MIIB"] }
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let csc = CscClientImpl::new(Arc::new(ReqwestClient::new(Default::default()).unwrap()));
+        let credentials = csc.credential_list(&server.uri(), "atok").await.unwrap();
+
+        let [credential] = credentials.as_slice() else {
+            panic!("expected one credential");
+        };
+        assert_eq!(credential.credential_id, "cred-1");
+        assert_eq!(
+            credential.info.key.algo,
+            vec!["1.2.840.10045.4.3.2".to_string()]
+        );
+        assert_eq!(
+            credential.info.cert.as_ref().unwrap().certificates,
+            vec!["MIIB".to_string()]
         );
     }
 

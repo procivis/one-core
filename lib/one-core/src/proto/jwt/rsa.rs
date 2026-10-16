@@ -15,7 +15,6 @@ pub(crate) struct RS256Signer {
 }
 
 impl RS256Signer {
-    #[expect(dead_code)]
     pub(crate) fn from_pem(private_key: &str) -> Result<Self, SignerError> {
         let pem = pem::parse(private_key)
             .map_err(|err| SignerError::CouldNotExtractPrivateKey(err.to_string()))?;

@@ -45,17 +45,32 @@ keyStorage:
         clientId: "de515d45-53da-4b82-a34a-0e6b513db700"
         clientSecret: ""
   SIGN8:
-    type: SIGN8
+    type: CSC
     display: "keyStorage.sign8"
     enabled: false
     params:
       private:
+        auth: SIGN8_TLS
         cscBaseUrl: "https://api.uat.sign8.eu"
         oauthUrl: "https://auth.uat.sign8.eu"
         accountId: ""
         clientId: ""
         clientSecret: ""
         redirectUrl: ""
+        certificate: ""
+        privateKey: ""
+  DVV:
+    type: CSC
+    display: "keyStorage.dvv"
+    enabled: false
+    params:
+      private:
+        auth: OAUTH2_CLIENT
+        cscBaseUrl: ""
+        signHashBaseUrl: "https://qsealqa.certificate.fi:8500/signer-server/QA-DVV"
+        tokenUrl: "https://auth-qa.securenet.fi/realms/QES-QA/protocol/openid-connect/token"
+        clientId: ""
+        signerClientId: ""
         certificate: ""
         privateKey: ""
 keySecurityLevel:

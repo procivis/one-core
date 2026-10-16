@@ -9,7 +9,6 @@ pub mod vcdm_jsonld_contexts;
 pub mod jwe;
 pub mod key_agreement;
 pub mod nonce;
-pub mod sign8;
 #[cfg(any(test, feature = "mock"))]
 pub mod test_mdoc;
 #[cfg(any(test, feature = "mock"))]

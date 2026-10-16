@@ -13,13 +13,12 @@ use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, KeyStorag
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::key::Key;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::csc::CscClient;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::sign8::Sign8KeyProvider;
+use crate::provider::key_storage::csc::CscKeyProvider;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -153,7 +152,6 @@ pub(crate) fn key_provider_from_config(
     config: &mut CoreConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
-    csc_client: Arc<dyn CscClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
     native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
@@ -164,7 +162,6 @@ pub(crate) fn key_provider_from_config(
             field,
             key_algorithm_provider.clone(),
             client.clone(),
-            csc_client.clone(),
             certificate_validator.clone(),
             native_secure_element.clone(),
             remote_secure_element.clone(),
@@ -175,13 +172,11 @@ pub(crate) fn key_provider_from_config(
     Ok(Arc::new(directory))
 }
 
-#[expect(clippy::too_many_arguments)]
 fn initialize_provider(
     name: &str,
     field: &Fields<KeyStorageType>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
-    csc_client: Arc<dyn CscClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
     native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
@@ -213,9 +208,8 @@ fn initialize_provider(
             )?;
             Arc::new(RemoteSecureElementKeyProvider::new(name, native_storage))
         }
-        KeyStorageType::Sign8 => Arc::new(Sign8KeyProvider::new(
+        KeyStorageType::Csc => Arc::new(CscKeyProvider::new(
             name.to_string(),
-            csc_client,
             client,
             certificate_validator,
             field.merge_fields(),

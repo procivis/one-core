@@ -18,6 +18,30 @@ pub struct Authorization {
     pub code_verifier: String,
 }
 
+pub struct AuthorizeTlsRequest<'a> {
+    pub oauth_url: &'a str,
+    pub client_id: &'a str,
+    pub redirect_uri: &'a str,
+    pub account_token: &'a str,
+    pub credential_id: &'a str,
+    pub hashes: &'a [&'a [u8]],
+    pub hash_algorithm: HashAlgorithm,
+}
+
+#[derive(Debug)]
+pub struct AuthorizationCode {
+    pub code: String,
+    pub code_verifier: String,
+}
+
+pub struct ClientCredentialsRequest<'a> {
+    pub token_url: &'a str,
+    pub client_id: &'a str,
+    pub client_assertion: &'a str,
+    pub scope: &'a str,
+    pub authorization_details: Option<&'a str>,
+}
+
 pub struct TokenRequest<'a> {
     pub oauth_url: &'a str,
     pub code: &'a str,
