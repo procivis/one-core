@@ -5,3 +5,6 @@
 
 # rustls-platform-verifier
 -keep, includedescriptorclasses class org.rustls.platformverifier.** { *; }
+
+# ktor-client-cio
+-dontwarn org.slf4j.impl.StaticLoggerBinder

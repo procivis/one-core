@@ -9,6 +9,11 @@ import android.content.Context
 import android.net.http.X509TrustManagerExtensions
 import android.os.Build
 import android.util.Log
+import org.bouncycastle.asn1.ASN1OctetString
+import org.bouncycastle.asn1.ASN1Primitive
+import org.bouncycastle.asn1.x509.AccessDescription
+import org.bouncycastle.asn1.x509.AuthorityInformationAccess
+import org.bouncycastle.asn1.x509.Extension
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.security.KeyStore
@@ -332,12 +337,7 @@ val keystore = systemKeystore
             val parameters = PKIXBuilderParameters(keystore, null)
 
             val validator = CertPathValidator.getInstance("PKIX")
-            val revocationChecker = validator.revocationChecker as PKIXRevocationChecker
 
-            revocationChecker.options = EnumSet.of(
-                PKIXRevocationChecker.Option.SOFT_FAIL,
-                PKIXRevocationChecker.Option.ONLY_END_ENTITY
-            )
 
             // Use the OCSP data `rustls` provided, if present.
             // Its expected that the server only sends revocation data for its own leaf certificate.
@@ -345,15 +345,24 @@ val keystore = systemKeystore
             // If this field is set, then Android will use it and skip any networking to
             // attempt a fetch for that certificate. Otherwise, it will attempt to fetch it from the network.
             // Ref: https://cs.android.com/android/platform/superproject/+/master:libcore/ojluni/src/main/java/sun/security/provider/certpath/RevocationChecker.java;l=694
-            ocspResponse?.let { providedResponse ->
-                revocationChecker.ocspResponses = mapOf(endEntity to providedResponse)
+            // Without stapled OCSP data and no OCSP responder in the leaf certificate, fall back to CRLs.
+            if (ocspResponse != null || hasOcspResponder(endEntity)) {
+                val revocationChecker = validator.revocationChecker as PKIXRevocationChecker
+
+                revocationChecker.options = EnumSet.of(
+                    PKIXRevocationChecker.Option.SOFT_FAIL,
+                    PKIXRevocationChecker.Option.ONLY_END_ENTITY
+                )
+
+                if (ocspResponse != null) {
+                    revocationChecker.ocspResponses = mapOf(endEntity to ocspResponse)
+                }
+
+                parameters.certPathCheckers = listOf(revocationChecker)
+            } else {
+                parameters.certPathCheckers = listOf(CRLChecker(validChain))
             }
 
-            // Use the custom revocation definition.
-            // "Note that when a `PKIXRevocationChecker` is added to `PKIXParameters`, it clones the `PKIXRevocationChecker`;
-            // thus any subsequent modifications to the `PKIXRevocationChecker` have no effect."
-            //  - https://developer.android.com/reference/java/security/cert/PKIXRevocationChecker
-            parameters.certPathCheckers = listOf(revocationChecker)
             // "When supplying a revocation checker in this manner, it will be used to check revocation
             // irrespective of the setting of the `RevocationEnabled` flag."
             //  - https://developer.android.com/reference/java/security/cert/PKIXRevocationChecker
@@ -379,6 +388,22 @@ val keystore = systemKeystore
         }
 
         return VerificationResult(StatusCode.Ok)
+    }
+
+    // Check if the certificate specifies an OCSP responder in its authority information access extension.
+    private fun hasOcspResponder(certificate: X509Certificate): Boolean {
+        val extValue =
+            certificate.getExtensionValue(Extension.authorityInfoAccess.id) ?: return false
+
+        return try {
+            val aia = AuthorityInformationAccess.getInstance(
+                ASN1Primitive.fromByteArray(ASN1OctetString.getInstance(extValue).octets)
+            )
+            aia.accessDescriptions.any { it.accessMethod == AccessDescription.id_ad_ocsp }
+        } catch (e: Exception) {
+            Log.w(TAG, "failed to parse authority information access extension: $e")
+            false
+        }
     }
 
     private fun verifyCertUsage(certificate: X509Certificate, allowedEkus: Array<String>): Boolean {
