@@ -28,7 +28,8 @@ use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::endpoint::ssi::dto::TrustCollectionResponseRestDTO;
 use crate::extractor::Accept;
 use crate::headers::{
-    APPLICATION_COSE_X509, APPLICATION_JWT, APPLICATION_PEM_CHAIN, APPLICATION_XML,
+    APPLICATION_COSE_X509, APPLICATION_JSONL_JSON, APPLICATION_JWT, APPLICATION_PEM_CHAIN,
+    APPLICATION_XML, TEXT_JSONL,
 };
 use crate::router::AppState;
 #[endpoint(
@@ -61,7 +62,10 @@ pub(crate) async fn get_did_web_document(
         ("id" = DidId, Path, description = "Did id")
     ),
     responses(
-        (status = 200, description = "success response", content_type = "text/jsonl"),
+        (status = 200, description = "success response", content(
+            (String = "text/jsonl"),
+            (String = "application/jsonl+json")
+        )),
         (status = 400, description = "invalid did method"),
         (status = 404, description = "did not found"),
         (status = 500, description = "internal server error"),
@@ -70,16 +74,31 @@ pub(crate) async fn get_did_web_document(
     summary = "Retrieve did:webvh(did:tdw) document",
     description = indoc::formatdoc! {"
         Retrieve a `did:webvh` (or `did:tdw`) document by its UUID.
+
+        The log is served as `text/jsonl` unless the Accept header prefers
+        `application/jsonl+json`.
     "},
 )]
 pub(crate) async fn get_did_webvh_log(
+    accept: Option<TypedHeader<Accept>>,
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
 ) -> Response {
+    // both media types are served; the spec-mandated one wins unless the client
+    // explicitly prefers the other
+    let content_type = accept
+        .map(|TypedHeader(accept)| accept)
+        .unwrap_or_default()
+        .negotiate(&[
+            (&TEXT_JSONL, TEXT_JSONL.as_ref()),
+            (&APPLICATION_JSONL_JSON, APPLICATION_JSONL_JSON.as_ref()),
+        ])
+        .unwrap_or_else(|| TEXT_JSONL.as_ref());
+
     let result = state.core.did_service.get_did_webvh_log(&id).await;
 
     match result {
-        Ok(log) => (StatusCode::OK, [(header::CONTENT_TYPE, "text/jsonl")], log).into_response(),
+        Ok(log) => (StatusCode::OK, [(header::CONTENT_TYPE, content_type)], log).into_response(),
         Err(DidServiceError::NotFound(_)) => {
             tracing::error!("did:webvh not found");
             (StatusCode::NOT_FOUND, "Did not found").into_response()

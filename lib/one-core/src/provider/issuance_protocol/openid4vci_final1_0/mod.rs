@@ -1833,7 +1833,12 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
-    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
+    #[tracing::instrument(
+        level = "debug",
+        skip(self, organisation),
+        fields(organisation_id = %organisation.id),
+        err(level = "info")
+    )]
     async fn fetch_issuer_metadata(
         &self,
         credential_issuer: &str,

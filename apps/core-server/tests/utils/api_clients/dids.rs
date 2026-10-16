@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use reqwest::header::{ACCEPT, HeaderMap, HeaderValue};
 use serde_json::json;
 use shared_types::{KeyId, OrganisationId};
 use uuid::Uuid;
@@ -102,6 +103,13 @@ impl DidsApi {
     pub async fn get_did_webvh(&self, did_id: &impl Display) -> Response {
         let url = format!("/ssi/did-webvh/v1/{did_id}/did.jsonl");
         self.client.get(&url).await
+    }
+
+    pub async fn get_did_webvh_with_accept(&self, did_id: &impl Display, accept: &str) -> Response {
+        let url = format!("/ssi/did-webvh/v1/{did_id}/did.jsonl");
+        let mut headers = HeaderMap::new();
+        headers.insert(ACCEPT, HeaderValue::from_str(accept).unwrap());
+        self.client.get_with_headers(&url, headers).await
     }
 
     pub async fn get_did_web_document(&self, did_id: &impl Display) -> Response {

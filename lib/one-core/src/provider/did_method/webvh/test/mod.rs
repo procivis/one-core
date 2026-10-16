@@ -36,7 +36,7 @@ fn mock_webvh_log_request(client: &mut MockHttpClient, url: String, response: Re
             always(),
             eq(Some(HashMap::from([(
                 "Accept".to_string(),
-                "text/jsonl".to_string(),
+                "text/jsonl, application/jsonl+json".to_string(),
             )]))),
             eq(Method::Get),
             always(),

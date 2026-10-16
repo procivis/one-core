@@ -21,7 +21,9 @@ pub(super) async fn resolve(
     let response = method
         .client
         .get(url.as_str())
-        .header("Accept", "text/jsonl")
+        // the spec mandates `text/jsonl`, but some deployments (e.g. swiyu) serve
+        // `application/jsonl+json`; the response media type is not checked either way
+        .header("Accept", "text/jsonl, application/jsonl+json")
         .send()
         .await
         .and_then(|r| r.error_for_status())

@@ -42,6 +42,62 @@ async fn test_get_did_tdw_at_existing_endpoint() {
 }
 
 #[tokio::test]
+async fn test_get_did_tdw_content_type_follows_accept_header() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let did_value: DidValue =
+        "did:tdw:QmeZGQQV8uM9Mr74LyM3hS6JJHJD2a265xb9xJU8zZdo4A:test-domain.com"
+            .parse()
+            .unwrap();
+
+    let did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                log: Some("[]".to_string()),
+                did_type: Some(DidType::Local),
+                did_method: Some("TDW".into()),
+                did: Some(did_value),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN/THEN both media types are served, the spec-mandated one by default
+    for (accept, expected) in [
+        ("*/*", "text/jsonl"),
+        ("text/jsonl", "text/jsonl"),
+        ("application/jsonl+json", "application/jsonl+json"),
+        ("text/jsonl, application/jsonl+json", "text/jsonl"),
+        (
+            "application/jsonl+json, text/jsonl",
+            "application/jsonl+json",
+        ),
+        (
+            "text/jsonl;q=0.5, application/jsonl+json",
+            "application/jsonl+json",
+        ),
+        // an unsupported Accept header still gets the log, leniently
+        ("application/json", "text/jsonl"),
+    ] {
+        let resp = context
+            .api
+            .dids
+            .get_did_webvh_with_accept(&did.id, accept)
+            .await;
+
+        assert_eq!(resp.status(), 200);
+        assert_eq!(
+            resp.headers().get("content-type").unwrap(),
+            expected,
+            "unexpected content type for Accept: {accept}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn test_get_did_tdw_success_did_deactivated() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
