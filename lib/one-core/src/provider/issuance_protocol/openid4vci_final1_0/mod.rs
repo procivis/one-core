@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use attestations::requires_wia;
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use mapper::{
@@ -34,7 +35,7 @@ use shared_types::{
 };
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
-use standardized_types::jwk::{JwkUse, Jwks};
+use standardized_types::jwk::{JwkUse, Jwks, PublicJwk};
 use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
@@ -62,8 +63,9 @@ use super::mapper::{
     interaction_from_handle_invitation,
 };
 use super::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResponse,
-    IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse, SubmitIssuerResponse,
+    AuthorizationDpopKey, ContinueIssuanceResponseDTO, InvitationResponseEnum,
+    IssuanceAcceptResponse, IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse,
+    SubmitIssuerResponse,
 };
 use super::{
     HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, deserialize_interaction_data,
@@ -408,18 +410,7 @@ impl OpenID4VCIFinal1_0 {
         let key_id = dpop_key.id();
         let key = dpop_key.as_ref().await?;
 
-        let jwk = self
-            .key_algorithm_provider
-            .reconstruct_key(
-                key.key_algorithm_type()
-                    .error_while("getting DPoP key algorithm type")?,
-                &key.public_key,
-                None,
-                None,
-            )
-            .error_while("reconstructing DPoP key")?
-            .public_key_as_jwk()
-            .error_while("getting DPoP JWK")?;
+        let jwk = self.dpop_public_jwk(&key)?;
         let auth_fn = self.key_provider.get_signature_provider(
             &key,
             None,
@@ -433,6 +424,21 @@ impl OpenID4VCIFinal1_0 {
             jwk,
             interaction_data.dpop_nonce.to_owned(),
         )))
+    }
+
+    fn dpop_public_jwk(&self, key: &Key) -> Result<PublicJwk, IssuanceProtocolError> {
+        Ok(self
+            .key_algorithm_provider
+            .reconstruct_key(
+                key.key_algorithm_type()
+                    .error_while("getting DPoP key algorithm type")?,
+                &key.public_key,
+                None,
+                None,
+            )
+            .error_while("reconstructing DPoP key")?
+            .public_key_as_jwk()
+            .error_while("getting DPoP JWK")?)
     }
 
     /// Drops the DPoP binding key of an issuance the issuer did not use.
@@ -1901,6 +1907,7 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
+    #[expect(clippy::too_many_arguments)]
     async fn prepare_issuance_interaction(
         &self,
         organisation: Organisation,
@@ -1909,6 +1916,7 @@ impl OpenID4VCIFinal1_0 {
         grants: Grants,
         configuration_ids: &[String],
         continue_issuance: Option<ContinueIssuanceDTO>,
+        authorization_dpop_key: Option<KeyId>,
     ) -> Result<PrepareIssuanceSuccess, IssuanceProtocolError> {
         if configuration_ids.is_empty() {
             return Err(IssuanceProtocolError::Failed(
@@ -2022,9 +2030,15 @@ impl OpenID4VCIFinal1_0 {
         };
         let data = serialize_interaction_data(&holder_data)?;
 
-        let dpop_key = self
-            .prepare_dpop_binding_key(&organisation, &oauth_metadata)
-            .await?;
+        // an authorization code bound to a DPoP key can only be redeemed with that same key
+        // https://www.rfc-editor.org/rfc/rfc9449.html#section-10
+        let dpop_key = match authorization_dpop_key {
+            Some(key_id) => Some(key_id),
+            None => self
+                .prepare_dpop_binding_key(&organisation, &oauth_metadata)
+                .await?
+                .map(|key| key.id),
+        };
         let interaction = create_and_store_interaction(
             self.interaction_repository.as_ref(),
             &self.key_repository,
@@ -2044,7 +2058,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         organisation: &Organisation,
         oauth_metadata: &AuthorizationServerMetadata,
-    ) -> Result<Option<KeyId>, IssuanceProtocolError> {
+    ) -> Result<Option<Key>, IssuanceProtocolError> {
         // the issuer decides whether DPoP is on the table at all
         let Some(dpop_signing_algs) = &oauth_metadata.dpop_signing_alg_values_supported else {
             tracing::debug!(
@@ -2098,10 +2112,10 @@ impl OpenID4VCIFinal1_0 {
             organisation: organisation.to_owned().into(),
         };
         self.key_repository
-            .create_key(key)
+            .create_key(key.clone())
             .await
             .error_while("creating DPoP key")?;
-        Ok(Some(key_id))
+        Ok(Some(key))
     }
 
     pub(super) async fn get_etsi_issuer_info(
@@ -2439,6 +2453,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 oauth_metadata,
                 credential_offer.grants,
                 &credential_offer.credential_configuration_ids,
+                None,
                 None,
             )
             .await?;
@@ -2870,10 +2885,30 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         Ok(token)
     }
 
+    async fn holder_prepare_authorization_dpop_key(
+        &self,
+        organisation: &Organisation,
+        authorization_server_metadata: &AuthorizationServerMetadata,
+    ) -> Result<Option<AuthorizationDpopKey>, IssuanceProtocolError> {
+        let Some(key) = self
+            .prepare_dpop_binding_key(organisation, authorization_server_metadata)
+            .await?
+        else {
+            return Ok(None);
+        };
+        let jwk = &self.dpop_public_jwk(&key)?;
+        let thumbprint = jwk.thumbprint()?;
+        let jkt = Base64UrlSafeNoPadding::encode_to_string(thumbprint).map_err(|error| {
+            IssuanceProtocolError::Failed(format!("failed to encode DPoP JWK thumbprint: {error}"))
+        })?;
+        Ok(Some(AuthorizationDpopKey { key, jkt }))
+    }
+
     async fn holder_continue_issuance<'a>(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
+        dpop_key: Option<KeyId>,
     ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         let issuer_metadata = self
             .fetch_issuer_metadata(&continue_issuance_dto.credential_issuer, &organisation)
@@ -2931,6 +2966,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 }),
                 &all_credential_configuration_ids,
                 Some(continue_issuance_dto),
+                dpop_key,
             )
             .await?;
 

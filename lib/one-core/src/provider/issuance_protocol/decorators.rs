@@ -3,16 +3,18 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, SerializedCredential,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, KeyId,
+    SerializedCredential,
 };
+use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
 use url::Url;
 
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::IssuanceProtocolError;
 use super::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResult,
-    IssuanceRefreshResponse, ShareResponse,
+    AuthorizationDpopKey, ContinueIssuanceResponseDTO, InvitationResponseEnum,
+    IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse,
 };
 use super::{HolderBindingInput, IssuanceProtocol};
 use crate::model::credential::Credential;
@@ -71,10 +73,19 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         self.inner().holder_reject_credential(credential).await
     }
 
+    async fn holder_prepare_authorization_dpop_key(
+        &self,
+        _organisation: &Organisation,
+        _authorization_server_metadata: &AuthorizationServerMetadata,
+    ) -> Result<Option<AuthorizationDpopKey>, IssuanceProtocolError> {
+        self.disabled_error()
+    }
+
     async fn holder_continue_issuance<'a>(
         &self,
         _continue_issuance_dto: ContinueIssuanceDTO,
         _organisation: Organisation,
+        _dpop_key: Option<KeyId>,
     ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         self.disabled_error()
     }
@@ -199,13 +210,24 @@ impl IssuanceProtocol for CapabilityChecked {
         self.0.holder_reject_credential(credential).await
     }
 
+    async fn holder_prepare_authorization_dpop_key(
+        &self,
+        organisation: &Organisation,
+        authorization_server_metadata: &AuthorizationServerMetadata,
+    ) -> Result<Option<AuthorizationDpopKey>, IssuanceProtocolError> {
+        self.0
+            .holder_prepare_authorization_dpop_key(organisation, authorization_server_metadata)
+            .await
+    }
+
     async fn holder_continue_issuance<'a>(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
+        dpop_key: Option<KeyId>,
     ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         self.0
-            .holder_continue_issuance(continue_issuance_dto, organisation)
+            .holder_continue_issuance(continue_issuance_dto, organisation, dpop_key)
             .await
     }
 

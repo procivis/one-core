@@ -10,7 +10,8 @@ use super::authorization_server_metadata::CodeChallengeMethod;
 
 /// Authorization Request parameters, sent as the query string of the authorization endpoint.
 ///
-/// Carries the PKCE parameters of [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.3)
+/// Carries the PKCE parameters of [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.3),
+/// the DPoP authorization code binding of [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#section-10)
 /// and the `issuer_state` parameter added by OpenID4VCI.
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Builder)]
@@ -34,6 +35,11 @@ pub struct AuthorizationRequest {
 
     /// <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-5.1.3-2.1>
     pub issuer_state: Option<String>,
+
+    /// JWK SHA-256 thumbprint of the DPoP key the authorization code is bound to.
+    ///
+    /// Spec: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#section-10)
+    pub dpop_jkt: Option<String>,
 }
 
 impl AuthorizationRequest {
@@ -77,13 +83,15 @@ mod test {
             .state("testState".to_string())
             .redirect_uri("http://redirect.uri".to_string())
             .issuer_state("issuerState".to_string())
+            .dpop_jkt("jkt".to_string())
             .build()
             .with_code_challenge("challenge".to_string(), CodeChallengeMethod::S256);
 
         assert_eq!(
             "client_id=wallet&scope=scope1+scope2&state=testState\
              &redirect_uri=http%3A%2F%2Fredirect.uri&response_type=code\
-             &code_challenge=challenge&code_challenge_method=S256&issuer_state=issuerState",
+             &code_challenge=challenge&code_challenge_method=S256&issuer_state=issuerState\
+             &dpop_jkt=jkt",
             serde_urlencoded::to_string(&request).unwrap()
         );
     }

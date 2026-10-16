@@ -5,7 +5,8 @@ use std::vec;
 
 use mockall::predicate::{always, eq};
 use regex::Regex;
-use shared_types::{CredentialFormat, EcosystemId, OrganisationId};
+use serde_json::json;
+use shared_types::{CredentialFormat, EcosystemId, InteractionId, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::oauth2::authorization_server_metadata::{
     AuthorizationServerMetadata, CodeChallengeMethod,
@@ -14,6 +15,9 @@ use standardized_types::openid4vci::{AuthorizationDetail, CredentialIssuerMetada
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use url::Url;
 use uuid::Uuid;
+use wiremock::http::Method;
+use wiremock::matchers::{body_string_contains, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::dto::HandleInvitationRequestDTO;
 use crate::config::core_config::TransportType;
@@ -34,6 +38,7 @@ use crate::model::history::{
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::interaction::{Interaction, InteractionEcosystems, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::relation::Related;
 use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
@@ -54,7 +59,8 @@ use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, CredentialWithBlob, IssuanceAcceptResponse, IssuanceAcceptResult,
+    AuthorizationDpopKey, ContinueIssuanceResponseDTO, CredentialWithBlob, IssuanceAcceptResponse,
+    IssuanceAcceptResult,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     HolderCredentialConfiguration, HolderInteractionData,
@@ -1367,6 +1373,7 @@ async fn test_initiate_issuance() {
                 ..authorization_server_metadata(&issuer)
             },
         ),
+        issuance_protocol_provider: Arc::new(protocol_provider_preparing_dpop_key(None)),
         ..mock_ssi_holder_service()
     };
 
@@ -1452,7 +1459,8 @@ async fn test_continue_issuance() {
     issuance_protocol
         .expect_holder_continue_issuance()
         .once()
-        .returning(move |_, _| {
+        .withf(|_, _, dpop_key| dpop_key.is_none())
+        .returning(move |_, _, _| {
             Ok(ContinueIssuanceResponseDTO {
                 interaction_id,
                 key_storage_security_levels: None,
@@ -1553,6 +1561,7 @@ async fn test_initiate_issuance_pkce() {
     let service = SSIHolderService {
         organisation_repository: Arc::new(organisation_repository),
         interaction_repository: Arc::new(interaction_repository),
+        issuance_protocol_provider: Arc::new(protocol_provider_preparing_dpop_key(None)),
         openid_metadata_cache: authorization_server_metadata_cache(
             &issuer,
             AuthorizationServerMetadata {
@@ -1622,6 +1631,219 @@ fn authorization_server_metadata_cache(
         .return_once(move |_, _| Ok(serde_json::to_vec(&metadata).unwrap()));
 
     Arc::new(cache)
+}
+
+fn protocol_provider_preparing_dpop_key(
+    dpop_key: Option<AuthorizationDpopKey>,
+) -> MockIssuanceProtocolProvider {
+    let mut issuance_protocol = MockIssuanceProtocol::new();
+    issuance_protocol
+        .expect_holder_prepare_authorization_dpop_key()
+        .once()
+        .return_once(move |_, _| Ok(dpop_key));
+
+    let issuance_protocol = Arc::new(issuance_protocol);
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .with(eq("OPENID4VCI_FINAL1"))
+        .returning(move |_| Ok(issuance_protocol.clone()));
+    issuance_protocol_provider
+}
+
+#[tokio::test]
+async fn test_initiate_issuance_dpop_bound_par() {
+    let dpop_key = dummy_key();
+    let dpop_key_id = dpop_key.id;
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .return_once(|_| Ok(dummy_organisation(None)));
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .withf(move |interaction| {
+            interaction.dpop_key.as_ref().map(Related::id) == Some(dpop_key_id)
+        })
+        .return_once(|i| Ok(i.id));
+
+    let mock_server = MockServer::start().await;
+    let issuer = mock_server.uri();
+
+    let service = SSIHolderService {
+        organisation_repository: Arc::new(organisation_repository),
+        interaction_repository: Arc::new(interaction_repository),
+        issuance_protocol_provider: Arc::new(protocol_provider_preparing_dpop_key(Some(
+            AuthorizationDpopKey {
+                key: dpop_key,
+                jkt: "testJkt".to_string(),
+            },
+        ))),
+        openid_metadata_cache: authorization_server_metadata_cache(
+            &issuer,
+            AuthorizationServerMetadata {
+                authorization_endpoint: Some(
+                    Url::parse("https://authorize.com/authorize").unwrap(),
+                ),
+                pushed_authorization_request_endpoint: Some(
+                    Url::parse(&format!("{issuer}/par")).unwrap(),
+                ),
+                dpop_signing_alg_values_supported: Some(vec!["ES256".to_string()]),
+                ..authorization_server_metadata(&issuer)
+            },
+        ),
+        ..mock_ssi_holder_service()
+    };
+
+    // the authorization code is bound via `dpop_jkt`, the PAR request carries no DPoP proof
+    Mock::given(method(Method::POST))
+        .and(path("/par"))
+        .and(body_string_contains("dpop_jkt=testJkt"))
+        .and(|request: &wiremock::Request| !request.headers.contains_key("DPoP"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "request_uri": "testRequestUri",
+            "expires_in": 300,
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let result = service
+        .initiate_issuance(InitiateIssuanceRequestDTO {
+            organisation_id: Uuid::new_v4().into(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            issuer,
+            client_id: "clientId".to_string(),
+            redirect_uri: None,
+            scope: Some(vec!["scope".to_string()]),
+            authorization_details: None,
+            issuer_state: None,
+            authorization_server: None,
+            ecosystem: None,
+        })
+        .await
+        .unwrap();
+
+    assert!(result.url.contains("request_uri=testRequestUri"));
+    assert!(!result.url.contains("dpop_jkt="));
+}
+
+#[tokio::test]
+async fn test_continue_issuance_hands_over_dpop_key() {
+    // given
+    let organisation = dummy_organisation(None);
+    let dpop_key = dummy_key();
+    let dpop_key_id = dpop_key.id;
+    let initiated_interaction_id: InteractionId = Uuid::new_v4().into();
+    let continued_interaction_id: InteractionId = Uuid::new_v4().into();
+
+    let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
+        request: InitiateIssuanceRequestDTO {
+            organisation_id: organisation.id,
+            protocol: "protocol".to_string(),
+            issuer: "issuer".to_string(),
+            client_id: "client_id".to_string(),
+            redirect_uri: None,
+            scope: Some(vec!["scope1".to_string()]),
+            authorization_details: None,
+            issuer_state: None,
+            authorization_server: None,
+            ecosystem: None,
+        },
+        code_verifier: None,
+    };
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .returning(move |id, _| {
+            Ok(Interaction {
+                dpop_key: Some(dpop_key.clone().into()),
+                id: *id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+                organisation: organisation.clone().into(),
+                interaction_type: InteractionType::Issuance,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            })
+        });
+    // the key now belongs to the continued interaction only
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .withf(move |id, request| *id == initiated_interaction_id && request.dpop_key == Some(None))
+        .returning(|_, _| Ok(()));
+
+    let mut issuance_protocol = MockIssuanceProtocol::new();
+    issuance_protocol
+        .expect_holder_continue_issuance()
+        .once()
+        .withf(move |_, _, dpop_key| *dpop_key == Some(dpop_key_id))
+        .returning(move |_, _, _| {
+            Ok(ContinueIssuanceResponseDTO {
+                interaction_id: continued_interaction_id,
+                key_storage_security_levels: None,
+                key_algorithms: None,
+                requires_wallet_instance_attestation: false,
+                protocol: "protocol".to_string(),
+                ecosystem_artifact: ProtocolArtifact::HolderIssuanceInvitation {
+                    issuer_metadata: IssuerMetadataRepresentation::Unsigned(Box::new(
+                        CredentialIssuerMetadata {
+                            credential_issuer: "credential_issuer".to_string(),
+                            authorization_servers: None,
+                            credential_endpoint: "credential_endpoint".to_string(),
+                            nonce_endpoint: None,
+                            notification_endpoint: None,
+                            credential_configurations_supported: Default::default(),
+                            display: None,
+                            issuer_info: Default::default(),
+                            batch_credential_issuance: None,
+                            credential_request_encryption: None,
+                            credential_response_encryption: None,
+                            preferred_client_status_period: None,
+                        },
+                    )),
+                    credential_configuration_ids: vec![],
+                },
+            })
+        });
+
+    let issuance_protocol = Arc::new(issuance_protocol);
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .returning(move |_| Ok(issuance_protocol.clone()));
+
+    let interaction_repository = Arc::new(interaction_repository);
+    let service = SSIHolderService {
+        interaction_repository: interaction_repository.clone(),
+        issuance_protocol_provider: Arc::new(issuance_protocol_provider),
+        ecosystem_resolver: ecosystem_resolver(
+            interaction_repository,
+            MockEcosystemDirectory::new(),
+            MockHistoryRepository::new(),
+        ),
+        ..mock_ssi_holder_service()
+    };
+
+    // when
+    let response = service
+        .continue_issuance(format!(
+            "https://localhost:3000/some_path?state={initiated_interaction_id}&code=test_code"
+        ))
+        .await
+        .unwrap();
+
+    // then
+    assert_eq!(response.interaction_id, continued_interaction_id);
 }
 
 fn mock_ssi_holder_service() -> SSIHolderService {

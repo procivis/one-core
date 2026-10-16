@@ -7,8 +7,10 @@ use proc_macros::provider_mock;
 use serde::Serialize;
 use serde::de::Deserialize;
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, SerializedCredential,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, KeyId,
+    SerializedCredential,
 };
+use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
 use url::Url;
 
@@ -29,8 +31,8 @@ pub mod model;
 pub mod openid4vci_final1_0;
 pub(crate) mod provider;
 use model::{
-    ContinueIssuanceResponseDTO, IssuanceAcceptResponse, IssuanceAcceptResult,
-    IssuanceRefreshResponse, ShareResponse,
+    AuthorizationDpopKey, ContinueIssuanceResponseDTO, IssuanceAcceptResponse,
+    IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse,
 };
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
@@ -94,10 +96,21 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
         credential: Credential,
     ) -> Result<(), IssuanceProtocolError>;
 
+    /// Prepares the DPoP key the authorization code of an authorization code flow is bound to.
+    /// `None` if the authorization server does not support DPoP.
+    async fn holder_prepare_authorization_dpop_key(
+        &self,
+        organisation: &Organisation,
+        authorization_server_metadata: &AuthorizationServerMetadata,
+    ) -> Result<Option<AuthorizationDpopKey>, IssuanceProtocolError>;
+
+    /// Continues an authorization code flow once the authorization code was received.
+    /// `dpop_key` is the key the authorization code is bound to, if any.
     async fn holder_continue_issuance<'a>(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
+        dpop_key: Option<KeyId>,
     ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError>;
 
     /// Refreshes a credential or requests new batch.

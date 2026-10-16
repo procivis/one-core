@@ -11,12 +11,13 @@ use one_crypto::hasher::sha256::SHA256;
 use one_crypto::jwe::{Header, build_jwe, decrypt_jwe_payload};
 use secrecy::{SecretSlice, SecretString};
 use serde_json::{Value, json};
-use shared_types::{CredentialFormat, EntityId};
+use shared_types::{CredentialFormat, EntityId, KeyId};
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_472::disclosure_policy::{DisclosurePolicy, PolicyType};
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk, PublicJwkEc};
+use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dpop::{DPOP_JWT_TYPE, DPoPClaims};
 use standardized_types::openid4vci::{
     ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialIssuerMetadata, CredentialMetadata,
@@ -3420,20 +3421,29 @@ async fn test_handle_invitation_signed_metadata() {
 
 #[tokio::test]
 async fn test_continue_issuance_with_scope_success() {
-    inner_continue_issuance_test(true, false).await;
+    inner_continue_issuance_test(true, false, None).await;
 }
 
 #[tokio::test]
 async fn test_continue_issuance_with_credential_configuration_ids_success() {
-    inner_continue_issuance_test(false, true).await;
+    inner_continue_issuance_test(false, true, None).await;
 }
 
 #[tokio::test]
 async fn test_continue_issuance_with_scope_and_credential_configuration_ids_success() {
-    inner_continue_issuance_test(true, true).await;
+    inner_continue_issuance_test(true, true, None).await;
 }
 
-async fn inner_continue_issuance_test(with_scope: bool, with_credential_configuration_ids: bool) {
+#[tokio::test]
+async fn test_continue_issuance_reuses_authorization_dpop_key() {
+    inner_continue_issuance_test(true, false, Some(Uuid::new_v4().into())).await;
+}
+
+async fn inner_continue_issuance_test(
+    with_scope: bool,
+    with_credential_configuration_ids: bool,
+    dpop_key: Option<KeyId>,
+) {
     let credential = generic_credential_did();
 
     let credential_schema_id = credential.common().schema.id();
@@ -3524,15 +3534,22 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
         .returning({
             let capture_interaction_id = capture_interaction_id.clone();
             move |i: Interaction| {
+                // the authorization code can only be redeemed with the key it is bound to
+                assert_eq!(i.dpop_key.as_ref().map(Related::id), dpop_key);
                 let mut guard = capture_interaction_id.lock().unwrap();
                 *guard = Some(i.id);
                 Ok(i.id)
             }
         });
 
+    // no new DPoP key is generated
+    let mut key_repository = MockKeyRepository::new();
+    key_repository.expect_create_key().never();
+
     let protocol = setup_protocol(TestInputs {
         metadata_cache,
         interaction_repository,
+        key_repository,
         ..Default::default()
     });
 
@@ -3563,6 +3580,7 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
                 authorization_server: None,
             },
             dummy_organisation(None),
+            dpop_key,
         )
         .await
         .unwrap();
@@ -3571,6 +3589,125 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
         capture_interaction_id.lock().unwrap().unwrap(),
         result.interaction_id
     );
+}
+
+fn dpop_authorization_server_metadata(
+    dpop_signing_alg_values_supported: Option<Vec<&str>>,
+) -> AuthorizationServerMetadata {
+    serde_json::from_value(json!({
+        "issuer": "https://authorization.server",
+        "authorization_endpoint": "https://authorization.server/authorize",
+        "dpop_signing_alg_values_supported": dpop_signing_alg_values_supported,
+    }))
+    .unwrap()
+}
+
+#[tokio::test]
+async fn test_holder_prepare_authorization_dpop_key() {
+    // given
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_key_storage()
+        .once()
+        .with(eq("INTERNAL"))
+        .returning(|_| {
+            let mut storage = MockKeyStorage::new();
+            storage.expect_generate().once().returning(|_, _, _| {
+                Ok(StorageGeneratedKey {
+                    public_key: vec![1, 2, 3],
+                    key_reference: Some(vec![]),
+                })
+            });
+            Ok(Arc::new(storage))
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("ES256"))
+        .returning(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(MockKeyAlgorithm::new()))));
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .once()
+        .withf(|algorithm, public_key, _, _| {
+            *algorithm == KeyAlgorithmType::Ecdsa && public_key == [1, 2, 3]
+        })
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicJwk::Ec(PublicJwkEc {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_create_key()
+        .once()
+        .returning(|key| Ok(key.id));
+
+    let mut params = test_params("openid-credential-offer");
+    params["holderDpopKeyStorage"] = json!("INTERNAL");
+    let protocol = setup_protocol(TestInputs {
+        key_provider,
+        key_algorithm_provider,
+        key_repository,
+        params: Some(params),
+        ..Default::default()
+    });
+
+    // when
+    let result = protocol
+        .holder_prepare_authorization_dpop_key(
+            &dummy_organisation(None),
+            &dpop_authorization_server_metadata(Some(vec!["ES256"])),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    // then
+    assert_eq!(result.key.storage_type, "INTERNAL");
+    assert_eq!(result.key.key_type, "ECDSA");
+    assert!(result.key.autogenerated);
+    // RFC 7638 JWK SHA-256 thumbprint of the key
+    assert_eq!(result.jkt, "u7vrjwUEqr4_WVk1nfCx7nhirx2CrSvP9yUbAN4FNiQ");
+}
+
+#[tokio::test]
+async fn test_holder_prepare_authorization_dpop_key_without_dpop_support() {
+    // given
+    let mut key_repository = MockKeyRepository::new();
+    key_repository.expect_create_key().never();
+
+    let mut params = test_params("openid-credential-offer");
+    params["holderDpopKeyStorage"] = json!("INTERNAL");
+    let protocol = setup_protocol(TestInputs {
+        key_repository,
+        params: Some(params),
+        ..Default::default()
+    });
+
+    // when
+    let result = protocol
+        .holder_prepare_authorization_dpop_key(
+            &dummy_organisation(None),
+            &dpop_authorization_server_metadata(None),
+        )
+        .await
+        .unwrap();
+
+    // then
+    assert!(result.is_none());
 }
 
 #[tokio::test]

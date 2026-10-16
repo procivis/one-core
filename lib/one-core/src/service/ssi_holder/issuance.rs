@@ -27,7 +27,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
-use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::interaction::{Interaction, InteractionType, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
@@ -815,6 +815,29 @@ impl SSIHolderService {
             HolderServiceError::InvalidInput(format!("Invalid authorization server: {e}"))
         })?;
 
+        validate_ecosystem_selection_allow_not_set(
+            request.ecosystem.as_ref(),
+            &organisation,
+            self.ecosystem_provider.as_ref(),
+        )
+        .error_while("validating ecosystem")?;
+
+        let issuance_protocol = self
+            .issuance_protocol_provider
+            .get_protocol(&request.protocol)?;
+        let oauth_client = self.client.oauth_client(self.openid_metadata_cache.clone());
+        let authorization_server_metadata = oauth_client
+            .fetch_authorization_server_metadata(authorization_server)
+            .await
+            .error_while("fetching authorization server metadata")?;
+
+        // the authorization code is bound to the DPoP key via the `dpop_jkt` parameter, also when
+        // the request is pushed
+        let dpop_key = issuance_protocol
+            .holder_prepare_authorization_dpop_key(&organisation, &authorization_server_metadata)
+            .await
+            .error_while("preparing DPoP key")?;
+
         let interaction_id: InteractionId = Uuid::new_v4().into();
         let authorization_request = AuthorizationRequest::builder()
             .client_id(request.client_id.clone())
@@ -828,21 +851,13 @@ impl SSIHolderService {
                     .map(|ad| serde_json::json!(ad).to_string()),
             )
             .maybe_issuer_state(request.issuer_state.clone())
+            .maybe_dpop_jkt(dpop_key.as_ref().map(|dpop_key| dpop_key.jkt.to_owned()))
             .build();
 
-        let authorization_response = self
-            .client
-            .oauth_client(self.openid_metadata_cache.clone())
-            .initiate_authorization_code_flow(authorization_server, authorization_request)
+        let authorization_response = oauth_client
+            .initiate_authorization_code_flow(authorization_server_metadata, authorization_request)
             .await
             .error_while("initiating authorization code flow")?;
-
-        validate_ecosystem_selection_allow_not_set(
-            request.ecosystem.as_ref(),
-            &organisation,
-            self.ecosystem_provider.as_ref(),
-        )
-        .error_while("validating ecosystem")?;
 
         let ecosystem = request.ecosystem.clone();
         let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
@@ -856,7 +871,7 @@ impl SSIHolderService {
         let now = crate::clock::now_utc();
         self.interaction_repository
             .create_interaction(Interaction {
-                dpop_key: None,
+                dpop_key: dpop_key.map(|dpop_key| dpop_key.key.into()),
                 id: interaction_id,
                 created_date: now,
                 last_modified: now,
@@ -927,6 +942,7 @@ impl SSIHolderService {
 
         let organisation = interaction.organisation.as_ref().await?.to_owned();
         let user_selected_ecosystem = issuance.request.ecosystem.to_owned();
+        let dpop_key = interaction.dpop_key.as_ref().map(Related::id);
 
         if let (None, None) = (
             issuance.request.scope.as_ref(),
@@ -963,9 +979,24 @@ impl SSIHolderService {
                     authorization_server: issuance.request.authorization_server,
                 },
                 organisation,
+                dpop_key,
             )
             .await
             .error_while("continuing issuance")?;
+
+        if dpop_key.is_some() {
+            // the DPoP key now belongs to the interaction created by continuing
+            self.interaction_repository
+                .update_interaction(
+                    interaction.id,
+                    UpdateInteractionRequest {
+                        dpop_key: Some(None),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("handing over DPoP key")?;
+        }
 
         // continuing creates a fresh interaction, so a selection made when the flow was initiated
         // has to be committed onto that one too

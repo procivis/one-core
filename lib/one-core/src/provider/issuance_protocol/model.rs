@@ -7,6 +7,7 @@ use uuid::Uuid;
 use super::error::IssuanceProtocolError;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::KeyStorageSecurity;
+use crate::model::key::Key;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -25,6 +26,16 @@ pub(super) fn default_issuance_url_scheme() -> String {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CommonParams {
     pub webhook_task: Option<TaskId>,
+}
+
+/// DPoP key an authorization code is bound to.
+///
+/// Spec: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#section-10)
+#[derive(Clone, Debug)]
+pub(crate) struct AuthorizationDpopKey {
+    pub key: Key,
+    /// JWK SHA-256 thumbprint of the key, sent as `dpop_jkt` in the authorization request
+    pub jkt: String,
 }
 
 #[derive(Clone, Debug)]

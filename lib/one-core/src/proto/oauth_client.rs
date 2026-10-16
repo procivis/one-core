@@ -45,17 +45,9 @@ pub(crate) struct OAuthClient {
 impl OAuthClient {
     pub(crate) async fn initiate_authorization_code_flow(
         &self,
-        authorization_server: Url,
+        metadata: AuthorizationServerMetadata,
         request: AuthorizationRequest,
     ) -> Result<OAuthAuthorizationResponse, OAuthClientError> {
-        let metadata = self
-            .fetch_authorization_server_metadata(authorization_server.clone())
-            .await?;
-
-        if metadata.issuer != authorization_server {
-            return Err(OAuthClientError::IssuerMismatch);
-        }
-
         // optional support for PKCE
         let (request, code_verifier) = if metadata
             .code_challenge_methods_supported
@@ -110,7 +102,18 @@ impl OAuthClient {
         })
     }
 
-    async fn fetch_authorization_server_metadata(
+    pub(crate) async fn fetch_authorization_server_metadata(
+        &self,
+        issuer_url: Url,
+    ) -> Result<AuthorizationServerMetadata, OAuthClientError> {
+        let metadata = self.fetch_metadata(issuer_url.clone()).await?;
+        if metadata.issuer != issuer_url {
+            return Err(OAuthClientError::IssuerMismatch);
+        }
+        Ok(metadata)
+    }
+
+    async fn fetch_metadata(
         &self,
         issuer_url: Url,
     ) -> Result<AuthorizationServerMetadata, OAuthClientError> {
@@ -225,7 +228,10 @@ mod tests {
         // when
         let result = client
             .initiate_authorization_code_flow(
-                issuer.parse().unwrap(),
+                client
+                    .fetch_authorization_server_metadata(issuer.parse().unwrap())
+                    .await
+                    .unwrap(),
                 AuthorizationRequest::builder()
                     .client_id("clientId".to_string())
                     .scope("scope1 scope2".to_string())
@@ -275,7 +281,10 @@ mod tests {
         // when
         let result = client
             .initiate_authorization_code_flow(
-                issuer.parse().unwrap(),
+                client
+                    .fetch_authorization_server_metadata(issuer.parse().unwrap())
+                    .await
+                    .unwrap(),
                 AuthorizationRequest::builder()
                     .client_id("clientId".to_string())
                     .scope("scope1 scope2".to_string())
@@ -345,7 +354,10 @@ mod tests {
         // when
         let result = client
             .initiate_authorization_code_flow(
-                issuer.parse().unwrap(),
+                client
+                    .fetch_authorization_server_metadata(issuer.parse().unwrap())
+                    .await
+                    .unwrap(),
                 AuthorizationRequest::builder()
                     .client_id("clientId".to_string())
                     .scope("scope1 scope2".to_string())
@@ -411,7 +423,10 @@ mod tests {
         // when
         let result = client
             .initiate_authorization_code_flow(
-                issuer.parse().unwrap(),
+                client
+                    .fetch_authorization_server_metadata(issuer.parse().unwrap())
+                    .await
+                    .unwrap(),
                 AuthorizationRequest::builder()
                     .client_id("clientId".to_string())
                     .issuer_state("testing-state".to_string())
@@ -427,5 +442,77 @@ mod tests {
         assert!(url.contains("request_uri=testRequestUri"));
 
         assert!(!url.contains("issuer_state="));
+    }
+
+    #[tokio::test]
+    async fn send_authorization_request_par_with_dpop_jkt() {
+        // given
+        let mock_server = MockServer::start().await;
+        let issuer = mock_server.uri();
+
+        let client = oauth_client(
+            &issuer,
+            AuthorizationServerMetadata {
+                pushed_authorization_request_endpoint: Some(
+                    Url::parse(&format!("{issuer}/par")).unwrap(),
+                ),
+                dpop_signing_alg_values_supported: Some(vec!["ES256".to_string()]),
+                ..authorization_server_metadata(&issuer)
+            },
+        );
+
+        // the key is bound via `dpop_jkt`, not via a DPoP proof on the PAR request
+        // https://www.rfc-editor.org/rfc/rfc9449.html#section-10.1
+        Mock::given(method(Method::POST))
+            .and(path("/par"))
+            .and(body_string_contains("dpop_jkt=testJkt"))
+            .and(|request: &wiremock::Request| !request.headers.contains_key("DPoP"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(PushedAuthorizationResponse {
+                    request_uri: "testRequestUri".to_string(),
+                    expires_in: 300,
+                }),
+            )
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        // when
+        let result = client
+            .initiate_authorization_code_flow(
+                client
+                    .fetch_authorization_server_metadata(issuer.parse().unwrap())
+                    .await
+                    .unwrap(),
+                AuthorizationRequest::builder()
+                    .client_id("clientId".to_string())
+                    .dpop_jkt("testJkt".to_string())
+                    .build(),
+            )
+            .await
+            .unwrap();
+
+        // then
+        let url = result.url.to_string();
+        assert!(url.contains("request_uri=testRequestUri"));
+        assert!(!url.contains("dpop_jkt="));
+    }
+
+    #[tokio::test]
+    async fn fetch_authorization_server_metadata_issuer_mismatch() {
+        // given
+        let issuer = "https://issuer.com";
+        let client = oauth_client(
+            issuer,
+            authorization_server_metadata("https://other.issuer"),
+        );
+
+        // when
+        let result = client
+            .fetch_authorization_server_metadata(issuer.parse().unwrap())
+            .await;
+
+        // then
+        assert!(matches!(result, Err(OAuthClientError::IssuerMismatch)));
     }
 }

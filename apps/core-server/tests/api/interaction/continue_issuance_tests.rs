@@ -282,3 +282,147 @@ async fn test_continue_issuance_endpoint_failed_invalid_authorization_server() {
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0085");
 }
+
+#[tokio::test]
+async fn test_dpop_bound_authorization_code_flow() {
+    // given
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/openid4vci/final-1.0/{credential_schema_id}",
+        mock_server.uri()
+    );
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            ".well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "issuer": credential_issuer,
+            "authorization_endpoint": format!("{credential_issuer}/authorize"),
+            "pushed_authorization_request_endpoint": format!("{credential_issuer}/par"),
+            "token_endpoint": format!("{credential_issuer}/token"),
+            "dpop_signing_alg_values_supported": ["ES256"],
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path(format!(
+            "/ssi/openid4vci/final-1.0/{credential_schema_id}/par"
+        )))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "request_uri": "urn:ietf:params:oauth:request_uri:test",
+            "expires_in": 60,
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            ".well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .and(header("Accept", "application/json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credential_endpoint": format!("{credential_issuer}/credential"),
+            "credential_issuer": credential_issuer,
+            "credential_configurations_supported": {
+                "configuration": {
+                    "scope": "scope1",
+                    "format": "dc+sd-jwt",
+                    "vct": "test-vct",
+                    "proof_types_supported": {
+                        "jwt": {
+                            "proof_signing_alg_values_supported": ["ES256"]
+                        }
+                    }
+                }
+            }
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // when
+    let resp = context
+        .api
+        .interactions
+        .initiate_issuance(
+            organisation.id,
+            "OPENID4VCI_FINAL1",
+            "clientId",
+            credential_issuer.to_owned(),
+            vec!["scope1".to_string()],
+        )
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let url = resp["url"].as_str().unwrap();
+    assert!(url.contains("request_uri="));
+    assert!(!url.contains("dpop_jkt="));
+
+    // the authorization code is bound to the key via `dpop_jkt`, without a DPoP proof on the
+    // pushed authorization request
+    let par_request = mock_server
+        .received_requests()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|request| request.url.path().ends_with("/par"))
+        .unwrap();
+    assert!(!par_request.headers.contains_key("DPoP"));
+    let par_params: std::collections::HashMap<String, String> =
+        serde_urlencoded::from_bytes(&par_request.body).unwrap();
+    let dpop_jkt = par_params.get("dpop_jkt").unwrap();
+    // base64url encoded SHA-256 JWK thumbprint
+    assert_eq!(dpop_jkt.len(), 43);
+
+    // the interaction id is passed as the `state` of the authorization request
+    let initiated_interaction_id: Uuid = par_params.get("state").unwrap().parse().unwrap();
+    let initiated_interaction = context
+        .db
+        .interactions
+        .get(initiated_interaction_id)
+        .await
+        .unwrap();
+    let dpop_key = context
+        .db
+        .keys
+        .get(&initiated_interaction.dpop_key.unwrap().id())
+        .await;
+    assert_eq!(dpop_key.key_type, "ECDSA");
+
+    // when
+    let resp = context
+        .api
+        .interactions
+        .continue_issuance(format!(
+            "https://localhost:3000/some_path?state={initiated_interaction_id}&code=aUtH_CoDe"
+        ))
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    // the token request has to be made with the key the authorization code is bound to
+    let continued_interaction = context
+        .db
+        .interactions
+        .get(resp["interactionId"].parse::<Uuid>())
+        .await
+        .unwrap();
+    assert_eq!(continued_interaction.dpop_key.unwrap().id(), dpop_key.id);
+    let initiated_interaction = context
+        .db
+        .interactions
+        .get(initiated_interaction_id)
+        .await
+        .unwrap();
+    assert!(initiated_interaction.dpop_key.is_none());
+}
