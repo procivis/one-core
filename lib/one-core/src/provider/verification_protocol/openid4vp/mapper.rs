@@ -253,6 +253,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
             x5c: Some(x5c),
             x5u: None,
             x5t_s256: None,
+            custom: (),
         },
         payload: JWTPayload {
             issued_at: Some(now),
@@ -350,6 +351,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            custom: (),
         },
         payload: JWTPayload {
             expires_at,
@@ -381,6 +383,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            custom: (),
         },
         payload: JWTPayload {
             issued_at: Some(now),
@@ -454,6 +457,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            custom: (),
         },
         payload: JWTPayload {
             issued_at: Some(now),
@@ -488,6 +492,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            custom: (),
         },
         payload: JWTPayload {
             issued_at: Some(crate::clock::now_utc()),

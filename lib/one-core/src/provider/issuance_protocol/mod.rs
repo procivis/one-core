@@ -63,7 +63,11 @@ pub(crate) struct HolderBindingInput {
 pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the invitation URL.
-    fn holder_can_handle(&self, url: &Url) -> bool;
+    ///
+    /// Protocols that share a URL scheme are told apart by what the issuer advertises in its
+    /// metadata, so answering this may take fetching that metadata; the fetch is cached and
+    /// repeated by whichever protocol then handles the invitation.
+    async fn holder_can_handle(&self, url: &Url) -> bool;
 
     /// For handling credential issuance, this method
     /// saves the offer information coming in.

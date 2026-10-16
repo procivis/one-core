@@ -141,7 +141,7 @@ impl EudiEcosystem {
         })?;
         match reg_cert_history.action {
             HistoryAction::WrpRcReceived => {
-                let parsed_token = Jwt::decompose_token(blob_value)
+                let parsed_token = Jwt::<Payload>::decompose_token(blob_value)
                     .error_while("parsing registration certificate")?;
                 Ok((
                     WalletRelyingPartyDetails::RegistrationCertificate(parsed_token.payload),
@@ -149,7 +149,7 @@ impl EudiEcosystem {
                 ))
             }
             HistoryAction::WrpNrReceived => {
-                let parsed_token = Jwt::decompose_token(blob_value)
+                let parsed_token = Jwt::<WRPPayload>::decompose_token(blob_value)
                     .error_while("parsing national registry wrp info")?;
                 let privacy_policy_url = match &reg_cert_history.metadata {
                     Some(HistoryMetadata::WalletRelyingParty(metadata)) => {

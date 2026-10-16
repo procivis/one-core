@@ -29,9 +29,13 @@ use crate::util::key_selection::{
 };
 
 /// Provides the signed metadata documents served by an issuer, cached per issuer/schema.
+///
+/// `CustomHeader` is put into the JWT header of every document signed here, next to the standard
+/// JOSE claims, the same way [`JWTHeader`](crate::proto::jwt::model::JWTHeader) carries them. It
+/// defaults to `()`, which adds no claims.
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub(crate) trait IssuerMetadataFetcher: Send + Sync {
+pub(crate) trait IssuerMetadataFetcher<CustomHeader: Send + Sync = ()>: Send + Sync {
     /// Signed Credential Issuer Metadata.
     ///
     /// Spec: <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-signed-credential-issuer-me>
@@ -41,6 +45,7 @@ pub(crate) trait IssuerMetadataFetcher: Send + Sync {
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         service: Arc<dyn IssuanceProtocol>,
+        custom_header: CustomHeader,
     ) -> Result<String, OID4VCIFinal1_0ServiceError>;
 
     /// Signed OAuth 2.0 Authorization Server Metadata for the given (already assembled) metadata
@@ -53,6 +58,7 @@ pub(crate) trait IssuerMetadataFetcher: Send + Sync {
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         metadata: AuthorizationServerMetadata,
+        custom_header: CustomHeader,
     ) -> Result<String, OID4VCIFinal1_0ServiceError>;
 }
 
@@ -86,13 +92,17 @@ impl IssuerMetadataCache {
 }
 
 #[async_trait::async_trait]
-impl IssuerMetadataFetcher for IssuerMetadataCache {
+impl<CustomHeader> IssuerMetadataFetcher<CustomHeader> for IssuerMetadataCache
+where
+    CustomHeader: Serialize + Send + Sync + 'static,
+{
     async fn get_issuer_metadata_jwt(
         &self,
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         issuance_protocol: Arc<dyn IssuanceProtocol>,
+        custom_header: CustomHeader,
     ) -> Result<String, OID4VCIFinal1_0ServiceError> {
         let key = encode_key(protocol_id, &identifier.id, credential_schema_id);
         let (content, _) = self
@@ -104,6 +114,7 @@ impl IssuerMetadataFetcher for IssuerMetadataCache {
                     credential_schema_id: *credential_schema_id,
                     identifier: Arc::new(identifier),
                     issuance_protocol,
+                    custom_header,
                     key_provider: self.key_provider.clone(),
                     key_algorithm_provider: self.key_algorithm_provider.clone(),
                 }),
@@ -120,6 +131,7 @@ impl IssuerMetadataFetcher for IssuerMetadataCache {
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         metadata: AuthorizationServerMetadata,
+        custom_header: CustomHeader,
     ) -> Result<String, OID4VCIFinal1_0ServiceError> {
         let key =
             encode_authorization_server_key(protocol_id, &identifier.id, credential_schema_id);
@@ -130,6 +142,7 @@ impl IssuerMetadataFetcher for IssuerMetadataCache {
                 Arc::new(AuthorizationServerMetadataResolver {
                     identifier: Arc::new(identifier),
                     metadata,
+                    custom_header,
                     key_provider: self.key_provider.clone(),
                     key_algorithm_provider: self.key_algorithm_provider.clone(),
                 }),
@@ -148,17 +161,20 @@ impl IssuerMetadataFetcher for IssuerMetadataCache {
     }
 }
 
-struct CredentialIssuerMetadataResolver {
+struct CredentialIssuerMetadataResolver<CustomHeader = ()> {
     protocol_id: String,
     credential_schema_id: CredentialSchemaId,
     identifier: Arc<Identifier>,
     issuance_protocol: Arc<dyn IssuanceProtocol>,
+    custom_header: CustomHeader,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 #[async_trait::async_trait]
-impl Resolver for CredentialIssuerMetadataResolver {
+impl<CustomHeader: Serialize + Send + Sync> Resolver
+    for CredentialIssuerMetadataResolver<CustomHeader>
+{
     type Error = OID4VCIFinal1_0ServiceError;
 
     async fn do_resolve(
@@ -181,6 +197,7 @@ impl Resolver for CredentialIssuerMetadataResolver {
             &self.key_provider,
             &self.key_algorithm_provider,
             "openidvci-issuer-metadata+jwt",
+            &self.custom_header,
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: None,
@@ -202,15 +219,18 @@ impl Resolver for CredentialIssuerMetadataResolver {
     }
 }
 
-struct AuthorizationServerMetadataResolver {
+struct AuthorizationServerMetadataResolver<CustomHeader = ()> {
     identifier: Arc<Identifier>,
     metadata: AuthorizationServerMetadata,
+    custom_header: CustomHeader,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 #[async_trait::async_trait]
-impl Resolver for AuthorizationServerMetadataResolver {
+impl<CustomHeader: Serialize + Send + Sync> Resolver
+    for AuthorizationServerMetadataResolver<CustomHeader>
+{
     type Error = OID4VCIFinal1_0ServiceError;
 
     async fn do_resolve(
@@ -225,6 +245,7 @@ impl Resolver for AuthorizationServerMetadataResolver {
             &self.key_algorithm_provider,
             // RFC 8414 does not register a media type for the signed metadata JWT
             "JWT",
+            &self.custom_header,
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: None,
@@ -246,14 +267,16 @@ impl Resolver for AuthorizationServerMetadataResolver {
     }
 }
 
-/// Signs `payload` with the Authentication capable key of `identifier`.
+/// Signs `payload` with the Authentication capable key of `identifier`, putting `custom_header`
+/// next to the standard JOSE header claims.
 ///
 /// The `iss` claim defaults to the signing DID if the caller did not set one.
-async fn sign_metadata<T: Serialize + Send + Sync>(
+async fn sign_metadata<T: Serialize + Send + Sync, H: Serialize + Send + Sync>(
     identifier: &Identifier,
     key_provider: &Arc<dyn KeyProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     token_type: &str,
+    custom_header: H,
     mut payload: JWTPayload<T>,
 ) -> Result<String, OID4VCIFinal1_0ServiceError> {
     let signing_key = identifier
@@ -306,11 +329,13 @@ async fn sign_metadata<T: Serialize + Send + Sync>(
         payload.issuer = Some(did.did.to_string());
     }
 
-    let jwt = Jwt::new(
+    let jwt = Jwt::new_with_header(
         token_type.to_string(),
         auth_fn.jose_alg().error_while("getting JOSE algorithm")?,
         auth_fn.get_key_id(),
         key_info,
+        None,
+        custom_header,
         payload,
     );
     Ok(jwt
@@ -338,12 +363,15 @@ fn encode_authorization_server_key(
     )
 }
 
-pub(crate) fn initialize_issuer_metadata_cache_from_config(
+pub(crate) fn initialize_issuer_metadata_cache_from_config<CustomHeader>(
     config: &CoreConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-) -> Result<Arc<dyn IssuerMetadataFetcher>, anyhow::Error> {
+) -> Result<Arc<dyn IssuerMetadataFetcher<CustomHeader>>, anyhow::Error>
+where
+    CustomHeader: Serialize + Send + Sync + 'static,
+{
     let config = config
         .cache_entities
         .entities

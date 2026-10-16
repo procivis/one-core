@@ -44,7 +44,40 @@ async fn test_get_credential_issuer_metadata_json() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+    // only a swiyu issuer carries an ecosystem profile marker
+    assert!(resp.get("profile_version").is_none());
     assert_issuer_metadata(&context, &identifier, &credential_schema, resp).await;
+}
+
+#[tokio::test]
+async fn test_get_credential_issuer_metadata_json_swiyu_advertises_swiss_profile() {
+    // GIVEN
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .openid_credential_issuer_final1_swiyu(
+            "OPENID4VCI_FINAL1_SWIYU",
+            identifier.id,
+            credential_schema.id,
+            mime::APPLICATION_JSON.into(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    // Swiss Profile for Issuance, Section 12.2.4
+    // <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1224-credential-issuer-metadata-parameters>
+    assert_eq!(resp["profile_version"], "swiss-profile-issuance:1.0.0");
 }
 
 #[tokio::test]
@@ -261,7 +294,9 @@ async fn test_get_credential_issuer_metadata_jwt_with_did_identifier() {
     assert_eq!(resp.status(), 200);
     let body = resp.text().await;
     assert!(!body.is_empty());
-    let jwt = Jwt::<serde_json::Value>::decompose_token(&body).unwrap();
+    let jwt = Jwt::<serde_json::Value, serde_json::Value>::decompose_token(&body).unwrap();
+    // only a swiyu issuer carries an ecosystem profile marker
+    assert!(jwt.header.custom.get("profile_version").is_none());
     assert_issuer_metadata(
         &context,
         &identifier,
@@ -269,6 +304,47 @@ async fn test_get_credential_issuer_metadata_jwt_with_did_identifier() {
         jwt.payload.custom,
     )
     .await;
+}
+
+#[tokio::test]
+async fn test_get_credential_issuer_metadata_jwt_swiyu_advertises_swiss_profile() {
+    // GIVEN
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .openid_credential_issuer_final1_swiyu(
+            "OPENID4VCI_FINAL1_SWIYU",
+            identifier.id,
+            credential_schema.id,
+            "application/jwt".parse::<Mime>().unwrap().into(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let jwt =
+        Jwt::<serde_json::Value, serde_json::Value>::decompose_token(&resp.text().await).unwrap();
+
+    // Swiss Profile for Issuance, Sections 12.2.3 and 12.2.4: the marker is required in the JWT
+    // header as well as in the signed metadata body
+    // <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1223-signed-metadata>
+    assert_eq!(
+        jwt.header.custom["profile_version"],
+        "swiss-profile-issuance:1.0.0"
+    );
+    assert_eq!(
+        jwt.payload.custom["profile_version"],
+        "swiss-profile-issuance:1.0.0"
+    );
 }
 
 #[tokio::test]

@@ -99,9 +99,11 @@ async fn test_oauth_authorization_server_metadata() {
     // The signed metadata carries the same parameters as claims
     // https://datatracker.ietf.org/doc/html/rfc8414#section-2.1
     let signed_metadata = resp["signed_metadata"].as_str().unwrap();
-    let jwt = Jwt::<Value>::decompose_token(signed_metadata).unwrap();
+    let jwt = Jwt::<Value, Value>::decompose_token(signed_metadata).unwrap();
 
     assert_eq!(jwt.header.r#type.as_deref(), Some("JWT"));
+    // only a swiyu issuer carries an ecosystem profile marker
+    assert!(jwt.header.custom.get("profile_version").is_none());
     assert_eq!(jwt.payload.issuer.as_deref(), resp["issuer"].as_str());
     assert_eq!(jwt.payload.custom["issuer"], resp["issuer"]);
     assert_eq!(jwt.payload.custom["token_endpoint"], resp["token_endpoint"]);
@@ -122,6 +124,43 @@ async fn test_oauth_authorization_server_metadata() {
         ))
         .await;
     assert_eq!(cache_entry.unwrap().value, signed_metadata.as_bytes());
+}
+
+#[tokio::test]
+async fn test_oauth_authorization_server_metadata_swiyu_advertises_swiss_profile() {
+    // GIVEN
+    let (context, organisation, _did, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .oauth_authorization_server_swiyu(
+            "OPENID4VCI_FINAL1_SWIYU",
+            identifier.id,
+            credential_schema.id,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    // the authorization server metadata has no profile parameter of its own, the marker goes into
+    // the signed metadata header
+    // Swiss Profile for Issuance, Section 12.3
+    // <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#123-oauth-20-authorization-server-metadata>
+    let signed_metadata = resp["signed_metadata"].as_str().unwrap();
+    let jwt = Jwt::<Value, Value>::decompose_token(signed_metadata).unwrap();
+    assert_eq!(
+        jwt.header.custom["profile_version"],
+        "swiss-profile-issuance:1.0.0"
+    );
 }
 
 #[tokio::test]

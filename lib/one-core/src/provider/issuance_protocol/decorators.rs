@@ -33,7 +33,7 @@ impl WithDisabledDecorator for dyn IssuanceProtocol {
 
 #[async_trait::async_trait]
 impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for DisabledProvider<T> {
-    fn holder_can_handle(&self, _url: &Url) -> bool {
+    async fn holder_can_handle(&self, _url: &Url) -> bool {
         false
     }
 
@@ -152,8 +152,8 @@ impl Provider for CapabilityChecked {
 
 #[async_trait::async_trait]
 impl IssuanceProtocol for CapabilityChecked {
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        self.0.holder_can_handle(url)
+    async fn holder_can_handle(&self, url: &Url) -> bool {
+        self.0.holder_can_handle(url).await
     }
 
     async fn holder_handle_invitation<'a>(

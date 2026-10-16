@@ -39,7 +39,9 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::{LocalizedText, LocalizedTextField};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::PROCIVIS_DESIGN_KEY;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    PROCIVIS_DESIGN_KEY, SWISS_PROFILE_ISSUANCE_VERSION,
+};
 
 pub(crate) fn build_issuer_display(
     identifier_name: &str,
@@ -80,6 +82,7 @@ pub(crate) fn build_issuer_display(
         .collect()
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn create_issuer_metadata_response(
     protocol_id: &str,
     identifier: &Identifier,
@@ -92,6 +95,7 @@ pub(crate) fn create_issuer_metadata_response(
     credential_request_encryption: Option<CredentialRequestEncryption>,
     credential_response_encryption: Option<CredentialResponseEncryption>,
     issuer_display: Vec<IssuerDisplay>,
+    swiyu_mode: bool,
 ) -> Result<CredentialIssuerMetadata, OpenID4VCIError> {
     let credential_schema_id = schema.id;
     let credential_issuer = format!(
@@ -127,6 +131,10 @@ pub(crate) fn create_issuer_metadata_response(
             .wallet_attestation
             .preferred_instance_attestation_lifetime
             .map(|lifetime| lifetime.whole_seconds() as u64),
+        // the swiyu ecosystem identifies itself through the profile marker, which in turn is how
+        // a holder knows that only a swiyu-mode protocol can handle this issuer
+        // <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1224-credential-issuer-metadata-parameters>
+        profile_version: swiyu_mode.then(|| SWISS_PROFILE_ISSUANCE_VERSION.to_string()),
     })
 }
 

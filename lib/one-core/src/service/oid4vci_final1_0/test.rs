@@ -53,6 +53,7 @@ use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::SwissProfileHeader;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -97,7 +98,7 @@ struct Mocks {
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub identifier_creator: MockIdentifierCreator,
-    pub credential_issuer_metadata_cache: MockIssuerMetadataFetcher,
+    pub credential_issuer_metadata_cache: MockIssuerMetadataFetcher<SwissProfileHeader>,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub ecosystem_provider: MockEcosystemDirectory,
     pub history_repository: MockHistoryRepository,
@@ -449,19 +450,25 @@ async fn test_oauth_authorization_server_metadata_contains_signed_metadata() {
         .expect_get_authorization_server_metadata_jwt()
         .once()
         .withf(
-            move |protocol_id, credential_schema_id, identifier, metadata| {
+            move |protocol_id,
+                  credential_schema_id,
+                  identifier,
+                  metadata,
+                  custom_header: &SwissProfileHeader| {
                 protocol_id == "OPENID4VCI_FINAL1"
                 && credential_schema_id == &schema.id
                 && identifier.id == identifier_id
                 // the JWT must not contain the `signed_metadata` claim itself
                 && metadata.signed_metadata.is_none()
+                // no ecosystem profile marker outside of swiyu mode
+                && custom_header.profile_version.is_none()
                 && metadata.issuer.as_str().ends_with(&format!(
                     "/OPENID4VCI_FINAL1/{identifier_id}/{}",
                     credential_schema_id
                 ))
             },
         )
-        .return_once(|_, _, _, _| Ok("signed.metadata.jwt".to_string()));
+        .return_once(|_, _, _, _, _| Ok("signed.metadata.jwt".to_string()));
 
     let issuance_protocol = setup_protocol(ProtocolMocks::default());
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
@@ -514,7 +521,7 @@ async fn test_oauth_authorization_server_metadata_omits_signed_metadata_without_
     issuer_metadata_cache
         .expect_get_authorization_server_metadata_jwt()
         .once()
-        .return_once(move |_, _, _, _| {
+        .return_once(move |_, _, _, _, _| {
             Err(OID4VCIFinal1_0ServiceError::MissingAuthenticationCapableKey(identifier_id))
         });
 

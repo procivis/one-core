@@ -9,6 +9,7 @@ use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::SwissProfileHeader;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -42,7 +43,7 @@ pub struct OID4VCIFinal1_0Service {
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     transaction_manager: Arc<dyn TransactionManager>,
     identifier_creator: Arc<dyn IdentifierCreator>,
-    issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
+    issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher<SwissProfileHeader>>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
     dpop_handler: Arc<dyn DpopHandler>,
@@ -66,7 +67,7 @@ impl OID4VCIFinal1_0Service {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         transaction_manager: Arc<dyn TransactionManager>,
         identifier_creator: Arc<dyn IdentifierCreator>,
-        issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher>,
+        issuer_metadata_cache: Arc<dyn IssuerMetadataFetcher<SwissProfileHeader>>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         ecosystem_resolver: Arc<dyn EcosystemResolver>,
         dpop_handler: Arc<dyn DpopHandler>,

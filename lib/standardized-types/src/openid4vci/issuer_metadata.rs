@@ -35,6 +35,11 @@ pub struct CredentialIssuerMetadata {
     pub credential_response_encryption: Option<CredentialResponseEncryption>,
     /// EUDI TS3 Wallet Unit Attestation V1.5.2, Section 2.4.2
     pub preferred_client_status_period: Option<u64>,
+    /// Ecosystem profile the metadata conforms to, e.g. `swiss-profile-issuance:1.0.0`.
+    ///
+    /// Spec: Swiss Profile for Issuance, Section 12.2.4
+    /// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1224-credential-issuer-metadata-parameters>
+    pub profile_version: Option<String>,
 }
 
 /// Entry of the `issuer_info` Credential Issuer Metadata parameter.

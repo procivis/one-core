@@ -142,6 +142,24 @@ impl SSIApi {
         self.client.get_with_headers(&url, headers).await
     }
 
+    pub async fn openid_credential_issuer_final1_swiyu(
+        &self,
+        protocol_id: &str,
+        identifier_id: impl Into<Uuid>,
+        credential_schema_id: impl Into<Uuid>,
+        accept: Accept,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let identifier_id = identifier_id.into();
+        let url = format!(
+            "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}"
+        );
+
+        let mut headers = HeaderMap::new();
+        headers.typed_insert(accept);
+        self.client.get_with_headers(&url, headers).await
+    }
+
     pub async fn get_credential_schema(&self, id: impl Into<Uuid>) -> Response {
         let credential_schema_id = id.into();
         let url = format!("/ssi/schema/v1/{credential_schema_id}");
@@ -265,6 +283,20 @@ impl SSIApi {
         let identifier_id = identifier_id.into();
         let url = format!(
             "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{protocol_id}/{identifier_id}/{credential_schema_id}"
+        );
+        self.client.get(&url).await
+    }
+
+    pub async fn oauth_authorization_server_swiyu(
+        &self,
+        protocol_id: &str,
+        identifier_id: impl Into<Uuid>,
+        credential_schema_id: impl Into<Uuid>,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let identifier_id = identifier_id.into();
+        let url = format!(
+            "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}"
         );
         self.client.get(&url).await
     }

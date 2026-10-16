@@ -26,6 +26,7 @@ impl SSIHolderService {
         let result = if let Some((issuance_exchange, issuance_protocol)) = self
             .issuance_protocol_provider
             .detect_protocol(&request.url)
+            .await
         {
             self.handle_issuance_invitation(
                 request.url,

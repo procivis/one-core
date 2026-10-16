@@ -112,6 +112,7 @@ use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -159,6 +160,10 @@ struct TestInputs {
 }
 
 fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
+    try_setup_protocol(inputs).unwrap()
+}
+
+fn try_setup_protocol(inputs: TestInputs) -> Result<OpenID4VCIFinal1_0, InitializationError> {
     OpenID4VCIFinal1_0::new(
         inputs
             .client
@@ -199,7 +204,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.wallet_attestation_repository),
         Arc::new(NoTransactionManager),
     )
-    .unwrap()
 }
 
 fn credential_schema_list(schema: Option<CredentialSchema>) -> GetCredentialSchemaList {
@@ -3180,6 +3184,203 @@ async fn test_handle_invitation_falls_back_to_unsigned_metadata_when_trust_optio
     assert!(matches!(result, InvitationResponseEnum::Credential { .. }));
 }
 
+/// Protocol whose issuer metadata lookup answers with `profile_version`, or with none at all when
+/// `profile_version` is `None`.
+fn protocol_for_issuer(
+    profile_version: Option<&str>,
+    swiyu_mode: bool,
+    url_scheme: &str,
+) -> OpenID4VCIFinal1_0 {
+    let mut issuer_metadata = json!({
+        "credential_endpoint": "http://issuer.url/issuer/credential",
+        "credential_issuer": "http://issuer.url/issuer",
+        "credential_configurations_supported": {}
+    });
+    if let Some(profile_version) = profile_version {
+        issuer_metadata["profile_version"] = json!(profile_version);
+    }
+
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+    // signed metadata not supported
+    metadata_cache
+        .expect_get()
+        .with(always(), eq("application/jwt"))
+        .returning(|_, _| {
+            Err(serde_json::from_slice::<Value>(b"not a jwt")
+                .unwrap_err()
+                .into())
+        });
+    metadata_cache
+        .expect_get()
+        .with(
+            eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
+            eq("application/json"),
+        )
+        .returning(move |_, _| Ok(issuer_metadata.to_string().into_bytes()));
+
+    let mut params = test_params(url_scheme);
+    params["swiyuMode"] = json!(swiyu_mode);
+
+    setup_protocol(TestInputs {
+        metadata_cache,
+        params: Some(params),
+        ..Default::default()
+    })
+}
+
+#[tokio::test]
+async fn test_can_handle_issuance_requires_the_swiss_profile_in_swiyu_mode() {
+    let swiss_profile_issuer = protocol_for_issuer(
+        Some("swiss-profile-issuance:1.0.0"),
+        true,
+        "openid-credential-offer",
+    );
+    assert!(
+        swiss_profile_issuer
+            .holder_can_handle(&unsigned_metadata_offer_url())
+            .await
+    );
+
+    let plain_issuer = protocol_for_issuer(None, true, "openid-credential-offer");
+    assert!(
+        !plain_issuer
+            .holder_can_handle(&unsigned_metadata_offer_url())
+            .await
+    );
+}
+
+#[tokio::test]
+async fn test_can_handle_issuance_rejects_the_swiss_profile_without_swiyu_mode() {
+    let swiss_profile_issuer = protocol_for_issuer(
+        Some("swiss-profile-issuance:1.0.0"),
+        false,
+        "openid-credential-offer",
+    );
+    assert!(
+        !swiss_profile_issuer
+            .holder_can_handle(&unsigned_metadata_offer_url())
+            .await
+    );
+
+    let plain_issuer = protocol_for_issuer(None, false, "openid-credential-offer");
+    assert!(
+        plain_issuer
+            .holder_can_handle(&unsigned_metadata_offer_url())
+            .await
+    );
+}
+
+#[tokio::test]
+async fn test_can_handle_issuance_leaves_an_unreachable_issuer_to_the_plain_protocol() {
+    // an issuer whose metadata cannot be fetched advertises no profile, so the protocol that does
+    // not require one takes the invitation and reports the failure while handling it
+    let metadata_cache = || {
+        let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+        metadata_cache.expect_get().returning(|_, _| {
+            Err(crate::proto::http_client::Error::Timeout
+                .error_while("test")
+                .into())
+        });
+        metadata_cache
+    };
+    let params = |swiyu_mode| {
+        let mut params = test_params("openid-credential-offer");
+        params["swiyuMode"] = json!(swiyu_mode);
+        Some(params)
+    };
+
+    let swiyu = setup_protocol(TestInputs {
+        metadata_cache: metadata_cache(),
+        params: params(true),
+        ..Default::default()
+    });
+    assert!(
+        !swiyu
+            .holder_can_handle(&unsigned_metadata_offer_url())
+            .await
+    );
+
+    let plain = setup_protocol(TestInputs {
+        metadata_cache: metadata_cache(),
+        params: params(false),
+        ..Default::default()
+    });
+    assert!(
+        plain
+            .holder_can_handle(&unsigned_metadata_offer_url())
+            .await
+    );
+}
+
+#[tokio::test]
+async fn test_can_handle_issuance_accepts_both_swiyu_schemes() {
+    // whichever of the two allowed schemes is configured, both must be detected
+    for configured_scheme in ["openid-credential-offer", "swiyu"] {
+        let protocol = protocol_for_issuer(
+            Some("swiss-profile-issuance:1.0.0"),
+            true,
+            configured_scheme,
+        );
+
+        for scheme in ["openid-credential-offer", "swiyu"] {
+            let mut url = unsigned_metadata_offer_url();
+            url.set_scheme(scheme).unwrap();
+            assert!(
+                protocol.holder_can_handle(&url).await,
+                "`{scheme}` offer not handled by a swiyu instance configured with `{configured_scheme}`"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_can_handle_issuance_rejects_swiyu_scheme_without_swiyu_mode() {
+    let protocol = protocol_for_issuer(None, false, "openid-credential-offer");
+
+    let mut url = unsigned_metadata_offer_url();
+    url.set_scheme("swiyu").unwrap();
+    assert!(!protocol.holder_can_handle(&url).await);
+}
+
+#[test]
+fn test_swiyu_mode_rejects_a_url_scheme_outside_the_profile() {
+    let mut params = test_params("my-custom-scheme");
+    params["swiyuMode"] = json!(true);
+
+    let error = try_setup_protocol(TestInputs {
+        params: Some(params),
+        ..Default::default()
+    })
+    .err()
+    .expect("swiyu mode must not accept a scheme the profile does not allow");
+
+    let_assert!(InitializationError::InvalidParamValue { key, .. } = error);
+    assert_eq!(key, "OPENID4VCI_FINAL1.urlScheme");
+}
+
+#[tokio::test]
+async fn test_can_handle_issuance_rejects_offer_by_reference_in_swiyu_mode() {
+    let mut params = test_params("openid-credential-offer");
+    params["swiyuMode"] = json!(true);
+
+    // the metadata cache without expectations panics on use: an offer by reference is ruled out
+    // for swiyu without looking up the issuer
+    let protocol = setup_protocol(TestInputs {
+        params: Some(params),
+        ..Default::default()
+    });
+
+    assert!(
+        !protocol
+            .holder_can_handle(
+                &"openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fissuer.url%2Foffer"
+                    .parse()
+                    .unwrap()
+            )
+            .await
+    );
+}
+
 #[tokio::test]
 async fn test_handle_invitation_requires_signed_metadata_when_trust_mandatory() {
     // no "application/json" fallback expected, signed metadata is required
@@ -3729,7 +3930,7 @@ async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     let test_url = format!(
         "{url_scheme}://?credential_offer_uri=http%3A%2F%2Fissuer.com%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965",
     );
-    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()))
+    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()).await)
 }
 
 #[tokio::test]
@@ -3745,7 +3946,7 @@ async fn test_can_handle_issuance_fail_with_custom_url_scheme() {
     let test_url = format!(
         "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
     );
-    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
+    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()).await)
 }
 
 #[tokio::test]

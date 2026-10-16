@@ -41,6 +41,9 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_request_encryption: Option<CredentialRequestEncryption>,
     pub credential_response_encryption: Option<CredentialResponseEncryption>,
     pub preferred_client_status_period: Option<u64>,
+    /// Spec: Swiss Profile for Issuance, Section 12.2.4
+    /// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1224-credential-issuer-metadata-parameters>
+    pub profile_version: Option<String>,
 }
 
 #[options_not_nullable]

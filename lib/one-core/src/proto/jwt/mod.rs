@@ -56,8 +56,8 @@ impl TokenVerifier for Box<dyn TokenVerifier> {
 }
 
 #[derive(Debug)]
-pub struct Jwt<CustomPayload> {
-    pub header: JWTHeader,
+pub struct Jwt<CustomPayload, CustomHeader = ()> {
+    pub header: JWTHeader<CustomHeader>,
     pub payload: JWTPayload<CustomPayload>,
 }
 
@@ -91,6 +91,29 @@ impl<CustomPayload> Jwt<CustomPayload> {
         attestation_jwt: Option<String>,
         payload: JWTPayload<CustomPayload>,
     ) -> Jwt<CustomPayload> {
+        Self::new_with_header(
+            r#type,
+            algorithm,
+            key_id,
+            public_key_info,
+            attestation_jwt,
+            (),
+            payload,
+        )
+    }
+}
+
+impl<CustomPayload, CustomHeader> Jwt<CustomPayload, CustomHeader> {
+    /// JWT carrying `custom_header` claims next to the standard JOSE header.
+    pub fn new_with_header(
+        r#type: String,
+        algorithm: String,
+        key_id: Option<String>,
+        public_key_info: Option<JwtPublicKeyInfo>,
+        attestation_jwt: Option<String>,
+        custom_header: CustomHeader,
+        payload: JWTPayload<CustomPayload>,
+    ) -> Self {
         let (jwk, x5c, x5u, x5t_s256) = match public_key_info {
             None => (None, None, None, None),
             Some(JwtPublicKeyInfo::Jwk(jwk)) => (Some(jwk), None, None, None),
@@ -112,13 +135,14 @@ impl<CustomPayload> Jwt<CustomPayload> {
             x5c,
             x5u,
             x5t_s256,
+            custom: custom_header,
         };
 
         Jwt { header, payload }
     }
 }
 
-impl<CustomPayload: WithMetadata + Serialize> Jwt<CustomPayload> {
+impl<CustomPayload: WithMetadata + Serialize, CustomHeader> Jwt<CustomPayload, CustomHeader> {
     pub fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, TokenError> {
         let value = serde_json::to_value(&self.payload)?;
 
@@ -146,15 +170,16 @@ impl<CustomPayload: WithMetadata + Serialize> Jwt<CustomPayload> {
     }
 }
 
-impl<CustomPayload> Jwt<CustomPayload>
+impl<CustomPayload, CustomHeader> Jwt<CustomPayload, CustomHeader>
 where
     CustomPayload: DeserializeOwned + Debug,
+    CustomHeader: DeserializeOwned,
 {
     pub async fn build_from_token(
         token: &str,
         verification: Option<&VerificationFn>,
         issuer_did: Option<DidValue>,
-    ) -> Result<Jwt<CustomPayload>, TokenError> {
+    ) -> Result<Self, TokenError> {
         let token = Jwt::decompose_token(token)?;
 
         if let (Some(issuer), Some(issuer_did)) = (&token.payload.issuer, &issuer_did)
@@ -182,7 +207,9 @@ where
         })
     }
 
-    pub fn decompose_token(token: &str) -> Result<DecomposedJwt<CustomPayload>, TokenError> {
+    pub fn decompose_token(
+        token: &str,
+    ) -> Result<DecomposedJwt<CustomPayload, CustomHeader>, TokenError> {
         let token = token.trim_matches(|c: char| c == '.' || c.is_whitespace());
         let mut jwt_parts = token.splitn(3, '.');
 
@@ -197,7 +224,7 @@ where
         let unverified_jwt = [header, payload].join(".");
 
         let header_decoded = Base64UrlSafeNoPadding::decode_to_vec(header, None)?;
-        let header: JWTHeader = serde_json::from_slice(&header_decoded)?;
+        let header: JWTHeader<CustomHeader> = serde_json::from_slice(&header_decoded)?;
 
         let payload_decoded = Base64UrlSafeNoPadding::decode_to_vec(payload, None)?;
         let payload: JWTPayload<CustomPayload> = serde_json::from_slice(&payload_decoded)?;
@@ -216,7 +243,7 @@ where
     }
 }
 
-impl<CustomPayload: Serialize> Jwt<CustomPayload> {
+impl<CustomPayload: Serialize, CustomHeader: Serialize> Jwt<CustomPayload, CustomHeader> {
     // todo: this probably needs to be a "sign" function on an UnsignedJwt type
     pub async fn tokenize(
         &self,
@@ -248,7 +275,7 @@ impl<CustomPayload: Serialize> Jwt<CustomPayload> {
     }
 }
 
-impl<T> DecomposedJwt<T> {
+impl<T, H> DecomposedJwt<T, H> {
     pub fn public_key_source<'a>(
         &'a self,
         externally_defined: Option<PublicKeySource<'a>>,

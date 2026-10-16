@@ -279,6 +279,35 @@ pub(crate) struct HolderCredentialConfiguration {
 // procivis extension under CredentialDisplay
 pub const PROCIVIS_DESIGN_KEY: &str = "procivis_design";
 
+/// `profile_version` advertised in the issuer metadata of a swiyu issuer.
+///
+/// Spec: Swiss Profile for Issuance, Section 12.2.4
+/// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1224-credential-issuer-metadata-parameters>
+pub(crate) const SWISS_PROFILE_ISSUANCE_VERSION: &str = "swiss-profile-issuance:1.0.0";
+
+/// Prefix shared by all versions of [`SWISS_PROFILE_ISSUANCE_VERSION`], marking an issuer as part
+/// of the swiyu ecosystem regardless of the profile version it implements.
+pub(crate) const SWISS_PROFILE_ISSUANCE_PREFIX: &str = "swiss-profile-issuance:";
+
+/// Swiss Profile header claims of a signed metadata document, next to the standard JOSE header.
+///
+/// Spec: Swiss Profile for Issuance, Section 12.2.3
+/// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1223-signed-metadata>
+#[skip_serializing_none]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub(crate) struct SwissProfileHeader {
+    /// Ecosystem profile the document conforms to, e.g. [`SWISS_PROFILE_ISSUANCE_VERSION`]; unset
+    /// outside of swiyu mode, where no marker is emitted at all.
+    pub profile_version: Option<String>,
+}
+
+/// URL schemes a swiyu credential offer may use. A swiyu wallet accepts an offer under either of
+/// them, while offers it creates itself carry the configured [`OpenID4VCIFinal1Params::url_scheme`].
+///
+/// Spec: Swiss Profile for Issuance, Section 4.1.2
+/// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#412-sending-credential-offer-by-value-using-credential_offer-parameter>
+pub(crate) const SWIYU_URL_SCHEMES: [&str; 2] = ["openid-credential-offer", "swiyu"];
+
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign {

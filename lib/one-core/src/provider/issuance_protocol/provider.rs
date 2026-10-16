@@ -36,11 +36,15 @@ use crate::repository::key_repository::KeyRepository;
 use crate::repository::wallet_attestation_repository::WalletAttestationRepository;
 
 #[cfg_attr(test, mockall::automock)]
+#[async_trait::async_trait]
 pub(crate) trait IssuanceProtocolProvider: Send + Sync {
     fn get_protocol(&self, protocol_id: &str) -> Result<Arc<dyn IssuanceProtocol>, NestedError>;
-    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn IssuanceProtocol>)>;
+
+    /// The protocol that handles `url`, if any.
+    async fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn IssuanceProtocol>)>;
 }
 
+#[async_trait::async_trait]
 impl IssuanceProtocolProvider
     for ProviderDirectory<String, Fields<IssuanceProtocolType>, dyn IssuanceProtocol>
 {
@@ -48,7 +52,7 @@ impl IssuanceProtocolProvider
         self.provider(protocol_id)
     }
 
-    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn IssuanceProtocol>)> {
+    async fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn IssuanceProtocol>)> {
         let get_order = |id: &String| {
             self.config(id)
                 .ok()
@@ -60,7 +64,7 @@ impl IssuanceProtocolProvider
             .sorted_by(|(a, _), (b, _)| Ord::cmp(&get_order(a), &get_order(b)));
 
         for (id, protocol) in sorted_protocols {
-            if protocol.holder_can_handle(url) {
+            if protocol.holder_can_handle(url).await {
                 return Some((id.to_owned(), protocol.to_owned()));
             }
         }

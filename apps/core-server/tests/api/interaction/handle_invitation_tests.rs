@@ -780,6 +780,144 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
 }
 
 #[tokio::test]
+async fn test_handle_invitation_swiss_profile_issuer_is_handled_by_swiyu_protocol() {
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
+        Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
+        "key",
+        true,
+        "STRING",
+        false,
+    )];
+
+    let schema_id = Uuid::new_v4();
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &schema_id,
+            "MatchedSchema",
+            &organisation,
+            &new_claim_schemas,
+            "SD_JWT_VC",
+            &format!("{}/ssi/schema/v1/{}", &mock_server.uri(), schema_id),
+        )
+        .await;
+
+    let credential_schema_id = credential_schema.id;
+    let credential_issuer = format!(
+        "{}/ssi/openid4vci/final-1.0/{credential_schema_id}",
+        mock_server.uri()
+    );
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids": [
+            format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri())
+        ],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740"
+            }
+        },
+        "credential_subject": {
+            "keys": {
+                "key": {"value": "foo", "value_type": "STRING"},
+            }
+        }
+    });
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .and(header("Accept", "application/json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                // Swiss Profile for Issuance, Section 12.2.4
+                // <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1224-credential-issuer-metadata-parameters>
+                "profile_version": "swiss-profile-issuance:1.0.0",
+                "credential_configurations_supported":
+                    {
+                    format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
+                        "credential_definition": {
+                            "type": [
+                                "VerifiableCredential"
+                            ],
+                            "credentialSubject" : {
+                                "key": {
+                                    "value_type": "string",
+                                }
+                            }
+                        },
+                        "vct": "vct-schema-SD_JWT_VC",
+                        "format": "vc+sd-jwt",
+                    }
+                }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let token_endpoint = format!("{credential_issuer}/token");
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], Value::Null);
+    // both protocols share the URL scheme, only the profile marker tells them apart
+    assert_eq!(resp["protocol"], "OPENID4VCI_FINAL1_SWIYU");
+    assert_eq!(resp["requiresWalletInstanceAttestation"], false);
+}
+
+#[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_reference() {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;

@@ -35,6 +35,7 @@ impl From<CredentialIssuerMetadata> for OpenID4VCIIssuerMetadataResponseRestDTO 
             credential_request_encryption: value.credential_request_encryption,
             credential_response_encryption: value.credential_response_encryption,
             preferred_client_status_period: value.preferred_client_status_period,
+            profile_version: value.profile_version,
         }
     }
 }

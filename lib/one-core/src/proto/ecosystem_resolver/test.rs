@@ -312,6 +312,7 @@ fn invitation_artifact() -> ProtocolArtifact<'static> {
                 credential_request_encryption: None,
                 credential_response_encryption: None,
                 preferred_client_status_period: None,
+                profile_version: None,
             },
         )),
         credential_configuration_ids: vec![],

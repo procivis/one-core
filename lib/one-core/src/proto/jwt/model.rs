@@ -7,7 +7,7 @@ use crate::provider::credential_formatter::MetadataClaimSchema;
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JWTHeader {
+pub struct JWTHeader<CustomHeader = ()> {
     // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.1
     #[serde(rename = "alg")]
     pub algorithm: String,
@@ -44,6 +44,9 @@ pub struct JWTHeader {
     // https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.8
     #[serde(rename = "x5t#S256", default)]
     pub x5t_s256: Option<String>,
+
+    #[serde(flatten)]
+    pub custom: CustomHeader,
 }
 
 /// <https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1>
@@ -82,8 +85,8 @@ pub struct JWTPayload<CustomPayload> {
 }
 
 #[derive(Debug, Clone)]
-pub struct DecomposedJwt<CustomPayload> {
-    pub header: JWTHeader,
+pub struct DecomposedJwt<CustomPayload, CustomHeader = ()> {
+    pub header: JWTHeader<CustomHeader>,
     pub payload: JWTPayload<CustomPayload>,
     pub signature: Vec<u8>,
     pub unverified_jwt: String,

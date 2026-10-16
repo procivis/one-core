@@ -587,6 +587,7 @@ fn dummy_decomposed_jwt(
             x5c,
             x5u: None,
             x5t_s256: None,
+            custom: (),
         },
         payload: JWTPayload {
             issued_at: None,

@@ -18,7 +18,7 @@ use mapper::{
 use model::{
     HolderBinding, HolderCredentialConfiguration, HolderInteractionData, OpenID4VCIFinal1Params,
     OpenID4VCIIssuerInteractionDataDTO, PreparedMetadata, RequestedCredential,
-    TokenRequestAttestationHeaders,
+    SWISS_PROFILE_ISSUANCE_PREFIX, SWIYU_URL_SCHEMES, TokenRequestAttestationHeaders,
 };
 use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::jwe::{Header as JweHeader, decrypt_jwe_payload};
@@ -276,6 +276,19 @@ impl OpenID4VCIFinal1_0 {
                 key: config_id.to_string(),
                 source: err,
             })?;
+
+        if params.swiyu_mode && !SWIYU_URL_SCHEMES.contains(&params.url_scheme.as_str()) {
+            return Err(InitializationError::InvalidParamValue {
+                key: format!("{config_id}.urlScheme"),
+                description: format!(
+                    "swiyu mode allows only the URL schemes {}, got `{}`",
+                    SWIYU_URL_SCHEMES
+                        .map(|scheme| format!("`{scheme}`"))
+                        .join(", "),
+                    params.url_scheme
+                ),
+            });
+        }
 
         let protocol_base_url = base_url
             .as_ref()
@@ -1913,6 +1926,50 @@ impl OpenID4VCIFinal1_0 {
         Ok(IssuerMetadataRepresentation::Signed(jwt))
     }
 
+    /// Whether the issuer advertises the swiss profile, which is what tells a swiyu issuer apart
+    /// from a plain OpenID4VCI one when both are reached under the same URL scheme.
+    ///
+    /// Spec: Swiss Profile for Issuance, Section 12.2.4
+    /// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1224-credential-issuer-metadata-parameters>
+    async fn issuer_advertises_swiss_profile(&self, credential_issuer: &str) -> bool {
+        let Ok(credential_issuer_endpoint) = credential_issuer.parse::<Url>() else {
+            return false;
+        };
+
+        let signed: Result<DecomposedJwt<CredentialIssuerMetadata>, _> = self
+            .metadata_cache
+            .fetch_jwt_well_known(&credential_issuer_endpoint, "openid-credential-issuer")
+            .await;
+        let profile_version = match signed {
+            Ok(jwt) => jwt.payload.custom.profile_version,
+            Err(err) => {
+                tracing::debug!(
+                    "Failed to fetch signed issuer metadata of `{credential_issuer}`, falling back to unsigned metadata: {err}"
+                );
+                match self
+                    .metadata_cache
+                    .fetch_json_well_known::<CredentialIssuerMetadata>(
+                        &credential_issuer_endpoint,
+                        "openid-credential-issuer",
+                    )
+                    .await
+                {
+                    Ok(metadata) => metadata.profile_version,
+                    Err(err) => {
+                        // an unreachable issuer is left to the protocol that does not require the
+                        // profile, which reports the failure when it handles the invitation
+                        tracing::warn!(
+                            "Failed to fetch issuer metadata of `{credential_issuer}`: {err}"
+                        );
+                        None
+                    }
+                }
+            }
+        };
+
+        profile_version.is_some_and(|profile| profile.starts_with(SWISS_PROFILE_ISSUANCE_PREFIX))
+    }
+
     async fn validate_jwt<T: Debug>(
         &self,
         jwt: &DecomposedJwt<T>,
@@ -2404,19 +2461,39 @@ impl OpenID4VCIFinal1_0 {
 
 #[async_trait]
 impl IssuanceProtocol for OpenID4VCIFinal1_0 {
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        if self.params.url_scheme != url.scheme() {
+    async fn holder_can_handle(&self, url: &Url) -> bool {
+        // a swiyu offer may arrive under either allowed scheme, independently of the one this
+        // instance is configured to create offers with
+        let scheme_supported = if self.params.swiyu_mode {
+            SWIYU_URL_SCHEMES.contains(&url.scheme())
+        } else {
+            self.params.url_scheme == url.scheme()
+        };
+        if !scheme_supported {
             return false;
         }
 
-        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
-        if !query_has_key(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY)
-            && !query_has_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY)
-        {
-            return false;
+        let query_pairs: HashMap<_, _> = url.query_pairs().collect();
+        if let Some(offer) = query_pairs.get(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY) {
+            // the swiyu and the plain protocol accept the same offer URLs, so the profile the
+            // issuer advertises is what assigns the invitation to one of them
+            let Ok(offer) = serde_json::from_str::<CredentialOffer>(offer) else {
+                // a malformed offer is left to the protocol that does not require the profile,
+                // which reports the failure when it handles the invitation
+                return !self.params.swiyu_mode;
+            };
+            return self
+                .issuer_advertises_swiss_profile(&offer.credential_issuer)
+                .await
+                == self.params.swiyu_mode;
         }
 
-        true
+        // a swiyu offer is always embedded by value, so an offer by reference is ruled out without
+        // looking up the issuer - which would take fetching the offer document first
+        // Swiss Profile for Issuance, Section 4.1: `credential_offer_uri` is NOT SUPPORTED
+        // <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#41-credential-offer>
+        query_pairs.contains_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY)
+            && !self.params.swiyu_mode
     }
 
     async fn holder_handle_invitation<'a>(
@@ -3147,6 +3224,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 .await?,
             self.credential_response_encryption(enc_values_supported),
             issuer_display,
+            self.params.swiyu_mode,
         )
         .map_err(OpenIDIssuanceError::OpenID4VCI)
         .map_err(Into::into)

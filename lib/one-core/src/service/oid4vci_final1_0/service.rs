@@ -80,6 +80,7 @@ use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     FormatNotification, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
+    SWISS_PROFILE_ISSUANCE_VERSION, SwissProfileHeader,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::{
     OpenID4VCIProofHolderBinding, OpenID4VCIProofJWTFormatter, OpenID4VCIVerifiedProof,
@@ -131,10 +132,26 @@ impl OID4VCIFinal1_0Service {
                     credential_schema_id,
                     issuer_identifier,
                     issuance_protocol,
+                    self.swiss_profile_header(protocol_id)?,
                 )
                 .await
                 .map(IssuerMetadataResponseEnum::Jwt),
         }
+    }
+
+    /// Swiss Profile header claims the signed metadata of `protocol_id` carries, empty unless the
+    /// protocol runs in swiyu mode.
+    fn swiss_profile_header(
+        &self,
+        protocol_id: &str,
+    ) -> Result<SwissProfileHeader, OID4VCIFinal1_0ServiceError> {
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(protocol_id)
+            .error_while("getting protocol params")?;
+
+        Ok(swiss_profile_header(&params))
     }
 
     pub(crate) async fn get_issuer_identifier(
@@ -267,6 +284,7 @@ impl OID4VCIFinal1_0Service {
                     credential_schema_id,
                     issuer_identifier,
                     metadata.clone(),
+                    swiss_profile_header(&params),
                 )
                 .await
         }
@@ -2146,6 +2164,18 @@ impl OID4VCIFinal1_0Service {
             .ok()
             .and_then(|mut v| v.pop())?;
         Some(credential.common().protocol.clone())
+    }
+}
+
+/// Swiss Profile header claims for a protocol with the given params.
+///
+/// Spec: Swiss Profile for Issuance, Sections 12.2.3 and 12.3
+/// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-issuance/#1223-signed-metadata>
+fn swiss_profile_header(params: &OpenID4VCIFinal1Params) -> SwissProfileHeader {
+    SwissProfileHeader {
+        profile_version: params
+            .swiyu_mode
+            .then(|| SWISS_PROFILE_ISSUANCE_VERSION.to_string()),
     }
 }
 
