@@ -33,8 +33,13 @@ impl<'de> Deserialize<'de> for TokenType {
         let value = String::deserialize(deserializer)?;
         if value.eq_ignore_ascii_case("bearer") {
             Ok(Self::Bearer)
+        } else if value.eq_ignore_ascii_case("dpop") {
+            Ok(Self::DPoP)
         } else {
-            Err(serde::de::Error::unknown_variant(&value, &["Bearer"]))
+            Err(serde::de::Error::unknown_variant(
+                &value,
+                &["Bearer", "DPoP"],
+            ))
         }
     }
 }
@@ -62,10 +67,16 @@ mod test {
                 serde_json::from_str::<TokenType>(input).unwrap()
             );
         }
+        for input in [r#""DPoP""#, r#""dpop""#, r#""DPOP""#] {
+            assert_eq!(
+                TokenType::DPoP,
+                serde_json::from_str::<TokenType>(input).unwrap()
+            );
+        }
     }
 
     #[test]
     fn test_token_type_deserialization_fails_for_unknown_value() {
-        assert!(serde_json::from_str::<TokenType>(r#""DPoP""#).is_err());
+        assert!(serde_json::from_str::<TokenType>(r#""Basic""#).is_err());
     }
 }

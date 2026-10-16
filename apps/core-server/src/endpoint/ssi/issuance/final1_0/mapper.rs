@@ -131,30 +131,25 @@ pub(crate) fn wallet_attestation_response(wa: &WalletAttestationError) -> Respon
 
 pub(crate) fn dpop_error_response(status: StatusCode, error: &impl ErrorCodeMixin) -> Response {
     tracing::info!("DPoP error: {error}");
-    let is_dpop_nonce_error = error.error_code() == ErrorCode::BR_0520;
-    let body = if is_dpop_nonce_error {
-        OpenID4VCIErrorResponseRestDTO::with_description(
+    let (error_code, description) = if error.error_code() == ErrorCode::BR_0520 {
+        (
             OpenID4VCIError::UseDpopNonce,
             // https://www.rfc-editor.org/rfc/rfc9449.html#name-authorization-server-provid
             "Authorization server requires nonce in DPoP proof".to_string(),
         )
     } else {
-        OpenID4VCIErrorResponseRestDTO::with_description(
-            OpenID4VCIError::InvalidDpopProof,
-            error.to_string(),
-        )
+        (OpenID4VCIError::InvalidDpopProof, error.to_string())
     };
-    let body = Json(body);
+
+    // the challenge repeats the error code of the response body
+    // https://www.rfc-editor.org/rfc/rfc9449.html#section-7.1
+    let challenge = format!(r#"DPoP error="{error_code}""#);
+    let body = Json(OpenID4VCIErrorResponseRestDTO::with_description(
+        error_code,
+        description,
+    ));
     if status == StatusCode::UNAUTHORIZED {
-        let challenge = [(
-            header::WWW_AUTHENTICATE,
-            if is_dpop_nonce_error {
-                r#"DPoP error="use_dpop_nonce""#
-            } else {
-                r#"DPoP error="invalid_dpop_proof""#
-            },
-        )];
-        return (status, challenge, body).into_response();
+        return (status, [(header::WWW_AUTHENTICATE, challenge)], body).into_response();
     }
     (status, body).into_response()
 }

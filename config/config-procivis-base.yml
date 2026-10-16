@@ -110,6 +110,7 @@ issuanceProtocol:
         preAuthorizedCodeExpiresInSeconds: 300
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
+        holderDpopKeyStorage: "INTERNAL"
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -126,6 +127,7 @@ issuanceProtocol:
         preAuthorizedCodeExpiresInSeconds: 300
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
+        holderDpopKeyStorage: "INTERNAL"
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -144,6 +146,7 @@ issuanceProtocol:
         preAuthorizedCodeExpiresInSeconds: 300
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
+        holderDpopKeyStorage: "INTERNAL"
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]

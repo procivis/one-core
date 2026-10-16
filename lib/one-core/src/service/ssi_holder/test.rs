@@ -2041,6 +2041,7 @@ fn dummy_interaction() -> HolderInteractionData {
         issuer_display: None,
         credential_request_encryption: None,
         credential_response_encryption: None,
+        dpop_nonce: None,
         protocol: "".to_string(),
         credential_configurations: vec![HolderCredentialConfiguration {
             credential_configuration_id: "".to_string(),

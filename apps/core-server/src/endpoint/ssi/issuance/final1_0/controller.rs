@@ -235,17 +235,17 @@ pub(crate) async fn oid4vci_final1_0_get_credential_offer(
     ),
     responses(
         (status = 200, description = "OK", body = TokenResponse,
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 400, description = "OIDC token errors", body = OpenID4VCIErrorResponseRestDTO,
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 404, description = "Credential schema not found"),
         (status = 409, description = "Wrong credential state",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 500, description = "Server error",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
     ),
     tag = "openid4vci-final1_0",
@@ -349,18 +349,18 @@ pub(crate) async fn oid4vci_final1_0_create_token(
     ),
     responses(
         (status = 200, description = "OK. Returns JWE encrypted as `application/jwt` when using encryption", body = OpenID4VCIFinal1CredentialResponseRestDTO,
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO,
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 404, description = "Credential schema not found"),
         (status = 409, description = "Wrong credential state",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 415, description = "Unsupported request content type"),
         (status = 500, description = "Server error",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
     ),
     security(
@@ -475,17 +475,17 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
     ),
     responses(
         (status = 204, description = "OK",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO,
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 404, description = "Credential schema not found"),
         (status = 409, description = "Wrong credential state",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 500, description = "Server error",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
     ),
     security(
@@ -559,11 +559,11 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
     ),
     responses(
         (status = 200, description = "OK", body = NonceResponse,
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 404, description = "Invalid protocol"),
         (status = 500, description = "Server error",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
     ),
     tag = "openid4vci-final1_0",
@@ -607,11 +607,11 @@ pub(crate) async fn oid4vci_final1_0_nonce(
     ),
     responses(
         (status = 200, description = "OK", body = ChallengeResponse,
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
         (status = 404, description = "Invalid protocol"),
         (status = 500, description = "Server error",
-            headers(("DPoP-Nonce" = inline(Option<String>), description = "DPoP nonce (when DPoP is enabled)"))
+            headers(("DPoP-Nonce" = String, description = "DPoP nonce (when DPoP is enabled)"))
         ),
     ),
     tag = "openid4vci-final1_0",

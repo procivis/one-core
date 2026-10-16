@@ -30,13 +30,15 @@ use service::{
 };
 use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
-    IdentifierId, InteractionId, OrganisationId, SerializedCredential,
+    IdentifierId, InteractionId, KeyId, OrganisationId, SerializedCredential,
 };
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::{JwkUse, Jwks};
+use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
+use standardized_types::oauth2::dpop::DPOP_HEADER;
 use standardized_types::oauth2::token::{
     TokenErrorCode, TokenErrorResponse, TokenRequest, TokenResponse,
 };
@@ -52,6 +54,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
+use self::dpop::DpopContext;
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::{OpenIDIssuanceError, TxCodeError};
 use super::mapper::{
@@ -90,7 +93,9 @@ use crate::model::relation::Related;
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
-use crate::proto::http_client::{HttpClient, Response, is_media_type};
+use crate::proto::http_client::{
+    self, HttpClient, Method, RequestBuilder, Response, is_media_type,
+};
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
@@ -129,6 +134,7 @@ use crate::util::key_agreement::{KeyAgreementKey, key_agreement_keys};
 use crate::util::key_selection::KeyFilter;
 
 mod attestations;
+mod dpop;
 mod holder_credentials;
 pub(crate) mod mapper;
 pub mod model;
@@ -139,6 +145,10 @@ mod test;
 #[cfg(test)]
 mod test_issuance;
 pub mod validator;
+
+/// A request is sent at most twice: once with the nonce known so far, and once more with the
+/// nonce the issuer demands instead.
+const DPOP_REQUEST_ATTEMPTS: u8 = 2;
 
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
@@ -199,6 +209,20 @@ fn should_create_batch_parent(
         && (has_refresh_token
             || advertised_batch_size.is_some_and(|size| size > 1)
             || any_batch_issued)
+}
+
+/// Copies the most recent DPoP nonce into the interaction data so that the next flow starts
+/// out with a nonce the issuer accepts. Returns whether the stored nonce changed.
+fn store_dpop_nonce(
+    dpop: Option<&DpopContext>,
+    interaction_data: &mut HolderInteractionData,
+) -> bool {
+    let nonce = dpop.and_then(DpopContext::nonce);
+    if nonce.is_none() || nonce == interaction_data.dpop_nonce {
+        return false;
+    }
+    interaction_data.dpop_nonce = nonce;
+    true
 }
 
 fn used_holder_identifier_ids<'a>(
@@ -371,9 +395,149 @@ impl OpenID4VCIFinal1_0 {
         Ok(Some(issuer_jwk_key_id))
     }
 
+    /// Builds the DPoP context of an issuance flow from the binding key that was prepared
+    /// together with the interaction. `None` means the issuance is not DPoP bound.
+    async fn dpop_context(
+        &self,
+        interaction: &Interaction,
+        interaction_data: &HolderInteractionData,
+    ) -> Result<Option<DpopContext>, IssuanceProtocolError> {
+        let Some(dpop_key) = &interaction.dpop_key else {
+            return Ok(None);
+        };
+        let key_id = dpop_key.id();
+        let key = dpop_key.as_ref().await?;
+
+        let jwk = self
+            .key_algorithm_provider
+            .reconstruct_key(
+                key.key_algorithm_type()
+                    .error_while("getting DPoP key algorithm type")?,
+                &key.public_key,
+                None,
+                None,
+            )
+            .error_while("reconstructing DPoP key")?
+            .public_key_as_jwk()
+            .error_while("getting DPoP JWK")?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            &key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
+        drop(key);
+
+        Ok(Some(DpopContext::new(
+            key_id,
+            auth_fn,
+            jwk,
+            interaction_data.dpop_nonce.to_owned(),
+        )))
+    }
+
+    /// Drops the DPoP binding key of an issuance the issuer did not use.
+    async fn discard_dpop_binding(
+        &self,
+        interaction_id: InteractionId,
+        key_id: KeyId,
+        interaction_data: &mut HolderInteractionData,
+    ) -> Result<(), IssuanceProtocolError> {
+        interaction_data.dpop_nonce = None;
+
+        tracing::info!("Issuer returned a bearer token, discarding the DPoP binding key");
+        self.tx_manager
+            .tx(async {
+                self.interaction_repository
+                    .update_interaction(
+                        interaction_id,
+                        UpdateInteractionRequest {
+                            dpop_key: Some(None),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("clearing the DPoP key of the interaction")?;
+                self.key_repository
+                    .hard_delete(&key_id)
+                    .await
+                    .error_while("hard deleting unused DPoP binding key")?;
+                Ok::<_, IssuanceProtocolError>(())
+            })
+            .await
+            .error_while("discarding the DPoP binding")
+            .map_err(IssuanceProtocolError::from)
+            .flatten()
+    }
+
+    fn request_builder(&self, method: Method, url: &str) -> RequestBuilder {
+        match method {
+            Method::Get => self.client.get(url),
+            Method::Post => self.client.post(url),
+            Method::Put => self.client.put(url),
+            Method::Patch => self.client.patch(url),
+        }
+    }
+
+    /// Sends an authorized request with (optional) DPoP handling.
+    async fn send_authorized_request(
+        &self,
+        dpop: Option<&DpopContext>,
+        method: Method,
+        url: &str,
+        access_token: Option<&SecretString>,
+        build: impl Fn(RequestBuilder) -> Result<RequestBuilder, http_client::Error>,
+    ) -> Result<Response, IssuanceProtocolError> {
+        let Some(dpop) = dpop else {
+            let mut request = self.request_builder(method, url);
+            if let Some(access_token) = access_token {
+                request = request.bearer_auth(access_token.expose_secret());
+            }
+            return Ok(build(request)
+                .error_while("preparing request")?
+                .send()
+                .await
+                .error_while("sending request")?);
+        };
+
+        let proof_url = dpop::proof_url(url)?;
+        let mut attempt = 1;
+        loop {
+            let proof = dpop.create_proof(method, &proof_url, access_token).await?;
+            let mut request = self
+                .request_builder(method, url)
+                .header(DPOP_HEADER, &proof);
+            if let Some(access_token) = access_token {
+                // a DPoP bound token is sent with the DPoP authorization scheme
+                // https://www.rfc-editor.org/rfc/rfc9449.html#section-7.1
+                request = request.header(
+                    "Authorization",
+                    &format!("DPoP {}", access_token.expose_secret()),
+                );
+            }
+
+            let response = build(request)
+                .error_while("preparing request")?
+                .send()
+                .await
+                .error_while("sending request")?;
+
+            let nonce_is_new = dpop.record_nonce(&response);
+            if attempt >= DPOP_REQUEST_ATTEMPTS
+                || !nonce_is_new
+                || !dpop::requires_dpop_nonce(&response)
+            {
+                return Ok(response);
+            }
+
+            tracing::debug!("Repeating request with the DPoP nonce provided by the issuer");
+            attempt += 1;
+        }
+    }
+
     async fn holder_fetch_token(
         &self,
         interaction_data: &HolderInteractionData,
+        dpop: Option<&DpopContext>,
         tx_code: Option<String>,
         wallet_attestation_request: Option<TokenRequestAttestationHeaders>,
     ) -> Result<TokenResponse, IssuanceProtocolError> {
@@ -414,25 +578,29 @@ impl OpenID4VCIFinal1_0 {
             }
         };
 
-        let mut request = self
-            .client
-            .post(token_endpoint.as_str())
-            .form(&form)
-            .error_while("preparing token request")?;
-
-        if let Some(wallet_attestation_request) = wallet_attestation_request {
-            request = request
-                .header(
-                    "OAuth-Client-Attestation",
-                    &wallet_attestation_request.wallet_attestation,
-                )
-                .header(
-                    "OAuth-Client-Attestation-PoP",
-                    &wallet_attestation_request.wallet_attestation_pop,
-                );
-        }
-
-        let response = request.send().await.error_while("requesting token")?;
+        let response = self
+            .send_authorized_request(
+                dpop,
+                Method::Post,
+                token_endpoint.as_str(),
+                None,
+                |request| {
+                    let mut request = request.form(&form)?;
+                    if let Some(wallet_attestation_request) = &wallet_attestation_request {
+                        request = request
+                            .header(
+                                "OAuth-Client-Attestation",
+                                &wallet_attestation_request.wallet_attestation,
+                            )
+                            .header(
+                                "OAuth-Client-Attestation-PoP",
+                                &wallet_attestation_request.wallet_attestation_pop,
+                            );
+                    }
+                    Ok(request)
+                },
+            )
+            .await?;
 
         if response.status.is_client_error() && has_sent_tx_code {
             match serde_json::from_slice::<TokenErrorResponse>(&response.body).map(|r| r.error) {
@@ -462,6 +630,7 @@ impl OpenID4VCIFinal1_0 {
         interaction_id: InteractionId,
         organisation_id: OrganisationId,
         interaction_data: &mut HolderInteractionData,
+        dpop: &mut Option<DpopContext>,
     ) -> Result<SecretString, IssuanceProtocolError> {
         let now = now_utc();
         if let Some(encrypted_token) = &interaction_data.access_token {
@@ -520,40 +689,52 @@ impl OpenID4VCIFinal1_0 {
                     "token endpoint is missing".to_string(),
                 ))?;
 
-        let token_response: TokenResponse = async {
-            let mut request =
-                self.client
-                    .post(token_endpoint)
-                    .form(&TokenRequest::RefreshToken {
-                        refresh_token: refresh_token.expose_secret().to_string(),
-                    })?;
-
-            if let Some(TokenRequestAttestationHeaders {
-                wallet_attestation,
-                wallet_attestation_pop,
-            }) = wia_tokens
-            {
-                request = request
-                    .header("OAuth-Client-Attestation", &wallet_attestation)
-                    .header("OAuth-Client-Attestation-PoP", &wallet_attestation_pop);
-            }
-
-            request.send().await?.error_for_status()?.json()
-        }
-        .await
-        .error_while("requesting token")?;
+        let form = TokenRequest::RefreshToken {
+            refresh_token: refresh_token.expose_secret().to_string(),
+        };
+        let response = self
+            .send_authorized_request(
+                dpop.as_ref(),
+                Method::Post,
+                token_endpoint,
+                None,
+                |request| {
+                    let mut request = request.form(&form)?;
+                    if let Some(TokenRequestAttestationHeaders {
+                        wallet_attestation,
+                        wallet_attestation_pop,
+                    }) = &wia_tokens
+                    {
+                        request = request
+                            .header("OAuth-Client-Attestation", wallet_attestation)
+                            .header("OAuth-Client-Attestation-PoP", wallet_attestation_pop);
+                    }
+                    Ok(request)
+                },
+            )
+            .await?;
+        let token_response: TokenResponse = response
+            .error_for_status()
+            .and_then(Response::json)
+            .error_while("requesting token")?;
 
         self.set_token_response(interaction_data, &token_response)?;
+        if let Some(discarded) = dpop.take_if(|_| token_response.token_type != TokenType::DPoP) {
+            self.discard_dpop_binding(interaction_id, discarded.key_id(), interaction_data)
+                .await?;
+        }
+        let _ = store_dpop_nonce(dpop.as_ref(), interaction_data);
         self.save_interaction_data(interaction_id, interaction_data)
             .await?;
 
         Ok(token_response.access_token)
     }
 
-    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
+    #[tracing::instrument(level = "debug", skip(self, dpop), err(level = "info"))]
     async fn holder_fetch_nonce(
         &self,
         nonce_endpoint: Option<&String>,
+        dpop: Option<&DpopContext>,
     ) -> Result<Option<String>, IssuanceProtocolError> {
         // missing `nonce_endpoint` means the issuer does not require nonce in proofs
         // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.4
@@ -561,16 +742,22 @@ impl OpenID4VCIFinal1_0 {
             return Ok(None);
         };
 
-        let response: NonceResponse = async {
-            self.client
-                .post(nonce_endpoint.as_str())
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
+        // the endpoint takes no DPoP proof, but it is one of the responses that may seed the
+        // DPoP nonce of the following requests
+        let response = self
+            .client
+            .post(nonce_endpoint.as_str())
+            .send()
+            .await
+            .error_while("requesting nonce")?;
+        if let Some(dpop) = dpop {
+            dpop.record_nonce(&response);
         }
-        .await
-        .error_while("requesting nonce")?;
+
+        let response: NonceResponse = response
+            .error_for_status()
+            .and_then(Response::json)
+            .error_while("requesting nonce")?;
 
         Ok(Some(response.c_nonce))
     }
@@ -599,25 +786,25 @@ impl OpenID4VCIFinal1_0 {
 
     #[tracing::instrument(
         level = "debug",
-        skip(self, message, access_token),
+        skip(self, message, access_token, dpop),
         err(level = "info")
     )]
     async fn send_notification(
         &self,
         message: NotificationRequest,
         notification_endpoint: &str,
-        access_token: &str,
+        access_token: &SecretString,
+        dpop: Option<&DpopContext>,
     ) -> Result<(), IssuanceProtocolError> {
-        async {
-            self.client
-                .post(notification_endpoint)
-                .bearer_auth(access_token)
-                .json(&message)?
-                .send()
-                .await?
-                .error_for_status()
-        }
-        .await
+        self.send_authorized_request(
+            dpop,
+            Method::Post,
+            notification_endpoint,
+            Some(access_token),
+            |request| request.json(&message),
+        )
+        .await?
+        .error_for_status()
         .error_while("sending notification")?;
 
         Ok(())
@@ -628,10 +815,11 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         requested: &RequestedCredential,
         access_token: &SecretString,
+        dpop: Option<&DpopContext>,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
         let configuration = &requested.configuration;
         let nonce = self
-            .holder_fetch_nonce(interaction_data.nonce_endpoint.as_ref())
+            .holder_fetch_nonce(interaction_data.nonce_endpoint.as_ref(), dpop)
             .await?;
 
         let client_id = interaction_data
@@ -682,7 +870,7 @@ impl OpenID4VCIFinal1_0 {
         };
 
         let response = self
-            .fetch_credential(interaction_data, access_token, body)
+            .fetch_credential(interaction_data, access_token, dpop, body)
             .await?;
 
         let credentials = response
@@ -706,6 +894,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction_data: &HolderInteractionData,
         access_token: &SecretString,
+        dpop: Option<&DpopContext>,
         mut body: CredentialRequest,
     ) -> Result<OpenID4VCICredentialResponseDTO, IssuanceProtocolError> {
         let encryption_key = self.prepare_response_encryption(interaction_data, &mut body)?;
@@ -743,29 +932,31 @@ impl OpenID4VCIFinal1_0 {
                 &*self.key_algorithm_provider,
             )
             .await?;
-            async {
-                self.client
-                    .post(interaction_data.credential_endpoint.as_str())
-                    .bearer_auth(access_token.expose_secret())
-                    .header("Content-Type", "application/jwt")
-                    .body(encrypted.into_bytes())
-                    .send()
-                    .await?
-                    .error_for_status()
-            }
-            .await
+            let encrypted = encrypted.into_bytes();
+            self.send_authorized_request(
+                dpop,
+                Method::Post,
+                interaction_data.credential_endpoint.as_str(),
+                Some(access_token),
+                |request| {
+                    Ok(request
+                        .header("Content-Type", "application/jwt")
+                        .body(encrypted.clone()))
+                },
+            )
+            .await?
+            .error_for_status()
             .error_while("requesting credential")?
         } else {
-            async {
-                self.client
-                    .post(interaction_data.credential_endpoint.as_str())
-                    .bearer_auth(access_token.expose_secret())
-                    .json(&body)?
-                    .send()
-                    .await?
-                    .error_for_status()
-            }
-            .await
+            self.send_authorized_request(
+                dpop,
+                Method::Post,
+                interaction_data.credential_endpoint.as_str(),
+                Some(access_token),
+                |request| request.json(&body),
+            )
+            .await?
+            .error_for_status()
             .error_while("requesting credential")?
         };
 
@@ -1004,11 +1195,12 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &mut HolderInteractionData,
         requested: RequestedCredential,
         access_token: &SecretString,
+        dpop: Option<&DpopContext>,
         interaction: &Interaction,
     ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
         let organisation = interaction.organisation.as_ref().await?;
         let credential_response = self
-            .holder_request_credential(interaction_data, &requested, access_token)
+            .holder_request_credential(interaction_data, &requested, access_token, dpop)
             .await?;
 
         let notification_id = credential_response.notification_id.to_owned();
@@ -1065,7 +1257,8 @@ impl OpenID4VCIFinal1_0 {
                 .send_notification(
                     notification,
                     notification_endpoint.as_str(),
-                    access_token.expose_secret(),
+                    access_token,
+                    dpop,
                 )
                 .await
             {
@@ -1325,10 +1518,11 @@ impl OpenID4VCIFinal1_0 {
         requested: RequestedCredential,
         updated_credential: Option<&Credential>,
         access_token: &SecretString,
+        dpop: Option<&DpopContext>,
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         let organisation = interaction.organisation.as_ref().await?;
         let response = self
-            .holder_request_credential(interaction_data, &requested, access_token)
+            .holder_request_credential(interaction_data, &requested, access_token, dpop)
             .await?;
         let RequestedCredential {
             configuration,
@@ -1375,6 +1569,7 @@ impl OpenID4VCIFinal1_0 {
                 }
             }
         }
+        interaction_data_changed |= store_dpop_nonce(dpop, interaction_data);
         if interaction_data_changed {
             self.save_interaction_data(interaction.id, interaction_data)
                 .await?;
@@ -1391,7 +1586,8 @@ impl OpenID4VCIFinal1_0 {
                 .send_notification(
                     notification,
                     notification_endpoint.as_str(),
-                    access_token.expose_secret(),
+                    access_token,
+                    dpop,
                 )
                 .await
             {
@@ -1433,13 +1629,19 @@ impl OpenID4VCIFinal1_0 {
                 ],
             )
             .await?;
+        let mut dpop = self.dpop_context(interaction, interaction_data).await?;
         let token_response = self
-            .holder_fetch_token(interaction_data, tx_code, wia_tokens)
+            .holder_fetch_token(interaction_data, dpop.as_ref(), tx_code, wia_tokens)
             .await?;
         // a failed accept attempt may have stored a refresh token, this response replaces it
         interaction_data.refresh_token = None;
         interaction_data.refresh_token_expires_at = None;
         self.set_token_response(interaction_data, &token_response)?;
+        if let Some(discarded) = dpop.take_if(|_| token_response.token_type != TokenType::DPoP) {
+            self.discard_dpop_binding(interaction.id, discarded.key_id(), interaction_data)
+                .await?;
+        }
+        let dpop = dpop.as_ref();
 
         let mut result = IssuanceAcceptResult::default();
         for requested in requested_credentials {
@@ -1452,6 +1654,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction_data,
                     requested,
                     &token_response.access_token,
+                    dpop,
                     interaction,
                 )
                 .await;
@@ -1488,6 +1691,7 @@ impl OpenID4VCIFinal1_0 {
                 }
             }
         }
+        let _ = store_dpop_nonce(dpop, interaction_data);
         Ok(result)
     }
 
@@ -1778,7 +1982,6 @@ impl OpenID4VCIFinal1_0 {
             .challenge_endpoint
             .as_ref()
             .map(Url::to_string);
-
         let holder_data = HolderInteractionData {
             issuer_url: issuer_metadata.metadata().credential_issuer.clone(),
             credential_endpoint: issuer_metadata.metadata().credential_endpoint.clone(),
@@ -1790,7 +1993,7 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref()
                 .map(|data| data.batch_size),
             challenge_endpoint,
-            token_endpoint: oauth_metadata.token_endpoint.map(|url| url.to_string()),
+            token_endpoint: oauth_metadata.token_endpoint.as_ref().map(Url::to_string),
             grants: Some(grants),
             continue_issuance,
             access_token: None,
@@ -1808,19 +2011,92 @@ impl OpenID4VCIFinal1_0 {
                 .metadata()
                 .credential_response_encryption
                 .clone(),
+            dpop_nonce: None,
             protocol: self.config_id.to_owned(),
             credential_configurations,
         };
         let data = serialize_interaction_data(&holder_data)?;
 
-        let interaction =
-            create_and_store_interaction(self.interaction_repository.as_ref(), data, organisation)
-                .await?;
+        let dpop_key = self
+            .prepare_dpop_binding_key(&organisation, &oauth_metadata)
+            .await?;
+        let interaction = create_and_store_interaction(
+            self.interaction_repository.as_ref(),
+            &self.key_repository,
+            data,
+            organisation,
+            dpop_key,
+        )
+        .await?;
         Ok(PrepareIssuanceSuccess {
             interaction_id: interaction.id,
             key_storage_security,
             key_algorithms,
         })
+    }
+
+    async fn prepare_dpop_binding_key(
+        &self,
+        organisation: &Organisation,
+        oauth_metadata: &AuthorizationServerMetadata,
+    ) -> Result<Option<KeyId>, IssuanceProtocolError> {
+        // the issuer decides whether DPoP is on the table at all
+        let Some(dpop_signing_algs) = &oauth_metadata.dpop_signing_alg_values_supported else {
+            tracing::debug!(
+                issuer = %oauth_metadata.issuer,
+                "Issuance is not DPoP bound: the authorization server advertises no DPoP signing algorithms"
+            );
+            return Ok(None);
+        };
+
+        // past this point the issuer supports DPoP and may well require it, so every remaining
+        // reason to skip it is a misconfiguration that will surface as a rejected token request
+        let Some(dpop_key_storage) = &self.params.holder_dpop_key_storage else {
+            tracing::warn!(
+                issuer = %oauth_metadata.issuer,
+                "Authorization server supports DPoP but `holderDpopKeyStorage` is not configured for `{}`: issuance will fail if the issuer enforces DPoP",
+                self.config_id
+            );
+            return Ok(None);
+        };
+
+        let alg_selection = dpop_signing_algs
+            .iter()
+            .flat_map(|alg| self.key_algorithm_provider.key_algorithm_from_jose_alg(alg))
+            .next();
+
+        let Some((alg_type, _)) = alg_selection else {
+            tracing::warn!(
+                issuer = %oauth_metadata.issuer,
+                "None of the DPoP signing algorithms the authorization server supports ({dpop_signing_algs:?}) maps to an enabled key algorithm: issuance will fail if the issuer enforces DPoP"
+            );
+            return Ok(None);
+        };
+
+        let key_storage = self.key_provider.get_key_storage(dpop_key_storage)?;
+        let key_id = Uuid::new_v4().into();
+        let dpop_binding_key = key_storage
+            .generate(key_id, alg_type, serde_json::json!({}))
+            .await
+            .error_while("generating DPoP binding key")?;
+        let now = now_utc();
+        let key = Key {
+            id: key_id,
+            created_date: now,
+            last_modified: now,
+            public_key: dpop_binding_key.public_key,
+            name: format!("DPoP binding key {key_id}"),
+            key_reference: dpop_binding_key.key_reference,
+            storage_type: dpop_key_storage.clone(),
+            key_type: alg_type.to_string(),
+            autogenerated: true,
+            organisation: organisation.to_owned().into(),
+        };
+        self.key_repository
+            .create_key(key)
+            .await
+            .error_while("creating DPoP key")?;
+        Ok(Some(key_id))
     }
 
     pub(super) async fn get_etsi_issuer_info(
@@ -2341,9 +2617,16 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let organisation_id = interaction.organisation.id();
 
+        let mut dpop = self.dpop_context(&interaction, &interaction_data).await?;
         let access_token = self
-            .holder_reuse_or_refresh_token(interaction.id, organisation_id, &mut interaction_data)
+            .holder_reuse_or_refresh_token(
+                interaction.id,
+                organisation_id,
+                &mut interaction_data,
+                &mut dpop,
+            )
             .await?;
+        let dpop = dpop.as_ref();
 
         let mut failures = vec![];
         for (configuration_id, notification_id) in notifications {
@@ -2355,13 +2638,20 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         event_description: None,
                     },
                     notification_endpoint.as_str(),
-                    access_token.expose_secret(),
+                    &access_token,
+                    dpop,
                 )
                 .await
             {
                 failures.push(format!("{configuration_id}: {error}"));
             }
         }
+
+        if store_dpop_nonce(dpop, &mut interaction_data) {
+            self.save_interaction_data(interaction.id, &interaction_data)
+                .await?;
+        }
+
         if failures.is_empty() {
             Ok(())
         } else {
@@ -2772,13 +3062,16 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             return Err(IssuanceProtocolError::RefreshNotPossible);
         }
 
+        let mut dpop = self.dpop_context(interaction, &interaction_data).await?;
         let access_token = self
             .holder_reuse_or_refresh_token(
                 interaction.id,
                 interaction.organisation.id(),
                 &mut interaction_data,
+                &mut dpop,
             )
             .await?;
+        let dpop = dpop.as_ref();
 
         let mut autogenerated_bindings = vec![];
         let refreshed = match async {
@@ -2819,6 +3112,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         requested,
                         updated_credential.as_ref(),
                         &access_token,
+                        dpop,
                     )
                     .await
                 {
@@ -2996,12 +3290,15 @@ fn get_authorization_server_url_from_issuer_metadata(
 
 async fn create_and_store_interaction(
     interaction_repository: &dyn InteractionRepository,
+    key_repository: &Arc<dyn KeyRepository>,
     data: Vec<u8>,
     organisation: impl Into<Related<Organisation>>,
+    dpop_key: Option<KeyId>,
 ) -> Result<Interaction, IssuanceProtocolError> {
     let now = crate::clock::now_utc();
 
-    let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
+    let mut interaction = interaction_from_handle_invitation(Some(data), now, organisation);
+    interaction.dpop_key = dpop_key.map(|id| Related::new(id, key_repository.clone()));
 
     interaction_repository
         .create_interaction(interaction.clone())

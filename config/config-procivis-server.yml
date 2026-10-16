@@ -171,7 +171,7 @@ issuanceProtocol:
     params:
       private:
         dpop:
-          enforced: false # TODO ONE-10769: Temporarily not enforced until holder side is implemented
+          enforced: false # TODO: Enable enforcement after transition period to not break installed apps
           signingAlgorithms:
             - ECDSA
   OPENID4VCI_FINAL1_HAIP:

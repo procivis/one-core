@@ -150,7 +150,6 @@ pub enum OpenID4VCIError {
     // https://www.rfc-editor.org/rfc/rfc9449.html#name-oauth-extensions-error-regi
     #[error("invalid_dpop_proof")]
     InvalidDpopProof,
-    // https://www.rfc-editor.org/rfc/rfc9449.html#name-oauth-extensions-error-regi
     #[error("use_dpop_nonce")]
     UseDpopNonce,
 

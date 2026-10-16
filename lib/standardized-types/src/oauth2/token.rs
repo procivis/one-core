@@ -8,6 +8,7 @@
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use strum::Display;
 
 use super::TokenType;
 use crate::mapper::{opt_secret_string, secret_string};
@@ -89,10 +90,12 @@ pub struct TokenErrorResponse {
 
 /// Error code of a [`TokenErrorResponse`].
 ///
-/// The values defined by [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2);
-/// the registry is extensible, so unrecognized codes are preserved in `Other`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// The values defined by [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2)
+/// and the extensions registered by other specifications; the registry is extensible, so
+/// unrecognized codes are preserved in `Other`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum TokenErrorCode {
     InvalidRequest,
     InvalidClient,
@@ -100,7 +103,19 @@ pub enum TokenErrorCode {
     UnauthorizedClient,
     UnsupportedGrantType,
     InvalidScope,
+
+    /// The DPoP proof the request carried was rejected.
+    ///
+    /// Spec: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#name-oauth-extensions-error-regi)
+    InvalidDpopProof,
+
+    /// The request has to be repeated with a nonce of the server's choosing.
+    ///
+    /// Spec: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#name-oauth-extensions-error-regi)
+    UseDpopNonce,
+
     #[serde(untagged)]
+    #[strum(to_string = "{0}")]
     Other(String),
 }
 

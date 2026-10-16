@@ -65,6 +65,12 @@ pub(crate) struct OpenID4VCIFinal1Params {
     #[serde(flatten)]
     pub common: CommonParams,
 
+    /// Holder-side DPoP key configuration.
+    /// If not configured, the holder will not use DPoP.
+    #[serde(default)]
+    pub holder_dpop_key_storage: Option<String>,
+
+    /// Issuer DPoP configuration
     #[serde(default)]
     pub dpop: Option<OpenID4VCDpopParams>,
 }
@@ -156,6 +162,8 @@ pub(crate) struct HolderInteractionData {
     pub credential_request_encryption: Option<CredentialRequestEncryption>,
     #[serde(default)]
     pub credential_response_encryption: Option<CredentialResponseEncryption>,
+    #[serde(default)]
+    pub dpop_nonce: Option<String>,
 
     /// selected issuance protocol (config identifier)
     pub protocol: String,
