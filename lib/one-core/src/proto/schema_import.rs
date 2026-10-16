@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::organisation::Organisation;
-use crate::proto::credential_schema::Error as CredentialSchemaError;
 use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporter;
-use crate::proto::proof_schema::{Error as ProofSchemaError, ProofSchemaImporter};
+use crate::proto::proof_schema::ProofSchemaImporter;
 
 /// Imports the credential and proof schemas published by a remote party.
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -56,8 +56,8 @@ impl SchemaImporter for SchemaImporterProto {
                 Ok(_) => {}
                 // A provider re-advertises its schemas on every sync, so meeting one that
                 // is already imported is the normal case rather than a failure.
-                Err(CredentialSchemaError::AlreadyExists) => {
-                    tracing::debug!(%url, "Credential schema already imported");
+                Err(err) if err.error_code() == ErrorCode::BR_0007 => {
+                    tracing::debug!(%url, "Credential schema already imported")
                 }
                 Err(err) => tracing::warn!(%err, "Failed to import credential schema"),
             }
@@ -70,8 +70,8 @@ impl SchemaImporter for SchemaImporterProto {
                 .await
             {
                 Ok(_) => {}
-                Err(ProofSchemaError::AlreadyExists) => {
-                    tracing::debug!(%url, "Proof schema already imported");
+                Err(err) if err.error_code() == ErrorCode::BR_0015 => {
+                    tracing::debug!(%url, "Proof schema already imported")
                 }
                 Err(err) => tracing::warn!(%err, "Failed to import proof schema"),
             }
