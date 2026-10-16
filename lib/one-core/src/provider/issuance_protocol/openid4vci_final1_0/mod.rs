@@ -397,8 +397,8 @@ impl OpenID4VCIFinal1_0 {
         Ok(Some(issuer_jwk_key_id))
     }
 
-    /// Builds the DPoP context of an issuance flow from the binding key that was prepared
-    /// together with the interaction. `None` means the issuance is not DPoP bound.
+    /// Builds the DPoP context of an issuance flow from the binding key of the interaction.
+    /// `None` means the issuance is not DPoP bound, or the binding key is yet to be generated.
     async fn dpop_context(
         &self,
         interaction: &Interaction,
@@ -407,23 +407,49 @@ impl OpenID4VCIFinal1_0 {
         let Some(dpop_key) = &interaction.dpop_key else {
             return Ok(None);
         };
-        let key_id = dpop_key.id();
         let key = dpop_key.as_ref().await?;
+        self.dpop_context_for_key(&key, interaction_data).map(Some)
+    }
 
-        let jwk = self.dpop_public_jwk(&key)?;
+    async fn dpop_context_with_key_generation(
+        &self,
+        interaction: &Interaction,
+        interaction_data: &HolderInteractionData,
+    ) -> Result<Option<DpopContext>, IssuanceProtocolError> {
+        // a retried accept reuses the binding key of the previous attempt
+        if interaction.dpop_key.is_some() {
+            return self.dpop_context(interaction, interaction_data).await;
+        }
+
+        let Some(key) = self
+            .create_dpop_binding_key(interaction, interaction_data)
+            .await?
+        else {
+            return Ok(None);
+        };
+
+        self.dpop_context_for_key(&key, interaction_data).map(Some)
+    }
+
+    fn dpop_context_for_key(
+        &self,
+        key: &Key,
+        interaction_data: &HolderInteractionData,
+    ) -> Result<DpopContext, IssuanceProtocolError> {
+        let key_id = key.id;
+        let jwk = self.dpop_public_jwk(key)?;
         let auth_fn = self.key_provider.get_signature_provider(
-            &key,
+            key,
             None,
             self.key_algorithm_provider.clone(),
         )?;
-        drop(key);
 
-        Ok(Some(DpopContext::new(
+        Ok(DpopContext::new(
             key_id,
             auth_fn,
             jwk,
             interaction_data.dpop_nonce.to_owned(),
-        )))
+        ))
     }
 
     fn dpop_public_jwk(&self, key: &Key) -> Result<PublicJwk, IssuanceProtocolError> {
@@ -449,6 +475,7 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &mut HolderInteractionData,
     ) -> Result<(), IssuanceProtocolError> {
         interaction_data.dpop_nonce = None;
+        interaction_data.dpop_signing_alg_values_supported = None;
 
         tracing::info!("Issuer returned a bearer token, discarding the DPoP binding key");
         self.tx_manager
@@ -1635,7 +1662,9 @@ impl OpenID4VCIFinal1_0 {
                 ],
             )
             .await?;
-        let mut dpop = self.dpop_context(interaction, interaction_data).await?;
+        let mut dpop = self
+            .dpop_context_with_key_generation(interaction, interaction_data)
+            .await?;
         let token_response = self
             .holder_fetch_token(interaction_data, dpop.as_ref(), tx_code, wia_tokens)
             .await?;
@@ -2024,27 +2053,23 @@ impl OpenID4VCIFinal1_0 {
                 .metadata()
                 .credential_response_encryption
                 .clone(),
+            dpop_signing_alg_values_supported: oauth_metadata
+                .dpop_signing_alg_values_supported
+                .clone(),
             dpop_nonce: None,
             protocol: self.config_id.to_owned(),
             credential_configurations,
         };
         let data = serialize_interaction_data(&holder_data)?;
 
-        // an authorization code bound to a DPoP key can only be redeemed with that same key
-        // https://www.rfc-editor.org/rfc/rfc9449.html#section-10
-        let dpop_key = match authorization_dpop_key {
-            Some(key_id) => Some(key_id),
-            None => self
-                .prepare_dpop_binding_key(&organisation, &oauth_metadata)
-                .await?
-                .map(|key| key.id),
-        };
+        // `authorization_dpop_key` is the key the authorization code is bound to (if any)
+        // created in initiate_issuance.
         let interaction = create_and_store_interaction(
             self.interaction_repository.as_ref(),
             &self.key_repository,
             data,
             organisation,
-            dpop_key,
+            authorization_dpop_key,
         )
         .await?;
         Ok(PrepareIssuanceSuccess {
@@ -2054,15 +2079,61 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
+    async fn create_dpop_binding_key(
+        &self,
+        interaction: &Interaction,
+        interaction_data: &HolderInteractionData,
+    ) -> Result<Option<Key>, IssuanceProtocolError> {
+        let Some(key) = self
+            .prepare_dpop_binding_key(
+                interaction.organisation.to_owned(),
+                &interaction_data.issuer_url,
+                interaction_data
+                    .dpop_signing_alg_values_supported
+                    .as_deref(),
+            )
+            .await?
+        else {
+            return Ok(None);
+        };
+        let key_id = key.id;
+
+        self.tx_manager
+            .tx(async {
+                self.key_repository
+                    .create_key(key.clone())
+                    .await
+                    .error_while("creating DPoP key")?;
+                self.interaction_repository
+                    .update_interaction(
+                        interaction.id,
+                        UpdateInteractionRequest {
+                            dpop_key: Some(Some(key_id)),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("setting the DPoP key of the interaction")?;
+                Ok::<_, IssuanceProtocolError>(())
+            })
+            .await
+            .error_while("creating the DPoP binding")
+            .map_err(IssuanceProtocolError::from)
+            .flatten()?;
+
+        Ok(Some(key))
+    }
+
     async fn prepare_dpop_binding_key(
         &self,
-        organisation: &Organisation,
-        oauth_metadata: &AuthorizationServerMetadata,
+        organisation: impl Into<Related<Organisation>>,
+        issuer: &str,
+        dpop_signing_algs: Option<&[String]>,
     ) -> Result<Option<Key>, IssuanceProtocolError> {
         // the issuer decides whether DPoP is on the table at all
-        let Some(dpop_signing_algs) = &oauth_metadata.dpop_signing_alg_values_supported else {
+        let Some(dpop_signing_algs) = dpop_signing_algs else {
             tracing::debug!(
-                issuer = %oauth_metadata.issuer,
+                issuer,
                 "Issuance is not DPoP bound: the authorization server advertises no DPoP signing algorithms"
             );
             return Ok(None);
@@ -2072,7 +2143,7 @@ impl OpenID4VCIFinal1_0 {
         // reason to skip it is a misconfiguration that will surface as a rejected token request
         let Some(dpop_key_storage) = &self.params.holder_dpop_key_storage else {
             tracing::warn!(
-                issuer = %oauth_metadata.issuer,
+                issuer,
                 "Authorization server supports DPoP but `holderDpopKeyStorage` is not configured for `{}`: issuance will fail if the issuer enforces DPoP",
                 self.config_id
             );
@@ -2086,7 +2157,7 @@ impl OpenID4VCIFinal1_0 {
 
         let Some((alg_type, _)) = alg_selection else {
             tracing::warn!(
-                issuer = %oauth_metadata.issuer,
+                issuer,
                 "None of the DPoP signing algorithms the authorization server supports ({dpop_signing_algs:?}) maps to an enabled key algorithm: issuance will fail if the issuer enforces DPoP"
             );
             return Ok(None);
@@ -2109,12 +2180,8 @@ impl OpenID4VCIFinal1_0 {
             storage_type: dpop_key_storage.clone(),
             key_type: alg_type.to_string(),
             autogenerated: true,
-            organisation: organisation.to_owned().into(),
+            organisation: organisation.into(),
         };
-        self.key_repository
-            .create_key(key.clone())
-            .await
-            .error_while("creating DPoP key")?;
         Ok(Some(key))
     }
 
@@ -2891,11 +2958,23 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         authorization_server_metadata: &AuthorizationServerMetadata,
     ) -> Result<Option<AuthorizationDpopKey>, IssuanceProtocolError> {
         let Some(key) = self
-            .prepare_dpop_binding_key(organisation, authorization_server_metadata)
+            .prepare_dpop_binding_key(
+                organisation.to_owned(),
+                authorization_server_metadata.issuer.as_str(),
+                authorization_server_metadata
+                    .dpop_signing_alg_values_supported
+                    .as_deref(),
+            )
             .await?
         else {
             return Ok(None);
         };
+        // the key is bound to the authorization code, so it outlives this request
+        self.key_repository
+            .create_key(key.clone())
+            .await
+            .error_while("creating DPoP key")?;
+
         let jwk = &self.dpop_public_jwk(&key)?;
         let thumbprint = jwk.thumbprint()?;
         let jkt = Base64UrlSafeNoPadding::encode_to_string(thumbprint).map_err(|error| {
@@ -3336,7 +3415,7 @@ async fn create_and_store_interaction(
     organisation: impl Into<Related<Organisation>>,
     dpop_key: Option<KeyId>,
 ) -> Result<Interaction, IssuanceProtocolError> {
-    let now = crate::clock::now_utc();
+    let now = now_utc();
 
     let mut interaction = interaction_from_handle_invitation(Some(data), now, organisation);
     interaction.dpop_key = dpop_key.map(|id| Related::new(id, key_repository.clone()));

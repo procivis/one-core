@@ -162,6 +162,11 @@ pub(crate) struct HolderInteractionData {
     pub credential_request_encryption: Option<CredentialRequestEncryption>,
     #[serde(default)]
     pub credential_response_encryption: Option<CredentialResponseEncryption>,
+    /// DPoP signing algorithms the authorization server advertises. `None` means the issuance is
+    /// not DPoP bound; otherwise the binding key is generated from this list when the offer is
+    /// accepted.
+    #[serde(default)]
+    pub dpop_signing_alg_values_supported: Option<Vec<String>>,
     #[serde(default)]
     pub dpop_nonce: Option<String>,
 
