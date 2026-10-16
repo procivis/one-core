@@ -10,6 +10,7 @@ use one_core::OneCore;
 use one_core::config::core_config::AppConfig;
 use one_core::service::backup::error::BackupServiceError;
 use secrecy::SecretString;
+use sql_data_provider::DbConn;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -105,7 +106,7 @@ fn main() {
                 return;
             }
 
-            let core = initialize_core(&app_config, db_conn)
+            let core = initialize_core(&app_config, db_conn.clone())
                 .await
                 .expect("Unable to initialize core");
 
@@ -117,13 +118,13 @@ fn main() {
                     .expect("Failed to parse task params");
                 run_task(task, params, core).await
             } else {
-                run_server(app_config.app, core).await
+                run_server(app_config.app, core, db_conn).await
             }
         })
 }
 
 #[expect(clippy::expect_used)]
-async fn run_server(config: ServerConfig, core: OneCore) {
+async fn run_server(config: ServerConfig, core: OneCore, db_conn: DbConn) {
     let addr = SocketAddr::new(
         config
             .server_ip
@@ -133,7 +134,7 @@ async fn run_server(config: ServerConfig, core: OneCore) {
 
     let listener = TcpListener::bind(addr).expect("Failed to bind to address");
 
-    start_server(listener, config, core).await
+    start_server(listener, config, core, db_conn).await
 }
 
 #[expect(clippy::expect_used, clippy::print_stdout)]

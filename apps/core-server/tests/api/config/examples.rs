@@ -60,7 +60,7 @@ async fn start_server_from_example(root: &str, example: &Path) -> Result<(), Str
     // configured to use a database cluster.
     let db_conn = fixtures::create_db(&app_config).await;
 
-    let core = initialize_core(&app_config, db_conn)
+    let core = initialize_core(&app_config, db_conn.clone())
         .await
         .map_err(|err| format!("failed initializing core: {err}"))?;
 
@@ -69,17 +69,18 @@ async fn start_server_from_example(root: &str, example: &Path) -> Result<(), Str
         "http://{}",
         listener.local_addr().map_err(|err| err.to_string())?
     );
-    let handle = tokio::spawn(async move { start_server(listener, app_config.app, core).await });
+    let handle =
+        tokio::spawn(async move { start_server(listener, app_config.app, core, db_conn).await });
 
     let result = wait_until_healthy(&base_url).await;
     handle.abort();
     result
 }
 
-/// The `/health` endpoint is only routed when `enableServerInfo` is set, so
+/// The liveness endpoint is only routed when `enableServerInfo` is set, so
 /// example templates are expected to enable it.
 async fn wait_until_healthy(base_url: &str) -> Result<(), String> {
-    let url = format!("{base_url}/health");
+    let url = format!("{base_url}/system/health/liveness");
     let mut last_error = None;
 
     for _ in 0..50 {

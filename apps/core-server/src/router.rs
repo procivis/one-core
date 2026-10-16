@@ -14,6 +14,7 @@ use axum::{Extension, Router, middleware};
 use indexmap::IndexMap;
 use one_core::OneCore;
 use one_core::proto::session_provider::Session;
+use sql_data_provider::DbConn;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
@@ -31,8 +32,8 @@ use crate::endpoint::trust_collection::controller::{
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     identifier, instance, interaction, jsonld, key, managed_instance, misc, organisation, proof,
-    proof_schema, qes, signature, ssi, statistics, task, trust_collection, trust_list_publication,
-    vc_api,
+    proof_schema, qes, signature, ssi, statistics, system, task, trust_collection,
+    trust_list_publication, vc_api,
 };
 use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
@@ -40,19 +41,21 @@ use crate::openapi::gen_openapi_documentation;
 pub(crate) struct InternalAppState {
     pub core: OneCore,
     pub config: Arc<ServerConfig>,
+    pub db: DbConn,
 }
 
 pub(crate) type AppState = Arc<InternalAppState>;
 
 #[expect(clippy::expect_used)]
 #[expect(clippy::unwrap_used)]
-pub async fn start_server(listener: TcpListener, config: ServerConfig, core: OneCore) {
+pub async fn start_server(listener: TcpListener, config: ServerConfig, core: OneCore, db: DbConn) {
     listener.set_nonblocking(true).unwrap();
 
     let config = Arc::new(config);
     let state: AppState = Arc::new(InternalAppState {
         core,
         config: config.to_owned(),
+        db,
     });
 
     let addr = listener.local_addr().expect("Invalid TCP listener");
@@ -88,23 +91,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
 
     let external_endpoints = get_external_endpoints(&config, &mut openapi_paths);
 
-    let metrics_endpoints = if config.enable_metrics {
-        Router::new().route("/metrics", get(misc::get_metrics))
-    } else {
-        if let Some(paths) = openapi_paths.as_mut() {
-            paths.shift_remove("/metrics");
-        };
-        Router::new()
-    };
-
-    let server_info_endpoints = if config.enable_server_info {
-        Router::new().route("/health", get(misc::health_check))
-    } else {
-        if let Some(paths) = openapi_paths.as_mut() {
-            paths.shift_remove("/health");
-        };
-        Router::new()
-    };
+    let system_endpoints = get_system_endpoints(&config, &mut openapi_paths);
 
     let openapi_endpoints = if let Some(openapi_documentation) = openapi_documentation {
         Router::new()
@@ -166,8 +153,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
         .layer(middleware::from_fn(crate::middleware::sentry_layer))
         .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .merge(openapi_endpoints)
-        .merge(server_info_endpoints)
-        .merge(metrics_endpoints)
+        .merge(system_endpoints)
         .layer(CatchPanicLayer::custom(move |err| {
             handle_panic(err, hide_error_response_cause)
         }))
@@ -603,12 +589,6 @@ fn get_management_endpoints(
             paths.shift_remove("/api/qes/v1/sign");
         }
 
-        if config.enable_server_info {
-            router = router.route("/api/build-info/v1", get(misc::get_build_info));
-        } else if let Some(paths) = openapi_paths {
-            paths.shift_remove("/api/build-info/v1");
-        }
-
         router.layer(middleware::from_fn(crate::middleware::authorization_check))
     } else {
         if let Some(paths) = openapi_paths {
@@ -616,6 +596,39 @@ fn get_management_endpoints(
         };
         Router::new()
     }
+}
+
+fn get_system_endpoints(
+    config: &ServerConfig,
+    openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
+) -> Router<AppState> {
+    let mut router = Router::new();
+
+    if config.enable_server_info {
+        router = router
+            .route("/system/health/liveness", get(system::controller::liveness))
+            .route(
+                "/system/health/readiness",
+                get(system::controller::readiness),
+            )
+            .route(
+                "/system/build-info",
+                get(system::controller::get_build_info)
+                    .route_layer(middleware::from_fn(crate::middleware::authorization_check)),
+            );
+    } else if let Some(paths) = openapi_paths {
+        paths.shift_remove("/system/health/liveness");
+        paths.shift_remove("/system/health/readiness");
+        paths.shift_remove("/system/build-info");
+    }
+
+    if config.enable_metrics {
+        router = router.route("/system/metrics", get(system::controller::get_metrics));
+    } else if let Some(paths) = openapi_paths {
+        paths.shift_remove("/system/metrics");
+    }
+
+    router
 }
 
 #[expect(deprecated)]

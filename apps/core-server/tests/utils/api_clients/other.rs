@@ -10,15 +10,19 @@ impl OtherApi {
     }
 
     pub async fn metrics(&self) -> Response {
-        self.client.get("/metrics").await
+        self.client.get("/system/metrics").await
     }
 
     pub async fn build_info(&self) -> Response {
-        self.client.get("/api/build-info/v1").await
+        self.client.get("/system/build-info").await
     }
 
-    pub async fn health(&self) -> Response {
-        self.client.get("/health").await
+    pub async fn liveness(&self) -> Response {
+        self.client.get("/system/health/liveness").await
+    }
+
+    pub async fn readiness(&self) -> Response {
+        self.client.get("/system/health/readiness").await
     }
 
     pub async fn openapi_json(&self) -> Response {

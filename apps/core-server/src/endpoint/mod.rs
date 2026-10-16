@@ -20,6 +20,7 @@ pub mod qes;
 pub mod signature;
 pub mod ssi;
 pub mod statistics;
+pub mod system;
 pub mod task;
 pub mod trust_collection;
 pub mod trust_list_publication;

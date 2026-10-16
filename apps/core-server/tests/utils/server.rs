@@ -15,5 +15,6 @@ pub async fn run_server(
     let core = initialize_core(&config, db.to_owned())
         .await
         .expect("Unable to initialize core");
-    tokio::spawn(async move { start_server(listener, config.app, core).await })
+    let db = db.to_owned();
+    tokio::spawn(async move { start_server(listener, config.app, core, db).await })
 }

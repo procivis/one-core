@@ -52,7 +52,7 @@ standardized-types = { workspace = true, features = ["utoipa"] }
 strum.workspace = true
 thiserror.workspace = true
 time.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 tower-http = { version = "0.6", features = ["trace", "catch-panic"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
