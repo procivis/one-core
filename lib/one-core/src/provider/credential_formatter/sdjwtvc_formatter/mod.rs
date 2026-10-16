@@ -398,12 +398,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::MlDsa]);
         }
 
-        let metadata_keys: Vec<_> = self
-            .get_metadata_claims()
-            .into_iter()
-            .map(|c| c.key)
-            .collect();
-
         FormatterCapabilities {
             signing_key_algorithms: signing_algorithms.clone(),
             datatypes,
@@ -420,14 +414,23 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 KeyStorageType::SecureElement,
             ],
             forbidden_claim_technical_keys: vec![
+                // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#name-json-web-token-claims-regis
                 SELECTIVE_DISCLOSURE_MARKER.to_string(),
                 SELECTIVE_DISCLOSURE_ARRAY_MARKER.to_string(),
             ],
-            forbidden_root_claim_technical_keys: [
-                metadata_keys,
-                vec!["_sd_alg".to_string(), "status".to_string()],
-            ]
-            .concat(),
+            forbidden_root_claim_technical_keys: vec![
+                // https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-19.html#name-registered-jwt-claims
+                "iss".to_string(),
+                "nbf".to_string(),
+                "exp".to_string(),
+                "cnf".to_string(),
+                "vct".to_string(),
+                "vct#integrity".to_string(),
+                "aka_vcts".to_string(),
+                "status".to_string(),
+                // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt#hash_function_claim
+                "_sd_alg".to_string(),
+            ],
             issuance_identifier_types,
             verification_identifier_types,
             holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],
