@@ -22,7 +22,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::util::nonce::{NonceContext, NonceError, NonceInfo, generate_nonce, validate_nonce};
-use crate::validator::{validate_expiration_time, validate_issuance_time};
+use crate::validator::{TimestampValidationError, validate_issuance_time};
 
 #[cfg(test)]
 mod test;
@@ -77,8 +77,8 @@ pub enum DpopHandlerError {
     MethodMismatch,
     #[error("DPoP proof `htu` does not match the request URL")]
     UrlMismatch,
-    #[error("DPoP proof `iat` is outside of the accepted time window")]
-    IssuedAtOutOfWindow,
+    #[error("DPoP proof `iat` is outside of the accepted time window: `{0}`")]
+    IssuedAtOutOfWindow(#[from] TimestampValidationError),
     #[error("DPoP proof `ath` does not match the access token")]
     AccessTokenMismatch,
     #[error("DPoP proof `alg` is not supported")]
@@ -233,10 +233,8 @@ impl DpopHandler for DpopHandlerImpl {
             .payload
             .issued_at
             .ok_or(DpopHandlerError::MissingIssuedAt)?;
-        validate_issuance_time(&Some(issued_at), params.leeway)
-            .map_err(|_| DpopHandlerError::IssuedAtOutOfWindow)?;
-        validate_expiration_time(&Some(issued_at + params.nonce_validity), params.leeway)
-            .map_err(|_| DpopHandlerError::IssuedAtOutOfWindow)?;
+        // proof freshness is enforced by the expiry of the mandatory server-issued nonce
+        validate_issuance_time(&Some(issued_at), params.leeway)?;
         let Some(jti) = &proof.payload.jwt_id else {
             return Err(DpopHandlerError::MissingJwtId);
         };

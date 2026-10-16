@@ -1,7 +1,4 @@
-use std::ops::{Add, Sub};
-
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use time::{Duration, OffsetDateTime};
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
@@ -11,7 +8,6 @@ use crate::proto::certificate_validator::{
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::CertificateDetails;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::validator::x509::is_dns_name_matching;
 
@@ -29,48 +25,6 @@ pub(super) fn validate_against_redirect_uris(
         return Err(VerificationProtocolError::Failed(
             "redirect_uri or response_uri is not allowed by verifier_attestation token".to_string(),
         ));
-    }
-
-    Ok(())
-}
-
-pub(crate) fn validate_issuance_time(
-    issued_at: &Option<OffsetDateTime>,
-    leeway: Duration,
-) -> Result<(), OpenID4VCError> {
-    if issued_at.is_none() {
-        return Ok(());
-    }
-
-    let now = crate::clock::now_utc();
-    let issued = issued_at.ok_or(OpenID4VCError::ValidationError(
-        "Missing issuance date".to_owned(),
-    ))?;
-
-    if issued > now.add(leeway) {
-        return Err(OpenID4VCError::ValidationError(
-            "Issued in future".to_owned(),
-        ));
-    }
-
-    Ok(())
-}
-
-pub(crate) fn validate_expiration_time(
-    expires_at: &Option<OffsetDateTime>,
-    leeway: Duration,
-) -> Result<(), OpenID4VCError> {
-    if expires_at.is_none() {
-        return Ok(());
-    }
-
-    let now = crate::clock::now_utc();
-    let expires = expires_at.ok_or(OpenID4VCError::ValidationError(
-        "Missing expiration date".to_owned(),
-    ))?;
-
-    if expires < now.sub(leeway) {
-        return Err(OpenID4VCError::ValidationError("Expired".to_owned()));
     }
 
     Ok(())

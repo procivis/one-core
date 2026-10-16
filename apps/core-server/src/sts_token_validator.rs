@@ -9,7 +9,8 @@ mod validator {
     use one_core::proto::jwt::{Jwt, TokenError};
     use one_core::provider::key_algorithm::key::KeyHandleError;
     use one_core::validator::{
-        validate_audience, validate_expiration_time, validate_not_before_time,
+        TimestampValidationError, validate_audience, validate_expiration_time,
+        validate_not_before_time,
     };
     use serde::de::DeserializeOwned;
     use thiserror::Error;
@@ -131,10 +132,8 @@ mod validator {
         let Some(expires_at) = payload.expires_at else {
             return Err(StsError::MissingExpirationDate);
         };
-        validate_expiration_time(&Some(expires_at), leeway).map_err(|_| StsError::ExpiredToken)?;
-
-        validate_not_before_time(&payload.invalid_before, leeway)
-            .map_err(|_| StsError::NotBeforeToken)?;
+        validate_expiration_time(&Some(expires_at), leeway)?;
+        validate_not_before_time(&payload.invalid_before, leeway)?;
         Ok(())
     }
 
@@ -164,10 +163,8 @@ mod validator {
         IncorrectAudience,
         #[error("Missing expiration date.")]
         MissingExpirationDate,
-        #[error("Expired token.")]
-        ExpiredToken,
-        #[error("Not before token.")]
-        NotBeforeToken,
+        #[error("Invalid token timestamp. Cause: {0}.")]
+        InvalidTimestamp(#[from] TimestampValidationError),
     }
 }
 

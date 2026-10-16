@@ -29,7 +29,9 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
-use crate::validator::{validate_expiration_time, validate_issuance_time};
+use crate::validator::{
+    validate_credential_validity, validate_expiration_time, validate_issuance_time,
+};
 
 #[cfg(test)]
 mod test;
@@ -98,8 +100,10 @@ pub(super) async fn validate_proof(
 
     // Check if presentation is expired
     let leeway = presentation_formatter.get_leeway();
-    validate_issuance_time(&presentation.issued_at, leeway)?;
-    validate_expiration_time(&presentation.expires_at, leeway)?;
+    validate_issuance_time(&presentation.issued_at, leeway)
+        .error_while("checking presentation issuance time")?;
+    validate_expiration_time(&presentation.expires_at, leeway)
+        .error_while("checking presentation expiration")?;
 
     let input_schemas = proof_schema.input_schemas.as_ref().await?;
     if input_schemas.is_empty() {
@@ -143,9 +147,8 @@ pub(super) async fn validate_proof(
             .await
             .error_while("extracting credential")?;
 
-        // Check if "nbf" attribute of VCs and VP are valid. || Check if VCs are expired.
-        validate_issuance_time(&received_credential.invalid_before, leeway)?;
-        validate_expiration_time(&received_credential.valid_until, leeway)?;
+        validate_credential_validity(&received_credential, leeway)
+            .error_while("checking credential validity")?;
 
         let (credential_schema_id, requested_proof_claims) = extract_matching_requested_schema(
             &received_credential,

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use assert2::let_assert;
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -173,7 +174,6 @@ async fn test_validate_dpop_proof_rejects_invalid_header_or_claims() {
         (true, "typ", json!("jwt")),
         (true, "alg", json!("EdDSA")),
         (true, "jwk", Value::Null),
-        (false, "iat", json!(now - 600)),
         (false, "iat", json!(now + 120)),
         (false, "jti", Value::Null),
         (false, "nonce", Value::Null),
@@ -226,4 +226,42 @@ async fn test_validate_dpop_proof_rejects_invalid_signature() {
         )
         .await;
     assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_validate_dpop_proof_iat_out_of_window_reports_details() {
+    let handler = setup();
+    let nonce = handler.generate_nonce(dpop_params()).await.unwrap();
+    let key = Ecdsa.generate_key().unwrap().key;
+    let url = "https://issuer.example.com/token";
+    let iat = crate::clock::now_utc().unix_timestamp() + 120;
+    let (header, mut payload) = dpop_proof(&key, "POST", url, None, Some(nonce));
+    payload["iat"] = json!(iat);
+    let proof = sign(&key, (header, payload)).await;
+
+    let err = handler
+        .validate_proof(
+            Uuid::new_v4().into(),
+            proof.as_str(),
+            None,
+            ExpectedProofValues {
+                method: "POST",
+                url: Url::parse(url).unwrap(),
+                jkt: None,
+            },
+            dpop_params(),
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0517);
+    let_assert!(
+        DpopHandlerError::IssuedAtOutOfWindow(TimestampValidationError::IssuedInFuture {
+            issued_at,
+            ..
+        }) = &err
+    );
+    assert_eq!(issued_at.unix_timestamp(), iat);
+    let message = err.to_string();
+    assert!(message.contains(&issued_at.to_string()), "{message}");
 }

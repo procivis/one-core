@@ -47,11 +47,11 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, SubmissionRequestData, TransactionDataRequest,
     VpSubmissionData,
 };
-use crate::provider::verification_protocol::openid4vp::validator::{
-    validate_expiration_time, validate_issuance_time,
-};
 use crate::validator::proof_schema::resolve_proof_input_schema_formats;
-use crate::validator::throw_if_proof_state_not_in;
+use crate::validator::{
+    throw_if_proof_state_not_in, validate_credential_validity, validate_expiration_time,
+    validate_issuance_time,
+};
 
 pub(crate) struct OpenId4VpProofValidatorProto {
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -445,8 +445,7 @@ impl OpenId4VpProofValidatorProto {
                 }
             })?;
 
-        validate_issuance_time(&credential.valid_from, formatter.get_leeway())?;
-        validate_expiration_time(&credential.valid_until, formatter.get_leeway())?;
+        validate_credential_validity(&credential, formatter.get_leeway())?;
 
         for credential_status in credential.status.iter() {
             let (revocation_method, _) = self

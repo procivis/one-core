@@ -6,10 +6,11 @@ use time::{Duration, OffsetDateTime};
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::session_provider::SessionProvider;
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -130,17 +131,60 @@ pub(crate) fn throw_if_endpoint_version_incompatible(
     Ok(())
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum TimestampValidationError {
+    #[error(
+        "Issued in future: issued at {issued_at}, latest accepted {latest_accepted} (now {now}, leeway {leeway})"
+    )]
+    IssuedInFuture {
+        issued_at: OffsetDateTime,
+        latest_accepted: OffsetDateTime,
+        now: OffsetDateTime,
+        leeway: Duration,
+    },
+    #[error(
+        "Not before in future: not before {not_before}, latest accepted {latest_accepted} (now {now}, leeway {leeway})"
+    )]
+    NotBeforeInFuture {
+        not_before: OffsetDateTime,
+        latest_accepted: OffsetDateTime,
+        now: OffsetDateTime,
+        leeway: Duration,
+    },
+    #[error(
+        "Expired: expired at {expires_at}, earliest accepted {earliest_accepted} (now {now}, leeway {leeway})"
+    )]
+    Expired {
+        expires_at: OffsetDateTime,
+        earliest_accepted: OffsetDateTime,
+        now: OffsetDateTime,
+        leeway: Duration,
+    },
+}
+
+impl ErrorCodeMixin for TimestampValidationError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0521
+    }
+}
+
 pub(crate) fn validate_issuance_time(
     issued_at: &Option<OffsetDateTime>,
     leeway: Duration,
-) -> Result<(), ServiceError> {
-    let Some(issued_at) = issued_at else {
+) -> Result<(), TimestampValidationError> {
+    let Some(issued_at) = *issued_at else {
         return Ok(());
     };
 
     let now = crate::clock::now_utc();
-    if *issued_at > now.add(leeway) {
-        return Err(ServiceError::ValidationError("Issued in future".to_owned()));
+    let latest_accepted = now.add(leeway);
+    if issued_at > latest_accepted {
+        return Err(TimestampValidationError::IssuedInFuture {
+            issued_at,
+            latest_accepted,
+            now,
+            leeway,
+        });
     }
     Ok(())
 }
@@ -148,16 +192,20 @@ pub(crate) fn validate_issuance_time(
 pub fn validate_not_before_time(
     not_before: &Option<OffsetDateTime>,
     leeway: Duration,
-) -> Result<(), ServiceError> {
-    let Some(not_before) = not_before else {
+) -> Result<(), TimestampValidationError> {
+    let Some(not_before) = *not_before else {
         return Ok(());
     };
 
     let now = crate::clock::now_utc();
-    if *not_before > now.add(leeway) {
-        return Err(ServiceError::ValidationError(
-            "Not before in future".to_owned(),
-        ));
+    let latest_accepted = now.add(leeway);
+    if not_before > latest_accepted {
+        return Err(TimestampValidationError::NotBeforeInFuture {
+            not_before,
+            latest_accepted,
+            now,
+            leeway,
+        });
     }
     Ok(())
 }
@@ -165,16 +213,33 @@ pub fn validate_not_before_time(
 pub fn validate_expiration_time(
     expires_at: &Option<OffsetDateTime>,
     leeway: Duration,
-) -> Result<(), ServiceError> {
-    let Some(expires_at) = expires_at else {
+) -> Result<(), TimestampValidationError> {
+    let Some(expires_at) = *expires_at else {
         return Ok(());
     };
 
     let now = crate::clock::now_utc();
-    if *expires_at < now.sub(leeway) {
-        return Err(ServiceError::ValidationError("Expired".to_owned()));
+    let earliest_accepted = now.sub(leeway);
+    if expires_at < earliest_accepted {
+        return Err(TimestampValidationError::Expired {
+            expires_at,
+            earliest_accepted,
+            now,
+            leeway,
+        });
     }
     Ok(())
+}
+
+/// Validates the validity period of a received credential
+pub(crate) fn validate_credential_validity(
+    credential: &DetailCredential,
+    leeway: Duration,
+) -> Result<(), TimestampValidationError> {
+    validate_issuance_time(&credential.issuance_date, leeway)?;
+    validate_not_before_time(&credential.valid_from, leeway)?;
+    validate_not_before_time(&credential.invalid_before, leeway)?;
+    validate_expiration_time(&credential.valid_until, leeway)
 }
 
 pub fn validate_audience(audience: &[String], expected: &str) -> Result<(), ServiceError> {
@@ -207,7 +272,11 @@ pub(crate) fn validate_verification_protocol_config_exists(
 #[cfg(test)]
 mod tests {
 
+    use assert2::let_assert;
+    use similar_asserts::assert_eq;
+
     use super::*;
+    use crate::provider::credential_formatter::model::IdentifierDetails;
 
     #[test]
     fn test_validate_issuance_time() {
@@ -252,5 +321,108 @@ mod tests {
 
         let missing_date = validate_not_before_time(&None, leeway);
         assert!(missing_date.is_ok());
+    }
+
+    #[test]
+    fn test_timestamp_validation_error_details() {
+        let leeway = Duration::seconds(5);
+        let in_future = crate::clock::now_utc().add(Duration::seconds(60));
+        let in_past = crate::clock::now_utc().sub(Duration::seconds(60));
+
+        let err = validate_issuance_time(&Some(in_future), leeway).unwrap_err();
+        assert_eq!(err.error_code(), ErrorCode::BR_0521);
+        let_assert!(
+            TimestampValidationError::IssuedInFuture {
+                issued_at,
+                latest_accepted,
+                now,
+                leeway: reported_leeway,
+            } = &err
+        );
+        assert_eq!(*issued_at, in_future);
+        assert_eq!(*latest_accepted, *now + leeway);
+        assert_eq!(*reported_leeway, leeway);
+        assert!(err.to_string().contains(&in_future.to_string()));
+
+        let err = validate_not_before_time(&Some(in_future), leeway).unwrap_err();
+        let_assert!(
+            TimestampValidationError::NotBeforeInFuture {
+                not_before,
+                latest_accepted,
+                now,
+                ..
+            } = err
+        );
+        assert_eq!(not_before, in_future);
+        assert_eq!(latest_accepted, now + leeway);
+
+        let err = validate_expiration_time(&Some(in_past), leeway).unwrap_err();
+        let_assert!(
+            TimestampValidationError::Expired {
+                expires_at,
+                earliest_accepted,
+                now,
+                ..
+            } = err
+        );
+        assert_eq!(expires_at, in_past);
+        assert_eq!(earliest_accepted, now - leeway);
+    }
+
+    fn credential(update: impl FnOnce(&mut DetailCredential)) -> DetailCredential {
+        let now = crate::clock::now_utc();
+        let mut credential = DetailCredential {
+            issuance_date: Some(now),
+            valid_from: Some(now),
+            valid_until: Some(now + Duration::days(1)),
+            update_at: None,
+            invalid_before: Some(now),
+            issuer: IdentifierDetails::Did("did:issuer:123".parse().unwrap()),
+            subject: None,
+            claims: Default::default(),
+            status: vec![],
+        };
+        update(&mut credential);
+        credential
+    }
+
+    #[test]
+    fn test_validate_credential_validity() {
+        let leeway = Duration::seconds(5);
+        let in_future = crate::clock::now_utc() + Duration::minutes(1);
+        let in_past = crate::clock::now_utc() - Duration::minutes(1);
+
+        assert!(validate_credential_validity(&credential(|_| {}), leeway).is_ok());
+
+        let_assert!(
+            Err(TimestampValidationError::IssuedInFuture { .. }) = validate_credential_validity(
+                &credential(|c| c.issuance_date = Some(in_future)),
+                leeway
+            )
+        );
+        let_assert!(
+            Err(TimestampValidationError::NotBeforeInFuture { not_before, .. }) =
+                validate_credential_validity(
+                    &credential(|c| c.valid_from = Some(in_future)),
+                    leeway
+                )
+        );
+        assert_eq!(not_before, in_future);
+        let_assert!(
+            Err(TimestampValidationError::NotBeforeInFuture { not_before, .. }) =
+                validate_credential_validity(
+                    &credential(|c| c.invalid_before = Some(in_future)),
+                    leeway
+                )
+        );
+        assert_eq!(not_before, in_future);
+        let_assert!(
+            Err(TimestampValidationError::Expired { expires_at, .. }) =
+                validate_credential_validity(
+                    &credential(|c| c.valid_until = Some(in_past)),
+                    leeway
+                )
+        );
+        assert_eq!(expires_at, in_past);
     }
 }

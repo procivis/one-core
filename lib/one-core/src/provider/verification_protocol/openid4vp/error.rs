@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::validator::TimestampValidationError;
+
 #[derive(Debug, Error)]
 pub enum OpenID4VCError {
     #[error("Credential is revoked or suspended")]
@@ -14,6 +16,8 @@ pub enum OpenID4VCError {
     Other(String),
     #[error("Validation error: `{0}`")]
     ValidationError(String),
+    #[error("Timestamp validation error: `{0}`")]
+    TimestampValidation(#[from] TimestampValidationError),
 
     #[error("invalid_request")]
     InvalidRequest,

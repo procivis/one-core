@@ -53,7 +53,12 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
             Json(OpenID4VPDirectPostResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(error) if matches!(error.error_code(), ErrorCode::BR_0013 | ErrorCode::BR_0323) => {
+        Err(error)
+            if matches!(
+                error.error_code(),
+                ErrorCode::BR_0013 | ErrorCode::BR_0323 | ErrorCode::BR_0521
+            ) =>
+        {
             tracing::error!("Validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
@@ -70,7 +75,10 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
         ))
         | err @ Err(OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(
             _,
-        ))) => {
+        )))
+        | err @ Err(OID4VPFinal1_0ServiceError::OpenID4VCError(
+            OpenID4VCError::TimestampValidation(_),
+        )) => {
             tracing::error!("OpenID4VC invalid request: {err:?}");
             (
                 StatusCode::BAD_REQUEST,

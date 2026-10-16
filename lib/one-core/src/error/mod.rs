@@ -1158,6 +1158,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Missing or invalid DPoP nonce")]
     BR_0520,
+
+    #[strum(message = "Timestamp validation error")]
+    BR_0521,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

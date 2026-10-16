@@ -70,6 +70,19 @@ pub(crate) async fn oid4vp_final1_0_swiyu_direct_post(
             )
                 .into_response()
         }
+        Err(OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::TimestampValidation(
+            error,
+        ))) => {
+            tracing::error!("OpenID4VC timestamp validation error: {error}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
+                }),
+            )
+                .into_response()
+        }
         Err(OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::InvalidRequest)) => {
             tracing::error!("OpenID4VC invalid request");
             (
