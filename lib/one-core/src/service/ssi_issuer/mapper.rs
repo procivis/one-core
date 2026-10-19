@@ -1,14 +1,17 @@
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, HashMap};
 
 use serde_json::Value;
+use shared_types::ClaimSchemaId;
+use standardized_types::sd_jwt_vc::{
+    BackgroundImage, ClaimDisplay, ClaimMetadata, DisplayMetadata, Logo, Rendering,
+    SelectiveDisclosure, SimpleRendering,
+};
 use url::Url;
 
 use super::dto::{
     JsonLDContextDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO, JsonLDNestedContextDTO,
-    JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO, SdJwtVcClaimSd,
-    SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
-    SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
+    JsonLDNestedEntityDTO, SdJwtVcDisplayMetadataDTO, SdJwtVcTypeMetadataResponseDTO,
 };
 use super::error::IssuerServiceError;
 use crate::error::ContextWithErrorCode;
@@ -19,8 +22,8 @@ use crate::model::credential_schema::{
     CredentialSchemaClaimsNestedView,
 };
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
+use crate::model::localized_text::{LocalizedText, LocalizedTextField};
 use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
-use crate::service::ssi_issuer::dto::SdJwtVcSimpleRenderingBackgroundImageDTO;
 
 impl Default for JsonLDContextDTO {
     fn default() -> Self {
@@ -122,17 +125,25 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
     credential_schema_id: String,
     vct: String,
     schema: CredentialSchema,
+    default_language: &str,
+    swiyu_mode: bool,
 ) -> Result<SdJwtVcTypeMetadataResponseDTO, IssuerServiceError> {
-    let simple_rendering = vct_simple_rendering_from_schema(&schema)?;
-    let rendering = simple_rendering.map(|simple| SdJwtVcRenderingDTO {
+    let rendering = vct_simple_rendering_from_schema(&schema)?.map(|simple| Rendering {
         simple: Some(simple),
     });
-    let display_en_us = SdJwtVcDisplayMetadataDTO {
-        locale: "en-US".to_string(),
-        name: schema.name,
-        description: None,
-        rendering,
-    };
+    let schema_translations = schema.translations.as_ref().await?;
+    let display = group_translations_by_language(&schema_translations, default_language)
+        .into_iter()
+        .map(|(locale, texts)| SdJwtVcDisplayMetadataDTO {
+            lang: swiyu_mode.then(|| locale.clone()),
+            display: DisplayMetadata {
+                locale,
+                name: texts.name.unwrap_or_else(|| schema.name.clone()),
+                description: texts.description,
+                rendering: rendering.clone(),
+            },
+        })
+        .collect();
 
     let user_claims: Vec<_> = schema
         .claim_schemas
@@ -142,14 +153,22 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
         .filter(|cs| !cs.metadata)
         .cloned()
         .collect();
+    let mut claim_translations = HashMap::new();
+    for claim in &user_claims {
+        let translations = claim.translations.as_ref().await?;
+        claim_translations.insert(
+            claim.id,
+            group_translations_by_language(&translations, default_language),
+        );
+    }
     let nested_claims = CredentialSchemaClaimsNestedView::try_from(user_claims)
         .error_while("converting nested claims")?;
-    let claims = vct_claims_from_nested_view(nested_claims);
+    let claims = vct_claims_from_nested_view(nested_claims, &claim_translations);
     Ok(SdJwtVcTypeMetadataResponseDTO {
         vct,
         name: Some(credential_schema_id),
         description: None,
-        display: vec![display_en_us],
+        display,
         claims,
         layout_properties: schema
             .layout_properties
@@ -157,11 +176,50 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
     })
 }
 
+/// Display texts of a single language
+#[derive(Debug, Default)]
+struct LocalizedTexts {
+    name: Option<String>,
+    description: Option<String>,
+}
+
+/// Groups translations by language, sorted by language to keep the VCT metadata deterministic.
+/// Without any translations, a single (empty) entry for the default language is returned.
+fn group_translations_by_language(
+    translations: &[LocalizedText],
+    default_language: &str,
+) -> BTreeMap<String, LocalizedTexts> {
+    let mut by_language: BTreeMap<String, LocalizedTexts> = BTreeMap::new();
+    for translation in translations {
+        let texts = by_language.entry(translation.lang.clone()).or_default();
+        let value = Some(translation.value.clone());
+        match translation.field {
+            LocalizedTextField::Name => texts.name = value,
+            LocalizedTextField::Description => texts.description = value,
+            // only used for identifiers
+            LocalizedTextField::LogoAltText => {}
+        }
+    }
+
+    if by_language.is_empty() {
+        by_language.insert(default_language.to_owned(), LocalizedTexts::default());
+    }
+    by_language
+}
+
+type ClaimTranslations = HashMap<ClaimSchemaId, BTreeMap<String, LocalizedTexts>>;
+
 fn vct_claims_from_nested_view(
     nested_claims: CredentialSchemaClaimsNestedView,
-) -> Vec<SdJwtVcClaimDTO> {
+    claim_translations: &ClaimTranslations,
+) -> Vec<ClaimMetadata> {
     let mut vct_claims = vec![];
-    vct_claims_from_prefix_and_fields(&mut vct_claims, &[], nested_claims.fields);
+    vct_claims_from_prefix_and_fields(
+        &mut vct_claims,
+        &[],
+        nested_claims.fields,
+        claim_translations,
+    );
 
     // Sort claims in order to make VCT metadata deterministic
     vct_claims.sort_by(|a, b| {
@@ -181,9 +239,10 @@ fn vct_claims_from_nested_view(
 }
 
 fn vct_claims_from_prefix_and_fields(
-    accumulator: &mut Vec<SdJwtVcClaimDTO>,
+    accumulator: &mut Vec<ClaimMetadata>,
     prefix: &[Value],
     fields: HashMap<String, Arrayed<CredentialSchemaClaimsNestedTypeView>>,
+    claim_translations: &ClaimTranslations,
 ) {
     for (name, claim) in fields {
         let mut new_prefix = prefix.to_vec();
@@ -191,7 +250,12 @@ fn vct_claims_from_prefix_and_fields(
 
         let claim = match claim {
             Arrayed::InArray(array_claim) => {
-                accumulator.push(vct_claim_from_path_label(new_prefix.clone(), name));
+                accumulator.push(vct_claim_metadata(
+                    new_prefix.clone(),
+                    name,
+                    &array_claim,
+                    claim_translations,
+                ));
 
                 // push null to match all array elements when addressing nested claims
                 // see https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html#name-claim-path
@@ -199,7 +263,12 @@ fn vct_claims_from_prefix_and_fields(
                 array_claim
             }
             Arrayed::Single(single_claim) => {
-                accumulator.push(vct_claim_from_path_label(new_prefix.clone(), name));
+                accumulator.push(vct_claim_metadata(
+                    new_prefix.clone(),
+                    name,
+                    &single_claim,
+                    claim_translations,
+                ));
                 single_claim
             }
         };
@@ -211,33 +280,51 @@ fn vct_claims_from_prefix_and_fields(
                     accumulator,
                     new_prefix.as_slice(),
                     object_claim.fields,
+                    claim_translations,
                 );
             }
         }
     }
 }
 
-fn vct_claim_from_path_label(path: Vec<Value>, label: String) -> SdJwtVcClaimDTO {
-    SdJwtVcClaimDTO {
+fn vct_claim_metadata(
+    path: Vec<Value>,
+    name: String,
+    claim: &CredentialSchemaClaimsNestedTypeView,
+    claim_translations: &ClaimTranslations,
+) -> ClaimMetadata {
+    let claim_schema = match claim {
+        CredentialSchemaClaimsNestedTypeView::Field(claim_schema) => claim_schema,
+        CredentialSchemaClaimsNestedTypeView::Object(object_claim) => &object_claim.claim,
+    };
+
+    let display = claim_translations
+        .get(&claim_schema.id)
+        .into_iter()
+        .flatten()
+        .map(|(locale, texts)| ClaimDisplay {
+            locale: locale.to_owned(),
+            label: texts.name.to_owned().unwrap_or_else(|| name.to_owned()),
+            description: texts.description.to_owned(),
+        })
+        .collect();
+
+    ClaimMetadata {
         path,
-        display: vec![SdJwtVcClaimDisplayDTO {
-            locale: "en-US".to_string(),
-            label,
-            description: None,
-        }],
+        display,
         mandatory: None,
-        sd: Some(SdJwtVcClaimSd::Allowed),
+        sd: Some(SelectiveDisclosure::Allowed),
     }
 }
 
 fn vct_simple_rendering_from_schema(
     schema: &CredentialSchema,
-) -> Result<Option<SdJwtVcSimpleRenderingDTO>, IssuerServiceError> {
+) -> Result<Option<SimpleRendering>, IssuerServiceError> {
     let Some(layout_properties) = &schema.layout_properties else {
         return Ok(None);
     };
 
-    let mut result = SdJwtVcSimpleRenderingDTO {
+    let mut result = SimpleRendering {
         logo: None,
         background_image: None,
         background_color: None,
@@ -250,7 +337,7 @@ fn vct_simple_rendering_from_schema(
         let uri = Url::try_from(image.as_str()).map_err(|err| {
             IssuerServiceError::MappingError(format!("failed to parse logo URL: {err}"))
         })?;
-        result.logo = Some(SdJwtVcSimpleRenderingLogoDTO {
+        result.logo = Some(Logo {
             uri,
             alt_text: None,
         });
@@ -267,7 +354,7 @@ fn vct_simple_rendering_from_schema(
                     "failed to parse background image URL: {err}"
                 ))
             })?;
-            result.background_image = Some(SdJwtVcSimpleRenderingBackgroundImageDTO { uri });
+            result.background_image = Some(BackgroundImage { uri });
         }
     }
 

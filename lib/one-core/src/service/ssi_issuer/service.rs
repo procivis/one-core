@@ -25,6 +25,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::key::Key;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::relation::RelatedVec;
+use crate::provider::credential_formatter::sdjwtvc_formatter;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -231,7 +232,27 @@ impl SSIIssuerService {
         let Some(credential_schema) = schema_list.values.pop() else {
             return Err(IssuerServiceError::MissingSdJwtVcTypeMetadata(vct));
         };
-        credential_schema_to_sd_jwt_vc_metadata(vct_type, vct, credential_schema).await
+
+        let format = credential_schema
+            .formats
+            .as_ref()
+            .await?
+            .iter()
+            .find(|format| format.ecosystem_schema_id == vct)
+            .map(|format| format.format.to_owned());
+        let swiyu_mode = match format {
+            Some(format) => self.is_swiyu_format(&format)?,
+            None => false,
+        };
+
+        credential_schema_to_sd_jwt_vc_metadata(
+            vct_type,
+            vct,
+            credential_schema,
+            &self.config.global_settings.default_language,
+            swiyu_mode,
+        )
+        .await
     }
 
     pub async fn get_vct_metadata_v2(
@@ -288,8 +309,34 @@ impl SSIIssuerService {
         };
 
         let credential_schema = filter_schema_to_format(credential_schema, &format, &vct).await?;
+        let swiyu_mode = self.is_swiyu_format(&format)?;
 
-        credential_schema_to_sd_jwt_vc_metadata(credential_schema_id, vct, credential_schema).await
+        credential_schema_to_sd_jwt_vc_metadata(
+            credential_schema_id,
+            vct,
+            credential_schema,
+            &self.config.global_settings.default_language,
+            swiyu_mode,
+        )
+        .await
+    }
+
+    /// Whether the given format is an SD-JWT VC format with SWIYU quirks enabled
+    fn is_swiyu_format(&self, format: &CredentialFormat) -> Result<bool, IssuerServiceError> {
+        let Ok(format_type) = self.config.format.get_type(format) else {
+            // unknown format, cannot be SWIYU
+            return Ok(false);
+        };
+        if format_type != FormatType::SdJwtVc {
+            return Ok(false);
+        }
+
+        let params: sdjwtvc_formatter::Params = self
+            .config
+            .format
+            .get(format)
+            .error_while("getting format params")?;
+        Ok(params.swiyu_mode)
     }
 
     pub async fn get_sd_jwt_vc_issuer_metadata(

@@ -82,14 +82,14 @@ pub struct SDJWTVCFormatter {
 #[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Params {
+pub(crate) struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     leeway_seconds: Duration,
     #[expect(unused)]
     embed_layout_properties: bool,
     // Toggles SWIYU quirks, specifically the malformed `cnf` claim
     #[serde(default)]
-    swiyu_mode: bool,
+    pub swiyu_mode: bool,
     #[serde(default = "default_sd_array_elements")]
     sd_array_elements: bool,
     #[serde_as(as = "DurationSeconds<i64>")]

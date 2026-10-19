@@ -4,6 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use standardized_types::sd_jwt_vc::TypeMetadata;
 use time::OffsetDateTime;
 
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
@@ -14,7 +15,6 @@ use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityStorage, RemoteEntityType};
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
-use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -29,7 +29,7 @@ pub struct VctTypeMetadataCache {
 
 #[derive(Clone, Debug)]
 pub struct SdJwtVcTypeMetadataCacheItem {
-    pub metadata: SdJwtVcTypeMetadataResponseDTO,
+    pub metadata: TypeMetadata,
 
     /// vct#integrity
     pub integrity: Option<String>,
@@ -59,7 +59,7 @@ impl VctTypeMetadataCache {
     pub async fn initialize_from_static_resources(&self) -> anyhow::Result<()> {
         let schemas = include_str!("../../../../../resource/sd_jwt_vc_vcts.json");
 
-        let vcts: Vec<SdJwtVcTypeMetadataResponseDTO> =
+        let vcts: Vec<TypeMetadata> =
             serde_json::from_str(schemas).context("Invalid VCT type metadata resource file")?;
 
         for vct in vcts {
@@ -107,7 +107,7 @@ impl VctTypeMetadataFetcher for VctTypeMetadataCache {
         }
 
         // For all other cases (non-HTTP URLs or invalid URLs), just check the cache
-        let metadata: Option<SdJwtVcTypeMetadataResponseDTO> = self
+        let metadata: Option<TypeMetadata> = self
             .inner
             .get_if_cached(vct)
             .await
@@ -151,7 +151,7 @@ impl Resolver for VctTypeMetadataResolver {
             .error_for_status()
             .error_while("downloading VCT")?;
 
-        serde_json::from_slice::<SdJwtVcTypeMetadataResponseDTO>(&response.body)?;
+        serde_json::from_slice::<TypeMetadata>(&response.body)?;
 
         Ok(ResolveResult::NewValue {
             content: response.body,

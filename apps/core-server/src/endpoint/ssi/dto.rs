@@ -6,20 +6,17 @@ use one_core::provider::did_method::dto::{
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
-    JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
-    SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO,
-    SdJwtVcSimpleRenderingBackgroundImageDTO, SdJwtVcSimpleRenderingDTO,
-    SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
+    JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcDisplayMetadataDTO,
+    SdJwtVcTypeMetadataResponseDTO,
 };
 use one_core::service::trust_collection::dto::{TrustCollectionPublicResponseDTO, TrustListDTO};
 use one_dto_mapper::{From, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use serde::Serialize;
-use serde_json::Value;
 use serde_with::{OneOrMany, serde_as};
 use shared_types::{DidValue, TrustListSubscriberId, TrustListSubscriptionId};
 use standardized_types::jwk::PublicJwk;
-use url::Url;
+use standardized_types::sd_jwt_vc;
 use utoipa::ToSchema;
 
 use crate::deserialize::one_or_many;
@@ -174,8 +171,7 @@ pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
     pub description: Option<String>,
     #[from(with_fn = convert_inner)]
     pub display: Vec<SdJwtVcDisplayMetadataRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub claims: Vec<SdJwtVcClaimRestDTO>,
+    pub claims: Vec<sd_jwt_vc::ClaimMetadata>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
@@ -184,76 +180,10 @@ pub(crate) struct SdJwtVcTypeMetadataResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(SdJwtVcDisplayMetadataDTO)]
 pub(crate) struct SdJwtVcDisplayMetadataRestDTO {
-    pub locale: String,
-    pub name: String,
-    pub description: Option<String>,
-    #[from(with_fn = convert_inner)]
-    pub rendering: Option<SdJwtVcRenderingRestDTO>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SdJwtVcRenderingDTO)]
-pub(crate) struct SdJwtVcRenderingRestDTO {
-    #[from(with_fn = convert_inner)]
-    pub simple: Option<SdJwtVcSimpleRenderingRestDTO>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SdJwtVcSimpleRenderingDTO)]
-pub(crate) struct SdJwtVcSimpleRenderingRestDTO {
-    #[from(with_fn = convert_inner)]
-    pub logo: Option<SdJwtVcSimpleRenderingLogoRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub background_image: Option<SdJwtVcSimpleRenderingBackgroundImageRestDTO>,
-    pub background_color: Option<String>,
-    pub text_color: Option<String>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SdJwtVcSimpleRenderingLogoDTO)]
-pub(crate) struct SdJwtVcSimpleRenderingLogoRestDTO {
-    pub uri: Url,
-    pub alt_text: Option<String>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SdJwtVcSimpleRenderingBackgroundImageDTO)]
-pub struct SdJwtVcSimpleRenderingBackgroundImageRestDTO {
-    pub uri: Url,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SdJwtVcClaimDTO)]
-pub(crate) struct SdJwtVcClaimRestDTO {
-    pub path: Vec<Value>,
-    #[from(with_fn = convert_inner)]
-    pub display: Vec<SdJwtVcClaimDisplayRestDTO>,
-    pub mandatory: Option<bool>,
-    #[from(with_fn = convert_inner)]
-    pub sd: Option<SdJwtVcClaimSdRestEnum>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SdJwtVcClaimSd)]
-#[serde(rename_all = "lowercase")]
-pub(crate) enum SdJwtVcClaimSdRestEnum {
-    Always,
-    Allowed,
-    Never,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SdJwtVcClaimDisplayDTO)]
-pub(crate) struct SdJwtVcClaimDisplayRestDTO {
-    pub locale: String,
-    pub label: String,
-    pub description: Option<String>,
+    #[serde(flatten)]
+    pub display: sd_jwt_vc::DisplayMetadata,
+    /// Non-standard, only present for SWIYU: duplicate of `locale`
+    pub lang: Option<String>,
 }
 
 #[options_not_nullable]

@@ -13,6 +13,7 @@ use serde_json::json;
 use shared_types::{DidMethodId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
+use standardized_types::sd_jwt_vc::TypeMetadata;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -65,7 +66,6 @@ use crate::provider::key_algorithm::provider::{
 };
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
-use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
     dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, dummy_organisation, generic_config,
 };
@@ -105,13 +105,12 @@ async fn test_format_credential() {
         .with(eq("http://schema.test/id"))
         .return_once(|_| {
             Ok(Some(SdJwtVcTypeMetadataCacheItem {
-                metadata: SdJwtVcTypeMetadataResponseDTO {
+                metadata: TypeMetadata {
                     vct: "http://schema.test/id".to_string(),
                     name: None,
                     description: None,
                     display: vec![],
                     claims: vec![],
-                    layout_properties: None,
                 },
                 integrity: Some("integrity".to_string()),
             }))
@@ -255,13 +254,12 @@ async fn test_format_credential_swiyu() {
         .with(eq("http://schema.test/id"))
         .return_once(|_| {
             Ok(Some(SdJwtVcTypeMetadataCacheItem {
-                metadata: SdJwtVcTypeMetadataResponseDTO {
+                metadata: TypeMetadata {
                     vct: "http://schema.test/id".to_string(),
                     name: None,
                     description: None,
                     display: vec![],
                     claims: vec![],
-                    layout_properties: None,
                 },
                 integrity: Some("integrity".to_string()),
             }))
@@ -1566,13 +1564,12 @@ fn formatter_for_params(
         .with(eq("credential-schema-id"))
         .return_once(|_| {
             Ok(Some(SdJwtVcTypeMetadataCacheItem {
-                metadata: SdJwtVcTypeMetadataResponseDTO {
+                metadata: TypeMetadata {
                     vct: "credential-schema-id".to_string(),
                     name: None,
                     description: None,
                     display: vec![],
                     claims: vec![],
-                    layout_properties: None,
                 },
                 integrity: None,
             }))
