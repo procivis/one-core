@@ -12,7 +12,7 @@ pub(crate) fn mdoc_presentation_context(
 ) -> Result<FormatPresentationCtx, VerificationProtocolError> {
     Ok(FormatPresentationCtx {
         mdoc_session_transcript: Some(to_cbor(&SessionTranscript {
-            handover: Some(handover),
+            handover,
             device_engagement_bytes: None,
             e_reader_key_bytes: None,
         })?),

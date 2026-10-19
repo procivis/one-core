@@ -38,7 +38,11 @@ impl ProofService {
                     .first()
                     .ok_or_else(|| ProofServiceError::Other("no device retrieval method".into()))?
                     .clone();
-                (device_engagement, None, device_retrieval_method)
+                (
+                    device_engagement,
+                    Handover::QrCode(Default::default()),
+                    device_retrieval_method,
+                )
             }
             VerificationEngagement::NFC => {
                 let (device_engagement, handover, device_retrieval_method) =
@@ -46,7 +50,7 @@ impl ProofService {
                         .map_err(|err| ProofServiceError::Other(err.to_string()))?;
                 (
                     device_engagement,
-                    Some(Handover::Nfc(handover)),
+                    Handover::Nfc(handover),
                     device_retrieval_method,
                 )
             }

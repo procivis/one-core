@@ -366,7 +366,7 @@ impl MsoMdocPresentationFormatter {
         let session_transcript = SessionTranscript {
             device_engagement_bytes: None,
             e_reader_key_bytes: None,
-            handover: Some(handover),
+            handover,
         };
 
         Ok((session_transcript, Some(nonce)))

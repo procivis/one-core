@@ -145,7 +145,7 @@ mod tests {
         assert!(transcript.e_reader_key_bytes.is_none());
 
         match transcript.handover {
-            Some(Handover::OID4VPFinal1_0(handover)) => assert_eq!(
+            Handover::OID4VPFinal1_0(handover) => assert_eq!(
                 handover.openid4vp_handover_info_hash.0,
                 hex!("048bc053c00442af9b8eed494cefdd9d95240d254b046b11b68013722aad38ac")
             ),

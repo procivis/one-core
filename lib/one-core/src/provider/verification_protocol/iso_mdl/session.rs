@@ -32,7 +32,9 @@ mod test {
 
     use super::*;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
-    use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
+    use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
+        Handover, SessionTranscript,
+    };
     use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
     use crate::provider::verification_protocol::iso_mdl::device_engagement::{
         BleOptionsV1, DeviceEngagement, DeviceRetrievalMethod, Security,
@@ -91,7 +93,7 @@ mod test {
             e_reader_key_bytes: EmbeddedCbor::new(reader_key.ephemeral_key().clone())
                 .unwrap()
                 .into(),
-            handover: None,
+            handover: Handover::QrCode(Default::default()),
         };
 
         let mut writer = vec![];

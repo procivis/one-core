@@ -77,7 +77,7 @@ pub(crate) struct IsoMdlVerifier {
 pub(crate) async fn setup_verifier_session(
     device_engagement: EmbeddedCbor<DeviceEngagement>,
     schema: &ProofSchema,
-    handover: Option<Handover>,
+    handover: Handover,
     verifier: Option<&IsoMdlVerifier>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<VerifierSession, VerificationProtocolError> {

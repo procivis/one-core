@@ -370,14 +370,14 @@ async fn resolve_engagement(
     (
         VerificationEngagement,
         EmbeddedCbor<DeviceEngagement>,
-        Option<Handover>,
+        Handover,
     ),
     VerificationProtocolError,
 > {
     // by default treat as QR-code engagement
     let mut engagement_type = VerificationEngagement::QrCode;
     let mut engagement = qr_engagement;
-    let mut handover = None;
+    let mut handover = Handover::QrCode(Default::default());
 
     match nfc_engagement {
         None => {
@@ -396,10 +396,10 @@ async fn resolve_engagement(
                 // the NFC select message was read by a remote device, continue as NFC engaged
                 engagement_type = VerificationEngagement::NFC;
                 engagement = Some(device_engagement);
-                handover = Some(Handover::Nfc(NFCHandover {
+                handover = Handover::Nfc(NFCHandover {
                     select_message: Bstr(select_message),
                     request_message: None,
-                }));
+                });
             } else {
                 // no NFC contact, the engagement must have been via QR-code
                 hce.stop_hosting(true)
@@ -424,7 +424,7 @@ async fn obtain_device_request(
     connected_verifier: &ConnectedPeer,
     device_key: KeyAgreementKey,
     device_engagement: EmbeddedCbor<DeviceEngagement>,
-    handover: Option<Handover>,
+    handover: Handover,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<
     (

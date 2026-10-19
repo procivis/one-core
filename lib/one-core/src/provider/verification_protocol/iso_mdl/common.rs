@@ -271,7 +271,7 @@ fn decrypt(
 pub(super) fn create_session_transcript_bytes(
     device_engagement_bytes: EmbeddedCbor<DeviceEngagement>,
     e_reader_key_bytes: EmbeddedCbor<EphemeralSessionKey>,
-    handover: Option<Handover>,
+    handover: Handover,
 ) -> Result<EmbeddedCbor<SessionTranscript>, VerificationProtocolError> {
     let session_transcript = SessionTranscript {
         device_engagement_bytes: Some(device_engagement_bytes),
