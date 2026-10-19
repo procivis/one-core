@@ -202,11 +202,7 @@ impl Response {
 
     #[track_caller]
     fn log_success(self) -> Self {
-        let debug_message = format!(
-            "\n{} {} - HTTP",
-            &self.request.method.to_string(),
-            &self.request.url
-        );
+        let debug_message = format!("\n{} {} - HTTP", self.request.method, self.request.url);
 
         let location = std::panic::Location::caller();
         tracing::debug!(%debug_message, %location);

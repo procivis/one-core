@@ -669,7 +669,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
             &organisation,
             &new_claim_schemas,
             "SD_JWT_VC",
-            &format!("{}/ssi/schema/v1/{}", &mock_server.uri(), schema_id),
+            &format!("{}/ssi/schema/v1/{}", mock_server.uri(), schema_id),
         )
         .await;
 
@@ -803,7 +803,7 @@ async fn test_handle_invitation_swiss_profile_issuer_is_handled_by_swiyu_protoco
             &organisation,
             &new_claim_schemas,
             "SD_JWT_VC",
-            &format!("{}/ssi/schema/v1/{}", &mock_server.uri(), schema_id),
+            &format!("{}/ssi/schema/v1/{}", mock_server.uri(), schema_id),
         )
         .await;
 

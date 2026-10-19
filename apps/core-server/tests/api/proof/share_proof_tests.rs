@@ -767,7 +767,7 @@ async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
 
     // THEN
     let client_id = extract_client_id(resp).await;
-    assert_eq!(client_id, format!("x509_hash:__-qqg"));
+    assert_eq!(client_id, "x509_hash:__-qqg".to_string());
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }
@@ -783,7 +783,7 @@ async fn test_share_proof_openid4vp_final1_haip_defaults_to_x509_hash() {
 
     // THEN
     let client_id = extract_client_id(resp).await;
-    assert_eq!(client_id, format!("x509_hash:__-qqg"));
+    assert_eq!(client_id, "x509_hash:__-qqg".to_string());
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }

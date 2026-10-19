@@ -266,7 +266,7 @@ impl SSIHolderService {
                 return Err(HolderServiceError::InvalidPresentationSubmission {
                     reason: format!(
                         "No option satisfied for mandatory credential set with index `{idx}`. Options are: [{}]",
-                        &string
+                        string
                     ),
                 });
             }
@@ -717,7 +717,7 @@ fn is_selected_claim(
     if let Some((idx, _)) = user_selection {
         if !claim.user_selection {
             return Err(HolderServiceError::InvalidPresentationSubmission {
-                reason: format!("Path `{}` is not a valid user selection", &claim.path),
+                reason: format!("Path `{}` is not a valid user selection", claim.path),
             });
         }
         // remove user selections from the list once found
@@ -725,8 +725,8 @@ fn is_selected_claim(
     }
 
     let is_child_or_parent_of_selected = user_selections.iter().any(|selected_path| {
-        selected_path.starts_with(&format!("{}/", &claim.path))
-            || claim.path.starts_with(&format!("{}/", &selected_path))
+        selected_path.starts_with(&format!("{}/", claim.path))
+            || claim.path.starts_with(&format!("{}/", selected_path))
     });
     Ok(claim.required || is_selected || is_child_or_parent_of_selected)
 }

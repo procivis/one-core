@@ -51,7 +51,7 @@ impl BindingGenerator for IntfBindingGenerator {
         settings: &GenerationSettings,
         components: &[uniffi_bindgen::Component<Self::Config>],
     ) -> Result<()> {
-        for uniffi_bindgen::Component { ci, config: _, .. } in components {
+        for uniffi_bindgen::Component { ci, .. } in components {
             let ts_file_name = format!("{}-intf.ts", ci.namespace().to_kebab_case());
             let ts_file_path = settings.out_dir.join(ts_file_name);
 

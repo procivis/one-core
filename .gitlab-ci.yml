@@ -22,7 +22,7 @@ variables:
   CARGO_UNSTABLE_GC: "true"
   CARGO_NEXTEST_VERSION: "0.9.146"
   NEXTEST_ARCHIVE_FILE: "target/nextest/nextest-archive.tar.zst"
-  BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.95.1-1.0
+  BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.99.1-1.0
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin

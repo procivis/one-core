@@ -264,6 +264,7 @@ pub async fn add_x_content_type_options_no_sniff_header(
     Ok(response)
 }
 
+#[expect(clippy::result_large_err)]
 pub async fn log_request_and_response(
     request: Request<Body>,
     next: Next,

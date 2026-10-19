@@ -57,7 +57,7 @@ fn serialize_empty_trust_list() {
     let payload = minimal_payload();
     let xml = serialize(&payload);
 
-    println!("{}", &xml);
+    println!("{}", xml);
 
     assert!(xml.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
     assert!(xml.contains("xmlns=\"http://uri.etsi.org/019602/v1#\""));

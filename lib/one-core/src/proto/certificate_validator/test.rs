@@ -297,7 +297,7 @@ async fn validate_chain_fails_on_violation_of_root_ca_path_len_constraint() {
     let validator = create_certificate_validator();
     let result = validator
         .validate_chain_against_ca_chain(
-            &format!("{}{}", leaf_cert.pem(), &intermediate_cert.pem()),
+            &format!("{}{}", leaf_cert.pem(), intermediate_cert.pem()),
             &ca_cert.pem(),
             CertificateValidationOptions::full_validation(None),
             CertSelection::Leaf,

@@ -1,4 +1,6 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
+// every exported binding returns `BindingError`, which crosses the FFI boundary and cannot be boxed
+#![expect(clippy::result_large_err)]
 
 use std::path::Path;
 use std::sync::{Arc, LazyLock};
@@ -52,7 +54,6 @@ pub struct InitParams {
 
 /// internal core initialization, to be called from the wrapping `initializeCore` function
 #[uniffi::export]
-#[expect(clippy::result_large_err)]
 fn uniffi_initialize_core(
     data_dir_path: String,
     params: InitParams,
