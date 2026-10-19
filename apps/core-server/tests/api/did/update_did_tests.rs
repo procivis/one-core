@@ -209,7 +209,7 @@ async fn test_create_and_deactivate_webvh_at_existing_log_endpoint() {
     let first: Value = serde_json::from_str(&log).unwrap();
     assert_eq!(first["parameters"]["method"], "did:webvh:1.0");
     assert_eq!(first["parameters"]["portable"], false);
-    assert_eq!(first["parameters"]["witness"], serde_json::json!({}));
+    assert!(first["parameters"].get("witness").is_none());
     assert_eq!(first["parameters"]["watchers"], serde_json::json!([]));
     assert_eq!(first["parameters"]["nextKeyHashes"], serde_json::json!([]));
     assert_eq!(

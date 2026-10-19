@@ -407,7 +407,7 @@ async fn create_and_resolve_v1_log() {
     assert!(entry.is_object());
     assert_eq!(entry["parameters"]["method"], METHOD);
     assert_eq!(entry["parameters"]["portable"], false);
-    assert_eq!(entry["parameters"]["witness"], json!({}));
+    assert!(entry["parameters"].get("witness").is_none());
     assert_eq!(entry["parameters"]["watchers"], json!([]));
     assert_eq!(entry["parameters"]["nextKeyHashes"], json!([]));
     assert_eq!(entry["state"]["id"], created.did.as_str());
@@ -447,6 +447,25 @@ async fn create_and_resolve_v1_log() {
     setup.method.client = Arc::new(client);
     let document = setup.method.resolve(&created.did).await.unwrap();
     assert_eq!(document.id, created.did);
+}
+
+// swiyu didresolver <= 2.8.3 maps `witness` as `witnesses`, so it drops the
+// parameter before recomputing the SCID of the genesis entry.
+#[tokio::test]
+async fn genesis_scid_survives_dropping_witness_parameter() {
+    let setup = setup(MockHttpClient::new());
+    let created = setup
+        .method
+        .create(Uuid::new_v4().into(), &None, did_keys(&setup))
+        .await
+        .unwrap();
+    let mut entry: Value = serde_json::from_str(&created.log.unwrap()).unwrap();
+    let scid = entry["parameters"]["scid"].as_str().unwrap().to_string();
+    entry["parameters"]
+        .as_object_mut()
+        .unwrap()
+        .remove("witness");
+    super::common::verify_scid(&entry, &scid).unwrap();
 }
 
 #[tokio::test]

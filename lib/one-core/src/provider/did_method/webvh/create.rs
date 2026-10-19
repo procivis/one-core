@@ -98,7 +98,8 @@ pub(super) async fn create(
             update_keys: Some(vec![active_ref.multibase.clone()]),
             next_key_hashes: Some(vec![]),
             portable: Some(false),
-            witness: Some(Default::default()),
+            // `witness` is omitted: it defaults to `{}`, and swiyu didresolver <= 2.8.3
+            // drops it before hashing, which makes the SCID check fail.
             watchers: Some(vec![]),
             ..Default::default()
         },
