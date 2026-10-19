@@ -47,7 +47,11 @@ pub(crate) async fn offered_formats(
         .collect())
 }
 
-pub(super) fn map_dpop_params(value: OpenID4VCDpopParams, base_url: Option<String>) -> DpopParams {
+pub(super) fn map_dpop_params(
+    value: OpenID4VCDpopParams,
+    base_url: Option<String>,
+    swiyu_mode: bool,
+) -> DpopParams {
     DpopParams {
         nonce_validity: value.nonce_validity_seconds,
         nonce_refresh_threshold: value.nonce_refresh_threshold_seconds,
@@ -55,6 +59,7 @@ pub(super) fn map_dpop_params(value: OpenID4VCDpopParams, base_url: Option<Strin
         signing_key: value.signing_key,
         proof_signing_algorithms: value.signing_algorithms,
         base_url,
+        swiyu_mode,
     }
 }
 

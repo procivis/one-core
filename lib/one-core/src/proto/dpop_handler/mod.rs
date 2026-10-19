@@ -49,6 +49,7 @@ pub struct DpopParams {
     pub signing_key: SecretSlice<u8>,
     pub proof_signing_algorithms: Vec<KeyAlgorithmType>,
     pub base_url: Option<String>,
+    pub swiyu_mode: bool,
 }
 
 pub struct ExpectedProofValues<'a> {
@@ -240,7 +241,10 @@ impl DpopHandler for DpopHandlerImpl {
         };
         if let Some(access_token) = access_token {
             let ath = SHA256.hash_base64_url(access_token.as_bytes())?;
-            if claims.ath.as_deref() != Some(ath.as_str()) {
+            let ath_matches = claims.ath.as_deref() == Some(ath.as_str())
+                // Swiyu workaround: https://github.com/swiyu-admin-ch/eidch-android-wallet/blob/c29a6f3af51f14c47cf23ab88933522ffa1fbef0/openid4vc/src/main/java/ch/admin/foitt/openid4vc/domain/usecase/implementation/CreateDPoPProofJwtImpl.kt#L90
+                || (params.swiyu_mode && claims.ath.as_deref() == Some(format!("{ath}=").as_str()));
+            if !ath_matches {
                 return Err(DpopHandlerError::AccessTokenMismatch);
             }
         }

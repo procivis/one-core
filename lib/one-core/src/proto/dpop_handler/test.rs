@@ -67,6 +67,7 @@ fn dpop_params() -> DpopParams {
         .into(),
         proof_signing_algorithms: vec![KeyAlgorithmType::Ecdsa],
         base_url: Some("https://issuer.example.com".to_string()),
+        swiyu_mode: false,
     }
 }
 

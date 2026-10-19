@@ -1337,7 +1337,8 @@ impl OID4VCIFinal1_0Service {
                     interaction_data.dpop_jkt.as_deref(),
                 )?;
                 if let Some(dpop_proof) = dpop_proof {
-                    let dpop_params = map_dpop_params(dpop_params, self.base_url.clone());
+                    let dpop_params =
+                        map_dpop_params(dpop_params, self.base_url.clone(), params.swiyu_mode);
                     let dpop_output = self
                         .dpop_handler
                         .validate_proof(
@@ -1537,7 +1538,7 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting protocol params")?;
         Ok(params
             .dpop
-            .map(|p| map_dpop_params(p, self.base_url.clone())))
+            .map(|p| map_dpop_params(p, self.base_url.clone(), params.swiyu_mode)))
     }
 
     async fn validate_access_token_binding(
