@@ -76,8 +76,8 @@ mod tests {
     use crate::provider::credential_formatter::mdoc_formatter::util::{EmbeddedCbor, MDLVersion};
     use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
 
-    #[tokio::test]
-    async fn test_session_transcript_against_test_vector() {
+    #[test]
+    fn test_session_transcript_against_test_vector() {
         // ISO 18013-5, D.5.1
         let transcript_bytes = hex!(
             r#"d81859024183d8185858a20063312e30018201d818584ba4010220012158205a88

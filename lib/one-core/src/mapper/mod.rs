@@ -239,13 +239,13 @@ pub(crate) fn extracted_credential_to_model(
     })
 }
 
-pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {
+pub(crate) fn encode_cbor_base64url<T: Serialize>(t: T) -> Result<String, FormatterError> {
     let mut bytes = vec![];
     ciborium::ser::into_writer(&t, &mut bytes)?;
     Ok(Base64UrlSafeNoPadding::encode_to_string(bytes)?)
 }
 
-pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
+pub(crate) fn decode_cbor_base64url<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
     let bytes = match Base64UrlSafeNoPadding::decode_to_vec(s, None) {
         Ok(bytes) => bytes,
         Err(_) => {

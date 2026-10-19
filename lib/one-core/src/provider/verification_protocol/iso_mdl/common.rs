@@ -73,6 +73,59 @@ impl EphemeralSessionKey {
             .error_while("parsing COSE key")?;
         Ok(key_algorithm_provider.key_algorithm_from_type(parsed_key.algorithm_type)?)
     }
+
+    /// used in DC-API flow
+    pub(crate) fn to_p256_sec1(&self) -> Result<Vec<u8>, VerificationProtocolError> {
+        if self.0.kty != coset::KeyType::Assigned(coset::iana::KeyType::EC2) {
+            return Err(VerificationProtocolError::EncryptionError(format!(
+                "Invalid key type: {:?}",
+                self.0.kty
+            )));
+        }
+
+        let param = |p: coset::iana::Ec2KeyParameter| {
+            self.0
+                .params
+                .iter()
+                .find(|(label, _)| *label == coset::Label::Int(p as i64))
+                .map(|(_, v)| v)
+        };
+
+        match param(coset::iana::Ec2KeyParameter::Crv) {
+            Some(ciborium::Value::Integer(i))
+                if i128::from(*i) == coset::iana::EllipticCurve::P_256 as i128 => {}
+            other => {
+                return Err(VerificationProtocolError::EncryptionError(format!(
+                    "Invalid crv: {other:?}"
+                )));
+            }
+        }
+
+        let x = match param(coset::iana::Ec2KeyParameter::X) {
+            Some(ciborium::Value::Bytes(b)) if b.len() == 32 => b,
+            other => {
+                return Err(VerificationProtocolError::EncryptionError(format!(
+                    "Invalid X: {other:?}"
+                )));
+            }
+        };
+
+        let y = match param(coset::iana::Ec2KeyParameter::Y) {
+            Some(ciborium::Value::Bytes(b)) if b.len() == 32 => b,
+            other => {
+                return Err(VerificationProtocolError::EncryptionError(format!(
+                    "Invalid Y: {other:?}"
+                )));
+            }
+        };
+
+        let mut sec1 = Vec::with_capacity(65);
+        sec1.push(0x04);
+        sec1.extend_from_slice(x);
+        sec1.extend_from_slice(y);
+
+        Ok(sec1)
+    }
 }
 
 impl Serialize for EphemeralSessionKey {

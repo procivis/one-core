@@ -55,7 +55,7 @@ pub(crate) async fn validate_attestation_ios(
     bundle: &IOSBundle,
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<ValidatedAttestation, ManagedInstanceError> {
-    let attestation = decode_cbor_base64::<Attestation>(attestation)?;
+    let attestation: Attestation = decode_cbor_base64(attestation)?;
 
     if attestation.auth_data.len() < 55 {
         return Err(AppIntegrityValidationError(format!(

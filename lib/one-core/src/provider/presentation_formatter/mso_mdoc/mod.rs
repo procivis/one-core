@@ -2,7 +2,11 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use coset::{HeaderBuilder, ProtectedHeader, RegisteredLabelWithPrivate, SignatureContext, iana};
+use ciborium::cbor;
+use coset::{
+    CborSerializable, HeaderBuilder, ProtectedHeader, RegisteredLabelWithPrivate, SignatureContext,
+    iana,
+};
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use standardized_types::jwk::PublicJwk;
@@ -12,19 +16,20 @@ use uuid::Uuid;
 
 use self::model::{
     DeviceAuth, DeviceAuthentication, DeviceNamespaces, DeviceResponse, DeviceSigned, Document,
+    dcapi,
 };
 use self::session_transcript::{Handover, SessionTranscript};
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::mapper::{decode_cbor_base64, encode_cbor_base64};
+use crate::mapper::{decode_cbor_base64url, encode_cbor_base64url};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
-    EmbeddedCbor, IssuerSigned, build_algorithm_header_value,
+    Bstr, EmbeddedCbor, IssuerSigned, build_algorithm_header_value,
     extract_certificate_from_x5chain_header, try_extract_holder_public_key,
     try_extract_mobile_security_object,
 };
@@ -126,7 +131,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
 
         let mut documents = Vec::with_capacity(tokens.len());
         for token in tokens {
-            let issuer_signed: IssuerSigned = decode_cbor_base64(&token)?;
+            let issuer_signed: IssuerSigned = decode_cbor_base64url(&token)?;
             let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
             let doc_type = mso.doc_type;
             let algorithm = holder_binding_fn
@@ -161,7 +166,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         };
 
         Ok(FormattedPresentation {
-            vp_token: encode_cbor_base64(device_response)?,
+            vp_token: encode_cbor_base64url(device_response)?,
             oidc_format: "mso_mdoc".to_string(),
         })
     }
@@ -172,7 +177,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         verification_fn: VerificationFn,
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        let device_response_signed: DeviceResponse = decode_cbor_base64(presentation)?;
+        let device_response_signed: DeviceResponse = decode_cbor_base64url(presentation)?;
 
         let documents =
             device_response_signed
@@ -236,7 +241,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             }
 
             presentation_issuer_jwk = Some(holder_jwk);
-            tokens.push(encode_cbor_base64(issuer_signed)?.into())
+            tokens.push(encode_cbor_base64url(issuer_signed)?.into())
         }
 
         // todo transfer issued and expires from the token
@@ -258,7 +263,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         presentation: &str,
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError> {
-        let device_response_signed: DeviceResponse = decode_cbor_base64(presentation)?;
+        let device_response_signed: DeviceResponse = decode_cbor_base64url(presentation)?;
 
         let documents =
             device_response_signed
@@ -269,7 +274,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
 
         let tokens = documents
             .into_iter()
-            .map(|doc| Ok(encode_cbor_base64(doc.issuer_signed)?.into()))
+            .map(|doc| Ok(encode_cbor_base64url(doc.issuer_signed)?.into()))
             .collect::<Result<_, FormatterError>>()?;
 
         // todo transfer issued and expires from the token
@@ -508,4 +513,45 @@ async fn try_build_device_signed(
     };
 
     Ok(device_signed)
+}
+
+/// ISO 18013-7, C.4
+#[expect(unused)]
+async fn try_build_dcapi_response(
+    response: DeviceResponse,
+    encryption_parameters: &dcapi::EncryptionParameters,
+    session_transcript: SessionTranscript,
+) -> Result<dcapi::EncryptedResponse, FormatterError> {
+    use hpke::{Deserializable, Serializable};
+
+    let mut rng = one_crypto::utilities::get_rng();
+
+    let info = cbor!(session_transcript)?.to_vec()?;
+    let plaintext = cbor!(response)?.to_vec()?;
+
+    let sec1 = encryption_parameters
+        .recipient_public_key
+        .to_p256_sec1()
+        .error_while("converting recipient key")?;
+    let pk_recip = <hpke::kem::DhP256HkdfSha256 as hpke::Kem>::PublicKey::from_bytes(&sec1)?;
+
+    let (enc, ct) = hpke::single_shot_seal_with_rng::<
+        hpke::aead::AesGcm128,
+        hpke::kdf::HkdfSha256,
+        hpke::kem::DhP256HkdfSha256,
+    >(
+        &hpke::OpModeS::Base,
+        &pk_recip,
+        &info,
+        &plaintext,
+        &[],
+        &mut rng,
+    )?;
+
+    Ok(dcapi::EncryptedResponse {
+        data: dcapi::EncryptedResponseData {
+            enc: Bstr(enc.to_bytes().as_slice().to_vec()),
+            cipher_text: Bstr(ct),
+        },
+    })
 }

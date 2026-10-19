@@ -55,7 +55,7 @@ use crate::config::core_config::{
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
+use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64url, encode_cbor_base64url};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -295,7 +295,7 @@ impl CredentialFormatter for MdocFormatter {
             issuer_auth: CoseSign1(cose_sign1),
         };
 
-        encode_cbor_base64(issuer_signed).map(Into::into)
+        encode_cbor_base64url(issuer_signed).map(Into::into)
     }
 
     async fn format_status_list<'a>(
@@ -410,7 +410,7 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        let mut issuer_signed: IssuerSigned = decode_cbor_base64(credential.token.as_ref())?;
+        let mut issuer_signed: IssuerSigned = decode_cbor_base64url(credential.token.as_ref())?;
 
         let Some(namespaces) = issuer_signed.name_spaces.as_mut() else {
             return Err(FormatterError::CouldNotFormat(
@@ -466,7 +466,7 @@ impl CredentialFormatter for MdocFormatter {
             ));
         }
 
-        encode_cbor_base64(issuer_signed)
+        encode_cbor_base64url(issuer_signed)
     }
 
     fn get_leeway(&self) -> Duration {
@@ -564,7 +564,7 @@ impl CredentialFormatter for MdocFormatter {
         organisation: Organisation,
         _verification: Box<dyn TokenVerifier>,
     ) -> Result<ParsedCredential, FormatterError> {
-        let issuer_signed: IssuerSigned = decode_cbor_base64(credential.as_ref())?;
+        let issuer_signed: IssuerSigned = decode_cbor_base64url(credential.as_ref())?;
         let issuer_certificate = extract_certificate_from_x5chain_header(
             &*self.certificate_validator,
             &*self.client,
@@ -720,7 +720,7 @@ async fn extract_credentials_internal(
     token: &SerializedCredential,
     verify: bool,
 ) -> Result<DetailCredential, FormatterError> {
-    let issuer_signed: IssuerSigned = decode_cbor_base64(token.as_ref())?;
+    let issuer_signed: IssuerSigned = decode_cbor_base64url(token.as_ref())?;
     let issuer_cert = extract_certificate_from_x5chain_header(
         certificate_validator,
         http_client,

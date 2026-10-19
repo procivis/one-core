@@ -100,3 +100,103 @@ impl Serialize for ReaderAuthentication {
         .serialize(serializer)
     }
 }
+
+pub mod dcapi {
+    use ciborium::cbor;
+    use serde::{Deserialize, Serialize, Serializer, de, ser};
+
+    use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
+    use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
+
+    /// ISO 18013-7, C.2
+    #[derive(Debug, Clone)]
+    #[allow(unused)]
+    pub(crate) struct EncryptionInfo {
+        pub parameters: EncryptionParameters,
+    }
+
+    impl<'a> Deserialize<'a> for EncryptionInfo {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'a>,
+        {
+            let (fixed_id, parameters): (String, EncryptionParameters) =
+                ciborium::Value::deserialize(deserializer)?
+                    .deserialized()
+                    .map_err(de::Error::custom)?;
+
+            if fixed_id != "dcapi" {
+                return Err(de::Error::custom(format!("Invalid identifier: {fixed_id}")));
+            }
+
+            Ok(Self { parameters })
+        }
+    }
+
+    /// ISO 18013-7, C.2
+    #[derive(Debug, Clone, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub(crate) struct EncryptionParameters {
+        #[allow(unused)]
+        pub nonce: Bstr,
+        pub recipient_public_key: EphemeralSessionKey,
+    }
+
+    /// ISO 18013-7, C.3
+    #[expect(unused)]
+    #[derive(Debug, Clone)]
+    pub(crate) struct EncryptedResponse {
+        pub data: EncryptedResponseData,
+    }
+
+    impl Serialize for EncryptedResponse {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            cbor!(["dcapi", self.data])
+                .map_err(ser::Error::custom)?
+                .serialize(serializer)
+        }
+    }
+
+    /// ISO 18013-7, C.3
+    #[derive(Debug, Clone, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub(crate) struct EncryptedResponseData {
+        pub enc: Bstr,
+        pub cipher_text: Bstr,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use hex_literal::hex;
+    use similar_asserts::assert_eq;
+
+    use super::dcapi::EncryptionInfo;
+    use crate::mapper::decode_cbor_base64url;
+
+    #[test]
+    fn test_deserialize_encryption_info() {
+        // generated on iOS
+        let encryption_info: EncryptionInfo = decode_cbor_base64url(
+            "gmVkY2FwaaJlbm9uY2VQlr86NxTOo8Noo4xBjiq9-XJyZWNpcGllbnRQdWJsaWNLZXmkAQIgASFYIG5u3GlvW9A2YYt-oDDfE0-0U7MxV4XsTddaeTctU8RVIlggzNIK0vTwM-emWPK_aMPn5BA5QZvlIYpM6vqgu13tmg4",
+        ).unwrap();
+
+        assert_eq!(
+            encryption_info.parameters.nonce.0,
+            hex!("96bf3a3714cea3c368a38c418e2abdf9")
+        );
+        assert_eq!(
+            encryption_info
+                .parameters
+                .recipient_public_key
+                .to_p256_sec1()
+                .unwrap(),
+            hex!(
+                "046e6edc696f5bd036618b7ea030df134fb453b3315785ec4dd75a79372d53c455ccd20ad2f4f033e7a658f2bf68c3e7e41039419be5218a4ceafaa0bb5ded9a0e"
+            )
+        );
+    }
+}

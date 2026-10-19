@@ -27,7 +27,7 @@ use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, KeyAlgorithmType, TransportType, VerificationEngagement,
 };
 use crate::error::ContextWithErrorCode;
-use crate::mapper::decode_cbor_base64;
+use crate::mapper::decode_cbor_base64url;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
@@ -289,7 +289,7 @@ impl VerificationProtocol for IsoMdl {
             .await
             .error_while("formatting presentation")?;
 
-        let device_response = decode_cbor_base64(&vp_token).error_while("decoding vp_token")?;
+        let device_response = decode_cbor_base64url(&vp_token).error_while("decoding vp_token")?;
 
         send_device_response(&ble, device_response, interaction_data).await?;
 

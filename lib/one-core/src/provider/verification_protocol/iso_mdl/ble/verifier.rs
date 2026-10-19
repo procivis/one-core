@@ -12,7 +12,7 @@ use super::common::{
 use super::{ISO_MDL_FLOW, central, central_client_mode, peripheral, peripheral_server_mode};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
-use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
+use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64url};
 use crate::model::certificate::Certificate;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
@@ -450,7 +450,8 @@ async fn fill_proof_claims_and_credentials(
 ) -> Result<(), VerificationProtocolError> {
     let proof_schema = proof.schema.as_required_ref().await?;
 
-    let encoded = encode_cbor_base64(&device_response).error_while("encoding device response")?;
+    let encoded =
+        encode_cbor_base64url(&device_response).error_while("encoding device response")?;
 
     let proved_credentials =
         crate::provider::verification_protocol::iso_mdl::verify_proof::validate_proof(

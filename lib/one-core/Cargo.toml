@@ -29,6 +29,7 @@ futures-util.workspace       = true
 hex.workspace                = true
 hex-literal.workspace        = true
 hkdf                         = { version = "0.13" }
+hpke                         = { version = "0.14", default-features = false, features = ["alloc", "nistp", "aes"] }
 human-sort                   = { version = "0.2" }
 indexmap.workspace           = true
 indoc.workspace              = true

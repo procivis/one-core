@@ -62,6 +62,8 @@ pub enum FormatterError {
     CanonizationError(#[from] CanonizationError),
     #[error("Hex decode error: `{0}`")]
     HexError(#[from] hex::FromHexError),
+    #[error("HPKE error: `{0}`")]
+    HpkeError(#[from] hpke::HpkeError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -95,6 +97,7 @@ impl ErrorCodeMixin for FormatterError {
             | Self::HasherError(_)
             | Self::EnumParseError(_)
             | Self::UnsupportedIdentifierType(_)
+            | Self::HpkeError(_)
             | Self::HexError(_) => ErrorCode::BR_0057,
             Self::Nested(nested) => nested.error_code(),
         }
