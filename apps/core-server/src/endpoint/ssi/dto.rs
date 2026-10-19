@@ -145,6 +145,7 @@ pub(crate) struct JsonLDNestedContextRestDTO {
     pub id: String,
     pub r#type: String,
     #[serde(flatten)]
+    #[schema(no_recursion)]
     #[from(with_fn = convert_inner)]
     pub entities: HashMap<String, JsonLDEntityRestDTO>,
 }
@@ -154,6 +155,7 @@ pub(crate) struct JsonLDNestedContextRestDTO {
 #[from(JsonLDInlineEntityDTO)]
 pub(crate) struct JsonLDInlineEntityRestDTO {
     #[serde(rename = "@context")]
+    #[schema(no_recursion)]
     #[from(with_fn = convert_inner)]
     pub context: Option<JsonLDContextRestDTO>,
     #[serde(rename = "@id")]

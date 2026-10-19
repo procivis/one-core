@@ -79,7 +79,7 @@ uniffi                   = { version = "0.32" }
 uniffi_bindgen           = { version = "0.32" }
 url                      = { version = "2.5", features = ["serde"] }
 urlencoding              = { version = "2.1" }
-utoipa                   = { version = "5.5", default-features = false, features = ["macros"] }
+utoipa                   = { version = "6.0", default-features = false, features = ["macros"] }
 uuid                     = { version = "1.11", features = ["v4", "serde"] }
 validator                = { version = "0.21" }
 wiremock                 = { version = "0.6" }

@@ -82,7 +82,7 @@ urlencoding.workspace        = true
 uuid                         = { workspace = true, features = ["serde"] }
 x509-parser.workspace        = true
 yasna                        = { version = "0.6" }
-zip                          = { version = "7.0", default-features = false, features = ["lzma", "deflate"] }
+zip                          = { version = "9.0", default-features = false, features = ["lzma", "deflate"] }
 
 [dev-dependencies]
 assert2.workspace         = true

@@ -36,6 +36,9 @@ ignore = [
     { id = "RUSTSEC-2026-0248", reason = "`im` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0251", reason = "`sized-chunks` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0255", reason = "`sized-chunks` crate bug, no safe upgrade available, dependency of json-ld" },
+    { id = "RUSTSEC-2026-0367", reason = "`zip` vulnerability regarding file system flags -> not affected" },
+    { id = "RUSTSEC-2026-0368", reason = "`zip` vulnerability regarding symlinks -> not affected" },
+    { id = "RUSTSEC-2026-0369", reason = "`zip` vulnerability regarding symlinks -> not affected" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
