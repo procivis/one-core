@@ -187,6 +187,7 @@ issuanceProtocol:
       private:
         dpop:
           enforced: false # TODO: Enable enforcement after transition period to not break installed apps
+          leewaySeconds: 60
           signingAlgorithms:
             - ECDSA
   OPENID4VCI_FINAL1_HAIP:
@@ -194,6 +195,7 @@ issuanceProtocol:
       private:
         dpop:
           enforced: false
+          leewaySeconds: 60
           signingAlgorithms:
             - ECDSA
 verifierProvider:

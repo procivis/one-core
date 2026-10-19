@@ -104,6 +104,7 @@ issuanceProtocol:
           leewaySeconds: 0
         dpop:
           enforced: false
+          leewaySeconds: 60
           signingAlgorithms:
             - ECDSA
           signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
@@ -131,6 +132,7 @@ issuanceProtocol:
           signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
         dpop:
           enforced: false
+          leewaySeconds: 60
           signingAlgorithms:
             - ECDSA
           signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
