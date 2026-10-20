@@ -93,6 +93,7 @@ pub mod ecdsa {
     }
 
     #[async_trait]
+    #[allow(clippy::unimplemented)]
     impl SignatureProvider for Key {
         async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
             Ok(Self::sign(message))
@@ -177,6 +178,7 @@ pub mod eddsa {
     }
 
     #[async_trait]
+    #[allow(clippy::unimplemented)]
     impl SignatureProvider for Key {
         async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
             Ok(Self::sign(message))

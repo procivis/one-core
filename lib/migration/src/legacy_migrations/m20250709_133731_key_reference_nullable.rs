@@ -207,7 +207,7 @@ async fn add_unique_index_with_deleted_at_materialized_dependency(
                 "CREATE UNIQUE INDEX `{index_name}` ON `{table}`({other_columns},COALESCE(deleted_at, 'not_deleted'));",
             )
         }
-        backend => unimplemented!("Not implemented for: {backend:?}"),
+        backend => return Err(DbErr::Custom(format!("Not implemented for: {backend:?}"))),
     };
 
     manager.get_connection().execute_unprepared(&query).await

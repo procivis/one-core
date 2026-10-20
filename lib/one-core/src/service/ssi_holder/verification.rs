@@ -206,19 +206,6 @@ impl SSIHolderService {
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)
             .error_while("checking proof state")?;
 
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or_else(|| HolderServiceError::MappingError("missing interaction".into()))?
-            .as_ref()
-            .await?;
-        let interaction_data = interaction
-            .data
-            .as_ref()
-            .ok_or_else(|| HolderServiceError::MappingError("missing interaction data".into()))?;
-
-        let interaction_data: serde_json::Value = serde_json::from_slice(interaction_data)
-            .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
         let submitted_credential_ids = request
             .submission
             .values()
@@ -227,11 +214,7 @@ impl SSIHolderService {
             .unique()
             .collect::<Vec<_>>();
         let presentation_definition = verification_protocol
-            .holder_get_presentation_definition_v2(
-                &proof,
-                interaction_data,
-                &submitted_credential_ids,
-            )
+            .holder_get_presentation_definition_v2(&proof, &submitted_credential_ids)
             .await
             .error_while("getting presentation definition V2")?;
 

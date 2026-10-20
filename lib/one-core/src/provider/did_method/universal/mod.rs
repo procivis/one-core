@@ -126,7 +126,7 @@ impl DidMethod for UniversalDidMethod {
     }
 
     fn get_reference_for_key(&self, _key: &Key) -> Result<String, DidMethodError> {
-        unimplemented!()
+        Err(DidMethodError::OperationNotSupported)
     }
 
     fn config_name(&self) -> &DidMethodId {

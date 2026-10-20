@@ -9,7 +9,7 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{InteractionId, KeyId, ProofId};
+use shared_types::{CredentialId, InteractionId, KeyId, ProofId};
 use standardized_types::openid4vp::VpTokenResponse;
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use time::Duration;
@@ -42,6 +42,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
@@ -68,7 +69,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::{
-    FormatMapper, VerificationProtocol, serialize_interaction_data,
+    VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -385,7 +386,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     async fn verifier_share_proof(
         &self,
         proof: &Proof,
-        format_to_type_mapper: FormatMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -404,7 +404,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             prepare_proof_share(ProofShareParams {
                 proof,
                 key_id,
-                format_to_type_mapper,
+                config: self.config.as_ref(),
                 formatter_provider: &*self.credential_formatter_provider,
                 key_provider: &*self.key_provider,
                 key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -605,14 +605,15 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
-        context: Value,
-        submitted_credential_ids: &[shared_types::CredentialId],
+        submitted_credential_ids: &[CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        let interaction_data = self.parse_interaction_data(context, transport)?;
+        let interaction = proof.interaction.as_required_ref().await?;
+        let interaction_data = deserialize_interaction_data(interaction.data.as_ref())?;
+        let interaction_data = self.parse_interaction_data(interaction_data, transport)?;
 
         get_presentation_definition_v2(
             interaction_data.dcql_query,
@@ -658,14 +659,7 @@ async fn interaction_data_from_proof(proof: &Proof) -> Result<Value, Verificatio
 
 async fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, VerificationProtocolError> {
     let transport = if proof.transport.is_empty() {
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "missing interaction".to_string(),
-            ))?
-            .as_ref()
-            .await?;
+        let interaction = proof.interaction.as_required_ref().await?;
         let interaction_data =
             interaction
                 .data
@@ -815,7 +809,7 @@ pub(super) struct ProofShareParams<'a> {
     proof: &'a Proof,
     key_id: KeyId,
 
-    format_to_type_mapper: FormatMapper,
+    config: &'a CoreConfig,
 
     formatter_provider: &'a dyn CredentialFormatterProvider,
     key_provider: &'a dyn KeyProvider,
@@ -843,12 +837,8 @@ async fn prepare_proof_share(
         .as_ref()
         .await?;
 
-    let dcql_query = create_dcql_query(
-        &proof_schema,
-        &params.format_to_type_mapper,
-        params.formatter_provider,
-    )
-    .await?;
+    let dcql_query =
+        create_dcql_query(&proof_schema, params.config, params.formatter_provider).await?;
 
     let verifier_identifier = params
         .proof

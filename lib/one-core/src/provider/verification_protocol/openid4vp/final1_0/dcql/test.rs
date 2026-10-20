@@ -9,7 +9,7 @@ use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::service::test_utilities::{
-    dummy_claim_schema, dummy_credential_schema, dummy_proof_schema,
+    dummy_claim_schema, dummy_credential_schema, dummy_proof_schema, generic_config,
 };
 
 fn formatter_provider() -> MockCredentialFormatterProvider {
@@ -85,15 +85,7 @@ async fn query(inputs: Vec<ProofInputSchema>) -> Result<DcqlQuery, VerificationP
         input_schemas: inputs.into(),
         ..dummy_proof_schema()
     };
-    let mapper: FormatMapper = Arc::new(|name| {
-        Ok(match name.to_string().as_str() {
-            "JWT" => FormatType::Jwt,
-            "SD_JWT_VC" => FormatType::SdJwtVc,
-            "MDOC" => FormatType::Mdoc,
-            _ => unreachable!(),
-        })
-    });
-    create_dcql_query(&proof_schema, &mapper, &formatter_provider()).await
+    create_dcql_query(&proof_schema, &generic_config().core, &formatter_provider()).await
 }
 
 #[tokio::test]

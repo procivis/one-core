@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use serde_json::Value;
 use shared_types::{CredentialId, CredentialSchemaId, EcosystemId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -845,22 +844,6 @@ fn transaction_data_response_from_request(
         credential_schema_ids,
         data: request.data,
     })
-}
-
-pub(super) async fn interaction_data_from_proof(proof: &Proof) -> Result<Value, ProofServiceError> {
-    let interaction = proof
-        .interaction
-        .as_ref()
-        .ok_or_else(|| ProofServiceError::MappingError("proof interaction is missing".into()))?
-        .as_ref()
-        .await?;
-
-    let interaction_data = interaction.data.as_ref().ok_or_else(|| {
-        ProofServiceError::MappingError("proof interaction data is missing".into())
-    })?;
-
-    serde_json::from_slice(interaction_data)
-        .map_err(|err| ProofServiceError::MappingError(err.to_string()))
 }
 
 impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {

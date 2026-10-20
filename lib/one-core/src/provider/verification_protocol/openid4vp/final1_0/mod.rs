@@ -10,7 +10,6 @@ use one_crypto::jwe::Header as JweHeader;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
-use serde_json::Value;
 use shared_types::{TransactionDataId, TransactionDataType};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
@@ -35,7 +34,7 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
-use crate::model::relation::Related;
+use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::wrp_validator::WRPValidator;
@@ -73,7 +72,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, ValidatedHolderTxData, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
-    FormatMapper, VerificationProtocolError, get_client_id_scheme,
+    VerificationProtocolError, get_client_id_scheme,
 };
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
@@ -643,7 +642,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
     async fn verifier_share_proof(
         &self,
         proof: &Proof,
-        format_to_type_mapper: FormatMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -765,7 +763,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             nonce.clone(),
             create_dcql_query(
                 &proof_schema,
-                &format_to_type_mapper,
+                self.config.as_ref(),
                 &*self.credential_formatter_provider,
             )
             .await?,
@@ -826,10 +824,11 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
-        context: Value,
         submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
+        let interaction = proof.interaction.as_required_ref().await?;
+        let interaction_data: OpenID4VPHolderInteractionData =
+            deserialize_interaction_data(interaction.data.as_ref())?;
 
         get_presentation_definition_v2(
             interaction_data.dcql_query,

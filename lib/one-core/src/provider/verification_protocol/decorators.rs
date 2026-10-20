@@ -9,7 +9,7 @@ use super::dto::{
     UpdateResponse, VerificationProtocolCapabilities,
 };
 use super::error::VerificationProtocolError;
-use super::{FormatMapper, ShareResponse, VerificationProtocol};
+use super::{ShareResponse, VerificationProtocol};
 use crate::model::identifier::IdentifierData;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -58,7 +58,6 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
     async fn holder_get_presentation_definition_v2(
         &self,
         _proof: &Proof,
-        _context: serde_json::Value,
         _submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         self.disabled_error()
@@ -67,7 +66,6 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
     async fn verifier_share_proof(
         &self,
         _proof: &Proof,
-        _format_to_type_mapper: FormatMapper,
         _on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -133,7 +131,6 @@ impl VerificationProtocol for CapabilityChecked {
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
-        context: serde_json::Value,
         submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let capabilities = self.inner.get_capabilities();
@@ -145,14 +142,13 @@ impl VerificationProtocol for CapabilityChecked {
         }
 
         self.inner
-            .holder_get_presentation_definition_v2(proof, context, submitted_credential_ids)
+            .holder_get_presentation_definition_v2(proof, submitted_credential_ids)
             .await
     }
 
     async fn verifier_share_proof(
         &self,
         proof: &Proof,
-        format_to_type_mapper: FormatMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -190,7 +186,7 @@ impl VerificationProtocol for CapabilityChecked {
         }
 
         self.inner
-            .verifier_share_proof(proof, format_to_type_mapper, on_submission_callback, params)
+            .verifier_share_proof(proof, on_submission_callback, params)
             .await
     }
 

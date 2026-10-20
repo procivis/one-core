@@ -11,7 +11,6 @@ use futures::future::BoxFuture;
 use mapper::device_request_to_dcql_query;
 use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use url::Url;
 
 use super::dto::{
@@ -20,9 +19,7 @@ use super::dto::{
 };
 use super::openid4vp::dcql::get_presentation_definition_v2;
 use super::openid4vp::mapper::format_to_type;
-use super::{
-    FormatMapper, VerificationProtocol, VerificationProtocolError, deserialize_interaction_data,
-};
+use super::{VerificationProtocol, VerificationProtocolError, deserialize_interaction_data};
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, KeyAlgorithmType, TransportType, VerificationEngagement,
 };
@@ -30,6 +27,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::decode_cbor_base64url;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
@@ -168,7 +166,7 @@ impl VerificationProtocol for IsoMdl {
         _organisation: Organisation,
         _transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
-        unimplemented!()
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 
     async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
@@ -344,20 +342,20 @@ impl VerificationProtocol for IsoMdl {
     async fn verifier_share_proof(
         &self,
         _proof: &Proof,
-        _format_to_type_mapper: FormatMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
-        unimplemented!()
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
-        context: Value,
         submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-        let interaction_data: MdocBleHolderInteractionData = serde_json::from_value(context)?;
+        let interaction = proof.interaction.as_required_ref().await?;
+        let interaction_data: MdocBleHolderInteractionData =
+            deserialize_interaction_data(interaction.data.as_ref())?;
 
         let device_request_bytes = interaction_data
             .session

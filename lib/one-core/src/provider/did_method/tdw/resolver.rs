@@ -535,6 +535,7 @@ mod test {
     struct FakeDidMethodProvider(Arc<dyn KeyAlgorithmProvider>);
 
     #[async_trait::async_trait]
+    #[allow(clippy::unimplemented)]
     impl DidMethodProvider for FakeDidMethodProvider {
         async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
             Ok(KeyDidMethod::new("fake".into(), self.0.clone())

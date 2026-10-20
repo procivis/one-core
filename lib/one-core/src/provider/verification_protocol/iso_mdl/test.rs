@@ -665,7 +665,7 @@ async fn test_get_presentation_definition_v2() {
     .unwrap();
 
     let presentation_definition = service
-        .holder_get_presentation_definition_v2(&proof, interaction_data, &[])
+        .holder_get_presentation_definition_v2(&proof, &[])
         .await
         .unwrap();
 

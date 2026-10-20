@@ -25,9 +25,9 @@ use crate::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
     UpdateResponse, VerificationProtocolCapabilities,
 };
+use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
-use crate::provider::verification_protocol::openid4vp::{FormatMapper, VerificationProtocolError};
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
@@ -227,13 +227,12 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
     async fn verifier_share_proof(
         &self,
         proof: &Proof,
-        format_to_type_mapper: FormatMapper,
         callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
         let mut response = self
             .inner
-            .verifier_share_proof(proof, format_to_type_mapper, callback, params)
+            .verifier_share_proof(proof, callback, params)
             .await?;
         let mut interaction_data: OpenID4VPVerifierInteractionContent =
             deserialize_interaction_data(response.interaction_data.as_ref())?;
@@ -262,11 +261,10 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
-        context: Value,
         submitted_credential_ids: &[shared_types::CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         self.inner
-            .holder_get_presentation_definition_v2(proof, context, submitted_credential_ids)
+            .holder_get_presentation_definition_v2(proof, submitted_credential_ids)
             .await
     }
 

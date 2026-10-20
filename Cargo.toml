@@ -107,6 +107,7 @@ panic                   = "deny"
 print_stderr            = "deny"
 print_stdout            = "deny"
 redundant_clone         = "warn"
+unimplemented           = "deny"
 unwrap_used             = "deny"
 
 [profile.ci-test]

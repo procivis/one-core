@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
 
 use dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, ShareResponse, UpdateResponse,
@@ -9,10 +8,9 @@ use error::VerificationProtocolError;
 use futures::future::BoxFuture;
 use proc_macros::provider_mock;
 use serde::de::Deserialize;
-use shared_types::CredentialFormat;
+use shared_types::CredentialId;
 use url::Url;
 
-use crate::config::core_config::FormatType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::Provider;
@@ -43,9 +41,6 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
 ) -> Result<Vec<u8>, VerificationProtocolError> {
     Ok(serde_json::to_vec(&dto)?)
 }
-
-pub(crate) type FormatMapper =
-    Arc<dyn Fn(&CredentialFormat) -> Result<FormatType, VerificationProtocolError> + Send + Sync>;
 
 /// This trait contains methods for exchanging credentials between holders and verifiers.
 #[provider_mock]
@@ -79,22 +74,19 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
     ///
     /// V2 endpoint which is tailored towards DCQL queries rather than presentation exchange.
     ///
-    /// Storage access is needed to check held credentials.
     /// On submission, pass the selected IDs to check any explicitly selected batch items
     /// and identify matching but unavailable items for exhausted-batch errors.
     /// Pass an empty slice for definition requests.
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
-        context: serde_json::Value,
-        submitted_credential_ids: &[shared_types::CredentialId],
+        submitted_credential_ids: &[CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError>;
 
     /// Generates QR-code content to start the proof request flow.
     async fn verifier_share_proof(
         &self,
         proof: &Proof,
-        format_to_type_mapper: FormatMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError>;

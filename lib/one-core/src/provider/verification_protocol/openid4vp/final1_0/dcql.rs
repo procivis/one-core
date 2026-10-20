@@ -5,13 +5,12 @@ use standardized_types::openid4vp::dcql::{
     ClaimQuery, ClaimQueryId, CredentialQuery, CredentialSet, DcqlQuery,
 };
 
-use crate::config::core_config::FormatType;
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::verification_protocol::FormatMapper;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::validator::proof_schema::resolve_proof_input_schema_formats;
 
@@ -20,7 +19,7 @@ mod test;
 
 pub async fn create_dcql_query(
     proof_schema: &ProofSchema,
-    format_to_type_mapper: &FormatMapper,
+    config: &CoreConfig,
     credential_formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<DcqlQuery, VerificationProtocolError> {
     let input_schemas = proof_schema.input_schemas.as_ref().await?;
@@ -49,7 +48,10 @@ pub async fn create_dcql_query(
             let formatter =
                 credential_formatter_provider.get_credential_formatter(&format.format)?;
 
-            let credential_format = format_to_type_mapper(&format.format)?;
+            let credential_format = config
+                .format
+                .get_type(&format.format)
+                .error_while("getting protocol")?;
 
             let schema_id = format.ecosystem_schema_id.clone();
             let base_credential_query = match credential_format {

@@ -57,9 +57,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     HolderTxData, OpenID4VPHolderInteractionData, ValidatedHolderTxData,
 };
-use crate::provider::verification_protocol::{
-    FormatMapper, VerificationProtocol, serialize_interaction_data,
-};
+use crate::provider::verification_protocol::{VerificationProtocol, serialize_interaction_data};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
@@ -468,7 +466,6 @@ async fn test_share_proof_direct_post() {
     });
 
     let proof = test_verifier_proof("JWT".into(), None);
-    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let ShareResponse {
         url,
@@ -477,7 +474,6 @@ async fn test_share_proof_direct_post() {
     } = protocol
         .verifier_share_proof(
             &proof,
-            format_type_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdPrefix::RedirectUri),
@@ -573,12 +569,10 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
     };
 
     let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
-    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
-            format_type_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdPrefix::RedirectUri),
@@ -654,12 +648,10 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
     };
 
     let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
-    let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
-            format_type_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdPrefix::RedirectUri),

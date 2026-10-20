@@ -2456,7 +2456,7 @@ async fn test_share_proof_created_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -2562,7 +2562,7 @@ async fn test_share_proof_pending_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -2674,7 +2674,7 @@ async fn test_share_proof_interaction_expired_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,

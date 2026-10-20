@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{CredentialFormat, ProofId, TransactionDataId};
+use shared_types::{ProofId, TransactionDataId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use uuid::Uuid;
 
@@ -15,7 +15,7 @@ use super::dto::{
 use super::error::ProofServiceError;
 use super::mapper::{
     get_holder_proof_detail, get_proof_trust_information, get_verifier_proof_detail,
-    interaction_data_from_proof, list_item_from_proof, proof_from_create_request,
+    list_item_from_proof, proof_from_create_request,
 };
 use super::validator::{
     throw_if_proof_not_in_session_org, validate_did_and_format_compatibility,
@@ -53,6 +53,7 @@ use crate::provider::transaction_data::Features::SupportsMultipleTxDataPerPresen
 use crate::provider::transaction_data::{
     assign_entries_to_distinct_credentials, decode_transaction_data,
 };
+use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
 };
@@ -68,7 +69,6 @@ use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_se
 use crate::provider::verification_protocol::openid4vp::model::{
     CommonVerifierInteractionContent, OpenID4VPHolderInteractionData, TransactionDataRequest,
 };
-use crate::provider::verification_protocol::{FormatMapper, deserialize_interaction_data};
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::common_mapper::recorded_ecosystem_outcomes;
@@ -171,11 +171,7 @@ impl ProofService {
         )
         .await?;
         Ok(exchange
-            .holder_get_presentation_definition_v2(
-                &proof,
-                interaction_data_from_proof(&proof).await?,
-                &[],
-            )
+            .holder_get_presentation_definition_v2(&proof, &[])
             .await
             .error_while("getting presentation definition V2")?)
     }
@@ -700,16 +696,6 @@ impl ProofService {
 
         let exchange = self.protocol_provider.get_protocol(&proof.protocol)?;
 
-        let config = self.config.clone();
-        let format_type_mapper: FormatMapper = Arc::new(move |input: &CredentialFormat| {
-            Ok(config
-                .format
-                .get_fields(input)
-                .error_while("getting protocol")?
-                .r#type
-                .to_owned())
-        });
-
         let on_submission_callback = Some(self.get_on_submission_ble_mqtt_callback(*id));
 
         let ShareResponse {
@@ -718,12 +704,7 @@ impl ProofService {
             interaction_data,
             expires_at,
         } = exchange
-            .verifier_share_proof(
-                &proof,
-                format_type_mapper,
-                on_submission_callback,
-                request.params,
-            )
+            .verifier_share_proof(&proof, on_submission_callback, request.params)
             .await
             .error_while("sharing proof")?;
 

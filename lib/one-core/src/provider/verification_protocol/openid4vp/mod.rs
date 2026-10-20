@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use standardized_types::openid4vp::ClientIdPrefix;
 
-use super::{FormatMapper, VerificationProtocolError};
+use super::VerificationProtocolError;
 use crate::error::ContextWithErrorCode;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
