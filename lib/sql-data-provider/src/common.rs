@@ -94,6 +94,31 @@ pub(crate) async fn list_query_with_custom_model<
 where
     Select<E>: PaginatorTrait<'db, TransactionManagerImpl>,
 {
+    list_query_with_custom_models(query, query_params, db, |models| {
+        models.into_iter().map(model_conversion).collect()
+    })
+    .await
+}
+
+/// Like [`list_query_with_custom_model`], but converts the whole page at once, e.g. to batch
+/// loading of relations
+pub(crate) async fn list_query_with_custom_models<
+    'db,
+    E: EntityTrait,
+    ListItem,
+    SortableColumn,
+    FV,
+    Include,
+    ModelsConversion: FnOnce(Vec<E::Model>) -> Result<Vec<ListItem>, DataLayerError>,
+>(
+    query: Select<E>,
+    query_params: ListQuery<SortableColumn, FV, Include>,
+    db: &'db TransactionManagerImpl,
+    models_conversion: ModelsConversion,
+) -> Result<GetListResponse<ListItem, Option<u64>>, DataLayerError>
+where
+    Select<E>: PaginatorTrait<'db, TransactionManagerImpl>,
+{
     let (total_items, total_pages, models) = if let Some(pagination) = query_params.pagination {
         let (count, items) = tokio::join!(
             count_if_requested(query_params.include_count, query.to_owned(), db),
@@ -119,10 +144,7 @@ where
     };
 
     Ok(GetListResponse {
-        values: models
-            .into_iter()
-            .map(model_conversion)
-            .collect::<Result<Vec<ListItem>, _>>()?,
+        values: models_conversion(models)?,
         total_pages,
         total_items,
     })

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use one_core::model::localized_text::LocalizedText;
 use one_core::model::relation::{AsyncBatchLoader, BatchModelLoader, RelatedVec};
 use one_core::repository::error::DataLayerError;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
 use shared_types::EntityId;
 
 use crate::entity::localized_text;
@@ -29,23 +29,35 @@ impl AsyncBatchLoader<EntityId, Vec<LocalizedText>> for LocalizedTextLoader {
         &self,
         ids: &[EntityId],
     ) -> Result<HashMap<EntityId, Vec<LocalizedText>>, DataLayerError> {
-        let translations: Vec<localized_text::Model> = localized_text::Entity::find()
-            .filter(localized_text::Column::EntityId.is_in(ids))
-            .order_by_asc(localized_text::Column::Lang)
-            .order_by_asc(localized_text::Column::Field)
-            .all(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
-
-        let mut by_entity: HashMap<_, Vec<_>> = HashMap::new();
-        for translation in translations {
-            by_entity
-                .entry(translation.entity_id)
-                .or_default()
-                .push(translation.into());
-        }
-        Ok(by_entity)
+        load_localized_texts(
+            Condition::all().add(localized_text::Column::EntityId.is_in(ids)),
+            &self.db,
+        )
+        .await
     }
+}
+
+/// Translations matching `condition`, grouped by entity
+pub(crate) async fn load_localized_texts(
+    condition: Condition,
+    db: &TransactionManagerImpl,
+) -> Result<HashMap<EntityId, Vec<LocalizedText>>, DataLayerError> {
+    let translations: Vec<localized_text::Model> = localized_text::Entity::find()
+        .filter(condition)
+        .order_by_asc(localized_text::Column::Lang)
+        .order_by_asc(localized_text::Column::Field)
+        .all(db)
+        .await
+        .map_err(to_data_layer_error)?;
+
+    let mut by_entity: HashMap<_, Vec<_>> = HashMap::new();
+    for translation in translations {
+        by_entity
+            .entry(translation.entity_id)
+            .or_default()
+            .push(translation.into());
+    }
+    Ok(by_entity)
 }
 
 pub(crate) fn localized_texts(

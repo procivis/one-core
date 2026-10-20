@@ -20,7 +20,7 @@ use one_core::repository::organisation_repository::{
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use rstest::rstest;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set, Unchanged};
-use shared_types::CredentialSchemaId;
+use shared_types::{ClaimSchemaId, CredentialSchemaId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -28,7 +28,7 @@ use super::CredentialSchemaProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{
     claim_schema, credential_schema, credential_schema_format,
-    credential_schema_format_claim_schema, organisation,
+    credential_schema_format_claim_schema, localized_text, organisation,
 };
 use crate::organisation::mapper::organisation_from_model;
 use crate::test_utilities::*;
@@ -922,6 +922,237 @@ async fn test_update_credential_schema_translations_success() {
     let claim_translations = claim_schema.translations.as_ref().await.unwrap();
     assert_eq!(claim_translations.len(), 1);
     assert_eq!(claim_translations[0].value, "Vorname");
+}
+
+async fn set_name_translations(
+    repository: &dyn CredentialSchemaRepository,
+    credential_schema_id: CredentialSchemaId,
+    claim_schema_id: ClaimSchemaId,
+    schema_name: &str,
+    claim_name: &str,
+) {
+    let now = now_utc();
+    let translation = |entity_id, entity_type, value: &str| LocalizedText {
+        entity_id,
+        field: LocalizedTextField::Name,
+        created_date: now,
+        last_modified: now,
+        lang: "de".to_string(),
+        value: value.to_string(),
+        entity_type,
+    };
+    repository
+        .update_credential_schema(
+            &credential_schema_id,
+            UpdateCredentialSchemaRequest {
+                translations: Some(vec![
+                    translation(
+                        credential_schema_id.into(),
+                        LocalizedTextEntityType::CredentialSchema,
+                        schema_name,
+                    ),
+                    translation(
+                        claim_schema_id.into(),
+                        LocalizedTextEntityType::ClaimSchema,
+                        claim_name,
+                    ),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+}
+
+async fn translation_values(schema: &CredentialSchema) -> (Vec<String>, Vec<String>) {
+    let schema_translations = schema
+        .translations
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .map(|translation| translation.value.clone())
+        .collect();
+    let mut claim_translations = vec![];
+    for claim_schema in schema.claim_schemas.as_ref().await.unwrap().iter() {
+        for translation in claim_schema.translations.as_ref().await.unwrap().iter() {
+            claim_translations.push(translation.value.clone());
+        }
+    }
+    (schema_translations, claim_translations)
+}
+
+#[tokio::test]
+async fn test_get_credential_schema_loads_all_translations_at_once() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    let claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    set_name_translations(
+        &*repository,
+        credential_schema.id,
+        claim_schema_id,
+        "schema",
+        "claim",
+    )
+    .await;
+
+    let schema = repository
+        .get_credential_schema(&credential_schema.id)
+        .await
+        .unwrap();
+    assert_eq!(schema.translations.as_ref().await.unwrap().len(), 1);
+
+    // the claim schema translations must be served from the batch loaded on first access
+    localized_text::Entity::delete_many()
+        .exec(&db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        translation_values(&schema).await,
+        (vec!["schema".to_string()], vec!["claim".to_string()])
+    );
+}
+
+#[tokio::test]
+async fn test_get_credential_schema_list_batches_relations() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        organisation,
+        repository,
+        db,
+    } = setup_with_schema(Repositories::default()).await;
+
+    let other_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation.id,
+        "other schema",
+        false,
+        None,
+    )
+    .await
+    .unwrap();
+    let other_claim_schema_id = Uuid::new_v4().into();
+    insert_many_claims_schema_to_database(
+        &db,
+        &ProofInput {
+            credential_schema_id: other_schema_id,
+            claims: &vec![ClaimInsertInfo {
+                id: other_claim_schema_id,
+                key: "other-key".to_string(),
+                required: true,
+                order: 0,
+                datatype: "STRING",
+                array: false,
+                metadata: false,
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    let claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let schemas = [
+        (credential_schema.id, claim_schema_id, "first"),
+        (other_schema_id, other_claim_schema_id, "other"),
+    ];
+    for (schema_id, claim_schema_id, prefix) in schemas {
+        set_name_translations(
+            &*repository,
+            schema_id,
+            claim_schema_id,
+            &format!("{prefix} schema"),
+            &format!("{prefix} claim"),
+        )
+        .await;
+    }
+
+    let result = repository
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+            ),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(result.values.len(), 2);
+
+    // loads the schema translations of the whole page, but not the claim schema translations
+    assert_eq!(
+        result.values[0].translations.as_ref().await.unwrap().len(),
+        1
+    );
+
+    for (schema_id, claim_schema_id, prefix) in schemas {
+        set_name_translations(
+            &*repository,
+            schema_id,
+            claim_schema_id,
+            &format!("{prefix} schema updated"),
+            &format!("{prefix} claim updated"),
+        )
+        .await;
+    }
+
+    // the first claim schema (translation) access loads them for the whole page
+    let first_claim_schemas = result.values[0].claim_schemas.as_ref().await.unwrap();
+    assert_eq!(
+        first_claim_schemas[0]
+            .translations
+            .as_ref()
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+
+    insert_many_claims_schema_to_database(
+        &db,
+        &ProofInput {
+            credential_schema_id: other_schema_id,
+            claims: &vec![ClaimInsertInfo {
+                id: Uuid::new_v4().into(),
+                key: "added-later".to_string(),
+                required: true,
+                order: 1,
+                datatype: "STRING",
+                array: false,
+                metadata: false,
+            }],
+        },
+    )
+    .await
+    .unwrap();
+    localized_text::Entity::delete_many()
+        .exec(&db)
+        .await
+        .unwrap();
+
+    for schema in &result.values {
+        let (prefix, claim_schema_count) = if schema.id == credential_schema.id {
+            ("first", 2)
+        } else {
+            ("other", 1)
+        };
+        assert_eq!(
+            schema.claim_schemas.as_ref().await.unwrap().len(),
+            claim_schema_count
+        );
+        assert_eq!(
+            translation_values(schema).await,
+            (
+                vec![format!("{prefix} schema")],
+                vec![format!("{prefix} claim updated")]
+            )
+        );
+    }
 }
 
 #[tokio::test]

@@ -9,7 +9,7 @@ use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::localized_text::LocalizedText;
 use one_core::model::relation::{
-    AsyncBatchLoader, AsyncModelsLoader, AsyncVecLoader, BatchModelLoader, Related, RelatedVec,
+    AsyncBatchLoader, AsyncModelsLoader, BatchModelLoader, Related, RelatedVec,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -23,7 +23,7 @@ use shared_types::{CredentialSchemaId, EntityId};
 use time::Duration;
 
 use crate::TransactionManagerImpl;
-use crate::claim_schema::mapper::claim_schema_from_model;
+use crate::claim_schema::mapper::claim_schema_with_translations_from_model;
 use crate::credential_schema_format::mapper::credential_schema_format_from_model;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim_schema, credential_schema, credential_schema_format, localized_text};
@@ -31,7 +31,7 @@ use crate::list_query_generic::{
     ColumnSortingBehavior, IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
-use crate::localized_text::LocalizedTextLoader;
+use crate::localized_text::{LocalizedTextLoader, load_localized_texts};
 use crate::mapper::to_data_layer_error;
 
 impl IntoSortingColumn for SortableCredentialSchemaColumn {
@@ -260,10 +260,9 @@ pub(super) fn claim_schemas_to_model_vec(
 pub(super) fn credential_schema_from_models(
     credential_schema: credential_schema::Model,
     skip_layout_properties: bool,
-    db: TransactionManagerImpl,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     formats: RelatedVec<CredentialSchemaFormat>,
-    translations: RelatedVec<LocalizedText>,
+    relations: &CredentialSchemaRelations,
 ) -> Result<CredentialSchema, DataLayerError> {
     let transaction_code = match (
         credential_schema.transaction_code_type,
@@ -300,7 +299,7 @@ pub(super) fn credential_schema_from_models(
                 .map(|seconds| Duration::seconds(seconds as i64)),
         },
         formats,
-        claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db }),
+        claim_schemas: RelatedVec::new(relations.claim_schemas.list(id)),
         organisation: Related::new(
             credential_schema.organisation_id,
             organisation_repository.to_owned(),
@@ -320,33 +319,46 @@ pub(super) fn credential_schema_from_models(
             .expiration
             .map(|seconds| Duration::seconds(seconds as i64)),
         ecosystem: credential_schema.ecosystem,
-        translations,
+        translations: RelatedVec::new(relations.translations.list(id.into())),
     })
 }
 
-pub(crate) struct ClaimSchemasLoader {
-    pub id: CredentialSchemaId,
-    pub db: TransactionManagerImpl,
+/// Claim schemas of credential schemas, keyed by credential schema
+struct ClaimSchemasLoader {
+    db: TransactionManagerImpl,
+    translations: Arc<BatchModelLoader<EntityId, Vec<LocalizedText>>>,
 }
 
 #[async_trait::async_trait]
-impl AsyncVecLoader<ClaimSchema> for ClaimSchemasLoader {
-    async fn load(&self) -> Result<Vec<ClaimSchema>, DataLayerError> {
+impl AsyncBatchLoader<CredentialSchemaId, Vec<ClaimSchema>> for ClaimSchemasLoader {
+    async fn load(
+        &self,
+        ids: &[CredentialSchemaId],
+    ) -> Result<HashMap<CredentialSchemaId, Vec<ClaimSchema>>, DataLayerError> {
         let claim_schemas = claim_schema::Entity::find()
-            .filter(claim_schema::Column::CredentialSchemaId.eq(self.id.to_string()))
+            .filter(claim_schema::Column::CredentialSchemaId.is_in(ids))
             .order_by_asc(claim_schema::Column::Order)
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(claim_schemas
-            .into_iter()
-            .map(|m| claim_schema_from_model(m, self.db.clone()))
-            .collect())
+        let mut by_schema: HashMap<_, Vec<_>> = HashMap::new();
+        for model in claim_schemas {
+            let translations = RelatedVec::new(self.translations.list(model.id.into()));
+            by_schema
+                .entry(model.credential_schema_id)
+                .or_default()
+                .push(claim_schema_with_translations_from_model(
+                    model,
+                    translations,
+                ));
+        }
+        Ok(by_schema)
     }
 }
 
-/// Schemas of a credential list, their formats and translations load with one query each.
+/// Schemas of a credential list, their formats, translations, claim schemas and claim schema
+/// translations load with one query each.
 pub(crate) struct CredentialSchemasLoader {
     pub db: TransactionManagerImpl,
     pub organisation_repository: Arc<dyn OrganisationRepository>,
@@ -371,12 +383,7 @@ impl AsyncModelsLoader<CredentialSchema> for CredentialSchemasLoader {
                 db: self.db.clone(),
             },
         );
-        let translations = BatchModelLoader::new(
-            ids.iter().map(|id| EntityId::from(*id)),
-            LocalizedTextLoader {
-                db: self.db.clone(),
-            },
-        );
+        let relations = CredentialSchemaRelations::list(ids.iter().copied(), self.db.clone());
         models
             .into_iter()
             .map(|model| {
@@ -384,10 +391,9 @@ impl AsyncModelsLoader<CredentialSchema> for CredentialSchemasLoader {
                 credential_schema_from_models(
                     model,
                     self.skip_layout_properties,
-                    self.db.clone(),
                     &self.organisation_repository,
                     RelatedVec::new(formats.list(id)),
-                    RelatedVec::new(translations.list(id.into())),
+                    &relations,
                 )
             })
             .collect()
@@ -429,4 +435,84 @@ pub(crate) fn credential_schema_formats(
     db: TransactionManagerImpl,
 ) -> RelatedVec<CredentialSchemaFormat> {
     RelatedVec::new(BatchModelLoader::new([id], CredentialSchemaFormatsLoader { db }).list(id))
+}
+
+/// Batches serving the claim schemas and translations of credential schemas
+pub(crate) struct CredentialSchemaRelations {
+    translations: Arc<BatchModelLoader<EntityId, Vec<LocalizedText>>>,
+    claim_schemas: Arc<BatchModelLoader<CredentialSchemaId, Vec<ClaimSchema>>>,
+}
+
+impl CredentialSchemaRelations {
+    /// Every reader of a single schema's translations also reads its claim schema translations,
+    /// so the first access loads both with a single query.
+    pub(crate) fn single(id: CredentialSchemaId, db: TransactionManagerImpl) -> Self {
+        let translations = BatchModelLoader::new(
+            [EntityId::from(id)],
+            CredentialSchemaTranslationsLoader {
+                db: db.clone(),
+                include_credential_schemas: true,
+            },
+        );
+        Self {
+            translations: translations.clone(),
+            claim_schemas: BatchModelLoader::new([id], ClaimSchemasLoader { db, translations }),
+        }
+    }
+
+    /// Most list readers only need the schema translations (e.g. the name): those load for all
+    /// schemas with one query, the claim schema translations of all schemas with a separate one,
+    /// only once any of them is accessed. The claim schemas of all schemas load with one query.
+    pub(crate) fn list(
+        ids: impl IntoIterator<Item = CredentialSchemaId>,
+        db: TransactionManagerImpl,
+    ) -> Self {
+        let ids: Vec<CredentialSchemaId> = ids.into_iter().collect();
+        let entity_ids: Vec<EntityId> = ids.iter().copied().map(EntityId::from).collect();
+        let claim_schema_translations = BatchModelLoader::new(
+            entity_ids.clone(),
+            CredentialSchemaTranslationsLoader {
+                db: db.clone(),
+                include_credential_schemas: false,
+            },
+        );
+        Self {
+            translations: BatchModelLoader::new(entity_ids, LocalizedTextLoader { db: db.clone() }),
+            claim_schemas: BatchModelLoader::new(
+                ids,
+                ClaimSchemasLoader {
+                    db,
+                    translations: claim_schema_translations,
+                },
+            ),
+        }
+    }
+}
+
+/// Translations of the claim schemas of credential schemas (and of the credential schemas
+/// themselves, if `include_credential_schemas` is set), keyed by entity.
+/// The ids passed to `load` are credential schema ids.
+struct CredentialSchemaTranslationsLoader {
+    db: TransactionManagerImpl,
+    include_credential_schemas: bool,
+}
+
+#[async_trait::async_trait]
+impl AsyncBatchLoader<EntityId, Vec<LocalizedText>> for CredentialSchemaTranslationsLoader {
+    async fn load(
+        &self,
+        ids: &[EntityId],
+    ) -> Result<HashMap<EntityId, Vec<LocalizedText>>, DataLayerError> {
+        let claim_schema_ids = Query::select()
+            .column(claim_schema::Column::Id)
+            .from(claim_schema::Entity)
+            .and_where(claim_schema::Column::CredentialSchemaId.is_in(ids.iter().copied()))
+            .to_owned();
+        let mut condition =
+            Condition::any().add(localized_text::Column::EntityId.in_subquery(claim_schema_ids));
+        if self.include_credential_schemas {
+            condition = condition.add(localized_text::Column::EntityId.is_in(ids.iter().copied()));
+        }
+        load_localized_texts(condition, &self.db).await
+    }
 }
