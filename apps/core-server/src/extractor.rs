@@ -3,7 +3,6 @@ use axum::http;
 use axum::http::request::Parts;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use headers::{Error, Header, Mime};
-use serde_qs::Config;
 use standardized_types::oauth2::TokenType;
 
 pub struct Qs<T>(pub T);
@@ -45,8 +44,13 @@ fn deserialize<T>(query: &str) -> Result<T, (StatusCode, String)>
 where
     T: serde::de::DeserializeOwned,
 {
-    Config::new(2, false)
-        .deserialize_bytes(query.as_bytes())
+    use serde_qs::{ArrayFormat, Config};
+
+    Config::new()
+        .max_depth(2)
+        .use_form_encoding(true)
+        .array_format(ArrayFormat::EmptyIndexed)
+        .deserialize_str(query)
         .map_err(|e| {
             (
                 StatusCode::BAD_REQUEST,
