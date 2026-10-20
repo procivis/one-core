@@ -351,6 +351,7 @@ impl MigratorTrait for Migrator {
             ),
             Box::new(migrations::m20260928_090000_rename_webvh_to_tdw::Migration),
             Box::new(migrations::m20261015_120000_interaction_dpop_key::Migration),
+            Box::new(migrations::m20261020_033426_single_instance_only::Migration),
         ]
     }
 }

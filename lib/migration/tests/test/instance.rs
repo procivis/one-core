@@ -133,9 +133,9 @@ async fn test_db_schema_instance() {
             "user_nonce",
         ])
         .index(
-            "index-Instance-Role-OrganisationId-Unique",
+            "index-Instance-OrganisationId-Unique",
             true,
-            &["role", "organisation_id"],
+            &["organisation_id"],
         );
     instance
         .column("id")

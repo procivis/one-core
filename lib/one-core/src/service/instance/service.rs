@@ -20,9 +20,12 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMix
 use crate::model::certificate::CertificateRole;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::instance::{
-    Instance, InstanceRole, InstanceStatus, UpdateInstanceRequest, WalletProviderType,
+    Instance, InstanceFilterValue, InstanceRole, InstanceStatus, UpdateInstanceRequest,
+    WalletProviderType,
 };
 use crate::model::key::Key;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::managed_instance::ManagedInstanceOs;
 use crate::model::organisation::{Organisation, UpdateOrganisationRequest};
 use crate::proto::csr_creator::{CsrRequestProfile, CsrRequestSubject, GenerateCsrRequest};
@@ -96,14 +99,22 @@ impl InstanceService {
             ));
         }
 
-        let existing_instance = self
+        // ONE-11619: only one instance per organisation is allowed
+        let existing_instances = self
             .instance_repository
-            .get_by_role(request.role, organisation.id)
+            .list(ListQuery {
+                include_count: false,
+                filtering: Some(
+                    InstanceFilterValue::OrganisationIds(vec![organisation.id]).condition(),
+                ),
+                ..Default::default()
+            })
             .await
-            .error_while("checking presence of instance")?;
-        if let Some(existing_instance) = existing_instance {
+            .error_while("checking presence of instance")?
+            .values;
+        for existing_instance in existing_instances {
             if existing_instance.status != InstanceStatus::Error {
-                return Err(HolderInstanceError::WalletInstanceAlreadyExists(
+                return Err(HolderInstanceError::InstanceAlreadyExists(
                     existing_instance.id,
                 ));
             }

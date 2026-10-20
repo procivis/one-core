@@ -568,7 +568,7 @@ pub enum ErrorCode {
     )]
     BR_0270,
 
-    #[strum(message = "Wallet instance already exists")]
+    #[strum(message = "Instance already exists")]
     BR_0271,
 
     #[strum(message = "Engagement provided for non ISO mDL flow")]

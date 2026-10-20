@@ -5,10 +5,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Error)]
 pub enum HolderInstanceError {
-    #[error("Wallet instance revoked")]
-    WalletInstanceRevoked,
-    #[error("Wallet instance `{0}` already exists")]
-    WalletInstanceAlreadyExists(InstanceId),
+    #[error("Instance `{0}` already exists")]
+    InstanceAlreadyExists(InstanceId),
 
     #[error(
         "App integrity check required: proof and public key must only be provided on wallet instance activation"
@@ -61,8 +59,7 @@ pub enum HolderInstanceError {
 impl ErrorCodeMixin for HolderInstanceError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::WalletInstanceRevoked => ErrorCode::BR_0261,
-            Self::WalletInstanceAlreadyExists(_) => ErrorCode::BR_0271,
+            Self::InstanceAlreadyExists(_) => ErrorCode::BR_0271,
             Self::AppIntegrityCheckRequired => ErrorCode::BR_0280,
             Self::AppIntegrityCheckNotRequired => ErrorCode::BR_0281,
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,

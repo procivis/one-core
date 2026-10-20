@@ -98,21 +98,12 @@ async fn holder_register_wallet_and_verifier_instance_in_same_organisation() {
         .mount(&mock_server)
         .await;
 
-    // once for the registration, once more for the ecosystems of the organisation
-    // detail (unlike the wallet provider metadata, this one is not cached)
-    Mock::given(method(Method::GET))
-        .and(path("/ssi/verifier-provider/v1/PROCIVIS_ONE"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(verifier_metadata()))
-        .expect(2)
-        .mount(&mock_server)
-        .await;
-
     Mock::given(method(Method::POST))
         .and(path("/ssi/instance/v1"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "id": Uuid::new_v4(),
         })))
-        .expect(2)
+        .expect(1)
         .mount(&mock_server)
         .await;
 
@@ -147,15 +138,16 @@ async fn holder_register_wallet_and_verifier_instance_in_same_organisation() {
 
     // THEN
     assert_eq!(wallet_resp.status(), 201);
-    assert_eq!(verifier_resp.status(), 201);
     let wallet_resp = wallet_resp.json_value().await;
-    let verifier_resp = verifier_resp.json_value().await;
+
+    assert_eq!(verifier_resp.status(), 400);
+    assert_eq!(verifier_resp.error_code().await, "BR_0271");
 
     let org_detail = context.api.organisations.get(&org.id).await;
     assert_eq!(org_detail.status(), 200);
     let org_detail = org_detail.json_value().await;
-    assert_eq!(org_detail["verifierInstance"]["id"], verifier_resp["id"]);
     assert_eq!(org_detail["walletInstance"]["id"], wallet_resp["id"]);
+    assert_eq!(org_detail.get("verifierInstance"), None);
 }
 
 #[tokio::test]

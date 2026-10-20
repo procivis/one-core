@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use assert2::check;
-use mockall::predicate::eq;
 use shared_types::{InstanceId, ManagedInstanceId, OrganisationId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -10,7 +9,9 @@ use super::InstanceService;
 use super::dto::{HolderRegisterInstanceRequestDTO, InstanceProviderDTO};
 use super::error::HolderInstanceError;
 use crate::config::core_config::CoreConfig;
-use crate::model::instance::{Instance, InstanceRole, InstanceStatus, WalletProviderType};
+use crate::model::instance::{
+    Instance, InstanceList, InstanceRole, InstanceStatus, WalletProviderType,
+};
 use crate::model::organisation::{Organisation, OrganisationConfiguration};
 use crate::proto::csr_creator::MockCsrCreator;
 use crate::proto::identifier_creator::MockIdentifierCreator;
@@ -185,12 +186,15 @@ async fn holder_register_success() {
             })
         });
 
-    let mut holder_wallet_unit_repository = MockInstanceRepository::new();
-    holder_wallet_unit_repository
-        .expect_get_by_role()
-        .once()
-        .return_once(|_, _| Ok(None));
-    holder_wallet_unit_repository
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository.expect_list().once().return_once(|_| {
+        Ok(InstanceList {
+            values: vec![],
+            total_pages: None,
+            total_items: None,
+        })
+    });
+    instance_repository
         .expect_create()
         .once()
         .return_once(move |att: Instance| {
@@ -215,7 +219,7 @@ async fn holder_register_success() {
         organisation_repository: Arc::new(organisation_repository),
         key_repository: Arc::new(key_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(instance_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
@@ -382,10 +386,13 @@ async fn holder_register_aligns_organisation_configuration_with_provider() {
         });
 
     let mut instance_repository = MockInstanceRepository::new();
-    instance_repository
-        .expect_get_by_role()
-        .once()
-        .return_once(|_, _| Ok(None));
+    instance_repository.expect_list().once().return_once(|_| {
+        Ok(InstanceList {
+            values: vec![],
+            total_pages: None,
+            total_items: None,
+        })
+    });
     instance_repository
         .expect_create()
         .once()
@@ -521,12 +528,15 @@ async fn holder_register_key_attestation_not_supported() {
             })
         });
 
-    let mut holder_wallet_unit_repository = MockInstanceRepository::new();
-    holder_wallet_unit_repository
-        .expect_get_by_role()
-        .once()
-        .return_once(|_, _| Ok(None));
-    holder_wallet_unit_repository
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository.expect_list().once().return_once(|_| {
+        Ok(InstanceList {
+            values: vec![],
+            total_pages: None,
+            total_items: None,
+        })
+    });
+    instance_repository
         .expect_create()
         .once()
         .return_once(move |att: Instance| {
@@ -550,7 +560,7 @@ async fn holder_register_key_attestation_not_supported() {
     let service = InstanceService {
         organisation_repository: Arc::new(organisation_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(instance_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
@@ -792,44 +802,47 @@ async fn holder_register_already_exists() {
             })
         });
 
-    let mut holder_wallet_unit_repository = MockInstanceRepository::new();
-    holder_wallet_unit_repository
-        .expect_get_by_role()
+    let mut instance_repository = MockInstanceRepository::new();
+    instance_repository
+        .expect_list()
         .once()
-        .with(eq(InstanceRole::Wallet), eq(organisation_id))
-        .return_once(move |_, _| {
-            Ok(Some(Instance {
-                id: existing_instance_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                status: InstanceStatus::Revoked,
-                role: InstanceRole::Wallet,
-                provider_type: WalletProviderType::ProcivisOne,
-                provider_name: "PROCIVIS_ONE".to_string(),
-                provider_url: "https://wallet.provider".to_string(),
-                provider_instance_id: Uuid::new_v4().into(),
-                organisation: dummy_organisation(None).into(),
-                authentication_key: None,
-                wallet_attestations: Default::default(),
-                nonce: None,
-                user_nonce: None,
-            }))
+        .return_once(move |_| {
+            Ok(InstanceList {
+                values: vec![Instance {
+                    id: existing_instance_id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    status: InstanceStatus::Revoked,
+                    role: InstanceRole::Wallet,
+                    provider_type: WalletProviderType::ProcivisOne,
+                    provider_name: "PROCIVIS_ONE".to_string(),
+                    provider_url: "https://wallet.provider".to_string(),
+                    provider_instance_id: Uuid::new_v4().into(),
+                    organisation: dummy_organisation(None).into(),
+                    authentication_key: None,
+                    wallet_attestations: Default::default(),
+                    nonce: None,
+                    user_nonce: None,
+                }],
+                total_pages: None,
+                total_items: None,
+            })
         });
 
     let service = InstanceService {
         organisation_repository: Arc::new(organisation_repository),
-        instance_repository: Arc::new(holder_wallet_unit_repository),
+        instance_repository: Arc::new(instance_repository),
         config: Arc::new(generic_config().core),
         ..mock_instance_service()
     };
 
     let request = HolderRegisterInstanceRequestDTO {
         organisation_id,
-        key_type: "EDDSA".to_string(),
-        role: InstanceRole::Wallet,
+        key_type: "ECDSA".to_string(),
+        role: InstanceRole::Verifier,
         provider: InstanceProviderDTO {
             r#type: WalletProviderType::ProcivisOne,
-            url: "https://wallet.provider/register".to_string(),
+            url: "https://verifier.provider/register".to_string(),
         },
     };
 
@@ -839,6 +852,6 @@ async fn holder_register_already_exists() {
     // then
     assert!(matches!(
         result.unwrap_err(),
-        HolderInstanceError::WalletInstanceAlreadyExists(_)
+        HolderInstanceError::InstanceAlreadyExists(_)
     ));
 }
