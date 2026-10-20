@@ -11,6 +11,7 @@ include:
       - "gitlab/dtrack.gitlab-ci.yml"
       - "gitlab/bitrise.gitlab-ci.yml"
       - "gitlab/azure.gitlab-ci.yml"
+      - "gitlab/fetch-file.gitlab-ci.yml"
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -556,10 +557,24 @@ sdk:generate_binding_files:
       - target/uniffi-interface/ProcivisOneCore.swift
     expire_in: 10 days
 
+fetch_sdk_version:
+  stage: sdk_artifact
+  extends:
+    - .fetch_gitlab_file
+  variables:
+    FILE_PATH: "sdk_version.json"
+    DOWNLOADED_FILE_NAME: "sdk_version.json"
+    DOWNLOAD_PROJECT_ID: 96 # procivis/one/one-documentation
+    DOWNLOAD_PROJECT_REF: main
+  after_script:
+    - cat $DOWNLOADED_FILE_NAME
+
 sdk:update_doc_sdk_version:
   stage: sdk_artifact
   needs:
     - job: sdk:upload_artifacts
+    - job: fetch_sdk_version
+      artifacts: true
   extends:
     - .ci-tool.create-mr
   variables:
@@ -573,6 +588,8 @@ sdk:update_doc_sdk_version:
       --move sdk_version.json:sdk_version.json
       --no-assign
   before_script:
+    # move file fetched in fetch_sdk_version to $PWD
+    - mv $DOWNLOADED_FILE_NAME .
     - jq --arg id "$CI_PIPELINE_ID" '.current = ($id|tonumber)' sdk_version.json > tmp.json && mv tmp.json sdk_version.json
 
 # The deploy and SDK jobs need this job, so it cannot be in a later stage.
