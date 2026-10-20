@@ -61,3 +61,16 @@ pub trait CredentialManager: Send + Sync {
 }
 
 pub struct CredentialManagerWrapper(pub Arc<dyn CredentialManager>);
+
+/// Native handler of proof submission/rejection
+#[uniffi::export(with_foreign)]
+pub trait DcApiResponseHandler: Send + Sync {
+    /// Called when user accepts proof
+    /// - `response`:
+    ///   - ISO 18013-7 Annex C: `Base64EncryptedResponse`
+    ///   - OpenID4VP DC-API: credentialJson (<https://developer.android.com/reference/kotlin/androidx/credentials/DigitalCredential#credentialJson()>)
+    fn on_submit(&self, response: String) -> Result<(), CredentialManagerError>;
+
+    /// Called when user rejects proof
+    fn on_reject(&self) -> Result<(), CredentialManagerError>;
+}

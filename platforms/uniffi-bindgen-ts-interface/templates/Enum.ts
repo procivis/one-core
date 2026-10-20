@@ -16,9 +16,11 @@
 {%- macro flat_enum(enum_def) %}
 export enum {{ enum_def.name() | typescript_class_name }} {
   {%- for variant in enum_def.variants() %}
+  {%- if !(variant.name() | hidden_enum_variant(enum_def.name())) %}
   {%- call ts::docstring(variant, 2) %}{% endcall %}
   {%- let variant_name = variant.name() | typescript_enum_variant_name %}
   {{ variant_name }} = "{{ variant_name }}",
+  {%- endif %}
   {%- endfor %}
 }
 {%- endmacro %}
@@ -26,6 +28,7 @@ export enum {{ enum_def.name() | typescript_class_name }} {
 {%- macro complex_enum(enum_def) %}
 export type {{ enum_def.name() | typescript_class_name }} =
   {%- for variant in enum_def.variants() %}
+  {%- if !(variant.name() | hidden_enum_variant(enum_def.name())) %}
   {%- let variant_name = variant.name() | typescript_enum_variant_name %}
   {%- call ts::docstring(variant, 4) %}{% endcall %}
   | {
@@ -38,6 +41,7 @@ export type {{ enum_def.name() | typescript_class_name }} =
       {%- endif %}
       {%- endif %}
     }
+  {%- endif %}
   {%- endfor %};
 {%- endmacro %}
 

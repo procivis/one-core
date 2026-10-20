@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, InitiateIssuanceResponseDTO,
@@ -6,6 +7,7 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode, TxCodeInputMode};
 
+use super::credential_manager::DcApiResponseHandler;
 use super::credential_schema::KeyStorageSecurityBindingEnum;
 use super::history::EcosystemOutcomeBindingDTO;
 use super::mapper::convert_ecosystem_errors;
@@ -130,12 +132,10 @@ impl OneCore {
     }
 }
 
-#[derive(Clone, Debug, uniffi::Record)]
+#[derive(Clone, uniffi::Record)]
 #[uniffi(name = "HandleInvitationRequest")]
 pub struct HandleInvitationRequestBindingDTO {
-    /// Typically encoded as a QR code or deep link by the issuer or
-    /// verifier. For example: "https://example.com/credential-offer".
-    pub url: String,
+    pub data: HandleInvitationRequestDataBindingEnum,
     /// Specifies the organizational context for this operation.
     pub organisation_id: String,
     /// For configurations with multiple transport protocols enabled you
@@ -153,6 +153,39 @@ pub struct HandleInvitationRequestBindingDTO {
     /// [Enforcing an Ecosystem as a Wallet](https://docs.procivis.ch/hold/ecosystem-enforcement)
     /// for more information.
     pub ecosystem: Option<String>,
+}
+
+#[derive(Clone, uniffi::Enum)]
+#[uniffi(name = "HandleInvitationRequestData")]
+pub enum HandleInvitationRequestDataBindingEnum {
+    /// OpenID4VCI, OpenID4VP
+    Url {
+        /// Typically encoded as a QR code or deep link by the issuer or
+        /// verifier. For example: "https://example.com/credential-offer".
+        url: String,
+    },
+    /// ISO 18013-7, Annex C
+    Iso18013DcApi {
+        /// ISO 18013-7, Annex C.2, `Base64DeviceRequest`
+        device_request: String,
+        /// ISO 18013-7, Annex C.2, `Base64EncryptionInfo`
+        encryption_info: String,
+        /// verifier identity (website URL, or android app)
+        /// <https://developer.android.com/identity/digital-credentials/credential-holder/credential-holder#check-verifier-origin>
+        /// <https://developer.apple.com/documentation/identitydocumentservices/implenting-as-an-identity-document-provider#Create-your-authorization-UI>
+        origin: String,
+        response_handler: Arc<dyn DcApiResponseHandler>,
+    },
+    /// OpenID4VP over the Digital Credentials API
+    /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-openid4vp-over-the-digital->
+    OpenID4vpDcApi {
+        /// <https://developer.android.com/reference/kotlin/androidx/credentials/GetDigitalCredentialOption#requestJson()>
+        request_json: String,
+        /// verifier identity (website URL, or android app)
+        /// <https://developer.android.com/identity/digital-credentials/credential-holder/credential-holder#check-verifier-origin>
+        origin: String,
+        response_handler: Arc<dyn DcApiResponseHandler>,
+    },
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]

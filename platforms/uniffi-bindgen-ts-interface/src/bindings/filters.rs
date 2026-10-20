@@ -6,12 +6,17 @@ use askama::Result;
 use heck::{ToLowerCamelCase, ToPascalCase, ToShoutySnakeCase};
 use uniffi_bindgen::interface::{AsType, Enum, Method, Object, Record, Type};
 
-/// Workaround types that need to be treated differently
+/// Workaround types that need to be treated differently, declared as (type name, typescript type)
+const TYPE_EXCEPTIONS: &[(&str, &str)] = &[(
+    "OptionalString",
+    "string | null /* pass null to clear the value */",
+)];
+
 fn type_exception(type_name: &str) -> Option<String> {
-    match type_name {
-        "OptionalString" => Some("string | null /* pass null to clear the value */".to_string()),
-        _ => None,
-    }
+    TYPE_EXCEPTIONS
+        .iter()
+        .find(|(name, _)| *name == type_name)
+        .map(|(_, ts_type)| ts_type.to_string())
 }
 
 #[askama::filter_fn]
@@ -21,6 +26,21 @@ pub fn hidden_type(typ: &impl AsType, _: &dyn askama::Values) -> Result<bool> {
         return Ok(type_exception(name).is_some());
     }
     Ok(false)
+}
+
+/// Enum variants not exposed in the TS interface, declared as (enum name, variant name)
+const HIDDEN_ENUM_VARIANTS: &[(&str, &str)] = &[
+    ("HandleInvitationRequestData", "Iso18013DcApi"),
+    ("HandleInvitationRequestData", "OpenID4vpDcApi"),
+];
+
+#[askama::filter_fn]
+pub fn hidden_enum_variant(
+    variant_name: &str,
+    _: &dyn askama::Values,
+    enum_name: &str,
+) -> Result<bool> {
+    Ok(HIDDEN_ENUM_VARIANTS.contains(&(enum_name, variant_name)))
 }
 
 fn ts_type_name(typ: &impl AsType, askama_values: &dyn askama::Values) -> Result<String> {

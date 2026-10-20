@@ -75,8 +75,8 @@ use super::history::{
 };
 use super::identifier::{CreateIdentifierDidRequestBindingDTO, IdentifierListQueryBindingDTO};
 use super::interaction::{
-    HandleInvitationRequestBindingDTO, HandleInvitationResponseBindingEnum,
-    InitiateIssuanceRequestBindingDTO,
+    HandleInvitationRequestBindingDTO, HandleInvitationRequestDataBindingEnum,
+    HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO,
 };
 use super::key::KeyRequestBindingDTO;
 use super::organisation::{
@@ -1197,9 +1197,14 @@ impl TryFrom<PresentationSubmitV2CredentialRequestBindingDTO>
 impl TryFrom<HandleInvitationRequestBindingDTO> for HandleInvitationRequestDTO {
     type Error = ServiceError;
     fn try_from(value: HandleInvitationRequestBindingDTO) -> Result<Self, Self::Error> {
+        let HandleInvitationRequestDataBindingEnum::Url { url } = value.data else {
+            return Err(ServiceError::MappingError(
+                "Unsupported request data".to_string(),
+            ));
+        };
+
         Ok(Self {
-            url: Url::parse(&value.url)
-                .map_err(|e| ServiceError::ValidationError(e.to_string()))?,
+            url: Url::parse(&url).map_err(|e| ServiceError::ValidationError(e.to_string()))?,
             organisation_id: into_id(value.organisation_id)?,
             transport: value.transport,
             redirect_uri: value.redirect_uri,
