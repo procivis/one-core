@@ -144,6 +144,7 @@ pub struct CredentialDetailClaimExtResponseDTO {
     pub value: DetailCredentialClaimValueResponseDTO<Self>,
     pub user_selection: bool,
     pub required: bool,
+    pub require_biometric_data_user_consent: bool,
 }
 
 #[derive(Clone, Debug)]

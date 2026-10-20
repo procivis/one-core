@@ -82,6 +82,11 @@ impl<T: Ecosystem + Display + ?Sized> Ecosystem for DisabledProvider<T> {
         self.disabled_error()
     }
 
+    fn get_biometric_consent_claims(&self, ecosystem_schema_id: &str) -> Vec<String> {
+        self.inner()
+            .get_biometric_consent_claims(ecosystem_schema_id)
+    }
+
     async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError> {
         self.disabled_error()
     }
@@ -119,6 +124,10 @@ impl Ecosystem for CapabilityChecked {
 
     fn get_capabilities(&self) -> EcosystemCapabilities {
         self.0.get_capabilities()
+    }
+
+    fn get_biometric_consent_claims(&self, ecosystem_schema_id: &str) -> Vec<String> {
+        self.0.get_biometric_consent_claims(ecosystem_schema_id)
     }
 
     #[expect(clippy::disallowed_methods)]

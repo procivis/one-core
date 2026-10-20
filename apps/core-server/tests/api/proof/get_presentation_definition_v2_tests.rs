@@ -184,6 +184,99 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
 }
 
 #[tokio::test]
+async fn test_get_presentation_definition_2_biometric_data_user_consent() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "PID",
+            &org,
+            &[
+                (Uuid::new_v4(), "given_name", true, "STRING", false),
+                (Uuid::new_v4(), "portrait", true, "STRING", false),
+            ],
+            "SD_JWT_VC",
+            "urn:eudi:pid:1",
+        )
+        .await;
+    let claims = vec![
+        claim_data("given_name", "given_name", Some("value"), true, &schema).await,
+        claim_data("portrait", "portrait", Some("value"), true, &schema).await,
+    ];
+    create_credential(
+        &context,
+        &identifier,
+        &schema,
+        claims,
+        CredentialStateEnum::Accepted,
+    )
+    .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
+        .id("test_query_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .path(vec!["given_name".to_string()])
+                .build(),
+            ClaimQuery::builder()
+                .path(vec!["portrait".to_string()])
+                .build(),
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+        None,
+    )
+    .await;
+    context
+        .db
+        .proofs
+        .update(
+            &proof.id,
+            UpdateProofRequest {
+                ecosystem: Some(Some("EUDI".into())),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let claims = body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["claims"]
+        .as_array()
+        .unwrap();
+    assert!(
+        claims
+            .iter()
+            .any(|c| c["path"] == "portrait" && c["requireBiometricDataUserConsent"] == true)
+    );
+    assert!(
+        claims
+            .iter()
+            .any(|c| c["path"] == "given_name" && c["requireBiometricDataUserConsent"] == false)
+    );
+}
+
+#[tokio::test]
 async fn test_get_presentation_definition_2_claim_filtering_success() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;

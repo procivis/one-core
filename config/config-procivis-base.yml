@@ -893,6 +893,12 @@ ecosystem:
         description:
           en: "EUDI ecosystem"
         instanceProviderDefaultSelected: true
+        requireBiometricDataUserConsent:
+          enabled: true
+          schemas:
+            - id: urn:eudi:pid:1
+              claims:
+                - portrait
         credentialSchemas:
           - format: SD_JWT_VC
             ecosystemSchemaIds:

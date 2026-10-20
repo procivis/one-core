@@ -59,6 +59,7 @@ pub(crate) struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_1_minute")]
     pub leeway_seconds: Duration,
+    require_biometric_data_user_consent: Option<BiometricDataUserConsentParams>,
 }
 
 fn default_1_minute() -> Duration {
@@ -70,6 +71,18 @@ fn default_1_minute() -> Duration {
 pub(crate) struct CredentialSchemaParams {
     pub format: CredentialFormat,
     pub pid_schema_ids: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BiometricDataUserConsentParams {
+    enabled: bool,
+    schemas: Vec<BiometricDataSchemaParams>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BiometricDataSchemaParams {
+    id: String,
+    claims: Vec<String>,
 }
 
 /// The schema ids this ecosystem considers a PID for the given credential format.
@@ -177,6 +190,21 @@ impl Ecosystem for EudiEcosystem {
                 EcosystemRole::WalletProvider,
             ],
         }
+    }
+
+    fn get_biometric_consent_claims(&self, ecosystem_schema_id: &str) -> Vec<String> {
+        self.params
+            .require_biometric_data_user_consent
+            .as_ref()
+            .filter(|consent| consent.enabled)
+            .and_then(|consent| {
+                consent
+                    .schemas
+                    .iter()
+                    .find(|schema| schema.id == ecosystem_schema_id)
+            })
+            .map(|schema| schema.claims.clone())
+            .unwrap_or_default()
     }
 
     #[tracing::instrument(

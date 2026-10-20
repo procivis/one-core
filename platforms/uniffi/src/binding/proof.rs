@@ -825,6 +825,9 @@ pub struct PresentationDefinitionV2ClaimBindingDTO {
     /// Whether the verifier marked this claim as required. Always
     /// `false` for `ISO_MDL` requests.
     pub required: bool,
+    /// Whether the ecosystem requires user consent before this biometric
+    /// claim is shared.
+    pub require_biometric_data_user_consent: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]

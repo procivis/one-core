@@ -655,6 +655,7 @@ pub(crate) struct CredentialDetailClaimExtResponseRestDTO {
     pub value: CredentialDetailClaimValueResponseRestDTO<Self>,
     pub user_selection: bool,
     pub required: bool,
+    pub require_biometric_data_user_consent: bool,
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]

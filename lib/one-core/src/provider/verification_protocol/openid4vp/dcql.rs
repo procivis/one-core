@@ -69,7 +69,7 @@ pub(crate) async fn get_presentation_definition_v2(
     credential_repository: &dyn CredentialRepository,
     credential_schema_repository: &dyn CredentialSchemaRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
-    ecosystem_provider: &dyn EcosystemDirectory,
+    ecosystem_directory: &dyn EcosystemDirectory,
     wrp_validator: &dyn WRPValidator,
     config: &CoreConfig,
     verifier_details: Option<&IdentifierDetails>,
@@ -105,6 +105,12 @@ pub(crate) async fn get_presentation_definition_v2(
             })
             .collect()
     };
+
+    let ecosystem = proof
+        .ecosystem
+        .as_ref()
+        .map(|ecosystem_id| ecosystem_directory.get(ecosystem_id))
+        .transpose()?;
 
     let now = now_utc();
     for query in dcql_query.credentials {
@@ -293,7 +299,14 @@ pub(crate) async fn get_presentation_definition_v2(
             .await
             .error_while("creating credential detail")?;
 
-            let credential = map_to_filtered_dto(credential_detail_dto, &claims);
+            let biometric_consent_claims = ecosystem
+                .as_ref()
+                .map(|ecosystem| {
+                    ecosystem.get_biometric_consent_claims(&format.ecosystem_schema_id)
+                })
+                .unwrap_or_default();
+            let credential =
+                map_to_filtered_dto(credential_detail_dto, &claims, &biometric_consent_claims);
             applicable_credentials.push(ApplicableCredential {
                 credential,
                 embedded_disclosure_policy_violation,
@@ -316,8 +329,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 )?,
             );
         } else {
-            let purpose = if let Some(ecosystem_id) = &proof.ecosystem {
-                let ecosystem = ecosystem_provider.get(ecosystem_id)?;
+            let purpose = if let Some(ecosystem) = &ecosystem {
                 ecosystem
                     .get_trust_purpose(&proof.id, &query.id)
                     .await
@@ -414,6 +426,7 @@ fn failure_hint(
 fn map_to_filtered_dto(
     full_dto: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
     selected_claims: &[SelectedClaim],
+    biometric_consent_claims: &[String],
 ) -> CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO> {
     let selected_claims_by_path = selected_claims
         .iter()
@@ -435,7 +448,13 @@ fn map_to_filtered_dto(
         claims: full_dto
             .claims
             .into_iter()
-            .filter_map(|claim| to_claim_detail_ext_filtered(claim, &selected_claims_by_path))
+            .filter_map(|claim| {
+                to_claim_detail_ext_filtered(
+                    claim,
+                    &selected_claims_by_path,
+                    biometric_consent_claims,
+                )
+            })
             .collect(),
         redirect_uri: full_dto.redirect_uri,
         role: full_dto.role,
@@ -462,6 +481,7 @@ fn map_to_filtered_dto(
 fn to_claim_detail_ext_filtered(
     claim: DetailCredentialClaimResponseDTO,
     all_selected_claims: &HashMap<String, &SelectedClaim>,
+    biometric_consent_claims: &[String],
 ) -> Option<CredentialDetailClaimExtResponseDTO> {
     // exit early if not in filter list
     let selected_claim = all_selected_claims.get(&claim.path)?;
@@ -483,7 +503,13 @@ fn to_claim_detail_ext_filtered(
         DetailCredentialClaimValueResponseDTO::Nested(children) => {
             let mapped_children = children
                 .into_iter()
-                .filter_map(|child| to_claim_detail_ext_filtered(child, all_selected_claims))
+                .filter_map(|child| {
+                    to_claim_detail_ext_filtered(
+                        child,
+                        all_selected_claims,
+                        biometric_consent_claims,
+                    )
+                })
                 .collect::<Vec<_>>();
             if mapped_children.is_empty() {
                 return None;
@@ -491,6 +517,7 @@ fn to_claim_detail_ext_filtered(
             DetailCredentialClaimValueResponseDTO::Nested(mapped_children)
         }
     };
+    let require_biometric_data_user_consent = biometric_consent_claims.contains(&claim.path);
     Some(CredentialDetailClaimExtResponseDTO {
         path: claim.path,
         schema: claim.schema,
@@ -498,6 +525,7 @@ fn to_claim_detail_ext_filtered(
         user_selection: selected_claim.user_selection,
         required: !selected_claim.selective_disclosure_supported
             || selected_claim.required_by_verifier,
+        require_biometric_data_user_consent,
     })
 }
 

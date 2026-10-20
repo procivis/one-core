@@ -67,6 +67,9 @@ pub trait Ecosystem: Provider + Send + Sync {
         query_id: &CredentialQueryId,
     ) -> Result<Option<I18nString>, EcosystemError>;
 
+    /// Returns the technical key paths of all claims that require explicit / biometric user consent
+    fn get_biometric_consent_claims(&self, ecosystem_schema_id: &str) -> Vec<String>;
+
     async fn lifecycle_hook(&self) -> Result<serde_json::Value, EcosystemError>;
 
     /// Validates uploaded trust information against the identifier's access certificates.
