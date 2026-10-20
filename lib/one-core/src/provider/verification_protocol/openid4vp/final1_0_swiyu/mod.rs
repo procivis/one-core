@@ -23,7 +23,7 @@ use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
@@ -218,7 +218,7 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         &self,
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
+    ) -> Result<(), VerificationProtocolError> {
         self.inner
             .holder_submit_proof(proof, credential_presentations)
             .await

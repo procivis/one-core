@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use futures_util::FutureExt;
 use itertools::Itertools;
-use shared_types::{CredentialId, EcosystemId, InteractionId, ProofId, TransactionDataId};
+use shared_types::{CredentialId, EcosystemId, InteractionId, TransactionDataId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use url::Url;
 
@@ -34,7 +34,7 @@ use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use crate::provider::verification_protocol::dto::{
     CredentialDetailClaimExtResponseDTO, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, UpdateResponse,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::repository::error::DataLayerError;
@@ -104,29 +104,22 @@ impl SSIHolderService {
             .await
             .error_while("submitting proof");
 
-        let submit_error = match submit_result {
-            Ok(update_response) => self
-                .resolve_update_proof_response(proof.id, update_response)
-                .await
-                .error_while("updating proof")
-                .err(),
-            Err(err) => Some(err),
-        };
-
         // A rejected transaction data assignment is detected before anything is
         // sent to the verifier; report it as a request error and keep the proof
         // actionable instead of moving it to Error.
-        let submit_error = match submit_error {
-            Some(err) if err.error_code() == ErrorCode::BR_0459 => return Err(err.into()),
+        let submit_result = match submit_result {
+            Err(err) if err.error_code() == ErrorCode::BR_0459 => return Err(err.into()),
             other => other,
         };
 
-        let (state, error_metadata) = if let Some(ref err) = submit_error {
-            let error_metadata = Some(HistoryErrorMetadata {
-                error_code: err.error_code(),
-                message: err.to_string(),
-            });
-            (ProofStateEnum::Error, error_metadata)
+        let (state, error_metadata) = if let Err(err) = &submit_result {
+            (
+                ProofStateEnum::Error,
+                Some(HistoryErrorMetadata {
+                    error_code: err.error_code(),
+                    message: err.to_string(),
+                }),
+            )
         } else {
             (ProofStateEnum::Accepted, None)
         };
@@ -155,10 +148,7 @@ impl SSIHolderService {
             .await
             .error_while("setting proof claims")?;
 
-        match submit_error {
-            Some(err) => Err(err.into()),
-            None => Ok(()),
-        }
+        Ok(submit_result?)
     }
 
     /// Formats the given presentation using the appropriate formatter.
@@ -416,20 +406,6 @@ impl SSIHolderService {
                     _ => {}
                 };
             }
-        }
-        Ok(())
-    }
-
-    async fn resolve_update_proof_response(
-        &self,
-        proof_id: ProofId,
-        update_response: UpdateResponse,
-    ) -> Result<(), HolderServiceError> {
-        if let Some(update_proof) = update_response.update_proof {
-            self.proof_repository
-                .update_proof(&proof_id, update_proof, None)
-                .await
-                .error_while("updating proof")?;
         }
         Ok(())
     }

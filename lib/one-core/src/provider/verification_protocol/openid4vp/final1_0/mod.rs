@@ -57,7 +57,7 @@ use crate::provider::transaction_data::{
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -80,6 +80,7 @@ use crate::provider::verification_protocol::{
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::proof_repository::ProofRepository;
 use crate::service::oid4vp_final1_0::proof_request::{
     generate_authorization_request_params_final1_0, select_key_agreement_key_from_proof,
 };
@@ -112,6 +113,7 @@ pub(crate) struct OpenID4VPFinal1_0 {
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
     wrp_validator: Arc<dyn WRPValidator>,
     ecosystem_directory: Arc<dyn EcosystemDirectory>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
@@ -139,6 +141,7 @@ impl OpenID4VPFinal1_0 {
         credential_repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
+        proof_repository: Arc<dyn ProofRepository>,
         wrp_validator: Arc<dyn WRPValidator>,
         ecosystem_directory: Arc<dyn EcosystemDirectory>,
         transaction_data_provider: Arc<dyn TransactionDataProvider>,
@@ -164,6 +167,7 @@ impl OpenID4VPFinal1_0 {
             credential_repository,
             credential_schema_repository,
             interaction_repository,
+            proof_repository,
             wrp_validator,
             client,
             params,
@@ -570,7 +574,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
+    ) -> Result<(), VerificationProtocolError> {
         let interaction = proof
             .interaction
             .as_ref()
@@ -626,17 +630,23 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         .error_while("posting submission")?;
 
         let response: Result<DirectPostResponse, _> = response.json();
-
-        if let Ok(value) = response {
-            Ok(UpdateResponse {
-                update_proof: Some(UpdateProofRequest {
-                    redirect_uri: Some(value.redirect_uri),
-                    ..Default::default()
-                }),
-            })
-        } else {
-            Ok(UpdateResponse { update_proof: None })
+        if let Ok(response) = response
+            && proof.redirect_uri != response.redirect_uri
+        {
+            self.proof_repository
+                .update_proof(
+                    &proof.id,
+                    UpdateProofRequest {
+                        redirect_uri: Some(response.redirect_uri),
+                        ..Default::default()
+                    },
+                    None,
+                )
+                .await
+                .error_while("updating proof")?;
         }
+
+        Ok(())
     }
 
     async fn verifier_share_proof(

@@ -63,7 +63,7 @@ use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
@@ -346,7 +346,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
+    ) -> Result<(), VerificationProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;

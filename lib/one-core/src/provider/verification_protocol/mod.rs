@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, ShareResponse, UpdateResponse,
+    FormattedCredentialPresentation, InvitationResponseDTO, ShareResponse,
     VerificationProtocolCapabilities,
 };
 use error::VerificationProtocolError;
@@ -67,7 +67,7 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
         &self,
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<UpdateResponse, VerificationProtocolError>;
+    ) -> Result<(), VerificationProtocolError>;
 
     /// Takes a proof request and filters held credentials,
     /// returning those which are acceptable for the request.

@@ -6,7 +6,7 @@ use url::Url;
 
 use super::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
-    UpdateResponse, VerificationProtocolCapabilities,
+    VerificationProtocolCapabilities,
 };
 use super::error::VerificationProtocolError;
 use super::{ShareResponse, VerificationProtocol};
@@ -51,7 +51,7 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
         &self,
         _proof: &Proof,
         _credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
+    ) -> Result<(), VerificationProtocolError> {
         self.disabled_error()
     }
 
@@ -122,7 +122,7 @@ impl VerificationProtocol for CapabilityChecked {
         &self,
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
+    ) -> Result<(), VerificationProtocolError> {
         self.inner
             .holder_submit_proof(proof, credential_presentations)
             .await

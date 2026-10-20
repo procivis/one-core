@@ -20,7 +20,7 @@ use crate::provider::credential_formatter::model::{
     IdentifierDetails, PublicKeySource, VerificationFn,
 };
 use crate::provider::ecosystem::model::ProtocolArtifact;
-use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};
+use crate::provider::verification_protocol::dto::InvitationResponseDTO;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::decode_client_id_with_scheme;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
@@ -179,7 +179,7 @@ pub(crate) async fn submit_proof_with_transport<T: Send + Sync + 'static>(
     transport: &dyn ProximityHolderTransport<Context = T>,
     interaction_data: serde_json::Value,
     mut params: CreatePresentationParams<'_>,
-) -> Result<UpdateResponse, VerificationProtocolError> {
+) -> Result<(), VerificationProtocolError> {
     let parsed_interaction_data = transport.parse_interaction_data(interaction_data.clone())?;
 
     params.client_id = &parsed_interaction_data.client_id;
@@ -189,5 +189,5 @@ pub(crate) async fn submit_proof_with_transport<T: Send + Sync + 'static>(
     transport
         .submit_presentation(presentation, interaction_data)
         .await?;
-    Ok(UpdateResponse { update_proof: None })
+    Ok(())
 }

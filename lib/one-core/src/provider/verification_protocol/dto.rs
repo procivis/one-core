@@ -12,7 +12,7 @@ use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::Did;
 use crate::model::key::Key;
-use crate::model::proof::{Proof, UpdateProofRequest};
+use crate::model::proof::Proof;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -69,11 +69,6 @@ pub(crate) struct ShareResponse {
     pub interaction_id: InteractionId,
     pub interaction_data: Option<Vec<u8>>,
     pub expires_at: Option<OffsetDateTime>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub(crate) struct UpdateResponse {
-    pub update_proof: Option<UpdateProofRequest>,
 }
 
 #[derive(Clone, Debug)]

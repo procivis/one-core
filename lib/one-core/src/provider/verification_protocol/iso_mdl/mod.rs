@@ -15,7 +15,7 @@ use url::Url;
 
 use super::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentationDefinitionVersion, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    PresentationDefinitionVersion, ShareResponse, VerificationProtocolCapabilities,
 };
 use super::openid4vp::dcql::get_presentation_definition_v2;
 use super::openid4vp::mapper::format_to_type;
@@ -219,7 +219,7 @@ impl VerificationProtocol for IsoMdl {
         &self,
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<UpdateResponse, VerificationProtocolError> {
+    ) -> Result<(), VerificationProtocolError> {
         let ble = self.ble.clone().ok_or_else(|| {
             VerificationProtocolError::Failed("Missing BLE central for submit proof".to_string())
         })?;
@@ -291,7 +291,7 @@ impl VerificationProtocol for IsoMdl {
 
         send_device_response(&ble, device_response, interaction_data).await?;
 
-        Ok(UpdateResponse { update_proof: None })
+        Ok(())
     }
 
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
