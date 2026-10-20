@@ -26,16 +26,12 @@ version = 2
 yanked  = "deny"
 
 ignore = [
-    { id = "RUSTSEC-2023-0126", reason = "`im` crate bug, no safe upgrade available, dependency of json-ld" },
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error crate unmaintained, indirect dependency of a few libs" },
     { id = "RUSTSEC-2026-0097", reason = "`rand` unsound with custom logger, v0.8.x as indirect dependency" },
-    { id = "RUSTSEC-2026-0183", reason = "git2 as dependency of shadow-rs, ub when listing remotes when there are none -> not affected" },
-    { id = "RUSTSEC-2026-0184", reason = "git2 as dependency of shadow-rs, ub when using git blame -> not affected" },
     { id = "RUSTSEC-2026-0215", reason = "`smallstr` crate unmaintained, dependency of json-syntax" },
     { id = "RUSTSEC-2026-0247", reason = "`bitmaps` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0248", reason = "`im` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0251", reason = "`sized-chunks` crate unmaintained, dependency of json-ld" },
-    { id = "RUSTSEC-2026-0255", reason = "`sized-chunks` crate bug, no safe upgrade available, dependency of json-ld" },
     { id = "RUSTSEC-2026-0367", reason = "`zip` vulnerability regarding file system flags -> not affected" },
     { id = "RUSTSEC-2026-0368", reason = "`zip` vulnerability regarding symlinks -> not affected" },
     { id = "RUSTSEC-2026-0369", reason = "`zip` vulnerability regarding symlinks -> not affected" },
