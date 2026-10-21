@@ -196,7 +196,7 @@ async fn test_get_presentation_definition_2_biometric_data_user_consent() {
             &org,
             &[
                 (Uuid::new_v4(), "given_name", true, "STRING", false),
-                (Uuid::new_v4(), "portrait", true, "STRING", false),
+                (Uuid::new_v4(), "picture", true, "STRING", false),
             ],
             "SD_JWT_VC",
             "urn:eudi:pid:1",
@@ -204,7 +204,7 @@ async fn test_get_presentation_definition_2_biometric_data_user_consent() {
         .await;
     let claims = vec![
         claim_data("given_name", "given_name", Some("value"), true, &schema).await,
-        claim_data("portrait", "portrait", Some("value"), true, &schema).await,
+        claim_data("picture", "picture", Some("value"), true, &schema).await,
     ];
     create_credential(
         &context,
@@ -222,7 +222,7 @@ async fn test_get_presentation_definition_2_biometric_data_user_consent() {
                 .path(vec!["given_name".to_string()])
                 .build(),
             ClaimQuery::builder()
-                .path(vec!["portrait".to_string()])
+                .path(vec!["picture".to_string()])
                 .build(),
         ])
         .build();
@@ -267,7 +267,7 @@ async fn test_get_presentation_definition_2_biometric_data_user_consent() {
     assert!(
         claims
             .iter()
-            .any(|c| c["path"] == "portrait" && c["requireBiometricDataUserConsent"] == true)
+            .any(|c| c["path"] == "picture" && c["requireBiometricDataUserConsent"] == true)
     );
     assert!(
         claims

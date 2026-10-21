@@ -305,8 +305,19 @@ pub(crate) async fn get_presentation_definition_v2(
                     ecosystem.get_biometric_consent_claims(&format.ecosystem_schema_id)
                 })
                 .unwrap_or_default();
-            let credential =
-                map_to_filtered_dto(credential_detail_dto, &claims, &biometric_consent_claims);
+            let biometric_consent_claim_schemas = format
+                .claim_mappings
+                .as_ref()
+                .await?
+                .iter()
+                .filter(|mapping| biometric_consent_claims.contains(&mapping.technical_key))
+                .map(|mapping| mapping.claim_schema_id)
+                .collect::<HashSet<_>>();
+            let credential = map_to_filtered_dto(
+                credential_detail_dto,
+                &claims,
+                &biometric_consent_claim_schemas,
+            );
             applicable_credentials.push(ApplicableCredential {
                 credential,
                 embedded_disclosure_policy_violation,
@@ -426,7 +437,7 @@ fn failure_hint(
 fn map_to_filtered_dto(
     full_dto: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
     selected_claims: &[SelectedClaim],
-    biometric_consent_claims: &[String],
+    biometric_consent_claim_schemas: &HashSet<ClaimSchemaId>,
 ) -> CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO> {
     let selected_claims_by_path = selected_claims
         .iter()
@@ -452,7 +463,7 @@ fn map_to_filtered_dto(
                 to_claim_detail_ext_filtered(
                     claim,
                     &selected_claims_by_path,
-                    biometric_consent_claims,
+                    biometric_consent_claim_schemas,
                 )
             })
             .collect(),
@@ -481,7 +492,7 @@ fn map_to_filtered_dto(
 fn to_claim_detail_ext_filtered(
     claim: DetailCredentialClaimResponseDTO,
     all_selected_claims: &HashMap<String, &SelectedClaim>,
-    biometric_consent_claims: &[String],
+    biometric_consent_claim_schemas: &HashSet<ClaimSchemaId>,
 ) -> Option<CredentialDetailClaimExtResponseDTO> {
     // exit early if not in filter list
     let selected_claim = all_selected_claims.get(&claim.path)?;
@@ -507,7 +518,7 @@ fn to_claim_detail_ext_filtered(
                     to_claim_detail_ext_filtered(
                         child,
                         all_selected_claims,
-                        biometric_consent_claims,
+                        biometric_consent_claim_schemas,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -517,7 +528,8 @@ fn to_claim_detail_ext_filtered(
             DetailCredentialClaimValueResponseDTO::Nested(mapped_children)
         }
     };
-    let require_biometric_data_user_consent = biometric_consent_claims.contains(&claim.path);
+    let require_biometric_data_user_consent =
+        biometric_consent_claim_schemas.contains(&claim.schema.id);
     Some(CredentialDetailClaimExtResponseDTO {
         path: claim.path,
         schema: claim.schema,

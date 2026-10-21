@@ -898,6 +898,9 @@ ecosystem:
           schemas:
             - id: urn:eudi:pid:1
               claims:
+                - picture
+            - id: eu.europa.ec.eudi.pid.1
+              claims:
                 - portrait
         credentialSchemas:
           - format: SD_JWT_VC
