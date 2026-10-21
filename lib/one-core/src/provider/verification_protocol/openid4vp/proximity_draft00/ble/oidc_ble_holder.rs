@@ -16,7 +16,6 @@ use super::{
     REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
     TransferSummaryReport,
 };
-use crate::config::core_config::TransportType;
 use crate::error::ContextWithErrorCode;
 use crate::proto::bluetooth_low_energy::BleError;
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter, OnConflict};
@@ -75,10 +74,6 @@ impl ProximityHolderTransport for BleHolderTransport {
         self.url_scheme == url.scheme()
             && query_has_key(PRESENTATION_DEFINITION_BLE_NAME)
             && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
-    }
-
-    fn transport_type(&self) -> TransportType {
-        TransportType::Ble
     }
 
     async fn setup(&self, url: Url) -> Result<Self::Context, VerificationProtocolError> {

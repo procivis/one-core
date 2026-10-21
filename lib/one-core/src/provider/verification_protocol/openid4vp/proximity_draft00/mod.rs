@@ -61,7 +61,7 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openi
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
-    Feature, FormattedCredentialPresentation, InvitationResponseDTO,
+    Feature, FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
     VerificationProtocolCapabilities,
 };
@@ -204,6 +204,7 @@ impl OpenID4VPProximityDraft00 {
         url: Url,
         organisation: Organisation,
         holder_transport: &dyn ProximityHolderTransport<Context = T>,
+        transport_id: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         if !holder_transport.can_handle(&url) {
             return Err(VerificationProtocolError::Failed(
@@ -222,6 +223,7 @@ impl OpenID4VPProximityDraft00 {
             self.interaction_repository.as_ref(),
             self.identifier_creator.as_ref(),
             holder_transport,
+            transport_id,
             verification_fn,
             self.certificate_validator.as_ref(),
         )
@@ -257,10 +259,14 @@ impl OpenID4VPProximityDraft00 {
 
 #[async_trait::async_trait]
 impl VerificationProtocol for OpenID4VPProximityDraft00 {
-    fn holder_can_handle(&self, url: &Url) -> bool {
+    fn holder_can_handle(&self, request: &InvitationRequest) -> bool {
+        let InvitationRequest::Url(url) = request else {
+            return false;
+        };
+
         self.ble_holder_transport
             .as_ref()
-            .is_some_and(|transport| transport.can_handle(url))
+            .is_some_and(|ble| ble.can_handle(url))
             || self
                 .mqtt_holder_transport
                 .as_ref()
@@ -269,21 +275,25 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
 
     async fn holder_handle_invitation<'a>(
         &self,
-        url: Url,
+        request: InvitationRequest,
         organisation: Organisation,
         transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
-        let transport = TransportType::try_from(transport.as_str()).map_err(|err| {
-            VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
-        })?;
+        let InvitationRequest::Url(url) = request else {
+            return Err(VerificationProtocolError::Failed(
+                "Invalid request".to_string(),
+            ));
+        };
 
-        match transport {
+        let transport_type = self
+            .config
+            .transport
+            .get_type(&transport)
+            .error_while("getting transport type")?;
+
+        match transport_type {
             TransportType::Ble => {
-                if !self
-                    .config
-                    .transport
-                    .ble_enabled_for(TransportType::Ble.as_ref())
-                {
+                if !self.config.transport.ble_enabled_for(&transport) {
                     return Err(VerificationProtocolError::Disabled(
                         "BLE transport is disabled".to_string(),
                     ));
@@ -292,15 +302,11 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 let holder_transport = self.ble_holder_transport.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("BLE not available".to_string())
                 })?;
-                self.holder_handle_invitation_inner(url, organisation, holder_transport)
+                self.holder_handle_invitation_inner(url, organisation, holder_transport, transport)
                     .await
             }
             TransportType::Mqtt => {
-                if !self
-                    .config
-                    .transport
-                    .mqtt_enabled_for(TransportType::Mqtt.as_ref())
-                {
+                if !self.config.transport.mqtt_enabled_for(&transport) {
                     return Err(VerificationProtocolError::Disabled(
                         "MQTT transport is disabled".to_string(),
                     ));
@@ -308,7 +314,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 let holder_transport = self.mqtt_holder_transport.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
-                self.holder_handle_invitation_inner(url, organisation, holder_transport)
+                self.holder_handle_invitation_inner(url, organisation, holder_transport, transport)
                     .await
             }
             _ => Err(VerificationProtocolError::Failed(
@@ -552,7 +558,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
         for transport in get_transport(proof).await? {
             match transport {
-                TransportType::Http => {}
+                TransportType::Http | TransportType::DcApi => {}
                 TransportType::Ble => {
                     let ble = self.ble.as_ref().ok_or_else(|| {
                         VerificationProtocolError::Failed(
@@ -699,7 +705,7 @@ pub(super) async fn create_interaction_and_proof(
     organisation: Organisation,
     verifier_identifier: Option<Identifier>,
     verification_protocol_type: VerificationProtocolType,
-    transport_type: TransportType,
+    transport: String,
     interaction_repository: &dyn InteractionRepository,
 ) -> Result<(InteractionId, Proof), VerificationProtocolError> {
     let now = crate::clock::now_utc();
@@ -725,13 +731,13 @@ pub(super) async fn create_interaction_and_proof(
     Ok((
         interaction_id,
         proof_from_handle_invitation(
-            &proof_id,
+            proof_id,
             verification_protocol_type.as_ref(),
             None,
             verifier_identifier,
             interaction,
             now,
-            transport_type.as_ref(),
+            transport,
             ProofStateEnum::Requested,
         ),
     ))

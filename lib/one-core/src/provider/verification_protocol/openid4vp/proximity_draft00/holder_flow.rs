@@ -6,7 +6,7 @@ use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{AuthorizationRequest, ClientIdPrefix, VpTokenResponse};
 use url::Url;
 
-use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
@@ -34,8 +34,6 @@ pub(crate) trait ProximityHolderTransport: Send + Sync {
     type Context;
 
     fn can_handle(&self, url: &Url) -> bool;
-
-    fn transport_type(&self) -> TransportType;
 
     async fn setup(&self, invitation_url: Url) -> Result<Self::Context, VerificationProtocolError>;
 
@@ -67,12 +65,14 @@ pub(crate) trait ProximityHolderTransport: Send + Sync {
     ) -> Result<(), VerificationProtocolError>;
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'static>(
     url: Url,
     organisation: Organisation,
     interaction_repository: &dyn InteractionRepository,
     identifier_creator: &dyn IdentifierCreator,
-    transport: &dyn ProximityHolderTransport<Context = T>,
+    transport_handler: &dyn ProximityHolderTransport<Context = T>,
+    transport_id: String,
     verification_fn: VerificationFn,
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
@@ -81,13 +81,15 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
         organisation.clone(),
         None,
         VerificationProtocolType::OpenId4VpProximityDraft00,
-        transport.transport_type(),
+        transport_id,
         interaction_repository,
     )
     .await?;
 
-    let mut context = transport.setup(url).await?;
-    let authz_request_token = transport.receive_authz_request_token(&mut context).await?;
+    let mut context = transport_handler.setup(url).await?;
+    let authz_request_token = transport_handler
+        .receive_authz_request_token(&mut context)
+        .await?;
     let request_token: DecomposedJwt<AuthorizationRequest> =
         Jwt::decompose_token(&authz_request_token).error_while("parsing request JWT")?;
 
@@ -142,14 +144,14 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
     }
 
     let ecosystem_artifact = ProtocolArtifact::HolderProof {
-        verifier_details: Cow::Owned(Some(verifier_details)),
+        verifier_details: Some(verifier_details),
         dcql_query: presentation_request.dcql_query.clone(),
         verifier_info: presentation_request.verifier_info.clone(),
         proof_id: proof.id,
     };
 
     let interaction_data =
-        transport.interaction_data_from_authz_request(presentation_request, context)?;
+        transport_handler.interaction_data_from_authz_request(presentation_request, context)?;
 
     interaction_repository
         .update_interaction(

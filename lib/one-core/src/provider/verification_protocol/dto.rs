@@ -7,6 +7,7 @@ use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
+use url::Url;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -43,6 +44,17 @@ pub enum PresentationDefinitionVersion {
     #[serde(rename = "V2")]
     #[strum(serialize = "V2")]
     V2,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum InvitationRequest {
+    Url(Url),
+    #[expect(unused)]
+    IsoDcApi {
+        origin: String,
+        encryption_info: String,
+        device_request: String,
+    },
 }
 
 #[derive(Clone, Debug)]

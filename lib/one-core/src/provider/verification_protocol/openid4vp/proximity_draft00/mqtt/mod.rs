@@ -11,7 +11,6 @@ use url::Url;
 use uuid::Uuid;
 
 use super::key_agreement_key::KeyAgreementKey;
-use crate::config::core_config::TransportType;
 use crate::error::ContextWithErrorCode;
 use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -64,10 +63,6 @@ impl ProximityHolderTransport for MqttHolderTransport {
             && query_has_key("brokerUrl")
             && query_has_key("key")
             && query_has_key("topicId")
-    }
-
-    fn transport_type(&self) -> TransportType {
-        TransportType::Mqtt
     }
 
     async fn setup(&self, url: Url) -> Result<Self::Context, VerificationProtocolError> {

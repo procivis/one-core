@@ -257,7 +257,7 @@ impl Ecosystem for EudiEcosystem {
                 proof_id,
             } => {
                 self.resolve_holder_proof(
-                    verifier_details.as_ref().as_ref(),
+                    verifier_details.as_ref(),
                     *proof_id,
                     interaction.organisation.id(),
                     dcql_query,

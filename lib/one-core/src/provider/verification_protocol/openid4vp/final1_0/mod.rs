@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -24,9 +23,7 @@ use uuid::Uuid;
 
 use super::mapper::{format_to_type, unencrypted_params};
 use super::mdoc::mdoc_presentation_context;
-use crate::config::core_config::{
-    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
-};
+use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::fingerprint_into_sha256_thumbprint;
 use crate::model::did::Did;
@@ -55,7 +52,7 @@ use crate::provider::transaction_data::{
     Features, agreed_hash_algorithm, assign_entries_to_distinct_credentials,
 };
 use crate::provider::verification_protocol::dto::{
-    Feature, FormattedCredentialPresentation, InvitationResponseDTO,
+    Feature, FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
     VerificationProtocolCapabilities,
 };
@@ -372,6 +369,7 @@ impl OpenID4VPFinal1_0 {
         &self,
         url: Url,
         organisation: Organisation,
+        transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         let query = url
             .query()
@@ -412,13 +410,13 @@ impl OpenID4VPFinal1_0 {
         let interaction_id = interaction.id;
 
         let proof = proof_from_handle_invitation(
-            &proof_id,
-            VerificationProtocolType::OpenId4VpFinal1_0.as_ref(),
+            proof_id,
+            self.config_name(),
             holder_interaction_data.redirect_uri,
             None,
             interaction,
             now,
-            "HTTP",
+            transport,
             ProofStateEnum::Requested,
         );
 
@@ -426,7 +424,7 @@ impl OpenID4VPFinal1_0 {
             interaction_id,
             proof,
             ecosystem_artifact: ProtocolArtifact::HolderProof {
-                verifier_details: Cow::Owned(holder_interaction_data.verifier_details),
+                verifier_details: holder_interaction_data.verifier_details,
                 dcql_query: holder_interaction_data.dcql_query,
                 verifier_info: holder_interaction_data.verifier_info,
                 proof_id,
@@ -491,7 +489,11 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         Ok(())
     }
 
-    fn holder_can_handle(&self, url: &Url) -> bool {
+    fn holder_can_handle(&self, request: &InvitationRequest) -> bool {
+        let InvitationRequest::Url(url) = request else {
+            return false;
+        };
+
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         self.params.url_scheme == url.scheme()
@@ -552,17 +554,24 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 
     async fn holder_handle_invitation<'a>(
         &self,
-        url: Url,
+        request: InvitationRequest,
         organisation: Organisation,
-        _transport: String,
+        transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
-        if !self.holder_can_handle(&url) {
+        if !self.holder_can_handle(&request) {
             return Err(VerificationProtocolError::Failed(
                 "No OpenID4VC query params detected".to_string(),
             ));
         }
 
-        self.handle_proof_invitation(url, organisation).await
+        let InvitationRequest::Url(url) = request else {
+            return Err(VerificationProtocolError::Failed(
+                "Invalid request".to_string(),
+            ));
+        };
+
+        self.handle_proof_invitation(url, organisation, transport)
+            .await
     }
 
     async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {

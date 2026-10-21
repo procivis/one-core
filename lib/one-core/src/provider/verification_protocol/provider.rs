@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
-use url::Url;
 
 use super::VerificationProtocol;
 use super::decorators::CapabilityChecked;
+use super::dto::InvitationRequest;
 use super::iso_mdl::IsoMdl;
 use super::openid4vp::final1_0::OpenID4VPFinal1_0;
 use super::openid4vp::final1_0_swiyu::{OpenID4VPFinalSwiyu, swiyu_to_final_params};
@@ -38,7 +38,10 @@ use crate::repository::proof_repository::ProofRepository;
 pub(crate) trait VerificationProtocolProvider: Send + Sync {
     fn get_protocol(&self, protocol_id: &str)
     -> Result<Arc<dyn VerificationProtocol>, NestedError>;
-    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn VerificationProtocol>)>;
+    fn detect_protocol(
+        &self,
+        request: &InvitationRequest,
+    ) -> Option<(String, Arc<dyn VerificationProtocol>)>;
 }
 
 #[async_trait::async_trait]
@@ -52,7 +55,10 @@ impl VerificationProtocolProvider
         self.provider(protocol_id)
     }
 
-    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn VerificationProtocol>)> {
+    fn detect_protocol(
+        &self,
+        request: &InvitationRequest,
+    ) -> Option<(String, Arc<dyn VerificationProtocol>)> {
         let get_order = |id: &String| {
             self.config(id)
                 .ok()
@@ -65,7 +71,7 @@ impl VerificationProtocolProvider
 
         sorted_protocols
             .into_iter()
-            .find(|(_, protocol)| protocol.holder_can_handle(url))
+            .find(|(_, protocol)| protocol.holder_can_handle(request))
             .map(|(id, protocol)| (id.to_owned(), protocol.to_owned()))
     }
 }
@@ -179,12 +185,15 @@ fn initialize_provider(
             fields.merge_fields(),
             core_config.clone(),
             credential_repository.clone(),
+            interaction_repository.clone(),
             presentation_formatter_provider.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
+            certificate_validator.clone(),
             credential_schema_repository.clone(),
             credential_formatter_provider.clone(),
             ecosystem_provider.clone(),
+            did_method_provider.clone(),
             wrp_validator.clone(),
             ble.clone(),
             nfc_hce.clone(),

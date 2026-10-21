@@ -110,7 +110,6 @@ pub mod dcapi {
 
     /// ISO 18013-7, C.2
     #[derive(Debug, Clone)]
-    #[allow(unused)]
     pub(crate) struct EncryptionInfo {
         pub parameters: EncryptionParameters,
     }
@@ -143,7 +142,6 @@ pub mod dcapi {
     }
 
     /// ISO 18013-7, C.3
-    #[expect(unused)]
     #[derive(Debug, Clone)]
     pub(crate) struct EncryptedResponse {
         pub data: EncryptedResponseData,

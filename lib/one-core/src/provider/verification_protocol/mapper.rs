@@ -42,23 +42,22 @@ pub(crate) fn interaction_from_handle_invitation(
 
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn proof_from_handle_invitation(
-    proof_id: &ProofId,
+    proof_id: ProofId,
     protocol: &str,
     redirect_uri: Option<String>,
     verifier_identifier: Option<Identifier>,
     interaction: Interaction,
     now: OffsetDateTime,
-    transport: &str,
+    transport: String,
     state: ProofStateEnum,
 ) -> Proof {
     Proof {
-        ecosystem: None,
-        id: proof_id.to_owned(),
+        id: proof_id,
         created_date: now,
         last_modified: now,
         protocol: protocol.to_owned(),
         redirect_uri,
-        transport: transport.to_owned(),
+        transport,
         state,
         role: ProofRole::Holder,
         requested_date: Some(now),
@@ -74,6 +73,7 @@ pub(crate) fn proof_from_handle_invitation(
         engagement: None,
         webhook_url: None,
         subscriber_information: None,
+        ecosystem: None,
     }
 }
 

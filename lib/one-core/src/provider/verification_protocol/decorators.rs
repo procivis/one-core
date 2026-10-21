@@ -2,10 +2,10 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use url::Url;
 
 use super::dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
+    FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion,
     VerificationProtocolCapabilities,
 };
 use super::error::VerificationProtocolError;
@@ -17,7 +17,6 @@ use crate::provider::Provider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::disabled_provider::DisabledProvider;
 use crate::provider::provider_directory::WithDisabledDecorator;
-use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 impl WithDisabledDecorator for dyn VerificationProtocol {
@@ -30,13 +29,13 @@ impl WithDisabledDecorator for dyn VerificationProtocol {
 impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
     for DisabledProvider<T>
 {
-    fn holder_can_handle(&self, _url: &Url) -> bool {
+    fn holder_can_handle(&self, _request: &InvitationRequest) -> bool {
         false
     }
 
     async fn holder_handle_invitation<'a>(
         &self,
-        _url: Url,
+        _request: InvitationRequest,
         _organisation: Organisation,
         _transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
@@ -99,18 +98,18 @@ impl Provider for CapabilityChecked {
 
 #[async_trait::async_trait]
 impl VerificationProtocol for CapabilityChecked {
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        self.inner.holder_can_handle(url)
+    fn holder_can_handle(&self, request: &InvitationRequest) -> bool {
+        self.inner.holder_can_handle(request)
     }
 
     async fn holder_handle_invitation<'a>(
         &self,
-        url: Url,
+        request: InvitationRequest,
         organisation: Organisation,
         transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         self.inner
-            .holder_handle_invitation(url, organisation, transport)
+            .holder_handle_invitation(request, organisation, transport)
             .await
     }
 

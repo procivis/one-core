@@ -15,7 +15,6 @@ pub(crate) struct DcApiHandover {
 }
 
 impl DcApiHandover {
-    #[expect(unused)]
     pub(crate) fn compute(
         origin: &str,
         base64_encryption_info: &str,
@@ -28,6 +27,7 @@ impl DcApiHandover {
     }
 }
 
+/// <https://html.spec.whatwg.org/multipage/browsers.html#ascii-serialisation-of-an-origin>
 fn serialized_origin(origin: &str) -> Result<String, FormatterError> {
     // android app-to-app requests
     if origin.starts_with("android:") {
@@ -96,6 +96,7 @@ mod tests {
     )]
     #[case::plain_url("http://some.domain")]
     #[case::url_with_port("http://some.domain:8080")]
+    #[case::example_from_iso_standard("https://gov.example.com")]
     #[test]
     fn test_serialized_origin_already_serialized(#[case] origin: &str) {
         assert_eq!(serialized_origin(origin).unwrap(), origin);

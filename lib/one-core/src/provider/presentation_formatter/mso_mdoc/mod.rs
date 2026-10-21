@@ -516,8 +516,7 @@ async fn try_build_device_signed(
 }
 
 /// ISO 18013-7, C.4
-#[expect(unused)]
-async fn try_build_dcapi_response(
+pub(crate) fn try_build_dcapi_response(
     response: DeviceResponse,
     encryption_parameters: &dcapi::EncryptionParameters,
     session_transcript: SessionTranscript,

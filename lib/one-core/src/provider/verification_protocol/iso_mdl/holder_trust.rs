@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use coset::iana;
 use shared_types::{EcosystemId, ProofId};
 use standardized_types::jwk::PublicJwk;
@@ -27,6 +25,31 @@ use crate::provider::presentation_formatter::mso_mdoc::model::ReaderAuthenticati
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 
+pub(super) async fn holder_proof_artifact<'a>(
+    device_request: &DeviceRequest,
+    session_transcript: &SessionTranscript,
+    proof_id: ProofId,
+    certificate_validator: &dyn CertificateValidator,
+    verify_fn: &VerificationFn,
+) -> Result<ProtocolArtifact<'a>, VerificationProtocolError> {
+    let dcql_query = device_request_to_dcql_query(device_request);
+    let verifier_info = extract_reg_certs(device_request)?;
+    let verifier_details = extract_verifier(
+        device_request,
+        session_transcript,
+        certificate_validator,
+        verify_fn,
+    )
+    .await?;
+
+    Ok(ProtocolArtifact::HolderProof {
+        verifier_details,
+        dcql_query,
+        verifier_info,
+        proof_id,
+    })
+}
+
 #[expect(clippy::too_many_arguments)]
 pub(super) async fn resolve_verifier_and_trust(
     device_request: &DeviceRequest,
@@ -38,32 +61,26 @@ pub(super) async fn resolve_verifier_and_trust(
     identifier_creator: &dyn IdentifierCreator,
     verify_fn: &VerificationFn,
 ) -> Result<(Option<Identifier>, Option<EcosystemId>), VerificationProtocolError> {
-    let dcql_query = device_request_to_dcql_query(device_request);
-    let verifier_info = extract_reg_certs(device_request)?;
-    let verifier_details = extract_verifier(
+    let artifact = holder_proof_artifact(
         device_request,
         session_transcript,
+        proof_id,
         certificate_validator,
         verify_fn,
     )
     .await?;
 
     let ecosystem = ecosystem_resolver
-        .resolve(
-            interaction.id,
-            &[ProtocolArtifact::HolderProof {
-                verifier_details: Cow::Borrowed(&verifier_details),
-                dcql_query,
-                verifier_info,
-                proof_id,
-            }],
-            None,
-        )
+        .resolve(interaction.id, std::slice::from_ref(&artifact), None)
         .await
         .error_while("resolving ecosystem")?
         .ecosystem;
 
-    let identifier = if let Some(verifier_details) = verifier_details {
+    let identifier = if let ProtocolArtifact::HolderProof {
+        verifier_details: Some(verifier_details),
+        ..
+    } = artifact
+    {
         let (identifier, _) = identifier_creator
             .get_or_create_remote_identifier(
                 interaction.organisation.id(),

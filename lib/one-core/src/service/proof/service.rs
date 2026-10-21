@@ -958,7 +958,6 @@ impl ProofService {
 
         let interaction_id = Uuid::new_v4().into();
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
-            organisation_id: request.organisation_id,
             service_uuid: ble_session.service_uuid,
             continuation_task_id: ble_session.task_id,
             session: None,

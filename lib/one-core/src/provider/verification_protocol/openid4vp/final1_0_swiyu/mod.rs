@@ -21,7 +21,7 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
-    Feature, FormattedCredentialPresentation, InvitationResponseDTO,
+    Feature, FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
     VerificationProtocolCapabilities,
 };
@@ -122,8 +122,12 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
         Ok(())
     }
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        self.inner.holder_can_handle(url)
+    fn holder_can_handle(&self, request: &InvitationRequest) -> bool {
+        let InvitationRequest::Url(url) = request else {
+            return false;
+        };
+
+        self.inner.holder_can_handle(request)
             || (url.scheme() == "https"
                 || self.params.allow_insecure_http_transport && url.scheme() == "http")
                 && url.query().is_none() // SWIYU invite links have no query param
@@ -156,20 +160,26 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
 
     async fn holder_handle_invitation<'a>(
         &self,
-        url: Url,
+        request: InvitationRequest,
         organisation: Organisation,
         transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
-        if !self.holder_can_handle(&url) {
+        let InvitationRequest::Url(url) = &request else {
             return Err(VerificationProtocolError::Failed(
-                "No OpenID4VC query params detected".to_string(),
+                "Invalid request".to_string(),
+            ));
+        };
+
+        if !self.holder_can_handle(&request) {
+            return Err(VerificationProtocolError::Failed(
+                "Invalid invitation URL".to_string(),
             ));
         }
 
         if url.scheme() == "swiyu-verify" {
             return self
                 .inner
-                .holder_handle_invitation(url, organisation, transport)
+                .holder_handle_invitation(request, organisation, transport)
                 .await;
         }
 
@@ -205,7 +215,11 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         })?;
 
         self.inner
-            .holder_handle_invitation(adjusted_url, organisation, transport)
+            .holder_handle_invitation(
+                InvitationRequest::Url(adjusted_url),
+                organisation,
+                transport,
+            )
             .await
     }
 

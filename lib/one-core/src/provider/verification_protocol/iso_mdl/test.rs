@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use coset::{AsCborValue, CborSerializable};
 use hex_literal::hex;
 use maplit::hashmap;
@@ -13,7 +14,9 @@ use super::ble::holder::{MdocBleHolderInteractionData, MdocBleHolderInteractionS
 use super::ble::verifier::{IsoMdlVerifier, prepare_reader_auth};
 use super::common::{DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor};
 use super::{BleMode, IsoMdl};
-use crate::config::core_config::{KeyAlgorithmType, VerificationEngagement};
+use crate::config::core_config::{
+    CoreConfig, Fields, KeyAlgorithmType, TransportType, VerificationEngagement,
+};
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
@@ -31,11 +34,13 @@ use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::ConnectionEvent;
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -45,8 +50,10 @@ use crate::provider::presentation_formatter::provider::MockPresentationFormatter
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::iso_mdl::MdocDcApiHolderInteractionData;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::test_utilities::{
     CredentialBuilder, dummy_certificate, dummy_identifier, dummy_key, dummy_organisation,
     generic_config,
@@ -54,7 +61,6 @@ use crate::service::test_utilities::{
 
 #[tokio::test]
 async fn test_presentation_reject_ok() {
-    let core_config = generic_config().core;
     let mut ble_peripheral = MockBlePeripheral::new();
     ble_peripheral
         .expect_notify_characteristic_data()
@@ -113,14 +119,17 @@ async fn test_presentation_reject_ok() {
                 "bleMode": "PERIPHERAL"
             }
         }),
-        Arc::new(core_config),
+        Arc::new(config_with_ble()),
         Arc::new(MockCredentialRepository::new()),
+        Arc::new(MockInteractionRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(key_algorithm_provider),
+        Arc::new(MockCertificateValidator::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockEcosystemDirectory::new()),
+        Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockWRPValidator::new()),
         Some(ble_waiter),
         None,
@@ -153,7 +162,6 @@ async fn test_presentation_reject_ok() {
     let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
         service_uuid: Uuid::new_v4(),
         continuation_task_id,
-        organisation_id,
         mode: BleMode::Peripheral,
         engagement: HashSet::from([VerificationEngagement::QrCode]),
         session: Some(MdocBleHolderInteractionSessionData {
@@ -263,10 +271,53 @@ async fn test_presentation_reject_ok() {
 }
 
 #[tokio::test]
-async fn test_get_presentation_definition_v2() {
+async fn test_get_presentation_definition_v2_ble() {
+    let interaction_data = |device_request: DeviceRequest| {
+        serde_json::to_value(MdocBleHolderInteractionData {
+            service_uuid: Uuid::new_v4(),
+            continuation_task_id: Uuid::new_v4(),
+            engagement: HashSet::from([VerificationEngagement::QrCode]),
+            mode: BleMode::Peripheral,
+            session: Some(MdocBleHolderInteractionSessionData {
+                sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
+                sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
+                device_request_bytes: to_cbor(&device_request).unwrap(),
+                session_transcript_bytes: vec![],
+                connected_verifier: ConnectedPeer::PeripheralServerMode(PeerInfo {
+                    address: "test address".to_string(),
+                    max_payload_size: 512,
+                    service_uuid: Uuid::new_v4(),
+                }),
+            }),
+        })
+        .unwrap()
+    };
+
+    test_get_presentation_definition_v2(interaction_data, "BLE", config_with_ble()).await
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_v2_dc_api() {
+    let interaction_data = |device_request: DeviceRequest| {
+        serde_json::to_value(MdocDcApiHolderInteractionData {
+            device_request_bytes: to_cbor(&device_request).unwrap(),
+            session_transcript_bytes: vec![],
+            encryption_info: "encryption_info".to_string(),
+        })
+        .unwrap()
+    };
+
+    test_get_presentation_definition_v2(interaction_data, "DC_API", config_with_dc_api()).await
+}
+
+async fn test_get_presentation_definition_v2(
+    interaction_data: impl FnOnce(DeviceRequest) -> serde_json::Value,
+    transport: &str,
+    config: CoreConfig,
+) {
     let organisation_id = Uuid::new_v4().into();
     let ecosystem_schema_id = "org.iso.18013.5.1".to_string();
-    let device_request_bytes = to_cbor(&DeviceRequest {
+    let device_request = DeviceRequest {
         version: Default::default(),
         doc_requests: vec![DocRequest {
             items_request: EmbeddedCbor::new(ItemsRequest {
@@ -284,28 +335,9 @@ async fn test_get_presentation_definition_v2() {
             .unwrap(),
             reader_auth: None,
         }],
-    })
-    .unwrap();
+    };
 
-    let interaction_data = serde_json::to_value(MdocBleHolderInteractionData {
-        service_uuid: Uuid::new_v4(),
-        continuation_task_id: Uuid::new_v4(),
-        engagement: HashSet::from([VerificationEngagement::QrCode]),
-        organisation_id,
-        mode: BleMode::Peripheral,
-        session: Some(MdocBleHolderInteractionSessionData {
-            sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
-            sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
-            device_request_bytes,
-            session_transcript_bytes: vec![],
-            connected_verifier: ConnectedPeer::PeripheralServerMode(PeerInfo {
-                address: "test address".to_string(),
-                max_payload_size: 512,
-                service_uuid: Uuid::new_v4(),
-            }),
-        }),
-    })
-    .unwrap();
+    let interaction_data = interaction_data(device_request);
 
     let proof_id = Uuid::new_v4().into();
     let proof = Proof {
@@ -314,9 +346,9 @@ async fn test_get_presentation_definition_v2() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: "ISO_MDL".to_string(),
-        transport: "BLE".to_string(),
+        transport: transport.to_string(),
         redirect_uri: None,
-        state: ProofStateEnum::Pending,
+        state: ProofStateEnum::Requested,
         role: ProofRole::Holder,
         requested_date: Some(crate::clock::now_utc()),
         completed_date: None,
@@ -650,14 +682,17 @@ async fn test_get_presentation_definition_v2() {
                 "bleMode": "PERIPHERAL"
             }
         }),
-        Arc::new(generic_config().core),
+        Arc::new(config),
         Arc::new(credential_repository),
+        Arc::new(MockInteractionRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(key_algorithm_provider),
+        Arc::new(MockCertificateValidator::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(MockEcosystemDirectory::new()),
+        Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockWRPValidator::new()),
         None,
         None,
@@ -680,13 +715,12 @@ async fn test_get_presentation_definition_v2() {
     let credential_query = &presentation_definition.credential_queries[&ecosystem_schema_id];
 
     assert_eq!(credential_query.multiple, false);
-    let ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
-        applicable_credentials,
-        ..
-    } = &credential_query.credential_or_failure_hint
-    else {
-        panic!("Invalid query");
-    };
+    let_assert!(
+        ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
+            applicable_credentials,
+            ..
+        } = &credential_query.credential_or_failure_hint
+    );
 
     assert_eq!(1, applicable_credentials.len());
     assert_eq!(credential_id, applicable_credentials[0].credential.id);
@@ -790,4 +824,38 @@ AiEA2qL6LXVORA2r2VZjSEknfciwIG7laA12kjnyGAD3V/A=
             "8443a10126a118215902333082022f308201d4a00302010202141f2463138eba600eed73cf3c934dcebb6428745e300a06082a8648ce3d0403023028310b30090603550406130244453119301706035504030c104765726d616e20526567697374726172301e170d3236303131363131313535345a170d3238303131363131313535345a3028310b30090603550406130244453119301706035504030c104765726d616e205265676973747261723059301306072a8648ce3d020106082a8648ce3d03010703420004c79f6365f88b17d191612fa7d82b1768b6d73e8f299b2bf33cc1689ffe1a7a2d09e1f6709e86b4b8715e11df263ac44ec30d206855689a07a077194c11c9adfca381db3081d8301d0603551d0e04160414a9c2a3da2f6dac54eeceb94ee82cc92c00838033301f0603551d23041830168014a9c2a3da2f6dac54eeceb94ee82cc92c0083803330120603551d130101ff040830060101ff020100300e0603551d0f0101ff040403020106302a0603551d1204233021861f68747470733a2f2f73616e64626f782e657564692d77616c6c65742e6f726730460603551d1f043f303d303ba039a037863568747470733a2f2f73616e64626f782e657564692d77616c6c65742e6f72672f7374617475732d6d616e6167656d656e742f63726c300a06082a8648ce3d0403020349003046022100863b111a51ac3465d25af91f9bb18c9f37251e2ab9adac7cf2b15fea65e10c3e022100daa2fa2d754e440dabd956634849277dc8b0206ee5680d769239f21800f757f0f6420001"
         )
     );
+}
+
+fn config_with_ble() -> CoreConfig {
+    let mut config = generic_config().core;
+    config.transport.insert(
+        "BLE".to_string(),
+        Fields {
+            r#type: TransportType::Ble,
+            display: "ble".into(),
+            order: None,
+            priority: None,
+            enabled: true,
+            capabilities: None,
+            params: None,
+        },
+    );
+    config
+}
+
+fn config_with_dc_api() -> CoreConfig {
+    let mut config = generic_config().core;
+    config.transport.insert(
+        "DC_API".to_string(),
+        Fields {
+            r#type: TransportType::DcApi,
+            display: "dcApi".into(),
+            order: None,
+            priority: None,
+            enabled: true,
+            capabilities: None,
+            params: None,
+        },
+    );
+    config
 }

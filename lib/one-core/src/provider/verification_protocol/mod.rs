@@ -1,20 +1,18 @@
 use std::fmt::{Display, Formatter};
 
 use dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, ShareResponse,
-    VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
+    PresentationDefinitionV2ResponseDTO, ShareResponse, VerificationProtocolCapabilities,
 };
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
 use proc_macros::provider_mock;
 use serde::de::Deserialize;
 use shared_types::CredentialId;
-use url::Url;
 
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::Provider;
-use crate::provider::verification_protocol::dto::PresentationDefinitionV2ResponseDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 mod decorators;
@@ -47,14 +45,13 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
 #[async_trait::async_trait]
 pub(crate) trait VerificationProtocol: Provider + Send + Sync {
     // Holder methods:
-    /// Check if the holder can handle the necessary URLs.
-    fn holder_can_handle(&self, url: &Url) -> bool;
+    /// Check if the holder can handle the proof request invitation.
+    fn holder_can_handle(&self, request: &InvitationRequest) -> bool;
 
-    /// For handling credential issuance and verification, this method
-    /// saves the offer information coming in.
+    /// For handling credential presentation, creates a new proof with holder role
     async fn holder_handle_invitation<'a>(
         &self,
-        url: Url,
+        request: InvitationRequest,
         organisation: Organisation,
         transport: String,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError>;

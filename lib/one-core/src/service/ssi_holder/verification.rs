@@ -33,8 +33,8 @@ use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use crate::provider::verification_protocol::dto::{
-    CredentialDetailClaimExtResponseDTO, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion,
+    CredentialDetailClaimExtResponseDTO, FormattedCredentialPresentation, InvitationRequest,
+    InvitationResponseDTO, PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::repository::error::DataLayerError;
@@ -317,9 +317,10 @@ impl SSIHolderService {
         transport: Option<Vec<String>>,
         user_selected_ecosystem: Option<EcosystemId>,
     ) -> Result<HandleInvitationResultDTO, HolderServiceError> {
+        let invitation_request = InvitationRequest::Url(url);
         let (protocol, verification_protocol) = self
             .verification_protocol_provider
-            .detect_protocol(&url)
+            .detect_protocol(&invitation_request)
             .ok_or(HolderServiceError::MissingExchangeProtocol(
                 "Cannot detect exchange protocol".to_string(),
             ))?;
@@ -343,7 +344,7 @@ impl SSIHolderService {
             interaction_id,
             ecosystem_artifact,
         } = verification_protocol
-            .holder_handle_invitation(url, organisation, transport)
+            .holder_handle_invitation(invitation_request, organisation, transport)
             .await
             .error_while("handling invitation")?;
 

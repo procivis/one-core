@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
@@ -245,7 +244,7 @@ async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
                 interaction_id,
                 proof: dummy_proof(),
                 ecosystem_artifact: ProtocolArtifact::HolderProof {
-                    verifier_details: Cow::Owned(None),
+                    verifier_details: None,
                     dcql_query: DcqlQuery {
                         credentials: vec![],
                         credential_sets: None,

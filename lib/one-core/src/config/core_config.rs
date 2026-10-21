@@ -346,6 +346,9 @@ pub enum TransportType {
     #[serde(rename = "MQTT")]
     #[strum(serialize = "MQTT")]
     Mqtt,
+    #[serde(rename = "DC_API")]
+    #[strum(serialize = "DC_API")]
+    DcApi,
 }
 
 pub type IssuanceProtocolConfig = ConfigBlock<String, IssuanceProtocolType>;

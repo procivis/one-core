@@ -78,7 +78,7 @@ pub enum ProtocolArtifact<'a> {
     },
     /// As holder, protocol artifacts about the proof-request & verifier
     HolderProof {
-        verifier_details: Cow<'a, Option<IdentifierDetails>>,
+        verifier_details: Option<IdentifierDetails>,
         dcql_query: DcqlQuery,
         verifier_info: Vec<VerifierInfoAttestation>,
         proof_id: ProofId,

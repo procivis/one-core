@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use shared_types::{OrganisationId, ProofId};
+use shared_types::ProofId;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -55,7 +55,6 @@ use crate::repository::proof_repository::ProofRepository;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct MdocBleHolderInteractionData {
     // known from the beginning
-    pub organisation_id: OrganisationId,
     pub service_uuid: Uuid,
     pub engagement: HashSet<VerificationEngagement>,
     pub mode: BleMode,
