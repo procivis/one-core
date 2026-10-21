@@ -58,13 +58,11 @@ pub fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuar
 
         let guard = sentry::init((
             dsn.to_owned(),
-            sentry::ClientOptions {
-                release: release_name,
-                environment: Some(environment.to_owned().into()),
-                max_breadcrumbs: 50,
-                traces_sample_rate: 0.01,
-                ..Default::default()
-            },
+            sentry::ClientOptions::new()
+                .maybe_release(release_name)
+                .environment(environment.to_owned())
+                .max_breadcrumbs(50)
+                .traces_sample_rate(0.01),
         ));
 
         // This will be inherited when a new hub is created
