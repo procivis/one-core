@@ -15,7 +15,7 @@ use super::dto::{
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -25,7 +25,6 @@ use crate::router::AppState;
     post,
     path = "/api/trust-collection/v1",
     request_body = CreateTrustCollectionRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "trust_collection_management",
     security(
         ("bearer" = [])
@@ -64,7 +63,6 @@ pub(crate) async fn post_trust_collection(
     permissions = [Permission::TrustCollectionDetail],
     get,
     path = "/api/trust-collection/v1/{id}",
-    responses(OkOrErrorResponse<GetTrustCollectionResponseRestDTO>),
     params(
         ("id" = TrustCollectionId, Path, description = "Trust collection id")
     ),
@@ -92,7 +90,7 @@ pub(crate) async fn get_trust_collection(
     permissions = [Permission::TrustCollectionList],
     get,
     path = "/api/trust-collection/v1",
-    responses(InlineOkOrErrorResponse<GetTrustCollectionListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetTrustCollectionListResponseRestDTO)), ErrorResponse),
     params(ListTrustCollectionEntitiesQuery),
     tag = "trust_collection_management",
     security(
@@ -126,7 +124,6 @@ pub(crate) async fn get_trust_collection_list(
     permissions = [Permission::TrustCollectionDelete],
     delete,
     path = "/api/trust-collection/v1/{id}",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = TrustCollectionId, Path, description = "Trust collection id")
     ),
@@ -157,7 +154,6 @@ pub(crate) async fn delete_trust_collection(
     params(
         ("trust_collection_id" = TrustCollectionId, Path, description = "Trust collection id")
     ),
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "trust_collection_management",
     security(
         ("bearer" = [])
@@ -197,7 +193,6 @@ pub(crate) async fn post_trust_list_subscription(
         ("trust_collection_id" = TrustCollectionId, Path, description = "Trust collection id"),
         ("trust_list_id" = TrustListSubscriptionId, Path, description = "Trust list subscription id")
     ),
-    responses(EmptyOrErrorResponse),
     tag = "trust_collection_management",
     security(
         ("bearer" = [])
@@ -224,7 +219,7 @@ pub(crate) async fn delete_trust_list_subscription(
     permissions = [Permission::TrustCollectionDetail],
     get,
     path = "/api/trust-collection/v1/{trust_collection_id}/trust-list",
-    responses(InlineOkOrErrorResponse<GetTrustListSubscriptionListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetTrustListSubscriptionListResponseRestDTO)), ErrorResponse),
     params(
         ("trust_collection_id" = TrustCollectionId, Path, description = "Trust collection id"),
         ListTrustListSubscriptionsEntitiesQuery

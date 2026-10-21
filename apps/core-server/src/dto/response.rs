@@ -1,6 +1,3 @@
-use std::collections::BTreeMap;
-use std::marker::PhantomData;
-
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -8,7 +5,6 @@ use axum::response::IntoResponse;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
-use utoipa::ToSchema;
 
 use super::error::{Cause, ErrorResponseRestDTO};
 use crate::dto::error::status_code::error_code_to_http_status;
@@ -19,13 +15,13 @@ pub(crate) enum ErrorResponse {
     #[response(status = 401, description = "Unauthorized")]
     Unauthorized,
     #[response(status = 400, description = "Bad Request")]
-    BadRequest(#[to_schema] ErrorResponseRestDTO),
+    BadRequest(ErrorResponseRestDTO),
     #[response(status = 403, description = "Forbidden")]
     Forbidden,
     #[response(status = 404, description = "Entity Not Found")]
-    NotFound(#[to_schema] ErrorResponseRestDTO),
+    NotFound(ErrorResponseRestDTO),
     #[response(status = 500, description = "Internal error")]
-    ServerError(#[to_schema] ErrorResponseRestDTO),
+    ServerError(ErrorResponseRestDTO),
 }
 
 impl ErrorResponse {
@@ -85,15 +81,6 @@ impl IntoResponse for ErrorResponse {
     }
 }
 
-fn with_error_responses<SuccessResponse: utoipa::IntoResponses>()
--> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-    use utoipa::IntoResponses;
-    let mut responses = SuccessResponse::responses();
-    responses.append(&mut ErrorResponse::responses());
-    responses
-}
-
-/// Wrapper for Swagger declaration of a vector response
 pub(crate) struct VecResponse<T>(Vec<T>);
 
 impl<T, F: Into<T>> From<Vec<F>> for VecResponse<T> {
@@ -173,45 +160,6 @@ impl<T: Serialize> IntoResponse for OkOrErrorResponse<VecResponse<T>> {
     }
 }
 
-impl<T: ToSchema> utoipa::IntoResponses for OkOrErrorResponse<T> {
-    fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-        #[derive(utoipa::IntoResponses)]
-        #[response(status = 200, description = "OK")]
-        struct SuccessResponse<T: ToSchema>(T);
-
-        with_error_responses::<SuccessResponse<T>>()
-    }
-}
-
-/// Swagger-only wrapper that inlines the schema of `T` into the response instead of emitting a
-/// component `$ref` (the default of [`OkOrErrorResponse`]).
-///
-/// Only needed for generic response types such as `GetListResponseRestDTO<T>`: utoipa can compose
-/// a component name (`Base_Arg`) only from a concrete type written at the use site, so a `$ref`
-/// produced from the wrapper's type parameter would point to a non-existent `GetListResponseRestDTO`
-/// component. `PhantomData` binds this zero-sized marker to `T` and has no runtime effect.
-pub(crate) struct InlineOkOrErrorResponse<T>(PhantomData<T>);
-
-impl<T: ToSchema> utoipa::IntoResponses for InlineOkOrErrorResponse<T> {
-    fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-        #[derive(utoipa::IntoResponses)]
-        #[response(status = 200, description = "OK")]
-        struct SuccessResponse<T: ToSchema>(#[to_schema] T);
-
-        with_error_responses::<SuccessResponse<T>>()
-    }
-}
-
-impl<T: ToSchema> utoipa::IntoResponses for OkOrErrorResponse<VecResponse<T>> {
-    fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-        #[derive(utoipa::IntoResponses)]
-        #[response(status = 200, description = "OK")]
-        struct SuccessResponse<T: ToSchema>(#[expect(dead_code)] Vec<T>);
-
-        with_error_responses::<SuccessResponse<T>>()
-    }
-}
-
 impl<T> From<ErrorResponse> for OkOrErrorResponse<T> {
     fn from(value: ErrorResponse) -> Self {
         Self::Error(value)
@@ -258,16 +206,6 @@ impl<T: Serialize> IntoResponse for CreatedOrErrorResponse<T> {
     }
 }
 
-impl<T: ToSchema> utoipa::IntoResponses for CreatedOrErrorResponse<T> {
-    fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-        #[derive(utoipa::IntoResponses)]
-        #[response(status = 201, description = "Created")]
-        struct SuccessResponse<T: ToSchema>(T);
-
-        with_error_responses::<SuccessResponse<T>>()
-    }
-}
-
 impl<T> From<ErrorResponse> for CreatedOrErrorResponse<T> {
     fn from(value: ErrorResponse) -> Self {
         Self::Error(value)
@@ -307,16 +245,6 @@ impl IntoResponse for EmptyOrErrorResponse {
             Self::NoContent => StatusCode::NO_CONTENT.into_response(),
             Self::Error(error) => error.into_response(),
         }
-    }
-}
-
-impl utoipa::IntoResponses for EmptyOrErrorResponse {
-    fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-        #[derive(utoipa::IntoResponses)]
-        #[response(status = 204, description = "No Content")]
-        struct SuccessResponse;
-
-        with_error_responses::<SuccessResponse>()
     }
 }
 

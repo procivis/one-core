@@ -22,7 +22,6 @@ use crate::router::AppState;
     post,
     path = "/ssi/instance/v1",
     request_body = RegisterInstanceRequestRestDTO,
-    responses(CreatedOrErrorResponse<RegisterWalletUnitResponseRestDTO>),
     tag = "ssi",
     summary = "Register instance",
     description = indoc::formatdoc! {"
@@ -52,7 +51,6 @@ pub(crate) async fn register_instance(
         ("id" = ManagedInstanceId, Path, description = "Instance id")
     ),
     request_body = WalletUnitActivationRequestRestDTO,
-    responses(OkOrErrorResponse<WalletUnitActivationResponseRestDTO>),
     tag = "ssi",
     summary = "Activates instance",
     description = indoc::formatdoc! {"
@@ -83,7 +81,6 @@ pub(crate) async fn activate_instance(
         ("id" = ManagedInstanceId, Path, description = "Instance id")
     ),
     request_body = IssueWalletUnitAttestationRequestRestDTO,
-    responses(OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO>),
     security(
         ("wallet-unit" = [])
     ),

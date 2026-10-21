@@ -6,7 +6,7 @@ use proc_macros::endpoint;
 use reqwest::StatusCode;
 
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::OkOrErrorResponse;
+use crate::dto::response::{ErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::verifier_provider::dto::VerifierProviderResponseRestDTO;
 use crate::router::AppState;
 
@@ -14,7 +14,7 @@ use crate::router::AppState;
     permissions = [],
     get,
     path = "/ssi/verifier-provider/v1/{verifierProvider}",
-    responses(OkOrErrorResponse<VerifierProviderResponseRestDTO>),
+    responses((status = OK, description = "OK", body = VerifierProviderResponseRestDTO), ErrorResponse),
     params(
         ("verifierProvider" = String, Path, description = "Verifier Provider ID")
     ),

@@ -10,7 +10,7 @@ use shared_types::{KeyId, Permission};
 use super::dto::GetKeyQuery;
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, ErrorResponse, OkOrErrorResponse};
 use crate::endpoint::key::dto::{
     KeyGenerateCSRRequestRestDTO, KeyGenerateCSRResponseRestDTO, KeyListItemResponseRestDTO,
     KeyRequestRestDTO, KeyResponseRestDTO,
@@ -23,7 +23,6 @@ use crate::router::AppState;
     permissions = [Permission::KeyDetail],
     get,
     path = "/api/key/v1/{id}",
-    responses(OkOrErrorResponse<KeyResponseRestDTO>),
     params(
         ("id" = KeyId, Path, description = "Key id")
     ),
@@ -63,7 +62,6 @@ pub(crate) async fn get_key(
     post,
     path = "/api/key/v1",
     request_body = KeyRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "key",
     security(
         ("bearer" = [])
@@ -99,7 +97,7 @@ pub(crate) async fn post_key(
     permissions = [Permission::KeyList],
     get,
     path = "/api/key/v1",
-    responses(InlineOkOrErrorResponse<GetKeyListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetKeyListResponseRestDTO)), ErrorResponse),
     params(GetKeyQuery),
     tag = "key",
     security(
@@ -131,7 +129,6 @@ pub(crate) async fn get_key_list(
     post,
     path = "/api/key/v1/{id}/generate-csr",
     request_body = KeyGenerateCSRRequestRestDTO,
-    responses(CreatedOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
     params(
         ("id" = KeyId, Path, description = "Key ID. Must be either `ECDSA` or `EDDSA`.")
     ),

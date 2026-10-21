@@ -4,11 +4,9 @@ use one_core::config::core_config::CoreConfig;
 use proc_macros::modify_schema_autodetect;
 use url::Url;
 use utoipa::openapi::extensions::Extensions;
-use utoipa::openapi::path::Paths;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::{Contact, ExternalDocs, Object, Server, Tag};
 use utoipa::{Modify, OpenApi};
-use utoipauto::utoipauto;
 
 pub(crate) mod permissions;
 pub(crate) mod swagger_plugin;
@@ -17,16 +15,32 @@ use crate::build_info::{APP_VERSION, build};
 use crate::openapi::permissions::PermissionsModifier;
 use crate::{AuthMode, ServerConfig};
 
-/// Schemas from the source scan; the router adds the paths of the enabled endpoints.
+/// Schemas that no request or response body reaches. `test_openapi_schema_regressions` fails on
+/// a dangling `$ref`.
 pub(crate) fn base_openapi() -> utoipa::openapi::OpenApi {
-    #[utoipauto(paths = "./apps/core-server/src", function_attribute_name = "endpoint")]
     #[derive(OpenApi)]
-    #[openapi(components(schemas(shared_types::EntityId, shared_types::RevocationListId)))]
+    #[openapi(components(schemas(
+        shared_types::EntityId,
+        shared_types::RevocationListId,
+        crate::dto::common::Boolean,
+        crate::dto::common::SortDirection,
+        crate::dto::error::ErrorResponseRestDTO,
+        crate::endpoint::credential::dto::CredentialListItemResponseRestDTO,
+        crate::endpoint::history::dto::HistoryResponseRestDTO,
+        crate::endpoint::identifier::dto::CertificateRolesMatchModeRestEnum,
+        crate::endpoint::organisation::dto::OrganisationListItemResponseRestDTO,
+        crate::endpoint::proof::dto::ProofListItemResponseRestDTO,
+        crate::endpoint::statistics::dto::IssuerSchemaStatsResponseRestDTO,
+        crate::endpoint::statistics::dto::SystemInteractionStatsResponseRestDTO,
+        crate::endpoint::statistics::dto::SystemManagementStatsResponseRestDTO,
+        crate::endpoint::statistics::dto::VerifierSchemaStatsResponseRestDTO,
+        crate::endpoint::trust_collection::dto::TrustListSubscriptionListItemResponseRestDTO,
+        crate::endpoint::trust_list_publication::dto::TrustEntryListItemResponseRestDTO,
+        crate::endpoint::trust_list_publication::dto::TrustListPublicationListItemResponseRestDTO,
+    )))]
     struct ApiDoc;
 
-    let mut docs = ApiDoc::openapi();
-    docs.paths = Paths::new();
-    docs
+    ApiDoc::openapi()
 }
 
 pub(crate) fn gen_openapi_documentation(

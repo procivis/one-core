@@ -18,7 +18,6 @@ use crate::router::AppState;
     get,
     path = "/api/managed-instance/v1",
     params(ListManagedInstancesQuery),
-    responses(OkOrErrorResponse<GetManagedInstancesResponseRestDTO>),
     tag = "managed_instance",
     security(
         ("bearer" = [])
@@ -53,7 +52,6 @@ pub(crate) async fn get_managed_instance_list(
     params(
         ("id" = ManagedInstanceId, Path, description = "Managed instance id")
     ),
-    responses(OkOrErrorResponse<ManagedInstanceResponseRestDTO>),
     tag = "managed_instance",
     security(
         ("bearer" = [])
@@ -80,7 +78,6 @@ pub(crate) async fn get_managed_instance_details(
     params(
         ("id" = ManagedInstanceId, Path, description = "Managed instance id")
     ),
-    responses(EmptyOrErrorResponse),
     tag = "managed_instance",
     security(
         ("bearer" = [])
@@ -112,7 +109,6 @@ pub(crate) async fn revoke_managed_instance(
     params(
         ("id" = ManagedInstanceId, Path, description = "Managed instance id")
     ),
-    responses(EmptyOrErrorResponse),
     tag = "managed_instance",
     security(
         ("bearer" = [])

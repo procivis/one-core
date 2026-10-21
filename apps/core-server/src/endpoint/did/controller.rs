@@ -12,7 +12,7 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -21,7 +21,6 @@ use crate::router::AppState;
     permissions = [Permission::DidDetail],
     get,
     path = "/api/did/v1/{id}",
-    responses(OkOrErrorResponse<DidResponseRestDTO>),
     params(
         ("id" = DidId, Path, description = "DID id")
     ),
@@ -61,7 +60,7 @@ pub(crate) async fn get_did(
     permissions = [Permission::DidList],
     get,
     path = "/api/did/v1",
-    responses(InlineOkOrErrorResponse<GetDidsResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetDidsResponseRestDTO)), ErrorResponse),
     params(
         GetDidQuery
     ),
@@ -96,7 +95,6 @@ pub(crate) async fn get_did_list(
     post,
     path = "/api/did/v1",
     request_body = CreateDidRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "did_management",
     security(
         ("bearer" = [])
@@ -146,7 +144,6 @@ pub(crate) async fn post_did(
     patch,
     path = "/api/did/v1/{id}",
     request_body = DidPatchRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     tag = "did_management",
     params(
         ("id" = DidId, Path, description = "DID id")

@@ -19,7 +19,6 @@ use crate::router::AppState;
     post,
     path = "/api/instance/v1",
     request_body = RegisterManagedInstanceRequestRestDTO,
-    responses(CreatedOrErrorResponse<RegisterInstanceResponseRestDTO>),
     tag = "instance",
     security(
         ("bearer" = [])
@@ -54,7 +53,6 @@ pub(crate) async fn register_remote_instance(
     permissions = [Permission::InstanceDetail],
     get,
     path = "/api/instance/v1/{id}",
-    responses(OkOrErrorResponse<InstanceDetailRestDTO>),
     params(
         ("id" = InstanceId, Path, description = "Wallet Instance ID")
     ),
@@ -84,7 +82,6 @@ pub(crate) async fn get_instance_details(
     permissions = [Permission::InstanceDetail],
     post,
     path = "/api/instance/v1/{id}/status",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = InstanceId, Path, description = "Wallet Instance ID")
     ),
@@ -112,7 +109,6 @@ pub(crate) async fn instance_status(
     post,
     path = "/api/instance/v1/{id}/activate",
     request_body = ActivateInstanceRequestRestDTO,
-    responses(OkOrErrorResponse<ActivateInstanceResponseRestDTO>),
     params(
         ("id" = InstanceId, Path, description = "Wallet Instance ID")
     ),

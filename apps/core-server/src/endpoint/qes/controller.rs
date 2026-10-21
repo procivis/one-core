@@ -17,7 +17,6 @@ use crate::router::AppState;
     post,
     path = "/api/qes/v1/authorize",
     request_body = QesAuthorizeRequestRestDTO,
-    responses(CreatedOrErrorResponse<QesAuthorizeResponseRestDTO>),
     tag = "qes",
     security(
         ("bearer" = [])
@@ -45,7 +44,6 @@ pub(crate) async fn authorize(
     post,
     path = "/api/qes/v1/sign",
     request_body = QesSignRequestRestDTO,
-    responses(CreatedOrErrorResponse<QesSignResponseRestDTO>),
     tag = "qes",
     security(
         ("bearer" = [])

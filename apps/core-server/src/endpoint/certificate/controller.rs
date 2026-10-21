@@ -12,7 +12,6 @@ use crate::router::AppState;
     permissions = [Permission::IdentifierDetail],
     get,
     path = "/api/certificate/v1/{id}",
-    responses(OkOrErrorResponse<CertificateResponseRestDTO>),
     params(
         ("id" = CertificateId, Path, description = "Certificate id")
     ),

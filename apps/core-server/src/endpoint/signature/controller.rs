@@ -19,7 +19,6 @@ use crate::router::AppState;
     post,
     path = "/api/signature/v1",
     request_body = CreateSignatureRequestRestDTO,
-    responses(CreatedOrErrorResponse<CreateSignatureResponseRestDTO>),
     tag = "signature",
     security(
         ("bearer" = [])
@@ -45,7 +44,6 @@ pub(crate) async fn create_signature(
     permissions = [Permission::AccessCertificateRevoke, Permission::RegistrationCertificateRevoke, Permission::X509CertificateRevoke],
     post,
     path = "/api/signature/v1/{id}/revoke",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = Uuid, Path, description = "Signature id")
     ),
@@ -71,7 +69,6 @@ pub(crate) async fn revoke_signature(
     post,
     path = "/api/signature/v1/revocation-check",
     request_body = SignatureRevocationCheckRequestRestDTO,
-    responses(OkOrErrorResponse<SignatureRevocationCheckResponseRestDTO>),
     tag = "signature",
     security(
         ("bearer" = [])

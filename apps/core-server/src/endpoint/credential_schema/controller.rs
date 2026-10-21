@@ -16,7 +16,7 @@ use crate::dto::common::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::endpoint::credential_schema::dto::{
     CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaV2RequestRestDTO,
@@ -28,7 +28,6 @@ use crate::router::AppState;
     permissions = [Permission::CredentialSchemaDelete],
     delete,
     path = "/api/credential-schema/v1/{id}",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = CredentialSchemaId, Path, description = "Schema id")
     ),
@@ -55,7 +54,6 @@ pub(crate) async fn delete_credential_schema(
     permissions = [Permission::CredentialSchemaDetail],
     get,
     path = "/api/credential-schema/v1/{id}",
-    responses(OkOrErrorResponse<CredentialSchemaResponseRestDTO>),
     params(
         ("id" = CredentialSchemaId, Path, description = "Schema id")
     ),
@@ -82,7 +80,7 @@ pub(crate) async fn get_credential_schema(
     permissions = [Permission::CredentialSchemaList],
     get,
     path = "/api/credential-schema/v1",
-    responses(InlineOkOrErrorResponse<GetCredentialSchemasResponseDTO>),
+    responses((status = OK, description = "OK", body = inline(GetCredentialSchemasResponseDTO)), ErrorResponse),
     params(GetCredentialSchemaQuery),
     tag = "credential_schema_management",
     security(
@@ -113,7 +111,7 @@ pub(crate) async fn get_credential_schema_list(
     permissions = [Permission::CredentialSchemaList],
     get,
     path = "/api/credential-schema/v2",
-    responses(InlineOkOrErrorResponse<GetCredentialSchemasV2ResponseDTO>),
+    responses((status = OK, description = "OK", body = inline(GetCredentialSchemasV2ResponseDTO)), ErrorResponse),
     params(GetCredentialSchemaV2Query),
     tag = "credential_schema_management",
     security(
@@ -148,7 +146,6 @@ pub(crate) async fn get_credential_schema_list_v2(
     post,
     path = "/api/credential-schema/v1/import",
     request_body = ImportCredentialSchemaRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "credential_schema_management",
     security(
         ("bearer" = [])
@@ -193,7 +190,6 @@ pub(crate) async fn import_credential_schema(
     post,
     path = "/api/credential-schema/v1",
     request_body = CreateCredentialSchemaRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "credential_schema_management",
     security(
         ("bearer" = [])
@@ -238,7 +234,6 @@ pub(crate) async fn post_credential_schema(
     permissions = [Permission::CredentialSchemaShare],
     post,
     path = "/api/credential-schema/v1/{id}/share",
-    responses(CreatedOrErrorResponse<CredentialSchemaShareResponseRestDTO>),
     params(
         ("id" = CredentialSchemaId, Path, description = "Schema id")
     ),
@@ -264,7 +259,6 @@ pub(crate) async fn share_credential_schema(
     permissions = [Permission::CredentialSchemaShare],
     post,
     path = "/api/credential-schema/v2/{id}/share",
-    responses(CreatedOrErrorResponse<CredentialSchemaShareResponseRestDTO>),
     params(
         ("id" = CredentialSchemaId, Path, description = "Schema id")
     ),
@@ -295,7 +289,6 @@ pub(crate) async fn share_credential_schema_v2(
     permissions = [Permission::CredentialSchemaDetail],
     get,
     path = "/api/credential-schema/v2/{id}",
-    responses(OkOrErrorResponse<CredentialSchemaV2ResponseRestDTO>),
     params(
         ("id" = CredentialSchemaId, Path, description = "Schema id")
     ),
@@ -323,7 +316,6 @@ pub(crate) async fn get_credential_schema_v2(
     post,
     path = "/api/credential-schema/v2",
     request_body = CreateCredentialSchemaV2RequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "credential_schema_management",
     security(
         ("bearer" = [])
@@ -372,7 +364,6 @@ pub(crate) async fn post_credential_schema_v2(
     post,
     path = "/api/credential-schema/v2/import",
     request_body = ImportCredentialSchemaV2RequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "credential_schema_management",
     security(
         ("bearer" = [])

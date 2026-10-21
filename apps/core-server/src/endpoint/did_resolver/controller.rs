@@ -14,7 +14,6 @@ use crate::router::AppState;
     params(
         ("didvalue" = DidValue, Path, description = "DID value")
     ),
-    responses(OkOrErrorResponse<DidDocumentRestDTO>),
     tag = "did_management",
     security(
         ("bearer" = [])

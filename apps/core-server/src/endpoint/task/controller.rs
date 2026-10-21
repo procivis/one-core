@@ -14,7 +14,6 @@ use crate::router::AppState;
     post,
     path = "/api/task/v1/run",
     request_body = TaskRequestRestDTO,
-    responses(OkOrErrorResponse<TaskResponseRestDTO>),
     tag = "task",
     security(
         ("bearer" = [])

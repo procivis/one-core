@@ -67,7 +67,6 @@ utoipa = { workspace = true, features = [
 ] }
 utoipa-axum = { version = "0.3" }
 utoipa-swagger-ui = { version = "10.0", features = ["axum"] }
-utoipauto = { version = "0.2" }
 uuid.workspace = true
 
 [build-dependencies]

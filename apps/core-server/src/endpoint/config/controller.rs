@@ -11,7 +11,6 @@ use crate::router::AppState;
     permissions = [],
     get,
     path = "/api/config/v1",
-    responses(OkOrErrorResponse<ConfigRestDTO>),
     tag = "other",
     security(
         ("bearer" = [])

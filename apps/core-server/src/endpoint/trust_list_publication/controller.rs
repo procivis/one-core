@@ -15,7 +15,7 @@ use super::dto::{
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -25,7 +25,6 @@ use crate::router::AppState;
     post,
     path = "/api/trust-list/v1",
     request_body = CreateTrustListRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "trust_list_publication_management",
     security(
         ("bearer" = [])
@@ -61,7 +60,6 @@ pub(crate) async fn post_trust_list_publication(
     permissions = [Permission::TrustListPublicationDetail],
     get,
     path = "/api/trust-list/v1/{id}",
-    responses(OkOrErrorResponse<GetTrustListPublicationResponseRestDTO>),
     params(
         ("id" = TrustListPublicationId, Path, description = "Trust list publication id")
     ),
@@ -101,7 +99,7 @@ pub(crate) async fn get_trust_list_publication(
     permissions = [Permission::TrustListPublicationList],
     get,
     path = "/api/trust-list/v1",
-    responses(InlineOkOrErrorResponse<GetTrustListPublicationListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetTrustListPublicationListResponseRestDTO)), ErrorResponse),
     params(ListTrustListPublicationsEntitiesQuery),
     tag = "trust_list_publication_management",
     security(
@@ -136,7 +134,6 @@ pub(crate) async fn get_trust_list_publications(
     permissions = [Permission::TrustListPublicationDelete],
     delete,
     path = "/api/trust-list/v1/{id}",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = TrustListPublicationId, Path, description = "Trust list publication id")
     ),
@@ -178,7 +175,6 @@ pub(crate) async fn delete_trust_list_publication(
     params(
         ("id" = TrustListPublicationId, Path, description = "Trust list publication id")
     ),
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "trust_list_publication_management",
     security(
         ("bearer" = [])
@@ -224,7 +220,6 @@ pub(crate) async fn post_trust_entry(
         ("list_id" = TrustListPublicationId, Path, description = "Trust list publication id"),
         ("entry_id" = TrustListPublicationId, Path, description = "Trust entry id")
     ),
-    responses(EmptyOrErrorResponse),
     tag = "trust_list_publication_management",
     security(
         ("bearer" = [])
@@ -269,7 +264,6 @@ pub(crate) async fn patch_trust_entry(
         ("list_id" = TrustListPublicationId, Path, description = "Trust list publication id"),
         ("entry_id" = TrustListPublicationId, Path, description = "Trust entry id")
     ),
-    responses(EmptyOrErrorResponse),
     tag = "trust_list_publication_management",
     security(
         ("bearer" = [])
@@ -302,7 +296,7 @@ pub(crate) async fn delete_trust_entry(
     permissions = [Permission::TrustEntryPublicationDetail],
     get,
     path = "/api/trust-list/v1/{id}/entry",
-    responses(InlineOkOrErrorResponse<GetTrustEntryListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetTrustEntryListResponseRestDTO)), ErrorResponse),
     params(
         ("id" = TrustListPublicationId, Path, description = "Trust list publication id"),
         ListTrustEntryEntitiesQuery

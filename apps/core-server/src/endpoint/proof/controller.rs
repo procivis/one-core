@@ -16,8 +16,7 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, InlineOkOrErrorResponse,
-    OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -26,7 +25,6 @@ use crate::router::AppState;
     permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v2/{id}/presentation-definition",
-    responses(OkOrErrorResponse<PresentationDefinitionV2ResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -64,7 +62,6 @@ pub(crate) async fn get_proof_presentation_definition_v2(
     permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v1/{id}",
-    responses(OkOrErrorResponse<ProofDetailResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -131,7 +128,6 @@ pub(crate) async fn get_proof_transaction_data(
     permissions = [Permission::ProofDelete],
     delete,
     path = "/api/proof-request/v1/{id}",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -160,7 +156,7 @@ pub(crate) async fn delete_proof(
     permissions = [Permission::ProofList],
     get,
     path = "/api/proof-request/v1",
-    responses(InlineOkOrErrorResponse<GetProofsResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetProofsResponseRestDTO)), ErrorResponse),
     params(GetProofQuery),
     tag = "proof_management",
     security(
@@ -192,7 +188,6 @@ pub(crate) async fn get_proofs(
     post,
     path = "/api/proof-request/v1",
     request_body = CreateProofRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "proof_management",
     security(
         ("bearer" = [])
@@ -230,7 +225,6 @@ pub(crate) async fn post_proof(
         content((Option<ShareProofRequestRestDTO>)),
         example = json!({ "params": { "clientIdScheme": "redirect_uri" } }),
     ),
-    responses(CreatedOrErrorResponse<ShareProofResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -274,7 +268,6 @@ pub(crate) async fn share_proof(
     permissions = [Permission::ProofClaimsDelete],
     delete,
     path = "/api/proof-request/v1/{id}/claims",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -300,7 +293,6 @@ pub(crate) async fn delete_proof_claims(
     permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v1/{id}/trust-detail",
-    responses(OkOrErrorResponse<ProofTrustInformationDetailResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),

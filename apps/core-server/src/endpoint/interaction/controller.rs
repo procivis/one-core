@@ -25,7 +25,6 @@ use crate::router::AppState;
     post,
     path = "/api/interaction/v1/handle-invitation",
     request_body = HandleInvitationRequestRestDTO,
-    responses(CreatedOrErrorResponse<HandleInvitationResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -66,7 +65,6 @@ pub(crate) async fn handle_invitation(
     post,
     path = "/api/interaction/v1/issuance-accept",
     request_body = IssuanceAcceptRequestRestDTO,
-    responses(OkOrErrorResponse<IssuanceAcceptResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -105,7 +103,6 @@ pub(crate) async fn issuance_accept(
     permissions = [Permission::InteractionIssuance],
     post,
     path = "/api/interaction/v1/{id}/issuance-refresh",
-    responses(OkOrErrorResponse<IssuanceRefreshResponseRestDTO>),
     params(
         ("id" = InteractionId, Path, description = "Interaction ID")
     ),
@@ -131,7 +128,6 @@ pub(crate) async fn issuance_refresh(
     post,
     path = "/api/interaction/v1/issuance-reject",
     request_body = IssuanceRejectRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -159,7 +155,6 @@ pub(crate) async fn issuance_reject(
     post,
     path = "/api/interaction/v1/presentation-reject",
     request_body = PresentationRejectRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -187,7 +182,6 @@ pub(crate) async fn presentation_reject(
     post,
     path = "/api/interaction/v2/presentation-submit",
     request_body = PresentationSubmitV2RequestRestDTO,
-    responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -218,7 +212,6 @@ pub(crate) async fn presentation_submit_v2(
     post,
     path = "/api/interaction/v1/propose-proof",
     request_body = ProposeProofRequestRestDTO,
-    responses(CreatedOrErrorResponse<ProposeProofResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -255,7 +248,6 @@ pub(crate) async fn propose_proof(
     post,
     path = "/api/interaction/v1/initiate-issuance",
     request_body = InitiateIssuanceRequestRestDTO,
-    responses(OkOrErrorResponse<InitiateIssuanceResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -291,7 +283,6 @@ pub(crate) async fn initiate_issuance(
     post,
     path = "/api/interaction/v1/continue-issuance",
     request_body = ContinueIssuanceRequestRestDTO,
-    responses(CreatedOrErrorResponse<ContinueIssuanceResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])

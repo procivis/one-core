@@ -11,7 +11,7 @@ use super::dto::{GetHistoryQuery, HistoryResponseDetailRestDTO};
 use crate::dto::common::{Boolean, EntityResponseRestDTO, GetHistoryListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
-use crate::dto::response::{CreatedOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, ErrorResponse, OkOrErrorResponse};
 use crate::endpoint::history::dto::CreateHistoryRequestRestDTO;
 use crate::extractor::Qs;
 use crate::middleware::Authorized;
@@ -23,7 +23,7 @@ use crate::session::CoreServerSessionProvider;
     permissions = [Permission::HistoryList, Permission::SystemHistoryList],
     get,
     path = "/api/history/v1",
-    responses(InlineOkOrErrorResponse<GetHistoryListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetHistoryListResponseRestDTO)), ErrorResponse),
     params(GetHistoryQuery),
     tag = "history_management",
     security(
@@ -91,7 +91,6 @@ pub(crate) async fn get_history_list(
     post,
     path = "/api/history/v1",
     request_body = CreateHistoryRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "history_management",
     security(
         ("bearer" = [])
@@ -131,7 +130,6 @@ pub(crate) async fn create_history(
     params(
         ("id" = HistoryId, Path, description = "History id")
     ),
-    responses(OkOrErrorResponse<HistoryResponseDetailRestDTO>),
     tag = "history_management",
     security(
         ("bearer" = [])

@@ -39,7 +39,6 @@ use crate::router::AppState;
     params(
         ("id" = DidId, Path, description = "Did id")
     ),
-    responses(OkOrErrorResponse<DidDocumentRestDTO>),
     tag = "ssi",
     summary = "Retrieve did:web document",
     description = indoc::formatdoc! {"

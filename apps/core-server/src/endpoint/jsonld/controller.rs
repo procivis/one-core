@@ -13,7 +13,6 @@ use crate::router::AppState;
     get,
     path = "/api/jsonld-context/v1",
     params(ResolveJsonLDContextQuery),
-    responses(OkOrErrorResponse<ResolveJsonLDContextResponseRestDTO>),
     tag = "jsonld",
     security(
         ("bearer" = [])

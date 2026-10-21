@@ -15,7 +15,7 @@ use super::dto::{
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::endpoint::identifier::dto::{
     AddCertificateAuthoritiesRequestRestDTO, AddCertificatesRequestRestDTO,
@@ -29,7 +29,6 @@ use crate::router::AppState;
     post,
     path = "/api/identifier/v1",
     request_body = CreateIdentifierRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "identifier_management",
     security(
         ("bearer" = [])
@@ -72,7 +71,6 @@ pub(crate) async fn post_identifier(
     post,
     path = "/api/identifier/v1/remote",
     request_body = CreateRemoteIdentifierRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "identifier_management",
     security(
         ("bearer" = [])
@@ -113,7 +111,6 @@ pub(crate) async fn post_remote_identifier(
     permissions = [Permission::IdentifierDetail],
     get,
     path = "/api/identifier/v1/{id}",
-    responses(OkOrErrorResponse<GetIdentifierResponseRestDTO>),
     params(
         ("id" = IdentifierId, Path, description = "Identifier id")
     ),
@@ -152,7 +149,6 @@ pub(crate) async fn get_identifier(
     permissions = [Permission::IdentifierDelete],
     delete,
     path = "/api/identifier/v1/{id}",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = IdentifierId, Path, description = "Identifier id")
     ),
@@ -177,7 +173,6 @@ pub(crate) async fn delete_identifier(
     patch,
     path = "/api/identifier/v1/{id}",
     request_body = PatchIdentifierRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = IdentifierId, Path, description = "Identifier id")
     ),
@@ -221,7 +216,6 @@ pub(crate) async fn patch_identifier(
     permissions = [Permission::IdentifierList],
     get,
     path = "/api/identifier/v1",
-    responses(OkOrErrorResponse<GetIdentifierListResponseRestDTO>),
     params(GetIdentifierQuery),
     tag = "identifier_management",
     security(
@@ -253,7 +247,7 @@ pub(crate) async fn get_identifier_list(
     post,
     path = "/api/identifier/v1/resolve-trust-entries",
     request_body = ResolveTrustEntriesRequestRestDTO,
-    responses(InlineOkOrErrorResponse<Vec<ResolvedTrustEntriesResponseRestDTO>>),
+    responses((status = OK, description = "OK", body = inline(Vec<ResolvedTrustEntriesResponseRestDTO>)), ErrorResponse),
     tag = "identifier_management",
     security(
         ("bearer" = [])
@@ -286,7 +280,6 @@ pub(crate) async fn resolve_trust_entries(
     post,
     path = "/api/identifier/v1/{id}/certificate",
     request_body = AddCertificatesRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityIdsResponseRestDTO>),
     params(
         ("id" = IdentifierId, Path, description = "Identifier id")
     ),
@@ -322,7 +315,6 @@ pub(crate) async fn post_identifier_certificates(
     permissions = [Permission::IdentifierEdit],
     delete,
     path = "/api/identifier/v1/{identifierId}/certificate/{certificateId}",
-    responses(EmptyOrErrorResponse),
     params(
         ("identifierId" = IdentifierId, Path, description = "Identifier id"),
         ("certificateId" = CertificateId, Path, description = "Certificate id")
@@ -357,7 +349,6 @@ pub(crate) async fn delete_identifier_certificate(
     post,
     path = "/api/identifier/v1/{id}/certificate-authority",
     request_body = AddCertificateAuthoritiesRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityIdsResponseRestDTO>),
     params(
         ("id" = IdentifierId, Path, description = "Identifier id")
     ),
@@ -393,7 +384,6 @@ pub(crate) async fn post_identifier_certificate_authorities(
     permissions = [Permission::IdentifierEdit],
     delete,
     path = "/api/identifier/v1/{identifierId}/certificate-authority/{certificateAuthorityId}",
-    responses(EmptyOrErrorResponse),
     params(
         ("identifierId" = IdentifierId, Path, description = "Identifier id"),
         ("certificateAuthorityId" = CertificateId, Path, description = "Certificate id")

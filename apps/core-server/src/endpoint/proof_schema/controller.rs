@@ -13,7 +13,7 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -23,7 +23,6 @@ use crate::router::AppState;
     post,
     path = "/api/proof-schema/v1",
     request_body = CreateProofSchemaRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "proof_schema_management",
     security(
         ("bearer" = [])
@@ -63,7 +62,7 @@ pub(crate) async fn post_proof_schema(
     permissions = [Permission::ProofSchemaList],
     get,
     path = "/api/proof-schema/v1",
-    responses(InlineOkOrErrorResponse<GetProofSchemaListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetProofSchemaListResponseRestDTO)), ErrorResponse),
     params(GetProofSchemaQuery),
     tag = "proof_schema_management",
     security(
@@ -94,7 +93,6 @@ pub(crate) async fn get_proof_schemas(
     permissions = [Permission::ProofSchemaDetail],
     get,
     path = "/api/proof-schema/v1/{id}",
-    responses(OkOrErrorResponse<GetProofSchemaResponseRestDTO>),
     params(
         ("id" = ProofSchemaId, Path, description = "Schema id")
     ),
@@ -117,7 +115,6 @@ pub(crate) async fn get_proof_schema_detail(
     permissions = [Permission::ProofSchemaDelete],
     delete,
     path = "/api/proof-schema/v1/{id}",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = ProofSchemaId, Path, description = "Schema id")
     ),
@@ -144,7 +141,6 @@ pub(crate) async fn delete_proof_schema(
     permissions = [Permission::ProofSchemaShare],
     post,
     path = "/api/proof-schema/v1/{id}/share",
-    responses(CreatedOrErrorResponse<ProofSchemaShareResponseRestDTO>),
     params(
         ("id" = ProofSchemaId, Path, description = "Schema id")
     ),
@@ -168,7 +164,6 @@ pub(crate) async fn share_proof_schema(
     post,
     path = "/api/proof-schema/v1/import",
     request_body = ImportProofSchemaRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "proof_schema_management",
     security(
         ("bearer" = [])

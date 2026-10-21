@@ -14,8 +14,7 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialsResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, InlineOkOrErrorResponse,
-    OkOrErrorResponse, VecResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse, VecResponse,
 };
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, CredentialRoleRestEnum, GetCredentialQuery,
@@ -30,7 +29,6 @@ use crate::router::AppState;
     permissions = [Permission::CredentialDelete],
     delete,
     path = "/api/credential/v1/{id}",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -62,7 +60,7 @@ pub(crate) async fn delete_credential(
     permissions = [Permission::CredentialDetail],
     get,
     path = "/api/credential/v1/{id}",
-    responses(InlineOkOrErrorResponse<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>>),
+    responses((status = OK, description = "OK", body = inline(GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>)), ErrorResponse),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -91,7 +89,7 @@ pub(crate) async fn get_credential(
     permissions = [Permission::CredentialList, Permission::HolderCredentialList],
     get,
     path = "/api/credential/v1",
-    responses(InlineOkOrErrorResponse<GetCredentialsResponseDTO>),
+    responses((status = OK, description = "OK", body = inline(GetCredentialsResponseDTO)), ErrorResponse),
     params(
         GetCredentialQuery
     ),
@@ -153,7 +151,6 @@ pub(crate) async fn get_credential_list(
     post,
     path = "/api/credential/v1",
     request_body = CreateCredentialRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "credential_management",
     security(
         ("bearer" = [])
@@ -191,7 +188,6 @@ pub(crate) async fn post_credential(
     permissions = [Permission::CredentialReactivate],
     post,
     path = "/api/credential/v1/{id}/reactivate",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -222,7 +218,6 @@ pub(crate) async fn reactivate_credential(
     permissions = [Permission::CredentialRevoke],
     post,
     path = "/api/credential/v1/{id}/revoke",
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -250,7 +245,6 @@ pub(crate) async fn revoke_credential(
     post,
     path = "/api/credential/v1/{id}/suspend",
     request_body = SuspendCredentialRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -286,7 +280,6 @@ pub(crate) async fn suspend_credential(
     patch,
     path = "/api/credential/v1/{id}/state",
     request_body = PatchCredentialStateRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -333,7 +326,6 @@ pub(crate) async fn patch_credential_state(
     permissions = [Permission::CredentialShare],
     post,
     path = "/api/credential/v1/{id}/share",
-    responses(CreatedOrErrorResponse<ShareCredentialResponseRestDTO>),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -360,7 +352,6 @@ pub(crate) async fn share_credential(
     post,
     path = "/api/credential/v1/revocation-check",
     request_body = CredentialRevocationCheckRequestRestDTO,
-    responses(OkOrErrorResponse<VecResponse<CredentialRevocationCheckResponseRestDTO>>),
     tag = "credential_management",
     security(
         ("bearer" = [])
@@ -410,7 +401,6 @@ pub(crate) async fn credential_revocation_check(
     permissions = [Permission::CredentialDetail],
     get,
     path = "/api/credential/v1/{id}/trust-detail",
-    responses(OkOrErrorResponse<CredentialTrustInformationDetailResponseRestDTO>),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),

@@ -301,7 +301,15 @@ pub fn modify_schema_autodetect(args: TokenStream, input: TokenStream) -> TokenS
 /// Wrapper around `utoipa::path` declarations
 ///
 /// Adds permissions to the utoipa extensions and as well the `require_permissions` declaration
-/// (if some permissions are specified)
+/// (if some permissions are specified).
+///
+/// If `responses(...)` is not set, it is generated from the return type:
+/// - `OkOrErrorResponse<T>`: 200 with body `T`
+/// - `CreatedOrErrorResponse<T>`: 201 with body `T`
+/// - `EmptyOrErrorResponse`: 204
+///
+/// All three include `crate::dto::response::ErrorResponse`. For any other return type,
+/// `responses(...)` must be set explicitly.
 ///
 /// Example usage
 /// ```ignore
@@ -312,7 +320,7 @@ pub fn modify_schema_autodetect(args: TokenStream, input: TokenStream) -> TokenS
 ///   get,
 ///   path = "/api/endpoint"
 /// )]
-/// async fn endpoint_handler(state: State<AppState>) -> Response {
+/// async fn endpoint_handler(state: State<AppState>) -> OkOrErrorResponse<ResponseRestDTO> {
 ///   // ...
 /// }
 /// ```

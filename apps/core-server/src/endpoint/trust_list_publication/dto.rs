@@ -316,12 +316,6 @@ pub(crate) enum SortableTrustEntryColumnRestEnum {
     CreatedDate,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub(crate) enum ExactTrustEntryFilterColumnRestEnum {
-    Name,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Into, From, Deserialize, Serialize, ToSchema)]
 #[into(TrustEntryStateEnum)]
 #[from(TrustEntryStateEnum)]

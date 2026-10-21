@@ -21,7 +21,6 @@ use crate::router::AppState;
     post,
     path = "/ssi/wallet-unit/v1",
     request_body = RegisterWalletUnitRequestRestDTO,
-    responses(CreatedOrErrorResponse<RegisterWalletUnitResponseRestDTO>),
     tag = "ssi",
     summary = "Register wallet unit",
     description = indoc::formatdoc! {"
@@ -52,7 +51,6 @@ pub(crate) async fn register_wallet_unit(
         ("id" = ManagedInstanceId, Path, description = "Wallet unit id")
     ),
     request_body = WalletUnitActivationRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     tag = "ssi",
     summary = "Activates wallet unit",
     description = indoc::formatdoc! {"
@@ -84,7 +82,6 @@ pub(crate) async fn activate_wallet_unit(
         ("id" = ManagedInstanceId, Path, description = "Wallet unit id")
     ),
     request_body = IssueWalletUnitAttestationRequestRestDTO,
-    responses(OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO>),
     security(
         ("wallet-unit" = [])
     ),
@@ -119,7 +116,6 @@ pub(crate) async fn issue_wallet_unit_attestation(
     params(
         ("walletProvider" = String, Path, description = "Wallet Provider ID")
     ),
-    responses(OkOrErrorResponse<WalletProviderMetadataResponseRestDTO>),
     tag = "ssi",
     summary = "Retrieve Wallet Provider info",
     description = indoc::formatdoc! {"

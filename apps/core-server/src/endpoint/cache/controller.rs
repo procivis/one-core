@@ -1,5 +1,4 @@
 use axum::extract::State;
-use axum::response::IntoResponse;
 use axum_extra::extract::WithRejection;
 use one_dto_mapper::convert_inner;
 use shared_types::Permission;
@@ -15,7 +14,6 @@ use crate::router::AppState;
     delete,
     path = "/api/cache/v1",
     params(DeleteCacheQuery),
-    responses(EmptyOrErrorResponse),
     security(
         ("bearer" = [])
     ),
@@ -30,7 +28,7 @@ use crate::router::AppState;
 pub(crate) async fn prune_cache(
     state: State<AppState>,
     WithRejection(QsOpt(query), _): WithRejection<QsOpt<DeleteCacheQuery>, ErrorResponseRestDTO>,
-) -> impl IntoResponse {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .cache_service

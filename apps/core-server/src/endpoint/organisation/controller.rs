@@ -14,7 +14,7 @@ use super::dto::{
 use crate::dto::common::GetOrganisationListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, InlineOkOrErrorResponse, OkOrErrorResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
 };
 use crate::endpoint::organisation::mapper::update_request_from_request;
 use crate::extractor::Qs;
@@ -24,7 +24,6 @@ use crate::router::AppState;
     permissions = [Permission::StsOrganisationDetail],
     get,
     path = "/api/organisation/v1/{id}",
-    responses(OkOrErrorResponse<GetOrganisationDetailsResponseRestDTO>),
     params(
         ("id" = OrganisationId, Path, description = "Organization id")
     ),
@@ -47,7 +46,7 @@ pub(crate) async fn get_organisation(
     permissions = [Permission::StsOrganisationList],
     get,
     path = "/api/organisation/v1",
-    responses(InlineOkOrErrorResponse<GetOrganisationListResponseRestDTO>),
+    responses((status = OK, description = "OK", body = inline(GetOrganisationListResponseRestDTO)), ErrorResponse),
     params(GetOrganisationsQuery),
     tag = "organisation_management",
     security(
@@ -90,7 +89,6 @@ pub(crate) async fn get_organisations(
     post,
     path = "/api/organisation/v1",
     request_body = CreateOrganisationRequestRestDTO,
-    responses(CreatedOrErrorResponse<CreateOrganisationResponseRestDTO>),
     tag = "organisation_management",
     security(
         ("bearer" = [])
@@ -134,7 +132,6 @@ pub(crate) async fn post_organisation(
         ("id" = OrganisationId, Path, description = "Organization id")
     ),
     request_body = UpdateOrganisationRequestRestDTO,
-    responses(EmptyOrErrorResponse),
     tag = "organisation_management",
     security(
         ("bearer" = [])
