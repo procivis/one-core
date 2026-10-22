@@ -6,41 +6,47 @@ use askama::Result;
 use heck::{ToLowerCamelCase, ToPascalCase, ToShoutySnakeCase};
 use uniffi_bindgen::interface::{AsType, Enum, Method, Object, Record, Type};
 
-/// Workaround types that need to be treated differently, declared as (type name, typescript type)
-const TYPE_EXCEPTIONS: &[(&str, &str)] = &[(
-    "OptionalString",
-    "string | null /* pass null to clear the value */",
-)];
+use crate::bindings::TsInterfaceBindingGeneratorConfig;
 
-fn type_exception(type_name: &str) -> Option<String> {
-    TYPE_EXCEPTIONS
-        .iter()
-        .find(|(name, _)| *name == type_name)
-        .map(|(_, ts_type)| ts_type.to_string())
+fn config(askama_values: &dyn askama::Values) -> Result<&TsInterfaceBindingGeneratorConfig> {
+    askama::get_value(askama_values, "config")
 }
 
+fn type_override(type_name: &str, askama_values: &dyn askama::Values) -> Result<Option<String>> {
+    Ok(config(askama_values)?
+        .type_overrides
+        .get(type_name)
+        .cloned())
+}
+
+/// Leaves out type definitions not generated: explicitly hidden ones and those replaced by a type override
 #[askama::filter_fn]
-pub fn hidden_type(typ: &impl AsType, _: &dyn askama::Values) -> Result<bool> {
-    let r#type = typ.as_type();
-    if let Some(name) = r#type.name() {
-        return Ok(type_exception(name).is_some());
-    }
-    Ok(false)
+pub fn filter_hidden<T: AsType>(
+    types: Vec<T>,
+    askama_values: &dyn askama::Values,
+) -> Result<Vec<T>> {
+    let config = config(askama_values)?;
+    Ok(types
+        .into_iter()
+        .filter(|typ| {
+            typ.as_type().name().is_none_or(|name| {
+                !config.hidden_types.iter().any(|hidden| hidden == name)
+                    && !config.type_overrides.contains_key(name)
+            })
+        })
+        .collect())
 }
-
-/// Enum variants not exposed in the TS interface, declared as (enum name, variant name)
-const HIDDEN_ENUM_VARIANTS: &[(&str, &str)] = &[
-    ("HandleInvitationRequestData", "Iso18013DcApi"),
-    ("HandleInvitationRequestData", "OpenID4vpDcApi"),
-];
 
 #[askama::filter_fn]
 pub fn hidden_enum_variant(
     variant_name: &str,
-    _: &dyn askama::Values,
+    askama_values: &dyn askama::Values,
     enum_name: &str,
 ) -> Result<bool> {
-    Ok(HIDDEN_ENUM_VARIANTS.contains(&(enum_name, variant_name)))
+    Ok(config(askama_values)?
+        .hidden_enum_variants
+        .get(enum_name)
+        .is_some_and(|variants| variants.iter().any(|variant| variant == variant_name)))
 }
 
 fn ts_type_name(typ: &impl AsType, askama_values: &dyn askama::Values) -> Result<String> {
@@ -63,9 +69,10 @@ fn ts_type_name(typ: &impl AsType, askama_values: &dyn askama::Values) -> Result
         Type::Enum { name, .. }
         | Type::Record { name, .. }
         | Type::Object { name, .. }
-        | Type::Custom { name, .. } => {
-            type_exception(&name).unwrap_or(ts_class_name(&name, askama_values)?)
-        }
+        | Type::Custom { name, .. } => match type_override(&name, askama_values)? {
+            Some(ts_type) => ts_type,
+            None => ts_class_name(&name, askama_values)?,
+        },
         Type::CallbackInterface { name, .. } => name.to_lower_camel_case(),
         Type::Optional { inner_type } => {
             format!("{} | undefined", ts_type_name(&inner_type, askama_values)?)

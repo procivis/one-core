@@ -3,7 +3,7 @@
 // ==========
 // Record definitions:
 // ==========
-{%- for record_def in ci.record_definitions() | sort_entries %}
+{%- for record_def in ci.record_definitions() | sort_entries | filter_hidden %}
 {% call ts::docstring(record_def, 0) %}{% endcall %}
 export interface {{ record_def.name() | typescript_class_name }} {
   {%- for field_def in record_def.fields() -%}
@@ -15,16 +15,14 @@ export interface {{ record_def.name() | typescript_class_name }} {
 // ==========
 // Enum definitions:
 // ==========
-{%- for enum_def in ci.enum_definitions() | sort_entries %}
-{%- if !(enum_def | hidden_type) -%}
+{%- for enum_def in ci.enum_definitions() | sort_entries | filter_hidden %}
 {%- include "Enum.ts" %}
-{%- endif -%}
 {%- endfor %}
 
 // ==========
 // Object definitions:
 // ==========
-{%- for object_def in ci.object_definitions() | sort_entries %}
+{%- for object_def in ci.object_definitions() | sort_entries | filter_hidden %}
 {% call ts::docstring(object_def, 0) %}{% endcall %}
 export interface {{ object_def.name() | typescript_class_name }} {
   {%- for method_def in object_def.methods().as_slice() | sort_entries -%}
