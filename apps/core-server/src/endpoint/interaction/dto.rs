@@ -30,7 +30,7 @@ use crate::endpoint::credential_schema::dto::KeyStorageSecurityRestEnum;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct HandleInvitationRequestRestDTO {
     #[schema(example = "https://example.com/credential-offer")]
-    #[try_into(infallible)]
+    #[try_into(infallible, rename = "data")]
     /// Typically encoded as a QR code or deep link by the issuer or verifier.
     pub url: Url,
     /// Required when not using STS authentication mode. Specifies the

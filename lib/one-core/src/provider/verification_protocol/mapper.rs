@@ -5,7 +5,7 @@ use standardized_types::openid4vp::dcql::CredentialSet;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::CredentialSetResponseDTO;
+use super::dto::{CredentialSetResponseDTO, InvitationRequest};
 use crate::model::common::SortDirection;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum,
@@ -18,8 +18,10 @@ use crate::model::list_query::ListSorting;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::relation::Related;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
+use crate::service::ssi_holder::dto::HandleInvitationRequestDataDTO;
 
 pub(crate) fn interaction_from_handle_invitation(
     data: Option<Vec<u8>>,
@@ -163,4 +165,30 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
         .flatten()
         .collect(),
     )
+}
+
+impl TryFrom<HandleInvitationRequestDataDTO> for InvitationRequest {
+    type Error = VerificationProtocolError;
+
+    fn try_from(data: HandleInvitationRequestDataDTO) -> Result<Self, Self::Error> {
+        Ok(match data {
+            HandleInvitationRequestDataDTO::Url { url } => InvitationRequest::Url(url),
+            HandleInvitationRequestDataDTO::Iso18013DcApi {
+                device_request,
+                encryption_info,
+                origin,
+                response_handler,
+            } => InvitationRequest::IsoDcApi {
+                origin,
+                encryption_info,
+                device_request,
+                response_handler,
+            },
+            HandleInvitationRequestDataDTO::OpenID4vpDcApi { .. } => {
+                return Err(VerificationProtocolError::Failed(
+                    "OpenID4VP DC-API not yet supported".to_string(),
+                ));
+            }
+        })
+    }
 }

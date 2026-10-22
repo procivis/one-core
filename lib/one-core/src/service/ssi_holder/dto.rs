@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use shared_types::{
@@ -10,14 +11,35 @@ use url::Url;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::interaction::InteractionType;
+use crate::proto::native_credential_manager::NativeDcApiResponseHandler;
 
 #[derive(Clone, Debug)]
 pub struct HandleInvitationRequestDTO {
-    pub url: Url,
+    pub data: HandleInvitationRequestDataDTO,
     pub organisation_id: OrganisationId,
     pub transport: Option<Vec<String>>,
     pub redirect_uri: Option<String>,
     pub ecosystem: Option<EcosystemId>,
+}
+
+#[derive(Clone, Debug)]
+pub enum HandleInvitationRequestDataDTO {
+    Url {
+        url: Url,
+    },
+    /// ISO 18013-7, Annex C
+    Iso18013DcApi {
+        device_request: String,
+        encryption_info: String,
+        origin: String,
+        response_handler: Arc<dyn NativeDcApiResponseHandler>,
+    },
+    /// OpenID4VP over the Digital Credentials API
+    OpenID4vpDcApi {
+        request_json: String,
+        origin: String,
+        response_handler: Arc<dyn NativeDcApiResponseHandler>,
+    },
 }
 
 #[derive(Clone, Debug)]

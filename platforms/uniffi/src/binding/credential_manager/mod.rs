@@ -74,3 +74,5 @@ pub trait DcApiResponseHandler: Send + Sync {
     /// Called when user rejects proof
     fn on_reject(&self) -> Result<(), CredentialManagerError>;
 }
+
+pub struct DcApiResponseHandlerWrapper(pub Arc<dyn DcApiResponseHandler>);

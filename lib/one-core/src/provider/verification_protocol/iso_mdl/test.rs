@@ -18,6 +18,7 @@ use crate::config::core_config::{
     CoreConfig, Fields, KeyAlgorithmType, TransportType, VerificationEngagement,
 };
 use crate::mapper::credential_schema_claim::backfill_default_translations;
+use crate::mapper::{decode_cbor_base64url, encode_cbor_base64url};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -35,6 +36,7 @@ use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::ConnectionEvent;
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::native_credential_manager::MockNativeDcApiResponseHandler;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
@@ -45,10 +47,15 @@ use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::presentation_formatter::MockPresentationFormatter;
+use crate::provider::presentation_formatter::model::FormattedPresentation;
+use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
-use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum;
+use crate::provider::verification_protocol::dto::{
+    ApplicableCredentialOrFailureHintEnum, FormattedCredentialPresentation, InvitationRequest,
+};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::MdocDcApiHolderInteractionData;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -60,7 +67,7 @@ use crate::service::test_utilities::{
 };
 
 #[tokio::test]
-async fn test_presentation_reject_ok() {
+async fn test_presentation_reject_ble() {
     let mut ble_peripheral = MockBlePeripheral::new();
     ble_peripheral
         .expect_notify_characteristic_data()
@@ -268,6 +275,227 @@ async fn test_presentation_reject_ok() {
 
     let result = provider.holder_reject_proof(&proof).await;
     assert!(result.is_ok(), "Reject proof should succeed");
+}
+
+#[tokio::test]
+async fn test_presentation_reject_dc_api() {
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .returning(|interaction| Ok(interaction.id));
+
+    let mut response_handler = MockNativeDcApiResponseHandler::new();
+    response_handler
+        .expect_on_reject()
+        .once()
+        .returning(|| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .return_once(|_| Ok(Arc::new(Ecdsa)));
+
+    let provider = IsoMdl::new(
+        "ISO_MDL".to_string(),
+        serde_json::json!({
+            "holder": {
+                "sessionEncryptionAlgorithm": "ECDSA",
+                "bleMode": "PERIPHERAL"
+            }
+        }),
+        Arc::new(config_with_dc_api()),
+        Arc::new(MockCredentialRepository::new()),
+        Arc::new(interaction_repository),
+        Arc::new(MockPresentationFormatterProvider::new()),
+        Arc::new(MockKeyProvider::new()),
+        Arc::new(key_algorithm_provider),
+        Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockCredentialSchemaRepository::new()),
+        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockEcosystemDirectory::new()),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockWRPValidator::new()),
+        None,
+        None,
+    )
+    .unwrap();
+
+    let device_request = encode_cbor_base64url(DeviceRequest {
+        version: Default::default(),
+        doc_requests: vec![DocRequest {
+            items_request: EmbeddedCbor::new(ItemsRequest {
+                doc_type: "org.iso.18013.5.1".to_string(),
+                name_spaces: hashmap! {
+                    "org.iso.18013.5.1.mDL".to_string() => hashmap! {
+                        "first_name".to_string() => true,
+                    }
+                },
+                request_info: None,
+            })
+            .unwrap(),
+            reader_auth: None,
+        }],
+    })
+    .unwrap();
+
+    let invitation = provider
+        .holder_handle_invitation(
+            InvitationRequest::IsoDcApi {
+                origin: "https://verifier.example.com".to_string(),
+                encryption_info: "encryption_info".to_string(),
+                device_request,
+                response_handler: Arc::new(response_handler),
+            },
+            dummy_organisation(None),
+            "DC_API".to_string(),
+        )
+        .await
+        .unwrap();
+
+    provider
+        .holder_reject_proof(&invitation.proof)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_presentation_submit_dc_api() {
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .returning(|interaction| Ok(interaction.id));
+
+    let mut response_handler = MockNativeDcApiResponseHandler::new();
+    response_handler
+        .expect_on_submit()
+        .once()
+        .withf(|response| {
+            let (identifier, _): (String, ciborium::Value) =
+                decode_cbor_base64url(response).unwrap();
+            identifier == "dcapi"
+        })
+        .returning(|_| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .return_once(|_| Ok(Arc::new(Ecdsa)));
+
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_signature_provider()
+        .once()
+        .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
+
+    let mut presentation_formatter = MockPresentationFormatter::new();
+    presentation_formatter
+        .expect_format_presentation()
+        .once()
+        .withf(|_, _, ctx| ctx.mdoc_session_transcript.is_some())
+        .returning(|_, _, _| {
+            Ok(FormattedPresentation {
+                vp_token: encode_cbor_base64url(DeviceResponse {
+                    version: Default::default(),
+                    documents: None,
+                    document_errors: None,
+                    status: 0,
+                })
+                .unwrap(),
+                oidc_format: "mso_mdoc".to_string(),
+            })
+        });
+    let presentation_formatter = Arc::new(presentation_formatter);
+
+    let mut presentation_formatter_provider = MockPresentationFormatterProvider::new();
+    presentation_formatter_provider
+        .expect_get_presentation_formatter_by_type()
+        .once()
+        .returning(move |_| Some(("MSO_MDOC".to_string(), presentation_formatter.clone())));
+
+    let provider = IsoMdl::new(
+        "ISO_MDL".to_string(),
+        serde_json::json!({
+            "holder": {
+                "sessionEncryptionAlgorithm": "ECDSA",
+                "bleMode": "PERIPHERAL"
+            }
+        }),
+        Arc::new(config_with_dc_api()),
+        Arc::new(MockCredentialRepository::new()),
+        Arc::new(interaction_repository),
+        Arc::new(presentation_formatter_provider),
+        Arc::new(key_provider),
+        Arc::new(key_algorithm_provider),
+        Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockCredentialSchemaRepository::new()),
+        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockEcosystemDirectory::new()),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockWRPValidator::new()),
+        None,
+        None,
+    )
+    .unwrap();
+
+    let ecosystem_schema_id = "org.iso.18013.5.1".to_string();
+    let device_request = encode_cbor_base64url(DeviceRequest {
+        version: Default::default(),
+        doc_requests: vec![DocRequest {
+            items_request: EmbeddedCbor::new(ItemsRequest {
+                doc_type: ecosystem_schema_id.clone(),
+                name_spaces: hashmap! {
+                    "org.iso.18013.5.1.mDL".to_string() => hashmap! {
+                        "first_name".to_string() => true,
+                    }
+                },
+                request_info: None,
+            })
+            .unwrap(),
+            reader_auth: None,
+        }],
+    })
+    .unwrap();
+
+    let invitation = provider
+        .holder_handle_invitation(
+            InvitationRequest::IsoDcApi {
+                origin: "https://verifier.example.com".to_string(),
+                // generated on iOS, contains a valid P-256 recipient key
+                encryption_info: "gmVkY2FwaaJlbm9uY2VQlr86NxTOo8Noo4xBjiq9-XJyZWNpcGllbnRQdWJsaWNLZXmkAQIgASFYIG5u3GlvW9A2YYt-oDDfE0-0U7MxV4XsTddaeTctU8RVIlggzNIK0vTwM-emWPK_aMPn5BA5QZvlIYpM6vqgu13tmg4".to_string(),
+                device_request,
+                response_handler: Arc::new(response_handler),
+            },
+            dummy_organisation(None),
+            "DC_API".to_string(),
+        )
+        .await
+        .unwrap();
+
+    provider
+        .holder_submit_proof(
+            &invitation.proof,
+            vec![FormattedCredentialPresentation {
+                presentation: "presentation-token".to_string(),
+                credential_format: CredentialSchemaFormat {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    credential_schema_id: Uuid::new_v4().into(),
+                    format: "MDOC".into(),
+                    ecosystem_schema_id,
+                    claim_mappings: Default::default(),
+                },
+                credential_query_id: "query-id".into(),
+                holder_did: None,
+                key: dummy_key(),
+                jwk_key_id: None,
+                transaction_data_ids: vec![],
+            }],
+        )
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

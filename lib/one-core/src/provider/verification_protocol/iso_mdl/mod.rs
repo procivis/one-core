@@ -1,6 +1,7 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -12,6 +13,8 @@ use futures::future::BoxFuture;
 use mapper::{device_request_to_dcql_query, holder_proof_for_dc_api, interaction_with_data};
 use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
+use shared_types::ProofId;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use super::dto::{
@@ -26,7 +29,7 @@ use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, KeyAlgorithmType, TransportType, VerificationEngagement,
 };
 use crate::error::ContextWithErrorCode;
-use crate::mapper::decode_cbor_base64url;
+use crate::mapper::{decode_cbor_base64url, encode_cbor_base64url};
 use crate::model::did::KeyRole;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -34,6 +37,7 @@ use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::key_verification::KeyVerification;
+use crate::proto::native_credential_manager::NativeDcApiResponseHandler;
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::wrp_validator::WRPValidator;
@@ -113,6 +117,9 @@ pub(crate) struct IsoMdl {
     wrp_validator: Arc<dyn WRPValidator>,
     ble: Option<BleWaiter>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
+
+    /// active DC-API handlers (only available during DC-API flow)
+    dc_api_response_handler: Mutex<HashMap<ProofId, Arc<dyn NativeDcApiResponseHandler>>>,
 }
 
 impl IsoMdl {
@@ -173,6 +180,7 @@ impl IsoMdl {
             wrp_validator,
             ble,
             nfc_hce,
+            dc_api_response_handler: Default::default(),
         })
     }
 
@@ -213,6 +221,7 @@ impl VerificationProtocol for IsoMdl {
             origin,
             encryption_info,
             device_request,
+            response_handler,
         } = request
         else {
             return Err(VerificationProtocolError::Failed(
@@ -263,6 +272,12 @@ impl VerificationProtocol for IsoMdl {
             .error_while("creating interaction")?;
 
         let proof = holder_proof_for_dc_api(proof_id, self.config_name(), interaction, transport);
+
+        self.dc_api_response_handler
+            .lock()
+            .await
+            .insert(proof_id, response_handler);
+
         Ok(InvitationResponseDTO {
             interaction_id,
             proof,
@@ -310,7 +325,17 @@ impl VerificationProtocol for IsoMdl {
                 send_device_response(ble, device_response, interaction_data).await?;
             }
             TransportType::DcApi => {
-                // TODO (ONE-11712)
+                let response_handler = self
+                    .dc_api_response_handler
+                    .lock()
+                    .await
+                    .remove(&proof.id)
+                    .ok_or(VerificationProtocolError::Failed(
+                        "missing DC-API response handler".to_string(),
+                    ))?;
+                response_handler
+                    .on_reject()
+                    .error_while("calling DC-API on_reject")?;
             }
             other => {
                 return Err(VerificationProtocolError::Failed(format!(
@@ -329,23 +354,21 @@ impl VerificationProtocol for IsoMdl {
     ) -> Result<(), VerificationProtocolError> {
         let interaction = proof.interaction.as_required_ref().await?;
 
-        enum TransportContext {
+        enum TransportContext<'a> {
             Ble {
-                ble: BleWaiter,
+                ble: &'a BleWaiter,
                 interaction_data: MdocBleHolderInteractionData,
             },
             DcApi {
-                interaction_data: MdocDcApiHolderInteractionData,
+                encryption_info: EncryptionInfo,
             },
         }
 
         let transport_type = self.get_transport_type(&proof.transport)?;
         let (session_transcript_bytes, transport_context) = match transport_type {
             TransportType::Ble => {
-                let ble = self.ble.clone().ok_or_else(|| {
-                    VerificationProtocolError::Failed(
-                        "Missing BLE central for submit proof".to_string(),
-                    )
+                let ble = self.ble.as_ref().ok_or_else(|| {
+                    VerificationProtocolError::Failed("Missing BLE for submit proof".to_string())
                 })?;
 
                 let interaction_data: MdocBleHolderInteractionData =
@@ -370,9 +393,13 @@ impl VerificationProtocol for IsoMdl {
                 let interaction_data: MdocDcApiHolderInteractionData =
                     deserialize_interaction_data(interaction.data.as_ref())?;
 
+                let encryption_info: EncryptionInfo =
+                    decode_cbor_base64url(&interaction_data.encryption_info)
+                        .error_while("decoding EncryptionInfo")?;
+
                 (
-                    interaction_data.session_transcript_bytes.to_owned(),
-                    TransportContext::DcApi { interaction_data },
+                    interaction_data.session_transcript_bytes,
+                    TransportContext::DcApi { encryption_info },
                 )
             }
             other => {
@@ -436,20 +463,29 @@ impl VerificationProtocol for IsoMdl {
                 ble,
                 interaction_data,
             } => {
-                send_device_response(&ble, device_response, interaction_data).await?;
+                send_device_response(ble, device_response, interaction_data).await?;
             }
-            TransportContext::DcApi { interaction_data } => {
-                let encryption_info: EncryptionInfo =
-                    decode_cbor_base64url(&interaction_data.encryption_info)
-                        .error_while("decoding EncryptionInfo")?;
-                let _encrypted_response = try_build_dcapi_response(
+            TransportContext::DcApi { encryption_info } => {
+                let encrypted_response = try_build_dcapi_response(
                     device_response,
                     &encryption_info.parameters,
                     session_transcript_bytes.into_inner(),
                 )
                 .error_while("creating encrypted response")?;
+                let response = encode_cbor_base64url(encrypted_response)
+                    .error_while("encoding encrypted response")?;
 
-                // TODO (ONE-11712)
+                let response_handler = self
+                    .dc_api_response_handler
+                    .lock()
+                    .await
+                    .remove(&proof.id)
+                    .ok_or(VerificationProtocolError::Failed(
+                        "missing DC-API response handler".to_string(),
+                    ))?;
+                response_handler
+                    .on_submit(response)
+                    .error_while("calling DC-API on_submit")?;
             }
         };
 

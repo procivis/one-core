@@ -41,6 +41,19 @@ pub trait NativeCredentialManager: Send + Sync {
     ) -> Result<(), CredentialManagerError>;
 }
 
+#[cfg_attr(test, mockall::automock)]
+pub trait NativeDcApiResponseHandler: Send + Sync {
+    fn on_submit(&self, response: String) -> Result<(), CredentialManagerError>;
+    fn on_reject(&self) -> Result<(), CredentialManagerError>;
+}
+
+impl std::fmt::Debug for dyn NativeDcApiResponseHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeDcApiResponseHandler")
+            .finish_non_exhaustive()
+    }
+}
+
 #[derive(Debug, Error, Clone)]
 pub enum CredentialManagerError {
     #[error("Credential manager synchronization failure: `{reason}`")]

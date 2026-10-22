@@ -18,7 +18,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{body_string_contains, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::dto::HandleInvitationRequestDTO;
+use super::dto::{HandleInvitationRequestDTO, HandleInvitationRequestDataDTO};
 use crate::config::core_config::TransportType;
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::claim::Claim;
@@ -305,7 +305,9 @@ async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
 
     service
         .handle_verification_invitation(
-            "https://localhost:3000/some_path".parse().unwrap(),
+            HandleInvitationRequestDataDTO::Url {
+                url: "https://localhost:3000/some_path".parse().unwrap(),
+            },
             dummy_organisation(None),
             None,
             None,
@@ -2043,7 +2045,9 @@ async fn test_handle_invitation_session_org_mismatch() {
     // when
     let result = service
         .handle_invitation(HandleInvitationRequestDTO {
-            url: "https://localhost:3000/some_path".parse().unwrap(),
+            data: HandleInvitationRequestDataDTO::Url {
+                url: "https://localhost:3000/some_path".parse().unwrap(),
+            },
             organisation_id: Uuid::new_v4().into(),
             transport: None,
             redirect_uri: None,

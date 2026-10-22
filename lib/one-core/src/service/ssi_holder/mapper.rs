@@ -1,5 +1,7 @@
 use shared_types::KeyId;
+use url::Url;
 
+use super::dto::HandleInvitationRequestDataDTO;
 use super::error::HolderServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::HolderBinding;
@@ -73,4 +75,10 @@ pub(super) async fn select_holder_key(
             return Err(HolderServiceError::IncompatibleHolderIdentifier);
         }
     })
+}
+
+impl From<Url> for HandleInvitationRequestDataDTO {
+    fn from(url: Url) -> Self {
+        Self::Url { url }
+    }
 }

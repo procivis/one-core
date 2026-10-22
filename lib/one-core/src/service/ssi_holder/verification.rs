@@ -4,12 +4,11 @@ use futures_util::FutureExt;
 use itertools::Itertools;
 use shared_types::{CredentialId, EcosystemId, InteractionId, TransactionDataId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
-use url::Url;
 
 use super::SSIHolderService;
 use super::dto::{
-    HandleInvitationResultDTO, PresentationSubmitV2CredentialRequestDTO,
-    PresentationSubmitV2RequestDTO,
+    HandleInvitationRequestDataDTO, HandleInvitationResultDTO,
+    PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
 use super::error::HolderServiceError;
 use super::mapper::holder_did_key_jwk_from_binding;
@@ -33,8 +32,8 @@ use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use crate::provider::verification_protocol::dto::{
-    CredentialDetailClaimExtResponseDTO, FormattedCredentialPresentation, InvitationRequest,
-    InvitationResponseDTO, PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion,
+    CredentialDetailClaimExtResponseDTO, FormattedCredentialPresentation, InvitationResponseDTO,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::repository::error::DataLayerError;
@@ -312,12 +311,12 @@ impl SSIHolderService {
 
     pub(super) async fn handle_verification_invitation(
         &self,
-        url: Url,
+        data: HandleInvitationRequestDataDTO,
         organisation: Organisation,
         transport: Option<Vec<String>>,
         user_selected_ecosystem: Option<EcosystemId>,
     ) -> Result<HandleInvitationResultDTO, HolderServiceError> {
-        let invitation_request = InvitationRequest::Url(url);
+        let invitation_request = data.try_into().error_while("converting request data")?;
         let (protocol, verification_protocol) = self
             .verification_protocol_provider
             .detect_protocol(&invitation_request)

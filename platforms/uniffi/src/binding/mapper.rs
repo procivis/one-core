@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use one_core::model::credential::{CredentialListIncludeEntityTypeEnum, SortableCredentialColumn};
 use one_core::model::credential_schema::SortableCredentialSchemaColumn;
@@ -45,7 +46,7 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterParamsDTO,
 };
 use one_core::service::ssi_holder::dto::{
-    HandleInvitationRequestDTO, HandleInvitationResultDTO, InitiateIssuanceRequestDTO,
+    HandleInvitationRequestDataDTO, HandleInvitationResultDTO, InitiateIssuanceRequestDTO,
     PresentationSubmitV2CredentialRequestDTO,
 };
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
@@ -62,6 +63,7 @@ use super::credential::{
     CredentialListItemBindingDTO, CredentialListQueryBindingDTO, CredentialSchemaBindingDTO,
     MdocMsoValidityResponseBindingDTO,
 };
+use super::credential_manager::DcApiResponseHandlerWrapper;
 use super::credential_schema::{
     CredentialSchemaListQueryBindingDTO, DisclosurePolicyBindingDTO,
     DisclosurePolicyCreateRequestBindingDTO, DisclosurePolicyOptionBindingDTO,
@@ -75,8 +77,8 @@ use super::history::{
 };
 use super::identifier::{CreateIdentifierDidRequestBindingDTO, IdentifierListQueryBindingDTO};
 use super::interaction::{
-    HandleInvitationRequestBindingDTO, HandleInvitationRequestDataBindingEnum,
-    HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO,
+    HandleInvitationRequestDataBindingEnum, HandleInvitationResponseBindingEnum,
+    InitiateIssuanceRequestBindingDTO,
 };
 use super::key::KeyRequestBindingDTO;
 use super::organisation::{
@@ -1194,21 +1196,33 @@ impl TryFrom<PresentationSubmitV2CredentialRequestBindingDTO>
     }
 }
 
-impl TryFrom<HandleInvitationRequestBindingDTO> for HandleInvitationRequestDTO {
+impl TryFrom<HandleInvitationRequestDataBindingEnum> for HandleInvitationRequestDataDTO {
     type Error = ServiceError;
-    fn try_from(value: HandleInvitationRequestBindingDTO) -> Result<Self, Self::Error> {
-        let HandleInvitationRequestDataBindingEnum::Url { url } = value.data else {
-            return Err(ServiceError::MappingError(
-                "Unsupported request data".to_string(),
-            ));
-        };
-
-        Ok(Self {
-            url: Url::parse(&url).map_err(|e| ServiceError::ValidationError(e.to_string()))?,
-            organisation_id: into_id(value.organisation_id)?,
-            transport: value.transport,
-            redirect_uri: value.redirect_uri,
-            ecosystem: convert_inner(value.ecosystem),
+    fn try_from(value: HandleInvitationRequestDataBindingEnum) -> Result<Self, Self::Error> {
+        Ok(match value {
+            HandleInvitationRequestDataBindingEnum::Url { url } => Self::Url {
+                url: Url::parse(&url).map_err(|e| ServiceError::ValidationError(e.to_string()))?,
+            },
+            HandleInvitationRequestDataBindingEnum::Iso18013DcApi {
+                device_request,
+                encryption_info,
+                origin,
+                response_handler,
+            } => Self::Iso18013DcApi {
+                device_request,
+                encryption_info,
+                origin,
+                response_handler: Arc::new(DcApiResponseHandlerWrapper(response_handler)),
+            },
+            HandleInvitationRequestDataBindingEnum::OpenID4vpDcApi {
+                request_json,
+                origin,
+                response_handler,
+            } => Self::OpenID4vpDcApi {
+                request_json,
+                origin,
+                response_handler: Arc::new(DcApiResponseHandlerWrapper(response_handler)),
+            },
         })
     }
 }

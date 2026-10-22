@@ -1,5 +1,7 @@
 use super::SSIHolderService;
-use super::dto::{HandleInvitationRequestDTO, HandleInvitationResultDTO};
+use super::dto::{
+    HandleInvitationRequestDTO, HandleInvitationRequestDataDTO, HandleInvitationResultDTO,
+};
 use super::error::HolderServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::validator::throw_if_org_id_not_matching_session;
@@ -23,13 +25,12 @@ impl SSIHolderService {
             ));
         }
 
-        let result = if let Some((issuance_exchange, issuance_protocol)) = self
-            .issuance_protocol_provider
-            .detect_protocol(&request.url)
-            .await
+        let result = if let HandleInvitationRequestDataDTO::Url { url } = &request.data
+            && let Some((issuance_exchange, issuance_protocol)) =
+                self.issuance_protocol_provider.detect_protocol(url).await
         {
             self.handle_issuance_invitation(
-                request.url,
+                url.to_owned(),
                 organisation,
                 issuance_exchange,
                 issuance_protocol,
@@ -39,7 +40,7 @@ impl SSIHolderService {
             .await?
         } else {
             self.handle_verification_invitation(
-                request.url,
+                request.data,
                 organisation,
                 request.transport,
                 request.ecosystem,

@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use serde::Serialize;
 use shared_types::i18n::I18nString;
@@ -14,6 +15,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::proof::Proof;
+use crate::proto::native_credential_manager::NativeDcApiResponseHandler;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -46,14 +48,14 @@ pub enum PresentationDefinitionVersion {
     V2,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub(crate) enum InvitationRequest {
     Url(Url),
-    #[expect(unused)]
     IsoDcApi {
         origin: String,
         encryption_info: String,
         device_request: String,
+        response_handler: Arc<dyn NativeDcApiResponseHandler>,
     },
 }
 

@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::{
-    ContinueIssuanceResponseDTO, InitiateIssuanceResponseDTO,
+    ContinueIssuanceResponseDTO, HandleInvitationRequestDTO, InitiateIssuanceResponseDTO,
 };
-use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode, TxCodeInputMode};
 
 use super::credential_manager::DcApiResponseHandler;
@@ -132,26 +133,31 @@ impl OneCore {
     }
 }
 
-#[derive(Clone, uniffi::Record)]
+#[derive(Clone, uniffi::Record, TryInto)]
+#[try_into(T = HandleInvitationRequestDTO, Error = ServiceError)]
 #[uniffi(name = "HandleInvitationRequest")]
 pub struct HandleInvitationRequestBindingDTO {
     pub data: HandleInvitationRequestDataBindingEnum,
     /// Specifies the organizational context for this operation.
+    #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
     /// For configurations with multiple transport protocols enabled you
     /// can specify which one to use for this interaction. For example:
     /// "HTTP".
+    #[try_into(infallible)]
     pub transport: Option<Vec<String>>,
     /// For issuer-initiated Authorization Code Flows, provide the
     /// authorization server with the URI it should return the user
     /// to once authorization is complete. For example:
     /// "myapp://example".
+    #[try_into(infallible)]
     pub redirect_uri: Option<String>,
     /// Use this to enforce the constraints of a regulatory ecosystem
     /// for this interaction. If omitted, every ecosystem available to
     /// the wallet checks the interaction. See
     /// [Enforcing an Ecosystem as a Wallet](https://docs.procivis.ch/hold/ecosystem-enforcement)
     /// for more information.
+    #[try_into(with_fn = convert_inner, infallible)]
     pub ecosystem: Option<String>,
 }
 
