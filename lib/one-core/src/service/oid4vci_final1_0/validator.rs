@@ -1,3 +1,4 @@
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use standardized_types::jwe::CompressionAlgorithm;
@@ -128,6 +129,24 @@ pub(crate) fn verify_pop_signature(
         .map_err(|_| OpenID4VCIError::InvalidRequest)?;
 
     Ok(())
+}
+
+/// JWK SHA-256 thumbprint of the Client Instance Key (`cnf` claim of the client attestation)
+pub(crate) fn client_instance_key_thumbprint(
+    wallet_instance_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,
+) -> Result<String, OID4VCIFinal1_0ServiceError> {
+    let jwk = wallet_instance_attestation
+        .payload
+        .proof_of_possession_key
+        .as_ref()
+        .ok_or_else(|| WalletAttestationError::WiaMalformed("missing cnf claim".to_string()))?
+        .jwk
+        .jwk();
+    let thumbprint = jwk.thumbprint().map_err(|e| {
+        WalletAttestationError::WiaMalformed(format!("computing cnf key thumbprint: {e}"))
+    })?;
+    Base64UrlSafeNoPadding::encode_to_string(thumbprint)
+        .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))
 }
 
 #[tracing::instrument(level = "debug", skip_all, err(level = "info"))]

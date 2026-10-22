@@ -62,6 +62,7 @@ impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
             transaction_code: None,
             formats: None,
             dpop_jkt: None,
+            client_instance_jkt: None,
         })
     }
 }

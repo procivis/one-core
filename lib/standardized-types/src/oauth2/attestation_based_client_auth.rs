@@ -23,3 +23,22 @@ pub struct ChallengeResponse {
 pub struct OAuthClientAttestationPopCustomClaims {
     pub challenge: Option<String>,
 }
+
+/// Proof of possession method for the Client Attestation.
+///
+/// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-15.5.2>
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub enum ClientAttestationPopMethod {
+    /// Client Attestation PoP JWT (normal mode)
+    #[serde(rename = "attestation_pop_jwt")]
+    AttestationPopJwt,
+    /// DPoP proof serving as the combined proof of possession
+    #[serde(rename = "dpop_combined")]
+    DpopCombined,
+    /// Client Attestation may be omitted
+    #[serde(rename = "none")]
+    None,
+    #[serde(untagged)]
+    Other(String),
+}

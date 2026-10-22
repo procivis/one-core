@@ -23,6 +23,10 @@ pub enum TokenEndpointAuthMethod {
     /// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth>
     #[serde(rename = "attest_jwt_client_auth")]
     AttestJwtClientAuth,
+    /// Attestation-based client authentication in DPoP combined mode
+    /// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-5.2>
+    #[serde(rename = "attest_jwt_client_auth_dpop")]
+    AttestJwtClientAuthDpop,
     /// Custom/extension authentication method
     #[serde(untagged)]
     Other(String),

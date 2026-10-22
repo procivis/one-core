@@ -866,3 +866,531 @@ async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
         resp.headers()[WWW_AUTHENTICATE]
     );
 }
+
+struct RefreshableIssuance {
+    context: TestContext,
+    token_url: String,
+    /// audience of the Client Attestation PoP
+    issuer_url: String,
+    pre_authorized_code: String,
+}
+
+/// Prepares an mdoc issuance (which issues refresh tokens) with DPoP enabled.
+async fn setup_refreshable_issuance(
+    requires_wallet_instance_attestation: bool,
+    enforce_client_instance_binding: bool,
+) -> RefreshableIssuance {
+    let config = indoc::formatdoc! {"
+        issuanceProtocol:
+            OPENID4VCI_FINAL1:
+                params:
+                    public:
+                        enforceClientInstanceBinding: {enforce_client_instance_binding}
+                    private:
+                        dpop:
+                          enforced: false
+                          signingAlgorithms:
+                            - ECDSA
+                          signingKey: \"93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e\"
+    "};
+    let (context, org, _, identifier, ..) = TestContext::new_with_did(Some(config)).await;
+
+    let interaction_id = Uuid::new_v4();
+    let data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+    });
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-schema",
+            &org,
+            TestingCreateSchemaParams {
+                format: Some("MDOC".into()),
+                requires_wallet_instance_attestation,
+                ..Default::default()
+            },
+        )
+        .await;
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &org,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id.into()),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    let base_url = format!(
+        "{}/ssi/openid4vci/final-1.0",
+        context.config.app.core_base_url
+    );
+    RefreshableIssuance {
+        token_url: format!("{base_url}/{}/token", credential_schema.id),
+        issuer_url: format!(
+            "{base_url}/OPENID4VCI_FINAL1/{}/{}",
+            identifier.id, credential_schema.id
+        ),
+        pre_authorized_code: interaction_id.to_string(),
+        context,
+    }
+}
+
+impl RefreshableIssuance {
+    async fn dpop_nonce(&self) -> String {
+        let resp = self
+            .context
+            .api
+            .ssi
+            .generate_nonce("OPENID4VCI_FINAL1")
+            .await;
+        resp.headers()[DPOP_NONCE_HEADER]
+            .to_str()
+            .unwrap()
+            .to_string()
+    }
+
+    async fn dpop_proof(&self, key: &KeyHandle) -> String {
+        dpop_proof(key, &self.token_url, &self.dpop_nonce().await, None).await
+    }
+
+    async fn client_attestation_pop(&self, client_instance_key: &KeyHandle) -> String {
+        let now = one_core::clock::now_utc().unix_timestamp();
+        sign_jwt(
+            client_instance_key,
+            json!({
+                "typ": "oauth-client-attestation-pop+jwt",
+                "alg": "ES256",
+            }),
+            json!({
+                "aud": self.issuer_url,
+                "iat": now,
+                "exp": now + 300,
+                "jti": Uuid::new_v4().to_string(),
+            }),
+        )
+        .await
+    }
+
+    async fn pre_authorized_code_request(&self, headers: Vec<(&str, String)>) -> reqwest::Response {
+        self.token_request(
+            &[
+                (
+                    "grant_type",
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+                ),
+                ("pre-authorized_code", &self.pre_authorized_code),
+            ],
+            headers,
+        )
+        .await
+    }
+
+    async fn refresh_token_request(
+        &self,
+        refresh_token: &str,
+        headers: Vec<(&str, String)>,
+    ) -> reqwest::Response {
+        self.token_request(
+            &[
+                ("grant_type", "refresh_token"),
+                ("refresh_token", refresh_token),
+            ],
+            headers,
+        )
+        .await
+    }
+
+    async fn token_request(
+        &self,
+        form: &[(&str, &str)],
+        headers: Vec<(&str, String)>,
+    ) -> reqwest::Response {
+        let mut request = http_client().post(&self.token_url).form(form);
+        for (name, value) in headers {
+            request = request.header(name, value);
+        }
+        request.send().await.unwrap()
+    }
+}
+
+async fn wallet_instance_attestation(client_instance_key: &KeyHandle) -> String {
+    let wallet_provider_key = Ecdsa.generate_key().unwrap().key;
+    let now = one_core::clock::now_utc().unix_timestamp();
+    sign_jwt(
+        &wallet_provider_key,
+        json!({
+            "typ": "oauth-client-attestation+jwt",
+            "alg": "ES256",
+            "jwk": wallet_provider_key.public_key_as_jwk().unwrap(),
+        }),
+        json!({
+            "iss": "https://wallet-provider.example.com",
+            "sub": "test-wallet",
+            "iat": now,
+            "exp": now + 3600,
+            "wallet_name": "Test Wallet",
+            "wallet_link": "https://wallet.example.com",
+            "cnf": { "jwk": client_instance_key.public_key_as_jwk().unwrap() },
+        }),
+    )
+    .await
+}
+
+async fn assert_token_error(resp: reqwest::Response, expected_error: &str) {
+    assert_eq!(400, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!(expected_error), resp["error"]);
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_refresh_token_stays_bound_to_dpop_key() {
+    // GIVEN
+    let issuance = setup_refreshable_issuance(false, false).await;
+    let key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .pre_authorized_code_request(vec![("DPoP", issuance.dpop_proof(&key).await)])
+        .await;
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("DPoP"), resp["token_type"]);
+    let refresh_token = resp["refresh_token"].as_str().unwrap();
+
+    // WHEN refreshing without DPoP proof, although DPoP is not enforced
+    let resp = issuance.refresh_token_request(refresh_token, vec![]).await;
+    // THEN
+    assert_token_error(resp, "invalid_dpop_proof").await;
+
+    // WHEN refreshing with a DPoP proof of another key
+    let other_key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![("DPoP", issuance.dpop_proof(&other_key).await)],
+        )
+        .await;
+    // THEN
+    assert_token_error(resp, "invalid_dpop_proof").await;
+
+    // WHEN refreshing with a DPoP proof of the bound key
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![("DPoP", issuance.dpop_proof(&key).await)],
+        )
+        .await;
+    // THEN
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("DPoP"), resp["token_type"]);
+    let refresh_token = resp["refresh_token"].as_str().unwrap();
+
+    // WHEN refreshing the refreshed token without DPoP proof
+    let resp = issuance.refresh_token_request(refresh_token, vec![]).await;
+    // THEN the binding is kept
+    assert_token_error(resp, "invalid_dpop_proof").await;
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_refresh_token_bound_to_client_instance() {
+    // GIVEN
+    let issuance = setup_refreshable_issuance(true, true).await;
+    let key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .pre_authorized_code_request(vec![
+            (
+                "OAuth-Client-Attestation",
+                wallet_instance_attestation(&key).await,
+            ),
+            (
+                "OAuth-Client-Attestation-PoP",
+                issuance.client_attestation_pop(&key).await,
+            ),
+        ])
+        .await;
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("Bearer"), resp["token_type"]);
+    let refresh_token = resp["refresh_token"].as_str().unwrap();
+
+    // WHEN refreshing as another client instance
+    let other_key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&other_key).await,
+                ),
+                (
+                    "OAuth-Client-Attestation-PoP",
+                    issuance.client_attestation_pop(&other_key).await,
+                ),
+            ],
+        )
+        .await;
+    // THEN
+    assert_token_error(resp, "invalid_client").await;
+
+    // WHEN refreshing as the same client instance, with a renewed attestation
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&key).await,
+                ),
+                (
+                    "OAuth-Client-Attestation-PoP",
+                    issuance.client_attestation_pop(&key).await,
+                ),
+            ],
+        )
+        .await;
+    // THEN
+    assert_eq!(200, resp.status());
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_dpop_combined_mode() {
+    // GIVEN
+    let issuance = setup_refreshable_issuance(true, true).await;
+    let key = Ecdsa.generate_key().unwrap().key;
+
+    // WHEN
+    let resp = issuance
+        .pre_authorized_code_request(vec![
+            (
+                "OAuth-Client-Attestation",
+                wallet_instance_attestation(&key).await,
+            ),
+            ("DPoP", issuance.dpop_proof(&key).await),
+        ])
+        .await;
+
+    // THEN
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("DPoP"), resp["token_type"]);
+    let refresh_token = resp["refresh_token"].as_str().unwrap();
+
+    // WHEN refreshing as another client instance
+    let other_key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&other_key).await,
+                ),
+                ("DPoP", issuance.dpop_proof(&other_key).await),
+            ],
+        )
+        .await;
+    // THEN
+    assert_token_error(resp, "invalid_client").await;
+
+    // WHEN refreshing as the same client instance
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&key).await,
+                ),
+                ("DPoP", issuance.dpop_proof(&key).await),
+            ],
+        )
+        .await;
+    // THEN
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("DPoP"), resp["token_type"]);
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_dpop_combined_mode_requires_client_instance_key() {
+    // GIVEN
+    let issuance = setup_refreshable_issuance(true, true).await;
+    let key = Ecdsa.generate_key().unwrap().key;
+    let other_key = Ecdsa.generate_key().unwrap().key;
+
+    // WHEN the DPoP proof is not signed by the Client Instance Key
+    let resp = issuance
+        .pre_authorized_code_request(vec![
+            (
+                "OAuth-Client-Attestation",
+                wallet_instance_attestation(&key).await,
+            ),
+            ("DPoP", issuance.dpop_proof(&other_key).await),
+        ])
+        .await;
+
+    // THEN
+    assert_token_error(resp, "invalid_dpop_proof").await;
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_refresh_token_switch_to_dpop_combined_mode_requires_bound_key() {
+    // GIVEN tokens bound to a DPoP key separate from the Client Instance Key
+    let issuance = setup_refreshable_issuance(true, true).await;
+    let client_instance_key = Ecdsa.generate_key().unwrap().key;
+    let dpop_key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .pre_authorized_code_request(vec![
+            (
+                "OAuth-Client-Attestation",
+                wallet_instance_attestation(&client_instance_key).await,
+            ),
+            (
+                "OAuth-Client-Attestation-PoP",
+                issuance.client_attestation_pop(&client_instance_key).await,
+            ),
+            ("DPoP", issuance.dpop_proof(&dpop_key).await),
+        ])
+        .await;
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(json!("DPoP"), resp["token_type"]);
+    let refresh_token = resp["refresh_token"].as_str().unwrap();
+
+    // WHEN refreshing in combined mode
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&client_instance_key).await,
+                ),
+                ("DPoP", issuance.dpop_proof(&client_instance_key).await),
+            ],
+        )
+        .await;
+    // THEN
+    assert_token_error(resp, "invalid_dpop_proof").await;
+
+    // WHEN refreshing in normal mode
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&client_instance_key).await,
+                ),
+                (
+                    "OAuth-Client-Attestation-PoP",
+                    issuance.client_attestation_pop(&client_instance_key).await,
+                ),
+                ("DPoP", issuance.dpop_proof(&dpop_key).await),
+            ],
+        )
+        .await;
+    // THEN
+    assert_eq!(200, resp.status());
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_refresh_token_client_instance_binding_not_enforced() {
+    // GIVEN
+    let issuance = setup_refreshable_issuance(true, false).await;
+    let key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .pre_authorized_code_request(vec![
+            (
+                "OAuth-Client-Attestation",
+                wallet_instance_attestation(&key).await,
+            ),
+            (
+                "OAuth-Client-Attestation-PoP",
+                issuance.client_attestation_pop(&key).await,
+            ),
+        ])
+        .await;
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    let refresh_token = resp["refresh_token"].as_str().unwrap();
+
+    // WHEN refreshing with a new Client Instance Key
+    let other_key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&other_key).await,
+                ),
+                (
+                    "OAuth-Client-Attestation-PoP",
+                    issuance.client_attestation_pop(&other_key).await,
+                ),
+            ],
+        )
+        .await;
+
+    // THEN
+    assert_eq!(200, resp.status());
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_refresh_token_dpop_combined_mode_bound_without_client_instance_binding() {
+    // GIVEN
+    let issuance = setup_refreshable_issuance(true, false).await;
+    let key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .pre_authorized_code_request(vec![
+            (
+                "OAuth-Client-Attestation",
+                wallet_instance_attestation(&key).await,
+            ),
+            ("DPoP", issuance.dpop_proof(&key).await),
+        ])
+        .await;
+    assert_eq!(200, resp.status());
+    let resp: serde_json::Value = resp.json().await.unwrap();
+    let refresh_token = resp["refresh_token"].as_str().unwrap();
+
+    // WHEN refreshing as another client instance
+    let other_key = Ecdsa.generate_key().unwrap().key;
+    let resp = issuance
+        .refresh_token_request(
+            refresh_token,
+            vec![
+                (
+                    "OAuth-Client-Attestation",
+                    wallet_instance_attestation(&other_key).await,
+                ),
+                ("DPoP", issuance.dpop_proof(&other_key).await),
+            ],
+        )
+        .await;
+
+    // THEN the Client Instance Key is still bound as the DPoP key
+    assert_token_error(resp, "invalid_dpop_proof").await;
+}

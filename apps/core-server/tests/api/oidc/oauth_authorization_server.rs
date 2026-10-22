@@ -357,3 +357,57 @@ async fn test_oauth_authorization_server_metadata_with_oauth_attestation_challen
         resp["challenge_endpoint"]
     );
 }
+
+#[tokio::test]
+async fn test_oauth_authorization_server_metadata_eudi_compliant_with_dpop() {
+    // GIVEN
+    let enable_dpop = indoc::indoc! {"
+        issuanceProtocol:
+            OPENID4VCI_FINAL1:
+                params:
+                    private:
+                        dpop:
+                          signingAlgorithms:
+                            - ECDSA
+                          signingKey: \"93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e\"
+    "};
+    let (context, organisation, _did, identifier, ..) =
+        TestContext::new_with_did(Some(enable_dpop.to_string())).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell(
+            "test_schema",
+            &organisation,
+            TestingCreateSchemaParams {
+                requires_wallet_instance_attestation: true,
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .oauth_authorization_server("OPENID4VCI_FINAL1", identifier.id, credential_schema.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-8
+    assert_eq!(
+        resp["token_endpoint_auth_methods_supported"],
+        serde_json::json!(["attest_jwt_client_auth", "attest_jwt_client_auth_dpop"])
+    );
+    assert_eq!(
+        resp["client_attestation_pop_methods_supported"],
+        serde_json::json!(["attestation_pop_jwt", "dpop_combined"])
+    );
+    assert_eq!(
+        resp["dpop_signing_alg_values_supported"],
+        serde_json::json!(["ES256"])
+    );
+}

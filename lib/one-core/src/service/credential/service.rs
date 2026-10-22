@@ -218,6 +218,7 @@ impl CredentialService {
                     transaction_code: None,
                     formats: Some(formats.iter().map(|f| f.id).collect()),
                     dpop_jkt: None,
+                    client_instance_jkt: None,
                 })
                 .error_while("serializing interaction data")?,
             );

@@ -14,7 +14,7 @@ use shared_types::{
 use standardized_types::iana::EncryptionKeyManagementAlgorithm;
 use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::attestation_based_client_auth::{
-    ChallengeResponse, OAuthClientAttestationPopCustomClaims,
+    ChallengeResponse, ClientAttestationPopMethod, OAuthClientAttestationPopCustomClaims,
 };
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
@@ -23,7 +23,7 @@ use standardized_types::openid4vci::{
     CredentialOffer, CredentialRequest, CredentialResponse, CredentialResponseEntry, NonceResponse,
     NotificationEvent, NotificationRequest, Proofs, ResponseEncryption,
 };
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -39,7 +39,7 @@ use super::mapper::{
     interaction_data_to_dto, interaction_id_from_token_request, map_dpop_params, offered_formats,
 };
 use super::validator::{
-    self, extract_wallet_metadata, throw_if_access_token_invalid,
+    self, client_instance_key_thumbprint, extract_wallet_metadata, throw_if_access_token_invalid,
     validate_credential_request_format, validate_pop_audience, validate_response_encryption,
     validate_timestamps, verify_ka_wia_issuers_match, verify_pop_signature, verify_wia_signature,
 };
@@ -69,9 +69,12 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::relation::Related;
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
-use crate::proto::dpop_handler::{DpopParams, ExpectedProofValues, ProofValidationOutput};
+use crate::proto::dpop_handler::{
+    DpopHandlerError, DpopParams, ExpectedProofValues, ProofValidationOutput,
+};
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -195,14 +198,22 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credential schema")?;
 
-        let token_endpoint_auth_methods_supported = if credential_schema
-            .wallet_attestation
-            .require_instance_attestation
-        {
-            vec![TokenEndpointAuthMethod::AttestJwtClientAuth]
-        } else {
-            vec![TokenEndpointAuthMethod::None]
-        };
+        let (token_endpoint_auth_methods_supported, client_attestation_pop_methods_supported) =
+            if credential_schema
+                .wallet_attestation
+                .require_instance_attestation
+            {
+                let mut auth_methods = vec![TokenEndpointAuthMethod::AttestJwtClientAuth];
+                let mut pop_methods = vec![ClientAttestationPopMethod::AttestationPopJwt];
+                // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-5.2
+                if params.dpop.is_some() {
+                    auth_methods.push(TokenEndpointAuthMethod::AttestJwtClientAuthDpop);
+                    pop_methods.push(ClientAttestationPopMethod::DpopCombined);
+                }
+                (auth_methods, Some(pop_methods))
+            } else {
+                (vec![TokenEndpointAuthMethod::None], None)
+            };
 
         // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1
         // If token_endpoint_auth_methods_supported includes attest_jwt_client_auth, we MUST include these fields
@@ -272,6 +283,7 @@ impl OID4VCIFinal1_0Service {
             challenge_endpoint,
             client_attestation_signing_alg_values_supported,
             client_attestation_pop_signing_alg_values_supported,
+            client_attestation_pop_methods_supported,
             dpop_signing_alg_values_supported: self.dpop_signing_alg_values_supported(&params)?,
             signed_metadata: None,
         };
@@ -1291,15 +1303,16 @@ impl OID4VCIFinal1_0Service {
         } else {
             Some(credential.issuer()?.data.identifier.id())
         };
-        let wallet_instance_attestation_token = self
+        let client_attestation = self
             .validate_oauth_client_attestation(
                 oauth_client_attestation,
                 oauth_client_attestation_pop,
+                dpop_proof.is_some(),
+                &params,
                 &credential_schema,
                 credential,
                 interaction_id,
                 issuer_identifier_id,
-                params.oauth_attestation_leeway_seconds,
             )
             .await?;
 
@@ -1330,36 +1343,17 @@ impl OID4VCIFinal1_0Service {
                 .error_while("getting interaction")?;
             let interaction_data = interaction_data_to_dto(&interaction)?;
 
-            let (token_type, dpop_nonce, dpop_jkt) = if let Some(dpop_params) = params.dpop {
-                let expected_dpop_values = self.expected_dpop_values(
+            let dpop_binding = self
+                .validate_token_key_binding(
+                    interaction_id,
+                    &interaction_data,
+                    client_attestation.as_ref(),
+                    dpop_proof,
+                    &params,
                     &credential.common().protocol,
-                    &format!("{credential_schema_id}/token"),
-                    interaction_data.dpop_jkt.as_deref(),
-                )?;
-                if let Some(dpop_proof) = dpop_proof {
-                    let dpop_params =
-                        map_dpop_params(dpop_params, self.base_url.clone(), params.swiyu_mode);
-                    let dpop_output = self
-                        .dpop_handler
-                        .validate_proof(
-                            interaction_id,
-                            dpop_proof,
-                            None,
-                            expected_dpop_values,
-                            dpop_params,
-                        )
-                        .await
-                        .error_while("validating DPoP proof")?;
-                    (TokenType::DPoP, dpop_output.nonce, Some(dpop_output.jkt))
-                } else {
-                    if dpop_params.enforced {
-                        return Err(OID4VCIFinal1_0ServiceError::DpopRequired);
-                    }
-                    (TokenType::Bearer, None, None)
-                }
-            } else {
-                (TokenType::Bearer, None, None)
-            };
+                    credential_schema_id,
+                )
+                .await?;
 
             let mut response = oidc_issuer_create_token(
                 &interaction_data,
@@ -1370,35 +1364,41 @@ impl OID4VCIFinal1_0Service {
                 access_token_expires_in,
                 refresh_token_expires_in,
             )?;
-            response.token_type = token_type;
+            response.token_type = if dpop_binding.is_some() {
+                TokenType::DPoP
+            } else {
+                TokenType::Bearer
+            };
 
             let now = now_utc();
 
             for credential in &credentials {
                 // If a wallet instance attestation token is provided, we create a new blob and update the credential
-                let wallet_instance_attestation_blob_id =
-                    match wallet_instance_attestation_token.clone() {
-                        Some(wallet_instance_attestation_token) => {
-                            let blob_storage = self
-                                .blob_storage_provider
-                                .get_blob_storage(BlobStorageType::Db)?;
+                let wallet_instance_attestation_blob_id = match client_attestation
+                    .as_ref()
+                    .map(|attestation| attestation.wallet_instance_attestation.to_owned())
+                {
+                    Some(wallet_instance_attestation_token) => {
+                        let blob_storage = self
+                            .blob_storage_provider
+                            .get_blob_storage(BlobStorageType::Db)?;
 
-                            let attestation_token =
-                                serde_json::to_vec(&wallet_instance_attestation_token).map_err(
-                                    |e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()),
-                                )?;
+                        let attestation_token = serde_json::to_vec(
+                            &wallet_instance_attestation_token,
+                        )
+                        .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
 
-                            let blob =
-                                Blob::new(attestation_token, BlobType::WalletInstanceAttestation);
+                        let blob =
+                            Blob::new(attestation_token, BlobType::WalletInstanceAttestation);
 
-                            blob_storage
-                                .create(blob.clone())
-                                .await
-                                .error_while("creating WIA blob")?;
-                            Some(blob.id)
-                        }
-                        None => None,
-                    };
+                        blob_storage
+                            .create(blob.clone())
+                            .await
+                            .error_while("creating WIA blob")?;
+                        Some(blob.id)
+                    }
+                    None => None,
+                };
 
                 let mut state_update = UpdateCredentialRequest {
                     wallet_instance_attestation_blob_id,
@@ -1442,7 +1442,14 @@ impl OID4VCIFinal1_0Service {
             let mut new_interaction_data: OpenID4VCIIssuerInteractionDataDTO =
                 (&response).try_into()?;
             new_interaction_data.formats = interaction_data.formats;
-            new_interaction_data.dpop_jkt = dpop_jkt;
+            new_interaction_data.dpop_jkt =
+                dpop_binding.as_ref().map(|binding| binding.jkt.to_owned());
+            // Only bound when enforced, so that enabling the enforcement binds ongoing issuances to
+            // the key used on their next refresh
+            new_interaction_data.client_instance_jkt = client_attestation
+                .as_ref()
+                .filter(|_| params.enforce_client_instance_binding)
+                .map(|attestation| attestation.client_instance_jkt.to_owned());
             let data = serde_json::to_vec(&new_interaction_data)
                 .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
             interaction.data = Some(data);
@@ -1451,7 +1458,7 @@ impl OID4VCIFinal1_0Service {
                 .update_interaction(interaction.id, interaction.into())
                 .await
                 .error_while("updating credential interaction")?;
-            Ok((response, dpop_nonce))
+            Ok((response, dpop_binding.and_then(|binding| binding.nonce)))
         }
         .boxed();
         let result = self
@@ -1503,6 +1510,86 @@ impl OID4VCIFinal1_0Service {
             credential.common().id
         );
         Ok((response, dpop_nonce))
+    }
+
+    /// Validates the binding of the issued tokens to the keys of the client.
+    ///
+    /// Returns the validated DPoP proof if the issued tokens are DPoP bound.
+    #[expect(clippy::too_many_arguments)]
+    async fn validate_token_key_binding(
+        &self,
+        interaction_id: InteractionId,
+        interaction_data: &OpenID4VCIIssuerInteractionDataDTO,
+        client_attestation: Option<&ValidatedClientAttestation>,
+        dpop_proof: Option<&str>,
+        params: &OpenID4VCIFinal1Params,
+        protocol_id: &str,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<Option<ProofValidationOutput>, OID4VCIFinal1_0ServiceError> {
+        // Refresh tokens are bound to the Client Instance they were issued to
+        // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-10.3
+        if params.enforce_client_instance_binding
+            && let Some(bound_client_instance_jkt) = &interaction_data.client_instance_jkt
+            && client_attestation.map(|attestation| &attestation.client_instance_jkt)
+                != Some(bound_client_instance_jkt)
+        {
+            return Err(WalletAttestationError::ClientAttestationKeyMismatch.into());
+        }
+
+        // The DPoP key the issued tokens must be bound to:
+        // * refreshed tokens stay bound to the key of the previous tokens, regardless of DPoP
+        //   enforcement: https://www.rfc-editor.org/rfc/rfc9449.html#section-5-4
+        // * in DPoP combined mode, the DPoP key is the Client Instance Key
+        let bound_jkt = interaction_data.dpop_jkt.as_deref();
+        let combined_mode_jkt = client_attestation
+            .filter(|attestation| attestation.dpop_combined_mode)
+            .map(|attestation| attestation.client_instance_jkt.as_str());
+        let required_jkt = match (bound_jkt, combined_mode_jkt) {
+            (Some(bound_jkt), Some(combined_mode_jkt)) if bound_jkt != combined_mode_jkt => {
+                return Err(DpopHandlerError::KeyMismatch
+                    .error_while("validating DPoP proof")
+                    .into());
+            }
+            // bound_jkt is `None` on the initial token request, or on refreshing tokens previously
+            // issued as Bearer (e.g. issued without DPoP proof or before DPoP was enabled):
+            // In that case, combined mode then binds them to the client attestation PoP key, if any.
+            (bound_jkt, combined_mode_jkt) => bound_jkt.or(combined_mode_jkt),
+        };
+
+        let dpop_enforced = params.dpop.as_ref().is_some_and(|dpop| dpop.enforced);
+        match (dpop_proof, &params.dpop) {
+            (Some(dpop_proof), Some(dpop_params)) => {
+                let binding = self
+                    .dpop_handler
+                    .validate_proof(
+                        interaction_id,
+                        dpop_proof,
+                        None,
+                        self.expected_dpop_values(
+                            protocol_id,
+                            &format!("{credential_schema_id}/token"),
+                            required_jkt,
+                        )?,
+                        map_dpop_params(
+                            dpop_params.to_owned(),
+                            self.base_url.clone(),
+                            params.swiyu_mode,
+                        ),
+                    )
+                    .await
+                    .error_while("validating DPoP proof")?;
+                Ok(Some(binding))
+            }
+            (_, None) if combined_mode_jkt.is_some() => Err(WalletAttestationError::WiaMalformed(
+                "DPoP combined mode is not supported".to_string(),
+            )
+            .into()),
+            _ if dpop_enforced || required_jkt.is_some() => {
+                Err(OID4VCIFinal1_0ServiceError::DpopRequired)
+            }
+            // not DPoP bound, a submitted proof is ignored if DPoP is not supported
+            _ => Ok(None),
+        }
     }
 
     fn expected_dpop_values<'a>(
@@ -1578,12 +1665,13 @@ impl OID4VCIFinal1_0Service {
         &self,
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
+        dpop_proof_present: bool,
+        params: &OpenID4VCIFinal1Params,
         credential_schema: &CredentialSchema,
         credential: &Credential,
         interaction_id: InteractionId,
         issuer_identifier_id: Option<IdentifierId>,
-        leeway: Duration,
-    ) -> Result<Option<WalletInstanceAttestationDTO>, OID4VCIFinal1_0ServiceError> {
+    ) -> Result<Option<ValidatedClientAttestation>, OID4VCIFinal1_0ServiceError> {
         // If the credential schema does not require client attestation, no tokens are expected
         if !credential_schema
             .wallet_attestation
@@ -1598,15 +1686,9 @@ impl OID4VCIFinal1_0Service {
             return Ok(None);
         }
 
-        // Parse tokens
         let wallet_instance_attestation_token = oauth_client_attestation.ok_or_else(|| {
             WalletAttestationError::WiaMalformed(
                 "missing OAuth-Client-Attestation header".to_string(),
-            )
-        })?;
-        let proof_of_key_possesion_token = oauth_client_attestation_pop.ok_or_else(|| {
-            WalletAttestationError::WiaMalformed(
-                "missing OAuth-Client-Attestation-PoP header".to_string(),
             )
         })?;
 
@@ -1614,46 +1696,37 @@ impl OID4VCIFinal1_0Service {
             wallet_instance_attestation_token,
         )
         .map_err(|e| WalletAttestationError::WiaMalformed(format!("parsing: {e}")))?;
-        let proof_of_key_possession =
-            Jwt::<OAuthClientAttestationPopCustomClaims>::decompose_token(
-                proof_of_key_possesion_token,
-            )
-            .map_err(|e| {
-                WalletAttestationError::WiaMalformed(format!("parsing client attestation PoP: {e}"))
-            })?;
+        validate_timestamps(
+            &wallet_instance_attestation,
+            params.oauth_attestation_leeway_seconds,
+        )?;
+        let client_instance_jkt = client_instance_key_thumbprint(&wallet_instance_attestation)?;
 
-        // Validate timestamps for both tokens
-        validate_timestamps(&wallet_instance_attestation, leeway)?;
-        validate_timestamps(&proof_of_key_possession, leeway)?;
-
-        // Validate proof of possession
-        let expected_audience = {
-            let issuance_protocol = self
-                .protocol_provider
-                .get_protocol(&credential.common().protocol)?;
-            let base_url = issuance_protocol.protocol_base_url().ok_or(
-                OID4VCIFinal1_0ServiceError::MappingError("missing protocol_base_url".to_string()),
-            )?;
-            let protocol_id = &credential.common().protocol;
-            let credential_schema_id = credential_schema.id;
-            if let Some(issuer_identifier_id) = issuer_identifier_id {
-                format!("{base_url}/{protocol_id}/{issuer_identifier_id}/{credential_schema_id}")
-            } else {
-                format!("{base_url}/{protocol_id}/{credential_schema_id}")
+        // In DPoP combined mode, the DPoP proof replaces the Client Attestation PoP and is
+        // validated together with the key binding of the issued tokens
+        // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-7
+        let dpop_combined_mode = match oauth_client_attestation_pop {
+            Some(proof_of_key_possession_token) => {
+                self.validate_oauth_client_attestation_pop(
+                    proof_of_key_possession_token,
+                    &wallet_instance_attestation,
+                    params,
+                    credential_schema,
+                    credential,
+                    interaction_id,
+                    issuer_identifier_id,
+                )
+                .await?;
+                false
+            }
+            None if dpop_proof_present => true,
+            None => {
+                return Err(WalletAttestationError::WiaMalformed(
+                    "missing OAuth-Client-Attestation-PoP header".to_string(),
+                )
+                .into());
             }
         };
-        validate_pop_audience(&proof_of_key_possession, &expected_audience)?;
-        verify_pop_signature(
-            &proof_of_key_possession,
-            &wallet_instance_attestation,
-            self.key_algorithm_provider.as_ref(),
-        )?;
-        self.validate_pop_challenge(
-            &proof_of_key_possession.payload.custom,
-            &credential.common().protocol,
-            &interaction_id,
-        )
-        .await?;
 
         // Validate WIA
         let verifier = KeyVerification {
@@ -1691,11 +1764,67 @@ impl OID4VCIFinal1_0Service {
         // Extract wallet metadata
         let (name, link) = extract_wallet_metadata(&wallet_instance_attestation)?;
 
-        Ok(Some(WalletInstanceAttestationDTO {
-            name,
-            link,
-            attestation: wallet_instance_attestation_token.to_owned(),
+        Ok(Some(ValidatedClientAttestation {
+            wallet_instance_attestation: WalletInstanceAttestationDTO {
+                name,
+                link,
+                attestation: wallet_instance_attestation_token.to_owned(),
+            },
+            client_instance_jkt,
+            dpop_combined_mode,
         }))
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    async fn validate_oauth_client_attestation_pop(
+        &self,
+        proof_of_key_possession_token: &str,
+        wallet_instance_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,
+        params: &OpenID4VCIFinal1Params,
+        credential_schema: &CredentialSchema,
+        credential: &Credential,
+        interaction_id: InteractionId,
+        issuer_identifier_id: Option<IdentifierId>,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        let proof_of_key_possession =
+            Jwt::<OAuthClientAttestationPopCustomClaims>::decompose_token(
+                proof_of_key_possession_token,
+            )
+            .map_err(|e| {
+                WalletAttestationError::WiaMalformed(format!("parsing client attestation PoP: {e}"))
+            })?;
+        validate_timestamps(
+            &proof_of_key_possession,
+            params.oauth_attestation_leeway_seconds,
+        )?;
+
+        let expected_audience = {
+            let issuance_protocol = self
+                .protocol_provider
+                .get_protocol(&credential.common().protocol)?;
+            let base_url = issuance_protocol.protocol_base_url().ok_or(
+                OID4VCIFinal1_0ServiceError::MappingError("missing protocol_base_url".to_string()),
+            )?;
+            let protocol_id = &credential.common().protocol;
+            let credential_schema_id = credential_schema.id;
+            if let Some(issuer_identifier_id) = issuer_identifier_id {
+                format!("{base_url}/{protocol_id}/{issuer_identifier_id}/{credential_schema_id}")
+            } else {
+                format!("{base_url}/{protocol_id}/{credential_schema_id}")
+            }
+        };
+        validate_pop_audience(&proof_of_key_possession, &expected_audience)?;
+        verify_pop_signature(
+            &proof_of_key_possession,
+            wallet_instance_attestation,
+            self.key_algorithm_provider.as_ref(),
+        )?;
+        self.validate_pop_challenge(
+            &proof_of_key_possession.payload.custom,
+            &credential.common().protocol,
+            &interaction_id,
+        )
+        .await
     }
 
     pub async fn generate_nonce(
@@ -2184,4 +2313,12 @@ struct PreparedIdentifier {
     identifier: Identifier,
     key_id: String,
     key_attestation: Option<String>,
+}
+
+struct ValidatedClientAttestation {
+    wallet_instance_attestation: WalletInstanceAttestationDTO,
+    /// JWK SHA-256 thumbprint of the Client Instance Key
+    client_instance_jkt: String,
+    /// The DPoP proof serves as the Client Attestation PoP
+    dpop_combined_mode: bool,
 }

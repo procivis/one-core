@@ -2908,6 +2908,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 transaction_code: transaction_code.to_owned(),
                 formats,
                 dpop_jkt: None,
+                client_instance_jkt: None,
             },
         )?);
 

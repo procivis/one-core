@@ -73,6 +73,14 @@ pub(crate) struct OpenID4VCIFinal1Params {
     /// Issuer DPoP configuration
     #[serde(default)]
     pub dpop: Option<OpenID4VCDpopParams>,
+
+    /// Issuer: requires refresh token requests to present a client attestation with the same
+    /// Client Instance Key (`cnf`) as the one the refresh token was issued to.
+    /// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-10.3>
+    ///
+    /// Holders using a new key for every client attestation cannot refresh tokens while enabled.
+    #[serde(default = "default_true")]
+    pub enforce_client_instance_binding: bool,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -338,8 +346,13 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     pub transaction_code: Option<String>,
     #[serde(default)]
     pub formats: Option<Vec<CredentialSchemaFormatId>>,
+    /// JWK SHA-256 thumbprint of the DPoP key the issued tokens are bound to
     #[serde(default)]
     pub dpop_jkt: Option<String>,
+    /// JWK SHA-256 thumbprint of the Client Instance Key (`cnf` of the client attestation) the
+    /// refresh token is bound to
+    #[serde(default)]
+    pub client_instance_jkt: Option<String>,
 }
 
 #[skip_serializing_none]

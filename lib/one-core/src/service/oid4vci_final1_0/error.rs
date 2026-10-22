@@ -25,6 +25,8 @@ pub enum WalletAttestationError {
     MissingChallenge { fresh_challenge: String },
     #[error("Invalid OAuth attestation challenge")]
     InvalidChallenge { fresh_challenge: String },
+    #[error("Client attestation key does not match the key the refresh token is bound to")]
+    ClientAttestationKeyMismatch,
     #[error(transparent)]
     Rejected(WalletAttestationRejection),
 }
@@ -32,7 +34,7 @@ pub enum WalletAttestationError {
 impl ErrorCodeMixin for WalletAttestationError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::WiaMalformed(_) => ErrorCode::BR_0495,
+            Self::WiaMalformed(_) | Self::ClientAttestationKeyMismatch => ErrorCode::BR_0495,
             Self::KaMalformed(_) => ErrorCode::BR_0497,
             Self::WiaKaIssuerMismatch => ErrorCode::BR_0498,
             Self::KeyStorageSecurityLevelMismatch(_) => ErrorCode::BR_0500,
@@ -48,6 +50,7 @@ impl WalletAttestationError {
         match self {
             // The WIA is the OAuth client attestation at the token endpoint.
             Self::WiaMalformed(_)
+            | Self::ClientAttestationKeyMismatch
             | Self::Rejected(WalletAttestationRejection::WalletInstanceAttestation(_)) => {
                 OpenID4VCIError::InvalidClient
             }

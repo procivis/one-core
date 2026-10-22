@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use super::attestation_based_client_auth::ClientAttestationPopMethod;
 use super::dynamic_client_registration::TokenEndpointAuthMethod;
 
 #[cfg_attr(feature = "utoipa", proc_macros::options_not_nullable)]
@@ -48,6 +49,11 @@ pub struct AuthorizationServerMetadata {
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1>
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+
+    /// Attestation-Based Client Authentication - supported proof of possession methods
+    /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-8>
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_attestation_pop_methods_supported: Option<Vec<ClientAttestationPopMethod>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dpop_signing_alg_values_supported: Option<Vec<String>>,
