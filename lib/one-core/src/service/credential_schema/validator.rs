@@ -505,12 +505,20 @@ fn validate_claim_schema_name(
     claim_schema: &CredentialClaimSchemaRequestDTO,
 ) -> Result<(), CredentialSchemaServiceError> {
     if claim_schema.key.find(NESTED_CLAIM_MARKER).is_some() {
-        Err(CredentialSchemaServiceError::ClaimSchemaSlashInKeyName(
+        return Err(CredentialSchemaServiceError::ClaimSchemaSlashInKeyName(
             claim_schema.key.to_owned(),
-        ))
-    } else {
-        Ok(())
+        ));
     }
+
+    for mapping in claim_schema.mappings.iter().flatten() {
+        if mapping.technical_key.find(NESTED_CLAIM_MARKER).is_some() {
+            return Err(CredentialSchemaServiceError::ClaimSchemaSlashInKeyName(
+                mapping.technical_key.to_owned(),
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 fn validate_claim_schema_keys_unique(

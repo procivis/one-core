@@ -977,6 +977,72 @@ async fn test_fail_create_credential_schema_v2_forbidden_claim_name() {
 }
 
 #[tokio::test]
+async fn test_fail_create_credential_schema_v2_claim_name_with_slash() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![serde_json::json!({ "format": "JWT" })],
+            claims: vec![TestClaim {
+                datatype: "STRING".to_string(),
+                key: "test/key".to_string(),
+                required: true,
+                claims: vec![],
+                array: None,
+                translations: None,
+                mappings: None,
+            }],
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0108");
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_v2_technical_key_with_slash() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![serde_json::json!({ "format": "JWT" })],
+            claims: vec![TestClaim {
+                datatype: "STRING".to_string(),
+                key: "key".to_string(),
+                required: true,
+                claims: vec![],
+                array: None,
+                translations: None,
+                mappings: Some(vec![TestClaimMappings {
+                    format: "JWT".to_string(),
+                    technical_key: "technical/key".to_string(),
+                    namespace: None,
+                }]),
+            }],
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0108");
+}
+
+#[tokio::test]
 async fn test_fail_create_credential_schema_v2_transaction_code_length_too_big() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

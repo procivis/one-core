@@ -270,7 +270,7 @@ pub enum ErrorCode {
     #[strum(message = "Nested claims should be empty")]
     BR_0107,
 
-    #[strum(message = "Slash in claim schema key name")]
+    #[strum(message = "Slash in claim schema key")]
     BR_0108,
 
     #[strum(message = "Missing parent claim schema")]

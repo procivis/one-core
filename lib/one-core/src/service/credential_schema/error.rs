@@ -26,7 +26,7 @@ pub enum CredentialSchemaServiceError {
     MissingNestedClaims(String),
     #[error("Credential schema: Nested claims should be empty for type '{0}'")]
     NestedClaimsShouldBeEmpty(String),
-    #[error("Credential schema: Claim `{0}` name contains invalid character '/'")]
+    #[error("Credential schema: Claim `{0}` key contains invalid character '/'")]
     ClaimSchemaSlashInKeyName(String),
     #[error(
         "Credential schema: Claim `{claim_name}` data type {data_type} is not supported by all selected formats"
