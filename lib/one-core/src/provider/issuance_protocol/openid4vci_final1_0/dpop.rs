@@ -2,7 +2,7 @@
 //!
 //! Spec: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html)
 
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -15,7 +15,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
-use crate::proto::http_client::{Method, Response};
+use crate::proto::http_client::{HttpClient, Method, Response};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::model::AuthenticationFn;
@@ -28,6 +28,14 @@ pub(super) struct DpopContext {
     auth_fn: AuthenticationFn,
     jwk: PublicJwk,
     nonce: Mutex<Option<String>>,
+    /// swiyu mode only, see [`DpopContext::with_swiyu_nonce_endpoint`]. Taken on use, so the
+    /// nonce endpoint is called at most once per flow for the sake of the workaround.
+    swiyu_nonce_endpoint: Mutex<Option<SwiyuNonceEndpoint>>,
+}
+
+struct SwiyuNonceEndpoint {
+    client: Arc<dyn HttpClient>,
+    url: String,
 }
 
 impl DpopContext {
@@ -42,6 +50,28 @@ impl DpopContext {
             auth_fn,
             jwk,
             nonce: Mutex::new(nonce),
+            swiyu_nonce_endpoint: Mutex::new(None),
+        }
+    }
+
+    /// Workaround for swiyu issuer:
+    ///  - it returns DPoP nonces only in the response of the nonce endpoint (and not the token endpoint)
+    ///  - it expects a nonce in all DPoP proofs
+    ///
+    /// In this mode, a nonce, if absent, will be fetched from the provided nonce endpoint explicitly
+    /// before creating any DPoP proof.
+    pub(super) fn with_swiyu_nonce_endpoint(
+        self,
+        client: Arc<dyn HttpClient>,
+        nonce_endpoint: String,
+    ) -> Self {
+        Self {
+            nonce: Mutex::new(None),
+            swiyu_nonce_endpoint: Mutex::new(Some(SwiyuNonceEndpoint {
+                client,
+                url: nonce_endpoint,
+            })),
+            ..self
         }
     }
 
@@ -52,14 +82,14 @@ impl DpopContext {
 
     /// The last nonce received from the issuer, to be persisted in the interaction data.
     pub(super) fn nonce(&self) -> Option<String> {
-        self.lock().clone()
+        lock(&self.nonce).clone()
     }
 
     pub(super) fn record_nonce(&self, response: &Response) -> bool {
         let Some(nonce) = response.header_get(DPOP_NONCE_HEADER) else {
             return false;
         };
-        let mut current = self.lock();
+        let mut current = lock(&self.nonce);
         if current.as_ref() == Some(nonce) {
             return false;
         }
@@ -76,6 +106,8 @@ impl DpopContext {
         url: &Url,
         access_token: Option<&SecretString>,
     ) -> Result<String, IssuanceProtocolError> {
+        self.fetch_swiyu_nonce_if_unknown().await?;
+
         // the proof binds the access token it is sent with
         // https://www.rfc-editor.org/rfc/rfc9449.html#section-4.2-6.1
         let ath = access_token
@@ -118,10 +150,31 @@ impl DpopContext {
             .error_while("creating DPoP proof")?)
     }
 
-    fn lock(&self) -> MutexGuard<'_, Option<String>> {
-        // the lock is only ever held across a clone and an assignment, so it cannot be poisoned
-        self.nonce.lock().unwrap_or_else(PoisonError::into_inner)
+    /// Part of the swiyu workaround, see [`DpopContext::with_swiyu_nonce_endpoint`]. The nonce is
+    /// already known if the request is preceded by a call to the nonce endpoint anyway, like the
+    /// credential request fetching its `c_nonce`.
+    async fn fetch_swiyu_nonce_if_unknown(&self) -> Result<(), IssuanceProtocolError> {
+        if self.nonce().is_some() {
+            return Ok(());
+        }
+        let endpoint = lock(&self.swiyu_nonce_endpoint).take();
+        let Some(SwiyuNonceEndpoint { client, url }) = endpoint else {
+            return Ok(());
+        };
+
+        let response = client
+            .post(&url)
+            .send()
+            .await
+            .and_then(Response::error_for_status)
+            .error_while("requesting DPoP nonce")?;
+        self.record_nonce(&response);
+        Ok(())
     }
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// The `htu` claim of a proof carries the request URL without query and fragment.

@@ -7327,6 +7327,115 @@ async fn test_request_without_dpop_uses_the_bearer_scheme() {
     assert!(requests[0].headers.get("DPoP").is_none());
 }
 
+#[tokio::test]
+async fn test_swiyu_dpop_nonce_is_fetched_from_the_nonce_endpoint_before_the_first_proof() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("DPoP-Nonce", "endpoint-nonce")
+                .set_body_json(json!({"c_nonce": "c-nonce"})),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+        .expect(2)
+        .mount(&mock_server)
+        .await;
+
+    let protocol = setup_protocol(TestInputs::default());
+    // the nonce stored from a previous flow is outdated
+    let context = dpop_context(Some("stored-nonce")).with_swiyu_nonce_endpoint(
+        Arc::new(ReqwestClient::default()),
+        format!("{}/nonce", mock_server.uri()),
+    );
+
+    for _ in 0..2 {
+        protocol
+            .send_authorized_request(
+                Some(&context),
+                HttpMethod::Post,
+                &format!("{}/token", mock_server.uri()),
+                None,
+                |request| request.json(json!({})),
+            )
+            .await
+            .unwrap();
+    }
+
+    let requests = mock_server.received_requests().await.unwrap();
+    assert_eq!(
+        vec!["/nonce", "/token", "/token"],
+        requests
+            .iter()
+            .map(|request| request.url.path())
+            .collect::<Vec<_>>()
+    );
+    // the nonce endpoint is called only once per flow
+    for proof in sent_dpop_proofs(&requests[1..]) {
+        assert_eq!(
+            Some("endpoint-nonce".to_string()),
+            proof.payload.custom.nonce
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_swiyu_dpop_nonce_is_not_fetched_again_after_the_nonce_endpoint_was_called() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("DPoP-Nonce", "endpoint-nonce")
+                .set_body_json(json!({"c_nonce": "c-nonce"})),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let protocol = setup_protocol(TestInputs::default());
+    let nonce_endpoint = format!("{}/nonce", mock_server.uri());
+    let context = dpop_context(None)
+        .with_swiyu_nonce_endpoint(Arc::new(ReqwestClient::default()), nonce_endpoint.clone());
+
+    // the credential request fetches its `c_nonce` first, which seeds the DPoP nonce as well
+    let c_nonce = protocol
+        .holder_fetch_nonce(Some(&nonce_endpoint), Some(&context))
+        .await
+        .unwrap();
+    assert_eq!(Some("c-nonce".to_string()), c_nonce);
+
+    protocol
+        .send_authorized_request(
+            Some(&context),
+            HttpMethod::Post,
+            &format!("{}/credential", mock_server.uri()),
+            Some(&SecretString::from("access-token")),
+            |request| request.json(json!({})),
+        )
+        .await
+        .unwrap();
+
+    let requests = mock_server.received_requests().await.unwrap();
+    assert_eq!(2, requests.len());
+    let proof = sent_dpop_proofs(&requests[1..]).pop().unwrap();
+    assert_eq!(
+        Some("endpoint-nonce".to_string()),
+        proof.payload.custom.nonce
+    );
+}
+
 /// An offer the holder has not accepted yet, carrying the DPoP signing algorithms the
 /// authorization server advertised.
 fn dpop_offer(dpop_signing_algs: Option<&[&str]>) -> (Interaction, HolderInteractionData) {

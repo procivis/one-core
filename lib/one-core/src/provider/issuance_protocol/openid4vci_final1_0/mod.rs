@@ -457,12 +457,23 @@ impl OpenID4VCIFinal1_0 {
             self.key_algorithm_provider.clone(),
         )?;
 
-        Ok(DpopContext::new(
-            key_id,
-            auth_fn,
-            jwk,
-            interaction_data.dpop_nonce.to_owned(),
-        ))
+        let context =
+            DpopContext::new(key_id, auth_fn, jwk, interaction_data.dpop_nonce.to_owned());
+        // swiyu workaround, see `DpopContext::with_swiyu_nonce_endpoint`
+        if self.params.swiyu_mode {
+            match &interaction_data.nonce_endpoint {
+                Some(nonce_endpoint) => {
+                    return Ok(context.with_swiyu_nonce_endpoint(
+                        self.client.clone(),
+                        nonce_endpoint.to_owned(),
+                    ));
+                }
+                None => tracing::warn!(
+                    "swiyu issuer advertises no nonce endpoint to fetch the DPoP nonce from"
+                ),
+            }
+        }
+        Ok(context)
     }
 
     fn dpop_public_jwk(&self, key: &Key) -> Result<PublicJwk, IssuanceProtocolError> {
