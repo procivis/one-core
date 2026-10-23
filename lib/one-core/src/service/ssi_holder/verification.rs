@@ -316,7 +316,7 @@ impl SSIHolderService {
         transport: Option<Vec<String>>,
         user_selected_ecosystem: Option<EcosystemId>,
     ) -> Result<HandleInvitationResultDTO, HolderServiceError> {
-        let invitation_request = data.try_into().error_while("converting request data")?;
+        let invitation_request = data.into();
         let (protocol, verification_protocol) = self
             .verification_protocol_provider
             .detect_protocol(&invitation_request)

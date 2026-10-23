@@ -2,6 +2,7 @@
 
 pub mod authorization_request;
 pub mod authorization_response;
+pub mod dc_api;
 pub mod dcql;
 pub mod transaction_data;
 
@@ -112,4 +113,8 @@ pub enum ResponseMode {
     DirectPost,
     #[serde(rename = "direct_post.jwt")]
     DirectPostJwt,
+    #[serde(rename = "dc_api")]
+    DcApi,
+    #[serde(rename = "dc_api.jwt")]
+    DcApiJwt,
 }

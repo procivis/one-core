@@ -18,7 +18,6 @@ use crate::model::list_query::ListSorting;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::relation::Related;
-use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
 use crate::service::ssi_holder::dto::HandleInvitationRequestDataDTO;
@@ -168,28 +167,30 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
     )
 }
 
-impl TryFrom<HandleInvitationRequestDataDTO> for InvitationRequest {
-    type Error = VerificationProtocolError;
-
-    fn try_from(data: HandleInvitationRequestDataDTO) -> Result<Self, Self::Error> {
-        Ok(match data {
-            HandleInvitationRequestDataDTO::Url { url } => InvitationRequest::Url(url),
+impl From<HandleInvitationRequestDataDTO> for InvitationRequest {
+    fn from(data: HandleInvitationRequestDataDTO) -> Self {
+        match data {
+            HandleInvitationRequestDataDTO::Url { url } => Self::Url(url),
             HandleInvitationRequestDataDTO::Iso18013DcApi {
                 device_request,
                 encryption_info,
                 origin,
                 response_handler,
-            } => InvitationRequest::IsoDcApi {
+            } => Self::IsoDcApi {
                 origin,
                 encryption_info,
                 device_request,
                 response_handler,
             },
-            HandleInvitationRequestDataDTO::OpenID4vpDcApi { .. } => {
-                return Err(VerificationProtocolError::Failed(
-                    "OpenID4VP DC-API not yet supported".to_string(),
-                ));
-            }
-        })
+            HandleInvitationRequestDataDTO::OpenID4vpDcApi {
+                origin,
+                request_json,
+                response_handler,
+            } => Self::OpenID4VpDcApi {
+                origin,
+                request_json,
+                response_handler,
+            },
+        }
     }
 }

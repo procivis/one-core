@@ -53,7 +53,7 @@ use crate::provider::presentation_formatter::model::{
 };
 use crate::provider::presentation_formatter::mso_mdoc::model::dcapi::EncryptionInfo;
 use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, DocumentError};
-use crate::provider::presentation_formatter::mso_mdoc::session_transcript::dc_api::DcApiHandover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_dc_api::Iso18013DcApiHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
 };
@@ -242,8 +242,8 @@ impl VerificationProtocol for IsoMdl {
         let session_transcript = SessionTranscript {
             device_engagement_bytes: None,
             e_reader_key_bytes: None,
-            handover: Handover::DcApi(
-                DcApiHandover::compute(&origin, &encryption_info)
+            handover: Handover::Iso18013DcApi(
+                Iso18013DcApiHandover::compute(&origin, &encryption_info)
                     .error_while("computing handover")?,
             ),
         };

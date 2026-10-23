@@ -10,11 +10,11 @@ use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 
 /// ISO/IEC 18013-7:2025, C.5
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct DcApiHandover {
+pub(crate) struct Iso18013DcApiHandover {
     dcapi_info_hash: Bstr,
 }
 
-impl DcApiHandover {
+impl Iso18013DcApiHandover {
     pub(crate) fn compute(
         origin: &str,
         base64_encryption_info: &str,
@@ -53,7 +53,7 @@ fn serialized_origin(origin: &str) -> Result<String, FormatterError> {
     Ok(serialized)
 }
 
-impl Serialize for DcApiHandover {
+impl Serialize for Iso18013DcApiHandover {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -64,7 +64,7 @@ impl Serialize for DcApiHandover {
     }
 }
 
-impl<'a> Deserialize<'a> for DcApiHandover {
+impl<'a> Deserialize<'a> for Iso18013DcApiHandover {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'a>,

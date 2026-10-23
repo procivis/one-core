@@ -1,26 +1,29 @@
 use ciborium::cbor;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 
-use self::dc_api::DcApiHandover;
+use self::iso_18013_dc_api::Iso18013DcApiHandover;
 use self::nfc::NFCHandover;
+use self::openid4vp_dc_api::OID4VPDcApiHandover;
 use self::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use self::qr_code::QRHandover;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::verification_protocol::iso_mdl::common::EphemeralSessionKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::DeviceEngagement;
 
-pub mod dc_api;
+pub mod iso_18013_dc_api;
 pub mod nfc;
+pub mod openid4vp_dc_api;
 pub mod openid4vp_final1_0;
 pub mod qr_code;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum Handover {
-    OID4VPFinal1_0(OID4VPFinal1_0Handover),
     QrCode(QRHandover),
     Nfc(NFCHandover),
-    DcApi(DcApiHandover),
+    OID4VPFinal1_0(OID4VPFinal1_0Handover),
+    OID4VPDcApi(OID4VPDcApiHandover),
+    Iso18013DcApi(Iso18013DcApiHandover),
 }
 
 /// ISO 18013-5 9.1.5.1 Session transcript

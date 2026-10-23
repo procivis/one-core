@@ -234,13 +234,15 @@ impl OpenID4VPFinal1_0 {
 
         // As per https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-8.3.1
         // the response should be encrypted only if the response type is direct_post.jwt
+        // Also per https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.2
+        // when response type is dc_api.jwt
         let encryption_info = match response_mode {
-            ResponseMode::DirectPost => None,
-            ResponseMode::DirectPostJwt => Some(
+            ResponseMode::DirectPost | ResponseMode::DcApi => None,
+            ResponseMode::DirectPostJwt | ResponseMode::DcApiJwt => Some(
                 self.encryption_info_from_metadata(interaction_data)
                     .await?
                     .ok_or(VerificationProtocolError::InvalidRequest(
-                        "direct_post.jwt requires encryption, but no verifier keys are available"
+                        "direct_post.jwt/dc_api.jwt requires encryption, but no verifier keys are available"
                             .to_string(),
                     ))?,
             ),

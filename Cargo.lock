@@ -6630,6 +6630,7 @@ dependencies = [
  "one-dto-mapper",
  "proc-macros",
  "quick-xml",
+ "rstest",
  "secrecy",
  "serde",
  "serde_json",
