@@ -32,6 +32,9 @@ pub struct Interaction {
     pub ecosystem_data: InteractionEcosystems,
     /// key the interaction's tokens are bound to, for protocols that use DPoP (RFC 9449)
     pub dpop_key: Option<Related<Key>>,
+    /// Client Instance Key of the client attestation the interaction's tokens are bound to, for
+    /// protocols that use attestation-based client authentication
+    pub client_attestation_key: Option<Related<Key>>,
 }
 
 /// Ecosystem state carried across the steps of an interaction.
@@ -103,6 +106,7 @@ pub struct UpdateInteractionRequest {
     pub ecosystem: Option<Option<EcosystemId>>,
     pub ecosystem_data: Option<InteractionEcosystems>,
     pub dpop_key: Option<Option<KeyId>>,
+    pub client_attestation_key: Option<Option<KeyId>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumString, AsRefStr, Serialize, Deserialize)]
@@ -120,6 +124,7 @@ impl From<Interaction> for UpdateInteractionRequest {
             ecosystem: Some(value.ecosystem),
             ecosystem_data: Some(value.ecosystem_data),
             dpop_key: Some(value.dpop_key.map(|key| key.id())),
+            client_attestation_key: Some(value.client_attestation_key.map(|key| key.id())),
         }
     }
 }

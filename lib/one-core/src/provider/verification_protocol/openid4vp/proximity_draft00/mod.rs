@@ -711,6 +711,7 @@ pub(super) async fn create_interaction_and_proof(
     let now = crate::clock::now_utc();
     let interaction = Interaction {
         dpop_key: None,
+        client_attestation_key: None,
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,

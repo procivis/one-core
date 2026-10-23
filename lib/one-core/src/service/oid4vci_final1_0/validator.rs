@@ -99,6 +99,23 @@ pub(crate) fn validate_pop_audience(
     Ok(())
 }
 
+/// The `iss` of the Client Attestation PoP must be the client_id, i.e. the `sub` of the client attestation
+/// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#name-client-attestation-pop-jwt>
+pub(crate) fn validate_pop_issuer(
+    pop_token: &DecomposedJwt<OAuthClientAttestationPopCustomClaims>,
+    wallet_instance_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,
+) -> Result<(), OID4VCIFinal1_0ServiceError> {
+    let client_id = wallet_instance_attestation
+        .payload
+        .subject
+        .as_ref()
+        .ok_or_else(|| WalletAttestationError::WiaMalformed("missing sub claim".to_string()))?;
+    if pop_token.payload.issuer.as_ref() != Some(client_id) {
+        return Err(OpenID4VCIError::InvalidRequest.into());
+    }
+    Ok(())
+}
+
 pub(crate) fn verify_pop_signature(
     pop_token: &DecomposedJwt<OAuthClientAttestationPopCustomClaims>,
     wallet_unit_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,

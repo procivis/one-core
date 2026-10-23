@@ -710,6 +710,7 @@ pub async fn create_interaction_with_id(
 
     let interaction = Interaction {
         dpop_key: None,
+        client_attestation_key: None,
         id,
         created_date: one_core::clock::now_utc(),
         last_modified: one_core::clock::now_utc(),

@@ -19,6 +19,7 @@ pub struct Model {
     #[sea_orm(column_type = "Blob")]
     pub ecosystem_data: Option<Vec<u8>>,
     pub dpop_key_id: Option<KeyId>,
+    pub client_attestation_key_id: Option<KeyId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -43,6 +44,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     DpopKey,
+    #[sea_orm(
+        belongs_to = "super::key::Entity",
+        from = "Column::ClientAttestationKeyId",
+        to = "super::key::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    ClientAttestationKey,
 }
 
 impl Related<super::credential::Entity> for Entity {

@@ -975,6 +975,15 @@ impl RefreshableIssuance {
     }
 
     async fn client_attestation_pop(&self, client_instance_key: &KeyHandle) -> String {
+        self.client_attestation_pop_with_issuer(client_instance_key, WALLET_CLIENT_ID)
+            .await
+    }
+
+    async fn client_attestation_pop_with_issuer(
+        &self,
+        client_instance_key: &KeyHandle,
+        issuer: &str,
+    ) -> String {
         let now = one_core::clock::now_utc().unix_timestamp();
         sign_jwt(
             client_instance_key,
@@ -983,6 +992,7 @@ impl RefreshableIssuance {
                 "alg": "ES256",
             }),
             json!({
+                "iss": issuer,
                 "aud": self.issuer_url,
                 "iat": now,
                 "exp": now + 300,
@@ -1034,6 +1044,9 @@ impl RefreshableIssuance {
     }
 }
 
+/// client_id of the wallet, the `sub` of the wallet instance attestation
+const WALLET_CLIENT_ID: &str = "test-wallet";
+
 async fn wallet_instance_attestation(client_instance_key: &KeyHandle) -> String {
     let wallet_provider_key = Ecdsa.generate_key().unwrap().key;
     let now = one_core::clock::now_utc().unix_timestamp();
@@ -1046,7 +1059,7 @@ async fn wallet_instance_attestation(client_instance_key: &KeyHandle) -> String 
         }),
         json!({
             "iss": "https://wallet-provider.example.com",
-            "sub": "test-wallet",
+            "sub": WALLET_CLIENT_ID,
             "iat": now,
             "exp": now + 3600,
             "wallet_name": "Test Wallet",
@@ -1393,4 +1406,30 @@ async fn test_oidc_issuer_refresh_token_dpop_combined_mode_bound_without_client_
 
     // THEN the Client Instance Key is still bound as the DPoP key
     assert_token_error(resp, "invalid_dpop_proof").await;
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_rejects_client_attestation_pop_of_other_client() {
+    // GIVEN
+    let issuance = setup_refreshable_issuance(true, true).await;
+    let key = Ecdsa.generate_key().unwrap().key;
+
+    // WHEN the PoP is not issued by the client_id of the client attestation
+    let resp = issuance
+        .pre_authorized_code_request(vec![
+            (
+                "OAuth-Client-Attestation",
+                wallet_instance_attestation(&key).await,
+            ),
+            (
+                "OAuth-Client-Attestation-PoP",
+                issuance
+                    .client_attestation_pop_with_issuer(&key, "other-wallet")
+                    .await,
+            ),
+        ])
+        .await;
+
+    // THEN
+    assert_token_error(resp, "invalid_request").await;
 }

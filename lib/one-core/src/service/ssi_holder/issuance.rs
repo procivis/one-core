@@ -862,6 +862,7 @@ impl SSIHolderService {
         self.interaction_repository
             .create_interaction(Interaction {
                 dpop_key: dpop_key.map(|dpop_key| dpop_key.key.into()),
+                client_attestation_key: None,
                 id: interaction_id,
                 created_date: now,
                 last_modified: now,

@@ -31,3 +31,12 @@ pub enum TokenEndpointAuthMethod {
     #[serde(untagged)]
     Other(String),
 }
+
+impl TokenEndpointAuthMethod {
+    pub fn requires_attestation(&self) -> bool {
+        match self {
+            Self::AttestJwtClientAuth | Self::AttestJwtClientAuthDpop => true,
+            Self::ClientSecretBasic | Self::ClientSecretPost | Self::None | Self::Other(_) => false,
+        }
+    }
+}

@@ -93,6 +93,7 @@ async fn test_create_interaction() {
     let id = Uuid::new_v4().into();
     let interaction = Interaction {
         dpop_key: None,
+        client_attestation_key: None,
         id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),

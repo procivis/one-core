@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use shared_types::OrganisationId;
 use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
@@ -10,8 +9,10 @@ use uuid::Uuid;
 use super::mapper::configuration_to_accepted_key_storage_security;
 use super::model::{RequestedCredential, TokenRequestAttestationHeaders};
 use super::{HolderInteractionData, IssuanceProtocolError, OpenID4VCIFinal1_0};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
 use crate::model::instance::{Instance, InstanceRole, InstanceStatus};
+use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::Key;
 use crate::model::wallet_attestation::{AttestationType, WalletAttestation};
 use crate::proto::jwt::Jwt;
@@ -27,16 +28,19 @@ impl OpenID4VCIFinal1_0 {
     /// Prepares wallet attestations (WIA/WUA) based on issuer requirements.
     /// The holder bindings of all requested credentials are attested in one request,
     /// each holder binding receives its WUA proof. Returns the WIA for the token request.
+    ///
+    /// `dpop_key` is the key the tokens are bound to, if any.
     pub(super) async fn prepare_wallet_attestations(
         &self,
+        interaction: &Interaction,
         interaction_data: &HolderInteractionData,
         requested_credentials: &mut [RequestedCredential],
-        organisation_id: OrganisationId,
         attestation_types: &[AttestationType],
+        dpop_key: Option<&Key>,
     ) -> Result<Option<TokenRequestAttestationHeaders>, IssuanceProtocolError> {
         let holder_wallet_unit = self
             .holder_wallet_unit_repository
-            .get_by_role(InstanceRole::Wallet, organisation_id)
+            .get_by_role(InstanceRole::Wallet, interaction.organisation.id())
             .await
             .error_while("getting holder wallet instance")?;
         let wallet_unit_provided = holder_wallet_unit
@@ -54,8 +58,9 @@ impl OpenID4VCIFinal1_0 {
             token_endpoint_auth_methods.push(TokenEndpointAuthMethod::None);
         }
 
-        let wallet_attestation_supported =
-            token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth);
+        let wallet_attestation_supported = token_endpoint_auth_methods
+            .iter()
+            .any(|method| method.requires_attestation());
         let wallet_attestation_required = requires_wia(&token_endpoint_auth_methods);
 
         if attestation_types.contains(&AttestationType::WalletInstanceAttestation)
@@ -124,19 +129,28 @@ impl OpenID4VCIFinal1_0 {
             ));
         }
 
+        let client_attestation_key = if use_wallet_attestation {
+            Some(
+                self.client_attestation_key(interaction, interaction_data, dpop_key)
+                    .await?,
+            )
+        } else {
+            None
+        };
+
         let attestations_issuance_request =
-            match (use_wallet_attestation, key_attestations_required) {
-                (true, true) => Some(IssueWalletAttestationRequest::WuaAndWia(
+            match (&client_attestation_key, key_attestations_required) {
+                (Some(key), true) => Some(IssueWalletAttestationRequest::WuaAndWia(
                     WUARequestParams { attested_keys },
-                    self.prepare_wia_request_params(interaction_data)?,
+                    WIARequestParams { key },
                 )),
-                (true, false) => Some(IssueWalletAttestationRequest::Wia(
-                    self.prepare_wia_request_params(interaction_data)?,
-                )),
-                (false, true) => Some(IssueWalletAttestationRequest::Wua(WUARequestParams {
+                (Some(key), false) => {
+                    Some(IssueWalletAttestationRequest::Wia(WIARequestParams { key }))
+                }
+                (None, true) => Some(IssueWalletAttestationRequest::Wua(WUARequestParams {
                     attested_keys,
                 })),
-                (false, false) => None,
+                (None, false) => None,
             };
 
         let attestations_issuance_response = match attestations_issuance_request {
@@ -159,65 +173,49 @@ impl OpenID4VCIFinal1_0 {
             }
         };
 
-        // Create WIA proof-of-possession if using WIA
-        let wia_tokens =
-            match (use_wallet_attestation, &attestations_issuance_response) {
-                (true, Some(issuance_response)) => {
-                    let wia = issuance_response.provider_response.wia.first().ok_or(
-                        IssuanceProtocolError::Failed("Wallet attestation is required".to_string()),
-                    )?;
+        let wia_tokens = match (client_attestation_key, &attestations_issuance_response) {
+            (Some(client_attestation_key), Some(issuance_response)) => {
+                let wia = issuance_response.provider_response.wia.first().ok_or(
+                    IssuanceProtocolError::Failed("Wallet attestation is required".to_string()),
+                )?;
 
-                    self.store_received_attestation(
-                        wia,
-                        AttestationType::WalletInstanceAttestation,
-                        holder_wallet_unit.as_ref(),
-                        None,
+                self.store_received_attestation(
+                    wia,
+                    AttestationType::WalletInstanceAttestation,
+                    holder_wallet_unit.as_ref(),
+                    None,
+                )
+                .await?;
+
+                // In DPoP combined mode, the DPoP proof serves as proof of possession
+                // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-5.2
+                let dpop_combined_mode = token_endpoint_auth_methods
+                    .contains(&TokenEndpointAuthMethod::AttestJwtClientAuthDpop)
+                    && dpop_key.is_some_and(|dpop_key| dpop_key.id == client_attestation_key.id);
+                let wallet_attestation_pop = if dpop_combined_mode {
+                    None
+                } else {
+                    Some(
+                        self.create_client_attestation_pop(
+                            &client_attestation_key,
+                            wia,
+                            interaction_data,
+                        )
+                        .await?,
                     )
-                    .await?;
+                };
 
-                    let wia_pop_key = issuance_response.wia_pop_key.as_ref().ok_or(
-                        IssuanceProtocolError::Failed("WIA PoP key missing".to_string()),
-                    )?;
-
-                    // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
-                    // The WIA sub (subject) claim MUST specify client_id value of the OAuth Client.
-                    let wia_jwt: Jwt<()> = Jwt::build_from_token(wia, None, None)
-                        .await
-                        .error_while("parsing WIA JWT")?;
-
-                    let client_id =
-                        wia_jwt
-                            .payload
-                            .subject
-                            .ok_or(IssuanceProtocolError::Failed(
-                                "WIA missing subject claim".to_string(),
-                            ))?;
-
-                    let challenge =
-                        if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
-                            Some(self.holder_fetch_challenge(challenge_endpoint).await?)
-                        } else {
-                            None
-                        };
-
-                    let signed_proof = create_wallet_unit_attestation_pop(
-                        wia_pop_key,
-                        &interaction_data.issuer_url,
-                        challenge,
-                        &client_id,
-                    )
-                    .await?;
-
-                    Ok(Some(TokenRequestAttestationHeaders {
-                        wallet_attestation: wia.to_owned(),
-                        wallet_attestation_pop: signed_proof,
-                    }))
-                }
-                (true, None) => Err(IssuanceProtocolError::Failed(
-                    "Wallet attestation issuance failed".to_string(),
-                )),
-                (false, _) => Ok(None),
-            }?;
+                Ok(Some(TokenRequestAttestationHeaders {
+                    wallet_attestation: wia.to_owned(),
+                    wallet_attestation_pop,
+                    client_attestation_key_id: client_attestation_key.id,
+                }))
+            }
+            (Some(_), None) => Err(IssuanceProtocolError::Failed(
+                "Wallet attestation issuance failed".to_string(),
+            )),
+            (None, _) => Ok(None),
+        }?;
 
         // the WUA proofs come back in the order of the attested keys
         if key_attestations_required {
@@ -260,10 +258,96 @@ impl OpenID4VCIFinal1_0 {
         Ok(wia_tokens)
     }
 
-    fn prepare_wia_request_params(
+    /// Client Instance Key of the wallet attestations of an issuance.
+    ///
+    /// Refreshing tokens requires a wallet attestation for the key the tokens were issued with, so
+    /// the key is kept with the interaction. The DPoP key is used if its algorithm is supported.
+    /// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-10.3
+    pub(super) async fn client_attestation_key(
+        &self,
+        interaction: &Interaction,
+        interaction_data: &HolderInteractionData,
+        dpop_key: Option<&Key>,
+    ) -> Result<Key, IssuanceProtocolError> {
+        if let Some(key) = &interaction.client_attestation_key {
+            return Ok(Key::clone(&*key.as_ref().await?));
+        }
+
+        let supported_algorithms = self.client_attestation_key_algorithms(interaction_data)?;
+        let dpop_key = dpop_key.filter(|dpop_key| {
+            dpop_key
+                .key_algorithm_type()
+                .is_ok_and(|algorithm| supported_algorithms.contains(&algorithm))
+        });
+        let generated_key = match dpop_key {
+            Some(_) => None,
+            None => {
+                let key_storage = self
+                    .params
+                    .holder_client_attestation_key_storage
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed(format!(
+                        "`holderClientAttestationKeyStorage` is not configured for `{}`",
+                        self.config_id
+                    )))?;
+                let algorithm =
+                    *supported_algorithms
+                        .first()
+                        .ok_or(IssuanceProtocolError::Failed(
+                            "no client attestation key algorithm".to_string(),
+                        ))?;
+                Some(
+                    self.generate_holder_key(
+                        key_storage,
+                        algorithm,
+                        interaction.organisation.to_owned(),
+                        "Client attestation key",
+                    )
+                    .await?,
+                )
+            }
+        };
+
+        self.tx_manager
+            .tx(async {
+                if let Some(key) = &generated_key {
+                    self.key_repository
+                        .create_key(key.to_owned())
+                        .await
+                        .error_while("creating client attestation key")?;
+                }
+                self.interaction_repository
+                    .update_interaction(
+                        interaction.id,
+                        UpdateInteractionRequest {
+                            client_attestation_key: Some(
+                                generated_key.as_ref().or(dpop_key).map(|key| key.id),
+                            ),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("setting the client attestation key of the interaction")?;
+                Ok::<_, IssuanceProtocolError>(())
+            })
+            .await
+            .error_while("storing the client attestation key")
+            .map_err(IssuanceProtocolError::from)
+            .flatten()?;
+
+        generated_key
+            .or(dpop_key.cloned())
+            .ok_or(IssuanceProtocolError::Failed(
+                "missing client attestation key".to_string(),
+            ))
+    }
+
+    /// Key algorithms of the issuer supported Client Attestation PoP signing algorithms, in the
+    /// order of preference of the issuer.
+    fn client_attestation_key_algorithms(
         &self,
         interaction_data: &HolderInteractionData,
-    ) -> Result<WIARequestParams, IssuanceProtocolError> {
+    ) -> Result<Vec<KeyAlgorithmType>, IssuanceProtocolError> {
         let alg_values_supported = interaction_data
             .client_attestation_pop_signing_alg_values_supported
             .as_ref()
@@ -271,17 +355,55 @@ impl OpenID4VCIFinal1_0 {
                 "token auth method attest_jwt_client_auth speicified, but client_attestation_pop_signing_alg_values_supported missing".to_string(),
             ))?;
 
-        for alg in alg_values_supported {
-            if let Some((key_algorithm, _)) =
-                self.key_algorithm_provider.key_algorithm_from_jose_alg(alg)
-            {
-                return Ok(WIARequestParams { key_algorithm });
-            }
+        let algorithms: Vec<_> = alg_values_supported
+            .iter()
+            .filter_map(|alg| self.key_algorithm_provider.key_algorithm_from_jose_alg(alg))
+            .map(|(algorithm, _)| algorithm)
+            .collect();
+        if algorithms.is_empty() {
+            return Err(IssuanceProtocolError::InvalidRequest(format!(
+                "No suitable alg found in client_attestation_pop_signing_alg_values_supported: {alg_values_supported:?}"
+            )));
         }
+        Ok(algorithms)
+    }
 
-        Err(IssuanceProtocolError::InvalidRequest(format!(
-            "No suitable alg found in client_attestation_pop_signing_alg_values_supported: {alg_values_supported:?}"
-        )))
+    async fn create_client_attestation_pop(
+        &self,
+        client_attestation_key: &Key,
+        wia: &str,
+        interaction_data: &HolderInteractionData,
+    ) -> Result<String, IssuanceProtocolError> {
+        // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
+        // The WIA sub (subject) claim MUST specify client_id value of the OAuth Client.
+        let wia_jwt: Jwt<()> = Jwt::build_from_token(wia, None, None)
+            .await
+            .error_while("parsing WIA JWT")?;
+        let client_id = wia_jwt
+            .payload
+            .subject
+            .ok_or(IssuanceProtocolError::Failed(
+                "WIA missing subject claim".to_string(),
+            ))?;
+
+        let challenge = if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
+            Some(self.holder_fetch_challenge(challenge_endpoint).await?)
+        } else {
+            None
+        };
+
+        let auth_fn = self.key_provider.get_signature_provider(
+            client_attestation_key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
+        create_wallet_unit_attestation_pop(
+            &auth_fn,
+            &interaction_data.issuer_url,
+            challenge,
+            &client_id,
+        )
+        .await
     }
 
     async fn store_received_attestation(
@@ -337,7 +459,9 @@ pub(super) fn requires_wia(token_endpoint_auth_methods: &[TokenEndpointAuthMetho
         || token_endpoint_auth_methods
             .contains(&TokenEndpointAuthMethod::Other("public".to_string()));
 
-    token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth)
+    token_endpoint_auth_methods
+        .iter()
+        .any(|method| method.requires_attestation())
         && !public_auth_supported
 }
 

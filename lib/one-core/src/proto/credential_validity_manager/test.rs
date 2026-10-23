@@ -501,6 +501,7 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -692,6 +693,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -876,6 +878,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -1066,6 +1069,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
         updated_credential.common_mut().interaction = Some(
             crate::model::interaction::Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),

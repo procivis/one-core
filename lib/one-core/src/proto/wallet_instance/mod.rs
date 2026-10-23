@@ -6,7 +6,6 @@ use standardized_types::openid4vci::KeyStorageSecurityLevel;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
 
-use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::instance::Instance;
@@ -17,14 +16,13 @@ use crate::model::wallet_attestation::{AttestationType, WalletAttestationFilterV
 use crate::proto::certificate_validator::{
     CertificatePurpose, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
-use crate::proto::ephemeral_key::EphemeralKey;
 use crate::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::proto::wallet_provider_client::dto::IssueWalletAttestationResponse;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CertificateDetails, CredentialStatus, IdentifierDetails,
+    CertificateDetails, CredentialStatus, IdentifierDetails,
 };
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -41,8 +39,9 @@ use crate::service::managed_instance::dto::{
 };
 
 #[derive(Debug)]
-pub(crate) struct WIARequestParams {
-    pub key_algorithm: KeyAlgorithmType,
+pub(crate) struct WIARequestParams<'a> {
+    /// Client Instance Key the WIA is issued for
+    pub key: &'a Key,
 }
 
 #[derive(Debug)]
@@ -53,9 +52,9 @@ pub(crate) struct WUARequestParams<'a> {
 
 #[derive(Debug)]
 pub(crate) enum IssueWalletAttestationRequest<'a> {
-    Wia(WIARequestParams),
+    Wia(WIARequestParams<'a>),
     Wua(WUARequestParams<'a>),
-    WuaAndWia(WUARequestParams<'a>, WIARequestParams),
+    WuaAndWia(WUARequestParams<'a>, WIARequestParams<'a>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Display)]
@@ -73,7 +72,6 @@ pub(crate) struct AttestationCheckResult {
 
 pub(crate) struct IssuedWalletUnitAttestations {
     pub provider_response: IssueWalletUnitAttestationResponseDTO,
-    pub wia_pop_key: Option<AuthenticationFn>,
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -436,26 +434,17 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                     "holder wallet unit authentication key not found".to_string(),
                 ))?;
 
-        let mut wia_pop_key = None;
         let wia_proof = match request {
-            IssueWalletAttestationRequest::Wia(WIARequestParams { key_algorithm })
-            | IssueWalletAttestationRequest::WuaAndWia(_, WIARequestParams { key_algorithm }) => {
-                let key_algorithm = self
-                    .key_algorithm_provider
-                    .key_algorithm_from_type(key_algorithm)
-                    .error_while("getting key algorithm for WIA key")?;
-
-                let key = EphemeralKey::new(key_algorithm.to_owned())
-                    .error_while("generating WIA PoP key")?;
-
+            IssueWalletAttestationRequest::Wia(WIARequestParams { key })
+            | IssueWalletAttestationRequest::WuaAndWia(_, WIARequestParams { key }) => {
+                let (key_handle, key_algorithm) = self.get_key_handle(key)?;
                 let proof = self
                     .create_proof_of_key_possesion(
                         &holder_wallet_instance.provider_url,
-                        key.key_handle(),
+                        &key_handle,
                         key_algorithm.as_ref(),
                     )
                     .await?;
-                wia_pop_key = Some(key.into());
                 vec![IssueWiaRequestDTO { proof }]
             }
             IssueWalletAttestationRequest::Wua(_) => {
@@ -512,10 +501,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             .error_while("issuing attestation")?;
 
         if let IssueWalletAttestationResponse::Active(provider_response) = issuance_result {
-            Ok(IssuedWalletUnitAttestations {
-                provider_response,
-                wia_pop_key,
-            })
+            Ok(IssuedWalletUnitAttestations { provider_response })
         } else {
             Err(Error::MappingError(
                 "Failed to issue wallet attestations".to_string(),

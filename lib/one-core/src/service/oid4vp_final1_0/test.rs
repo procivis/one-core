@@ -137,6 +137,7 @@ async fn test_submit_proof_validator_failure_only_updates_active_proofs(
     let now = crate::clock::now_utc();
     let interaction = Interaction {
         dpop_key: None,
+        client_attestation_key: None,
         id: interaction_id,
         created_date: now,
         last_modified: now,
@@ -305,6 +306,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
     };
     let interaction = Interaction {
         dpop_key: None,
+        client_attestation_key: None,
         id: interaction_id,
         created_date: now,
         last_modified: now,

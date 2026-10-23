@@ -657,6 +657,7 @@ pub async fn insert_interaction(
         ecosystem: Set(None),
         ecosystem_data: Set(None),
         dpop_key_id: Set(None),
+        client_attestation_key_id: Set(None),
     }
     .insert(database)
     .await?;

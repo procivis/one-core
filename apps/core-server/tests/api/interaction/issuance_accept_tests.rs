@@ -16,6 +16,7 @@ use one_core::model::identifier::{IdentifierData, IdentifierType};
 use one_core::model::interaction::InteractionType;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::proto::jwt::Jwt;
+use one_core::proto::jwt::model::DecomposedJwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_crypto::Hasher;
@@ -2981,8 +2982,10 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     assert_eq!(CredentialStateEnum::Accepted, credential.common().state);
 }
 
-#[tokio::test]
-async fn test_wia_pop_iss_equals_wia_sub() {
+/// Accepts an issuance requiring a wallet instance attestation, returns the token request
+async fn accept_with_wallet_instance_attestation(
+    params: InteractionDataParams,
+) -> (TestContext, InteractionId, wiremock::Request) {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -3116,14 +3119,7 @@ async fn test_wia_pop_iss_equals_wia_sub() {
             },
         )
         .await;
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams {
-            require_instance_attestation: true,
-            ..Default::default()
-        },
-    );
+    let interaction_data = dummy_interaction_data(&context, &credential_schema, params);
 
     let interaction = context
         .db
@@ -3175,28 +3171,37 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         )
         .await;
 
-    // THEN
     assert_eq!(resp.status(), 200);
 
     let requests = context.server_mock.received_requests().await.unwrap();
     let token_request = requests
-        .iter()
+        .into_iter()
         .find(|r| r.url.path().contains("/token"))
         .expect("Token request not found");
+    (context, interaction.id, token_request)
+}
 
-    let wia_header = token_request
-        .headers
-        .get("oauth-client-attestation")
+fn header_jwt(request: &wiremock::Request, name: &str) -> Option<DecomposedJwt<()>> {
+    request.headers.get(name).map(|header| {
+        Jwt::<()>::decompose_token(header.to_str().unwrap()).expect("Failed to parse JWT header")
+    })
+}
+
+#[tokio::test]
+async fn test_wia_pop_iss_equals_wia_sub() {
+    // WHEN
+    let (context, interaction_id, token_request) =
+        accept_with_wallet_instance_attestation(InteractionDataParams {
+            require_instance_attestation: true,
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    let wia = header_jwt(&token_request, "oauth-client-attestation")
         .expect("OAuth-Client-Attestation header not found");
-    let wia_pop_header = token_request
-        .headers
-        .get("oauth-client-attestation-pop")
+    let wia_pop = header_jwt(&token_request, "oauth-client-attestation-pop")
         .expect("OAuth-Client-Attestation-PoP header not found");
-
-    let wia =
-        Jwt::<()>::decompose_token(wia_header.to_str().unwrap()).expect("Failed to parse WIA JWT");
-    let wia_pop = Jwt::<()>::decompose_token(wia_pop_header.to_str().unwrap())
-        .expect("Failed to parse WIA PoP JWT");
 
     assert_eq!(
         wia_pop.payload.issuer, wia.payload.subject,
@@ -3208,6 +3213,56 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         Some("eudiw-abca".to_string()),
         "WIA 'sub' should be wallet_client_id from config"
     );
+
+    // the WIA is issued for the client attestation key kept with the interaction
+    let interaction = context.db.interactions.get(interaction_id).await.unwrap();
+    let client_attestation_key = context
+        .db
+        .keys
+        .get(&interaction.client_attestation_key.unwrap().id())
+        .await;
+    let client_attestation_jwk = Ecdsa
+        .reconstruct_key(&client_attestation_key.public_key, None, None)
+        .unwrap()
+        .public_key_as_jwk()
+        .unwrap();
+    assert_eq!(
+        &client_attestation_jwk,
+        wia.payload.proof_of_possession_key.unwrap().jwk.jwk()
+    );
+}
+
+#[tokio::test]
+async fn test_wia_dpop_combined_mode() {
+    // WHEN
+    let (context, interaction_id, token_request) =
+        accept_with_wallet_instance_attestation(InteractionDataParams {
+            require_instance_attestation: true,
+            dpop_combined_mode: true,
+            ..Default::default()
+        })
+        .await;
+
+    // THEN the DPoP proof serves as proof of possession of the Client Instance Key
+    let wia = header_jwt(&token_request, "oauth-client-attestation")
+        .expect("OAuth-Client-Attestation header not found");
+    assert!(header_jwt(&token_request, "oauth-client-attestation-pop").is_none());
+    let dpop_proof = header_jwt(&token_request, "dpop").expect("DPoP header not found");
+    assert_eq!(
+        dpop_proof.header.jwk.as_ref().unwrap(),
+        wia.payload.proof_of_possession_key.unwrap().jwk.jwk()
+    );
+
+    // the issuer returned a bearer token: the DPoP binding is dropped, the key is kept as
+    // client attestation key
+    let interaction = context.db.interactions.get(interaction_id).await.unwrap();
+    assert!(interaction.dpop_key.is_none());
+    let client_attestation_key = context
+        .db
+        .keys
+        .get(&interaction.client_attestation_key.unwrap().id())
+        .await;
+    assert!(client_attestation_key.name.starts_with("DPoP binding key"));
 }
 
 #[tokio::test]

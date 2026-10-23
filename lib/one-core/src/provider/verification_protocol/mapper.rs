@@ -30,6 +30,7 @@ pub(crate) fn interaction_from_handle_invitation(
 ) -> Interaction {
     Interaction {
         dpop_key: None,
+        client_attestation_key: None,
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,

@@ -27,6 +27,7 @@ impl TryFrom<Interaction> for interaction::ActiveModel {
                 .into_stored()
                 .map_err(|e| DataLayerError::MappingError(e.into()))?),
             dpop_key_id: Set(value.dpop_key.map(|key| key.id())),
+            client_attestation_key_id: Set(value.client_attestation_key.map(|key| key.id())),
         })
     }
 }
@@ -46,6 +47,7 @@ impl TryFrom<UpdateInteractionRequest> for interaction::ActiveModel {
                 .map(Set)
                 .unwrap_or_default(),
             dpop_key_id: value.dpop_key.map(Set).unwrap_or_default(),
+            client_attestation_key_id: value.client_attestation_key.map(Set).unwrap_or_default(),
             ..Default::default()
         })
     }
@@ -68,6 +70,9 @@ pub(crate) fn interaction_from_model(
         ecosystem_data: InteractionEcosystems::from_stored(interaction.ecosystem_data),
         dpop_key: interaction
             .dpop_key_id
+            .map(|id| Related::new(id, key_repository.clone())),
+        client_attestation_key: interaction
+            .client_attestation_key_id
             .map(|id| Related::new(id, key_repository.clone())),
     }
 }

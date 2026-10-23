@@ -40,8 +40,9 @@ use super::mapper::{
 };
 use super::validator::{
     self, client_instance_key_thumbprint, extract_wallet_metadata, throw_if_access_token_invalid,
-    validate_credential_request_format, validate_pop_audience, validate_response_encryption,
-    validate_timestamps, verify_ka_wia_issuers_match, verify_pop_signature, verify_wia_signature,
+    validate_credential_request_format, validate_pop_audience, validate_pop_issuer,
+    validate_response_encryption, validate_timestamps, verify_ka_wia_issuers_match,
+    verify_pop_signature, verify_wia_signature,
 };
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
@@ -1814,6 +1815,7 @@ impl OID4VCIFinal1_0Service {
             }
         };
         validate_pop_audience(&proof_of_key_possession, &expected_audience)?;
+        validate_pop_issuer(&proof_of_key_possession, wallet_instance_attestation)?;
         verify_pop_signature(
             &proof_of_key_possession,
             wallet_instance_attestation,

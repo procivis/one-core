@@ -31,7 +31,7 @@ use service::{
 };
 use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
-    IdentifierId, InteractionId, KeyId, OrganisationId, SerializedCredential,
+    IdentifierId, InteractionId, KeyId, SerializedCredential,
 };
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
@@ -211,6 +211,24 @@ fn should_create_batch_parent(
         && (has_refresh_token
             || advertised_batch_size.is_some_and(|size| size > 1)
             || any_batch_issued)
+}
+
+/// Adds the wallet attestation headers of a token request.
+/// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-6.1
+fn with_wallet_attestation(
+    request: RequestBuilder,
+    wallet_attestation: &TokenRequestAttestationHeaders,
+) -> RequestBuilder {
+    let request = request.header(
+        "OAuth-Client-Attestation",
+        &wallet_attestation.wallet_attestation,
+    );
+    match &wallet_attestation.wallet_attestation_pop {
+        Some(wallet_attestation_pop) => {
+            request.header("OAuth-Client-Attestation-PoP", wallet_attestation_pop)
+        }
+        None => request,
+    }
 }
 
 /// Copies the most recent DPoP nonce into the interaction data so that the next flow starts
@@ -424,24 +442,19 @@ impl OpenID4VCIFinal1_0 {
         self.dpop_context_for_key(&key, interaction_data).map(Some)
     }
 
-    async fn dpop_context_with_key_generation(
+    /// The DPoP binding key of the interaction, generated if the issuance is not bound yet.
+    async fn dpop_key_with_generation(
         &self,
         interaction: &Interaction,
         interaction_data: &HolderInteractionData,
-    ) -> Result<Option<DpopContext>, IssuanceProtocolError> {
+    ) -> Result<Option<Key>, IssuanceProtocolError> {
         // a retried accept reuses the binding key of the previous attempt
-        if interaction.dpop_key.is_some() {
-            return self.dpop_context(interaction, interaction_data).await;
+        if let Some(dpop_key) = &interaction.dpop_key {
+            return Ok(Some(Key::clone(&*dpop_key.as_ref().await?)));
         }
 
-        let Some(key) = self
-            .create_dpop_binding_key(interaction, interaction_data)
-            .await?
-        else {
-            return Ok(None);
-        };
-
-        self.dpop_context_for_key(&key, interaction_data).map(Some)
+        self.create_dpop_binding_key(interaction, interaction_data)
+            .await
     }
 
     fn dpop_context_for_key(
@@ -492,12 +505,17 @@ impl OpenID4VCIFinal1_0 {
     }
 
     /// Drops the DPoP binding key of an issuance the issuer did not use.
+    ///
+    /// The key is kept if it also is the Client Instance Key of the wallet attestations.
     async fn discard_dpop_binding(
         &self,
         interaction_id: InteractionId,
         key_id: KeyId,
         interaction_data: &mut HolderInteractionData,
+        wallet_attestation: Option<&TokenRequestAttestationHeaders>,
     ) -> Result<(), IssuanceProtocolError> {
+        let keep_key = wallet_attestation
+            .is_some_and(|attestation| attestation.client_attestation_key_id == key_id);
         interaction_data.dpop_nonce = None;
         interaction_data.dpop_signing_alg_values_supported = None;
 
@@ -514,10 +532,12 @@ impl OpenID4VCIFinal1_0 {
                     )
                     .await
                     .error_while("clearing the DPoP key of the interaction")?;
-                self.key_repository
-                    .hard_delete(&key_id)
-                    .await
-                    .error_while("hard deleting unused DPoP binding key")?;
+                if !keep_key {
+                    self.key_repository
+                        .hard_delete(&key_id)
+                        .await
+                        .error_while("hard deleting unused DPoP binding key")?;
+                }
                 Ok::<_, IssuanceProtocolError>(())
             })
             .await
@@ -596,7 +616,7 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         dpop: Option<&DpopContext>,
         tx_code: Option<String>,
-        wallet_attestation_request: Option<TokenRequestAttestationHeaders>,
+        wallet_attestation_request: Option<&TokenRequestAttestationHeaders>,
     ) -> Result<TokenResponse, IssuanceProtocolError> {
         let token_endpoint =
             interaction_data
@@ -643,16 +663,8 @@ impl OpenID4VCIFinal1_0 {
                 None,
                 |request| {
                     let mut request = request.form(&form)?;
-                    if let Some(wallet_attestation_request) = &wallet_attestation_request {
-                        request = request
-                            .header(
-                                "OAuth-Client-Attestation",
-                                &wallet_attestation_request.wallet_attestation,
-                            )
-                            .header(
-                                "OAuth-Client-Attestation-PoP",
-                                &wallet_attestation_request.wallet_attestation_pop,
-                            );
+                    if let Some(wallet_attestation_request) = wallet_attestation_request {
+                        request = with_wallet_attestation(request, wallet_attestation_request);
                     }
                     Ok(request)
                 },
@@ -684,8 +696,7 @@ impl OpenID4VCIFinal1_0 {
 
     async fn holder_reuse_or_refresh_token(
         &self,
-        interaction_id: InteractionId,
-        organisation_id: OrganisationId,
+        interaction: &Interaction,
         interaction_data: &mut HolderInteractionData,
         dpop: &mut Option<DpopContext>,
     ) -> Result<SecretString, IssuanceProtocolError> {
@@ -729,12 +740,17 @@ impl OpenID4VCIFinal1_0 {
         // [...]
         // To prove this binding, the Client Instance MUST use the client attestation mechanism when refreshing an access token.
         // The client MUST also use the same key that was present in the "cnf" claim of the client attestation that was used when the refresh token was issued.
+        let dpop_key = match &interaction.dpop_key {
+            Some(dpop_key) => Some(Key::clone(&*dpop_key.as_ref().await?)),
+            None => None,
+        };
         let wia_tokens = self
             .prepare_wallet_attestations(
+                interaction,
                 interaction_data,
                 &mut [],
-                organisation_id,
                 &[AttestationType::WalletInstanceAttestation],
+                dpop_key.as_ref(),
             )
             .await?;
 
@@ -757,14 +773,8 @@ impl OpenID4VCIFinal1_0 {
                 None,
                 |request| {
                     let mut request = request.form(&form)?;
-                    if let Some(TokenRequestAttestationHeaders {
-                        wallet_attestation,
-                        wallet_attestation_pop,
-                    }) = &wia_tokens
-                    {
-                        request = request
-                            .header("OAuth-Client-Attestation", wallet_attestation)
-                            .header("OAuth-Client-Attestation-PoP", wallet_attestation_pop);
+                    if let Some(wia_tokens) = &wia_tokens {
+                        request = with_wallet_attestation(request, wia_tokens);
                     }
                     Ok(request)
                 },
@@ -777,11 +787,16 @@ impl OpenID4VCIFinal1_0 {
 
         self.set_token_response(interaction_data, &token_response)?;
         if let Some(discarded) = dpop.take_if(|_| token_response.token_type != TokenType::DPoP) {
-            self.discard_dpop_binding(interaction_id, discarded.key_id(), interaction_data)
-                .await?;
+            self.discard_dpop_binding(
+                interaction.id,
+                discarded.key_id(),
+                interaction_data,
+                wia_tokens.as_ref(),
+            )
+            .await?;
         }
         let _ = store_dpop_nonce(dpop.as_ref(), interaction_data);
-        self.save_interaction_data(interaction_id, interaction_data)
+        self.save_interaction_data(interaction.id, interaction_data)
             .await?;
 
         Ok(token_response.access_token)
@@ -1674,31 +1689,46 @@ impl OpenID4VCIFinal1_0 {
                 autogenerated_bindings,
             )
             .await?;
+        let dpop_key = self
+            .dpop_key_with_generation(interaction, interaction_data)
+            .await?;
         // the token is requested once, attested together with the keys of every configuration
         let wia_tokens = self
             .prepare_wallet_attestations(
+                interaction,
                 interaction_data,
                 &mut requested_credentials,
-                interaction.organisation.id(),
                 &[
                     AttestationType::WalletInstanceAttestation,
                     AttestationType::KeyAttestation,
                 ],
+                dpop_key.as_ref(),
             )
             .await?;
-        let mut dpop = self
-            .dpop_context_with_key_generation(interaction, interaction_data)
-            .await?;
+        let mut dpop = dpop_key
+            .as_ref()
+            .map(|dpop_key| self.dpop_context_for_key(dpop_key, interaction_data))
+            .transpose()?;
         let token_response = self
-            .holder_fetch_token(interaction_data, dpop.as_ref(), tx_code, wia_tokens)
+            .holder_fetch_token(
+                interaction_data,
+                dpop.as_ref(),
+                tx_code,
+                wia_tokens.as_ref(),
+            )
             .await?;
         // a failed accept attempt may have stored a refresh token, this response replaces it
         interaction_data.refresh_token = None;
         interaction_data.refresh_token_expires_at = None;
         self.set_token_response(interaction_data, &token_response)?;
         if let Some(discarded) = dpop.take_if(|_| token_response.token_type != TokenType::DPoP) {
-            self.discard_dpop_binding(interaction.id, discarded.key_id(), interaction_data)
-                .await?;
+            self.discard_dpop_binding(
+                interaction.id,
+                discarded.key_id(),
+                interaction_data,
+                wia_tokens.as_ref(),
+            )
+            .await?;
         }
         let dpop = dpop.as_ref();
 
@@ -2231,26 +2261,38 @@ impl OpenID4VCIFinal1_0 {
             return Ok(None);
         };
 
-        let key_storage = self.key_provider.get_key_storage(dpop_key_storage)?;
+        self.generate_holder_key(dpop_key_storage, alg_type, organisation, "DPoP binding key")
+            .await
+            .map(Some)
+    }
+
+    /// Generates an autogenerated holder key, not yet stored in the key repository.
+    pub(super) async fn generate_holder_key(
+        &self,
+        key_storage_id: &str,
+        alg_type: KeyAlgorithmType,
+        organisation: impl Into<Related<Organisation>>,
+        name: &str,
+    ) -> Result<Key, IssuanceProtocolError> {
+        let key_storage = self.key_provider.get_key_storage(key_storage_id)?;
         let key_id = Uuid::new_v4().into();
-        let dpop_binding_key = key_storage
+        let generated_key = key_storage
             .generate(key_id, alg_type, serde_json::json!({}))
             .await
-            .error_while("generating DPoP binding key")?;
+            .error_while(format!("generating {name}"))?;
         let now = now_utc();
-        let key = Key {
+        Ok(Key {
             id: key_id,
             created_date: now,
             last_modified: now,
-            public_key: dpop_binding_key.public_key,
-            name: format!("DPoP binding key {key_id}"),
-            key_reference: dpop_binding_key.key_reference,
-            storage_type: dpop_key_storage.clone(),
+            public_key: generated_key.public_key,
+            name: format!("{name} {key_id}"),
+            key_reference: generated_key.key_reference,
+            storage_type: key_storage_id.to_owned(),
             key_type: alg_type.to_string(),
             autogenerated: true,
             organisation: organisation.into(),
-        };
-        Ok(Some(key))
+        })
     }
 
     pub(super) async fn get_etsi_issuer_info(
@@ -2790,16 +2832,9 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             return Ok(());
         }
 
-        let organisation_id = interaction.organisation.id();
-
         let mut dpop = self.dpop_context(&interaction, &interaction_data).await?;
         let access_token = self
-            .holder_reuse_or_refresh_token(
-                interaction.id,
-                organisation_id,
-                &mut interaction_data,
-                &mut dpop,
-            )
+            .holder_reuse_or_refresh_token(&interaction, &mut interaction_data, &mut dpop)
             .await?;
         let dpop = dpop.as_ref();
 
@@ -3274,12 +3309,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let mut dpop = self.dpop_context(interaction, &interaction_data).await?;
         let access_token = self
-            .holder_reuse_or_refresh_token(
-                interaction.id,
-                interaction.organisation.id(),
-                &mut interaction_data,
-                &mut dpop,
-            )
+            .holder_reuse_or_refresh_token(interaction, &mut interaction_data, &mut dpop)
             .await?;
         let dpop = dpop.as_ref();
 
@@ -3300,10 +3330,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             }
             // the keys of every configuration are attested in one wallet provider round trip
             self.prepare_wallet_attestations(
+                interaction,
                 &interaction_data,
                 &mut requested_credentials,
-                interaction.organisation.id(),
                 &[AttestationType::KeyAttestation],
+                None,
             )
             .await?;
 

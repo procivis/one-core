@@ -69,6 +69,7 @@ pub(super) fn interaction_with_data<T: Serialize>(
         ecosystem: None,
         ecosystem_data: InteractionEcosystems::default(),
         dpop_key: None,
+        client_attestation_key: None,
     })
 }
 

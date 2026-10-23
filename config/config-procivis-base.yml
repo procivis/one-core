@@ -112,6 +112,7 @@ issuanceProtocol:
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
         holderDpopKeyStorage: "INTERNAL"
+        holderClientAttestationKeyStorage: "INTERNAL"
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -130,6 +131,7 @@ issuanceProtocol:
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
         holderDpopKeyStorage: "INTERNAL"
+        holderClientAttestationKeyStorage: "INTERNAL"
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -150,6 +152,7 @@ issuanceProtocol:
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
         holderDpopKeyStorage: "INTERNAL"
+        holderClientAttestationKeyStorage: "INTERNAL"
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]

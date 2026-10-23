@@ -8,7 +8,6 @@ pub(crate) mod csr_creator;
 pub(crate) mod dpop_handler;
 pub(crate) mod ecosystem_resolver;
 pub(crate) mod ecosystem_sync;
-pub(crate) mod ephemeral_key;
 pub(crate) mod history_decorator;
 pub mod http_client;
 pub(crate) mod identifier_creator;

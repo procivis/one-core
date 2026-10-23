@@ -6,7 +6,7 @@ use secrecy::SecretSlice;
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialId, CredentialSchemaFormatId};
+use shared_types::{CredentialId, CredentialSchemaFormatId, KeyId};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::{
@@ -69,6 +69,11 @@ pub(crate) struct OpenID4VCIFinal1Params {
     /// If not configured, the holder will not use DPoP.
     #[serde(default)]
     pub holder_dpop_key_storage: Option<String>,
+
+    /// Holder-side key storage of the Client Instance Keys of client attestations (WIA), needed
+    /// when the DPoP key cannot be used as Client Instance Key.
+    #[serde(default)]
+    pub holder_client_attestation_key_storage: Option<String>,
 
     /// Issuer DPoP configuration
     #[serde(default)]
@@ -618,7 +623,10 @@ pub(crate) struct CredentialIssuerParams {
 #[derive(Debug)]
 pub(super) struct TokenRequestAttestationHeaders {
     pub wallet_attestation: String,
-    pub wallet_attestation_pop: String,
+    /// `None` in DPoP combined mode, where the DPoP proof serves as proof of possession
+    pub wallet_attestation_pop: Option<String>,
+    /// Client Instance Key of the wallet attestation
+    pub client_attestation_key_id: KeyId,
 }
 
 /// holder binding of a credential, with the key attestation when the issuer requires one

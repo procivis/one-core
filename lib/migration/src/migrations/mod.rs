@@ -66,3 +66,4 @@ pub mod m20260928_090000_rename_webvh_to_tdw;
 pub mod m20260928_120000_drop_holder_claim_deduplication_progress;
 pub mod m20261015_120000_interaction_dpop_key;
 pub mod m20261020_033426_single_instance_only;
+pub mod m20261022_120000_interaction_client_attestation_key;

@@ -110,6 +110,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                 interaction: Some(
                     Interaction {
                         dpop_key: None,
+                        client_attestation_key: None,
                         id: interaction_id,
                         created_date: crate::clock::now_utc(),
                         last_modified: crate::clock::now_utc(),
@@ -163,6 +164,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .returning(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: interaction_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -209,6 +211,7 @@ async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
         .returning(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: interaction_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -394,6 +397,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                     interaction: Some(
                         Interaction {
                             dpop_key: None,
+                            client_attestation_key: None,
                             id: interaction_id,
                             created_date: crate::clock::now_utc(),
                             last_modified: crate::clock::now_utc(),
@@ -449,6 +453,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                 interaction: Some(
                     Interaction {
                         dpop_key: None,
+                        client_attestation_key: None,
                         id: interaction_id,
                         created_date: crate::clock::now_utc(),
                         last_modified: crate::clock::now_utc(),
@@ -502,6 +507,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
         .returning(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: interaction_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -637,6 +643,7 @@ async fn test_accept_credential() {
         .returning(|_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -797,6 +804,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
         .returning(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: interaction_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -986,6 +994,7 @@ async fn test_accept_credential_with_did() {
         .returning(|_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1103,6 +1112,7 @@ async fn test_accept_credential_batch() {
         .returning(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: interaction_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1222,6 +1232,7 @@ async fn test_accept_credential_wrong_tx_code() {
         .returning(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1442,6 +1453,7 @@ async fn test_continue_issuance() {
         .returning(move |id, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: *id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1766,6 +1778,7 @@ async fn test_continue_issuance_hands_over_dpop_key() {
         .returning(move |id, _| {
             Ok(Interaction {
                 dpop_key: Some(dpop_key.clone().into()),
+                client_attestation_key: None,
                 id: *id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -1969,6 +1982,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             interaction: Some(
                 Interaction {
                     dpop_key: None,
+                    client_attestation_key: None,
                     id: Uuid::new_v4().into(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
@@ -2141,6 +2155,7 @@ async fn test_accept_interaction_credential_org_mismatch() {
         .returning(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -2665,6 +2680,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
         .return_once(move |_, _| {
             Ok(Interaction {
                 dpop_key: None,
+                client_attestation_key: None,
                 id: interaction_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
