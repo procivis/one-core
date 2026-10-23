@@ -184,6 +184,13 @@ fn validate_unique_formats(
     if !formats.iter().map(|format| &format.format).all_unique() {
         return Err(CredentialSchemaServiceError::DuplicateFormats);
     }
+    if !formats
+        .iter()
+        .flat_map(|format| &format.ecosystem_schema_id)
+        .all_unique()
+    {
+        return Err(CredentialSchemaServiceError::DuplicateEcosystemSchemaIds);
+    }
     Ok(())
 }
 

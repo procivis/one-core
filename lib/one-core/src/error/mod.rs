@@ -210,6 +210,9 @@ pub enum ErrorCode {
     #[strum(message = "Engagement missing for ISO mDL flow")]
     BR_0079,
 
+    #[strum(message = "Schema id already exists")]
+    BR_0080,
+
     #[strum(message = "Wallet instance must be active")]
     BR_0081,
 

@@ -390,6 +390,32 @@ async fn test_fail_create_credential_schema_v2_duplicate_formats() {
 }
 
 #[tokio::test]
+async fn test_fail_create_credential_schema_v2_duplicate_ecosystem_schema_ids() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![
+                serde_json::json!({ "format": "MDOC", "ecosystemSchemaId": "org.example.foo" }),
+                serde_json::json!({ "format": "SD_JWT_VC", "ecosystemSchemaId": "org.example.foo" }),
+            ],
+            claims: default_claims(),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.json_value().await["code"], "BR_0080");
+}
+
+#[tokio::test]
 async fn test_create_credential_schema_v2_success_with_expiration() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

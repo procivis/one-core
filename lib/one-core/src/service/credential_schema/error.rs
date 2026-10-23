@@ -82,6 +82,8 @@ pub enum CredentialSchemaServiceError {
 
     #[error("Duplicate formats")]
     DuplicateFormats,
+    #[error("Duplicate ecosystem schema ids")]
+    DuplicateEcosystemSchemaIds,
     #[error("Selected credential formats have no common identifier capabilities")]
     IncompatibleFormats,
     #[error("Duplicate formats in mapping for claim `{0}`")]
@@ -130,6 +132,7 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::Nested(nested) => nested.error_code(),
             Self::MissingFormats => ErrorCode::BR_0435,
             Self::DuplicateFormats => ErrorCode::BR_0439,
+            Self::DuplicateEcosystemSchemaIds => ErrorCode::BR_0080,
             Self::IncompatibleFormats => ErrorCode::BR_0511,
             Self::DuplicateMappingFormats(_) => ErrorCode::BR_0440,
         }
