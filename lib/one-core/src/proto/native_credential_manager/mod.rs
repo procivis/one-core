@@ -13,13 +13,19 @@ pub struct DigitalCredentialRegistration {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DigitalCredentialClaim {
+    /// Path to the claim. For mdoc credentials, the first segment is
+    /// the namespace and the second is the data element identifier.
     pub path: Vec<String>,
+    /// Claim name in the language passed to the sync task, if a
+    /// translation exists.
     pub display_name: Option<String>,
     pub selectively_disclosable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DigitalCredentialDisplay {
+    /// Credential schema name in the language passed to the sync task.
+    /// Falls back to the untranslated schema name.
     pub credential_name: String,
     pub issuer_name: Option<String>,
     pub logo: Option<String>,

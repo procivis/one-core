@@ -24,7 +24,7 @@ internal object Init {
  * @param params Additional optional init parameters
  * @param dataDirPath Optional directory where ONE Core SDK should persist its data
  *
- * Note that [InitParams.bleCentral], [InitParams.blePeripheral], [InitParams.credentialManager] and [InitParams.nativeSecureElement] fallback to the default implmementations if not provided
+ * Note that [InitParams.bleCentral], [InitParams.blePeripheral], [InitParams.credentialManager] and [InitParams.nativeSecureElement] fallback to the default implementations if not provided
  */
 public fun initializeCore(context: Context, params: InitParams, dataDirPath: String = context.filesDir.absolutePath): OneCoreInterface {
     Init.initializeRustls(context)

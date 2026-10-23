@@ -41,7 +41,8 @@ struct MobileConfig {
 pub struct InitParams {
     /// Pass a serialized JSON to override the default configuration.
     pub config_json: Option<String>,
-    /// Create an instance of the native implementation of Secure Element and pass it here.
+    /// Create an instance of the native implementation of Secure Element
+    /// and pass it here.
     pub native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     /// Create a custom implementation of HSM and pass it.
     pub remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
@@ -49,6 +50,9 @@ pub struct InitParams {
     pub ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     pub nfc_hce: Option<Arc<dyn NfcHce>>,
     pub nfc_scanner: Option<Arc<dyn NfcScanner>>,
+    /// Native credential manager for registering credentials with the
+    /// Digital Credentials API (DC-API). Leave unset to use the default
+    /// implementation. Only used when the `CREDENTIAL_REGISTRY_SYNC` task runs.
     pub credential_manager: Option<Arc<dyn CredentialManager>>,
 }
 

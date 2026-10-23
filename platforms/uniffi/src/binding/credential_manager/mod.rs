@@ -48,7 +48,8 @@ pub enum DigitalCredentialMetadataBindingEnum {
     Mdoc { doctype: String },
 }
 
-/// Provider of native credential manager (for DC-API)
+/// Native credential manager for the Digital Credentials API (DC-API).
+/// Default implementations are provided for Android and iOS.
 #[uniffi::export(with_foreign)]
 #[async_trait::async_trait]
 pub trait CredentialManager: Send + Sync {

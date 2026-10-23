@@ -6,7 +6,7 @@ import Foundation
  - Parameter params: Additional optional init parameters
  - Parameter dataDirPath: Optional directory where ONE Core SDK should persist its data
 
- - Note: ``InitParams/bleCentral``, ``InitParams/blePeripheral``, ``InitParams/nativeSecureElement``, ``InitParams/nfcScanner`` and ``InitParams/credentialManager`` fallback to the default implmementations if not provided
+ - Note: ``InitParams/bleCentral``, ``InitParams/blePeripheral``, ``InitParams/nativeSecureElement``, ``InitParams/nfcScanner`` and ``InitParams/credentialManager`` fallback to the default implementations if not provided
 */
 public func initializeCore(params: InitParams, dataDirPath: String? = nil) throws -> OneCoreProtocol {
   var dataDir: String? = dataDirPath
