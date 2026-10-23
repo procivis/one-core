@@ -18,7 +18,6 @@ use standardized_types::openid4vp::{
 };
 use time::Duration;
 use url::Url;
-use utils::validate_interaction_data;
 use uuid::Uuid;
 
 use super::mapper::{format_to_type, unencrypted_params};
@@ -395,7 +394,7 @@ impl OpenID4VPFinal1_0 {
             interaction_data
         };
 
-        validate_interaction_data(&holder_interaction_data)?;
+        self.validate_interaction_data(&holder_interaction_data)?;
         self.process_transaction_data(&mut holder_interaction_data)?;
         let data = serialize_interaction_data(&holder_interaction_data)?;
 

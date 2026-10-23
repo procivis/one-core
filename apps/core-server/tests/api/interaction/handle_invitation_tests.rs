@@ -2595,6 +2595,35 @@ async fn test_handle_invitation_trust_mandatory_without_identifier_returns_error
     assert_eq!(resp.error_code().await, "BR_0476");
 }
 
+#[tokio::test]
+async fn test_handle_invitation_fail_unencrypted_response() {
+    // GIVEN
+    let config_changes = indoc::indoc! {"
+    verificationProtocol:
+        OPENID4VP_FINAL1:
+          params:
+            public:
+              holder:
+                allowUnencryptedResponse: false
+    "}
+    .to_string();
+    let (context, organisation) = TestContext::new_with_organisation(Some(config_changes)).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(
+            organisation.id,
+            make_redirect_uri_openid4vp_request().as_ref(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0085");
+}
+
 /// Builds an `openid4vp://` URL with an `x509_san_dns` request JWT signed with a fresh ECDSA
 /// P256 certificate chain. The certificate carries a SAN DNS entry for the domain used as
 /// `client_id` and `response_uri`, so all structural validations in the holder parsing path

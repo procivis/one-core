@@ -40,6 +40,7 @@ pub(crate) struct Params {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderParams {
+    pub allow_unencrypted_response: bool,
     pub supported_client_id_schemes: Vec<ClientIdPrefix>,
 }
 

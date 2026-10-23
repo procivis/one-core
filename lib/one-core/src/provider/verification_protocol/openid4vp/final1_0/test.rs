@@ -115,6 +115,7 @@ fn generic_params() -> serde_json::Value {
         "useRequestUri": false,
         "urlScheme": "openid4vp",
         "holder":  {
+            "allowUnencryptedResponse": true,
             "supportedClientIdSchemes": [
                 ClientIdPrefix::RedirectUri,
                 ClientIdPrefix::VerifierAttestation

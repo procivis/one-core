@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 use shared_types::DidValue;
 use standardized_types::openid4vp::dcql::{CredentialFormat, CredentialQuery};
 use standardized_types::openid4vp::{
-    AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, VPFormatsSupported,
-    VerifierAttestationClaims,
+    AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, ResponseMode,
+    VPFormatsSupported, VerifierAttestationClaims,
 };
 use url::Url;
 
@@ -450,84 +450,98 @@ impl OpenID4VPFinal1_0 {
         self.authorization_params_from_token(request_token, query_params)
             .await
     }
-}
 
-pub(super) fn validate_interaction_data(
-    interaction_data: &OpenID4VPHolderInteractionData,
-) -> Result<(), VerificationProtocolError> {
-    if interaction_data.redirect_uri.is_some() {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "redirect_uri must be None".to_string(),
-        ));
-    }
+    pub(super) fn validate_interaction_data(
+        &self,
+        interaction_data: &OpenID4VPHolderInteractionData,
+    ) -> Result<(), VerificationProtocolError> {
+        if interaction_data.redirect_uri.is_some() {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "redirect_uri must be None".to_string(),
+            ));
+        }
 
-    if let Some(credential_sets) = &interaction_data.dcql_query.credential_sets {
-        for query_id in credential_sets
-            .iter()
-            .flat_map(|s| s.options.iter().flatten())
-        {
-            if !interaction_data
-                .dcql_query
-                .credentials
+        if let Some(credential_sets) = &interaction_data.dcql_query.credential_sets {
+            for query_id in credential_sets
                 .iter()
-                .any(|c| c.id == *query_id)
+                .flat_map(|s| s.options.iter().flatten())
             {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "invalid DCQL query: credential_set is referring to a non-existing credential query `{query_id}`"
-                )));
+                if !interaction_data
+                    .dcql_query
+                    .credentials
+                    .iter()
+                    .any(|c| c.id == *query_id)
+                {
+                    return Err(VerificationProtocolError::InvalidRequest(format!(
+                        "invalid DCQL query: credential_set is referring to a non-existing credential query `{query_id}`"
+                    )));
+                }
             }
         }
+
+        let response_type = interaction_data.response_type.as_ref().ok_or(
+            VerificationProtocolError::InvalidRequest("response_type is None".to_string()),
+        )?;
+        assert_query_param(response_type, &["vp_token"], "response_type")?;
+
+        interaction_data
+            .response_mode
+            .ok_or(VerificationProtocolError::InvalidRequest(
+                "response_mode is None".to_string(),
+            ))?;
+
+        let Some(client_metadata) = interaction_data.client_metadata.as_ref() else {
+            return Err(VerificationProtocolError::Failed(
+                "client_metadata is None".to_string(),
+            ));
+        };
+
+        // check that each requested format has a valid and supported related entry in the vp_formats_supported
+        for credential_query in &interaction_data.dcql_query.credentials {
+            validate_vp_formats_supported_for_query(
+                credential_query,
+                &client_metadata.vp_formats_supported,
+            )
+            .error_while(format!(
+                "validating vp_formats_supported for query: `{}`:{}",
+                credential_query.id, credential_query.format
+            ))?;
+        }
+
+        let Some(response_uri) = interaction_data.response_uri.as_ref() else {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "response_uri must be set".to_string(),
+            ));
+        };
+        if interaction_data.client_id_scheme == ClientIdPrefix::RedirectUri
+            && interaction_data.client_id.as_str() != response_uri.as_str()
+        {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "client_id must match response_uri for client_id_scheme=redirect_uri".to_string(),
+            ));
+        }
+
+        if interaction_data.nonce.is_none() {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "nonce must be set".to_string(),
+            ));
+        }
+
+        if !self.params.holder.allow_unencrypted_response {
+            match interaction_data.response_mode.as_ref().ok_or(
+                VerificationProtocolError::InvalidRequest("Missing response_mode".to_string()),
+            )? {
+                ResponseMode::DirectPostJwt | ResponseMode::DcApiJwt => {}
+                response_mode @ (ResponseMode::DirectPost | ResponseMode::DcApi) => {
+                    return Err(VerificationProtocolError::InvalidRequest(format!(
+                        "Unencrypted response_mode: {response_mode}"
+                    )));
+                }
+            }
+        }
+
+        Ok(())
     }
-
-    let response_type = interaction_data.response_type.as_ref().ok_or(
-        VerificationProtocolError::InvalidRequest("response_type is None".to_string()),
-    )?;
-    assert_query_param(response_type, &["vp_token"], "response_type")?;
-
-    interaction_data
-        .response_mode
-        .ok_or(VerificationProtocolError::InvalidRequest(
-            "response_mode is None".to_string(),
-        ))?;
-
-    let Some(client_metadata) = interaction_data.client_metadata.as_ref() else {
-        return Err(VerificationProtocolError::Failed(
-            "client_metadata is None".to_string(),
-        ));
-    };
-
-    // check that each requested format has a valid and supported related entry in the vp_formats_supported
-    for credential_query in &interaction_data.dcql_query.credentials {
-        validate_vp_formats_supported_for_query(
-            credential_query,
-            &client_metadata.vp_formats_supported,
-        )
-        .error_while(format!(
-            "validating vp_formats_supported for query: `{}`:{}",
-            credential_query.id, credential_query.format
-        ))?;
-    }
-
-    let Some(response_uri) = interaction_data.response_uri.as_ref() else {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "response_uri must be set".to_string(),
-        ));
-    };
-    if interaction_data.client_id_scheme == ClientIdPrefix::RedirectUri
-        && interaction_data.client_id.as_str() != response_uri.as_str()
-    {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "client_id must match response_uri for client_id_scheme=redirect_uri".to_string(),
-        ));
-    }
-
-    if interaction_data.nonce.is_none() {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "nonce must be set".to_string(),
-        ));
-    }
-
-    Ok(())
 }
 
 fn validate_vp_formats_supported_for_query(

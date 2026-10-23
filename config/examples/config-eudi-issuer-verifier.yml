@@ -94,6 +94,7 @@ verificationProtocol:
           interactionExpiresInSeconds: 3600
           supportedClientIdSchemes: [x509_hash]
         holder:
+          allowUnencryptedResponse: false
           supportedClientIdSchemes: [x509_hash]
         redirectUri:
           enabled: true

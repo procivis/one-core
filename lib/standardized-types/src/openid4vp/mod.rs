@@ -10,6 +10,7 @@ pub use authorization_request::*;
 pub use authorization_response::*;
 use serde::{Deserialize, Serialize};
 use serde_with::{VecSkipError, serde_as, skip_serializing_none};
+use strum::Display;
 pub use transaction_data::*;
 
 use crate::iana::EncryptionAlgorithm;
@@ -106,15 +107,19 @@ pub struct MdocAlgs {
     pub deviceauth_alg_values: Vec<i32>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum ResponseMode {
     #[serde(rename = "direct_post")]
+    #[strum(serialize = "direct_post")]
     DirectPost,
     #[serde(rename = "direct_post.jwt")]
+    #[strum(serialize = "direct_post.jwt")]
     DirectPostJwt,
     #[serde(rename = "dc_api")]
+    #[strum(serialize = "dc_api")]
     DcApi,
     #[serde(rename = "dc_api.jwt")]
+    #[strum(serialize = "dc_api.jwt")]
     DcApiJwt,
 }
