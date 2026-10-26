@@ -179,29 +179,18 @@ impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
             .await
             .error_while("getting cache key")?;
 
-        let result = {
-            if let Some(cached_entry) = cached_entry_opt {
-                let persistent = cached_entry.expiration_date.is_none();
+        if let Some(cached_entry) = cached_entry_opt {
+            let persistent = cached_entry.expiration_date.is_none();
 
-                if force_refresh && !persistent {
-                    self.new_cache_entry(url, &resolver).await
-                } else {
-                    self.resolve_with_caching(url, cached_entry, &resolver)
-                        .await
-                }
-            } else {
+            if force_refresh && !persistent {
                 self.new_cache_entry(url, &resolver).await
+            } else {
+                self.resolve_with_caching(url, cached_entry, &resolver)
+                    .await
             }
-        }?;
-
-        if let Err(err) = self.clean_old_entries_if_needed().await {
-            tracing::warn!(
-                "Failed to clean old cache entries of type {}: {}",
-                self.remote_entity_type,
-                err
-            );
+        } else {
+            self.new_cache_entry(url, &resolver).await
         }
-        Ok(result)
     }
 
     pub async fn get_if_cached(&self, key: &str) -> Result<Option<Vec<u8>>, E> {
@@ -305,6 +294,13 @@ impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
                 {
                     tracing::warn!(
                         "Failed to insert new remote entity cache with key {url} entry: {err}"
+                    );
+                }
+                if let Err(err) = self.clean_old_entries_if_needed().await {
+                    tracing::warn!(
+                        "Failed to clean old cache entries of type {}: {}",
+                        self.remote_entity_type,
+                        err
                     );
                 }
 

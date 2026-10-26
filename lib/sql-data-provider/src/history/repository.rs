@@ -15,8 +15,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::sea_query::{Expr, IntoColumnRef, SelectStatement};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, FromQueryResult,
-    QueryFilter, QueryOrder, Value,
+    ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, FromQueryResult, QueryFilter, QueryOrder,
+    Value,
 };
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
@@ -60,12 +60,13 @@ impl HistoryRepository for HistoryProvider {
             )
         }
 
-        let history = history::ActiveModel::try_from(request)?
-            .insert(&self.db)
+        let id = request.id;
+        history::Entity::insert(history::ActiveModel::try_from(request)?)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(history.id)
+        Ok(id)
     }
 
     async fn delete_history_by_entity_id(&self, entity_id: EntityId) -> Result<(), DataLayerError> {

@@ -251,10 +251,7 @@ mod test {
         });
 
         storage.expect_insert().times(1).return_once(|_| Ok(()));
-        storage
-            .expect_delete_expired_or_least_used()
-            .times(1)
-            .return_once(|_, _| Ok(()));
+        storage.expect_delete_expired_or_least_used().never();
 
         let loader = create_loader(
             storage,
@@ -404,10 +401,7 @@ mod test {
             assert!(request.last_modified > get_dummy_date());
             Ok(())
         });
-        storage
-            .expect_delete_expired_or_least_used()
-            .times(1)
-            .return_once(|_, _| Ok(()));
+        storage.expect_delete_expired_or_least_used().never();
 
         let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
 
@@ -444,10 +438,7 @@ mod test {
             assert_eq!(request.last_modified, datetime!(2006-04-02 21:37 +1));
             Ok(())
         });
-        storage
-            .expect_delete_expired_or_least_used()
-            .times(1)
-            .return_once(|_, _| Ok(()));
+        storage.expect_delete_expired_or_least_used().never();
 
         let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
         let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
@@ -487,10 +478,7 @@ mod test {
                 assert!(request.last_modified > now);
                 Ok(())
             });
-        storage
-            .expect_delete_expired_or_least_used()
-            .times(1)
-            .return_once(|_, _| Ok(()));
+        storage.expect_delete_expired_or_least_used().never();
 
         let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
         let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
@@ -522,10 +510,7 @@ mod test {
             assert_eq!(request.value, old_response_content.to_string().into_bytes());
             Ok(())
         });
-        storage
-            .expect_delete_expired_or_least_used()
-            .times(1)
-            .return_once(|_, _| Ok(()));
+        storage.expect_delete_expired_or_least_used().never();
 
         let refresh_timeout = crate::clock::now_utc() - get_dummy_date() + Duration::seconds(99999);
         let loader = create_loader(storage, 1, refresh_timeout, Duration::seconds(300));
@@ -654,10 +639,7 @@ mod test {
 
         // persistent entries must not be changed after the initial load and cannot be bypassed
         storage.expect_insert().never();
-        storage
-            .expect_delete_expired_or_least_used()
-            .times(1)
-            .return_once(|_, _| Ok(()));
+        storage.expect_delete_expired_or_least_used().never();
 
         let loader = create_loader(
             storage,
