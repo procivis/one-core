@@ -508,11 +508,14 @@ impl AsyncBatchLoader<EntityId, Vec<LocalizedText>> for CredentialSchemaTranslat
             .from(claim_schema::Entity)
             .and_where(claim_schema::Column::CredentialSchemaId.is_in(ids.iter().copied()))
             .to_owned();
-        let mut condition =
-            Condition::any().add(localized_text::Column::EntityId.in_subquery(claim_schema_ids));
+        let mut conditions = vec![
+            Condition::all().add(localized_text::Column::EntityId.in_subquery(claim_schema_ids)),
+        ];
         if self.include_credential_schemas {
-            condition = condition.add(localized_text::Column::EntityId.is_in(ids.iter().copied()));
+            conditions.push(
+                Condition::all().add(localized_text::Column::EntityId.is_in(ids.iter().copied())),
+            );
         }
-        load_localized_texts(condition, &self.db).await
+        load_localized_texts(conditions, &self.db).await
     }
 }

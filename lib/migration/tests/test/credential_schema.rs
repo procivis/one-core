@@ -181,6 +181,11 @@ async fn test_db_schema_claim_schema() {
             "index-ClaimSchema-Order-CredentialSchemaId-Unique",
             true,
             &["order", "credential_schema_id"],
+        )
+        .index(
+            "index-ClaimSchema-CredentialSchemaId",
+            false,
+            &["credential_schema_id"],
         );
     claim_schema
         .column("id")
