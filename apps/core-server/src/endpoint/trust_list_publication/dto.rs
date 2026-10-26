@@ -187,58 +187,53 @@ pub(crate) type ListTrustListPublicationsEntitiesQuery = ListQueryParamsRest<
 >;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = TrustListPublicationFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetTrustListQuery
 pub(crate) struct TrustListPublicationFilterQueryParamsRestDTO {
     /// Filter by one or more UUIDs.
-    #[param(rename = "ids[]", nullable = false)]
+    #[param(rename = "ids[]")]
     #[try_into(infallible)]
     pub ids: Option<Vec<TrustListPublicationId>>,
     /// Return only trust lists with a name starting with this string.
     /// Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Filter by one or more trust list types.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "types[]", nullable = false)]
+    #[param(rename = "types[]")]
     pub types: Option<Vec<String>>,
     /// Filter by one or more trust list roles.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "roles[]", nullable = false)]
+    #[param(rename = "roles[]")]
     pub roles: Option<Vec<TrustListRoleRestEnum>>,
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Set which filters apply in an exact way.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     pub exact: Option<Vec<ExactTrustListFilterColumnRestEnum>>,
     /// Return only trust lists created after this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only trust lists created before this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only trust lists last modified after this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only trust lists last modified before this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
 }
@@ -265,43 +260,40 @@ pub(crate) type ListTrustEntryEntitiesQuery =
     ListQueryParamsRest<TrustEntryFilterQueryParamsRestDTO, SortableTrustEntryColumnRestEnum>;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = TrustEntryFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TrustEntryFilterQueryParamsRestDTO {
     /// Filter by one or more UUIDs.
-    #[param(rename = "ids[]", nullable = false)]
+    #[param(rename = "ids[]")]
     #[try_into(infallible)]
     pub ids: Option<Vec<TrustEntryId>>,
     /// Filter by one or more identifier UUIDs.
-    #[param(rename = "identifierIds[]", nullable = false)]
+    #[param(rename = "identifierIds[]")]
     #[try_into(infallible)]
     pub identifier_ids: Option<Vec<IdentifierId>>,
     /// Filter by one or more trust entry states.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "states[]", nullable = false)]
+    #[param(rename = "states[]")]
     pub states: Option<Vec<TrustEntryStateRestEnum>>,
     /// Return only trust entries created after this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only trust entries created before this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only trust entries last modified after this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only trust entries last modified before this time.
     /// Timestamp in RFC3339 format (for example '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
 }

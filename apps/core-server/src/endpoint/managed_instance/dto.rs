@@ -90,57 +90,53 @@ pub(crate) enum InstanceRoleRestEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = ManagedInstanceFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside ListManagedInstancesQuery
 pub(crate) struct ManagedInstanceFilterQueryParamsRestDTO {
     /// Return only instances with a name starting with this string.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Filter by specific instance UUIDs.
-    #[param(rename = "ids[]", inline, nullable = false)]
+    #[param(rename = "ids[]", inline)]
     #[try_into(infallible)]
     pub ids: Option<Vec<ManagedInstanceId>>,
     /// Return only instances with the specified status.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "status[]", inline, nullable = false)]
+    #[param(rename = "status[]", inline)]
     pub status: Option<Vec<InstanceStatusRestEnum>>,
     /// Return only instances with the specified operating systems.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "os[]", inline, nullable = false)]
+    #[param(rename = "os[]", inline)]
     pub os: Option<Vec<ManagedInstanceOsRestEnum>>,
     /// Return only instances with the specified providers.
-    #[param(rename = "providerNames[]", inline, nullable = false)]
+    #[param(rename = "providerNames[]", inline)]
     #[try_into(infallible)]
     pub provider_names: Option<Vec<String>>,
     /// Filter by instance role.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "roles[]", inline, nullable = false)]
+    #[param(rename = "roles[]", inline)]
     pub roles: Option<Vec<InstanceRoleRestEnum>>,
     /// Return only the instances with the specified attestation.
-    #[param(rename = "attestation", inline, nullable = false)]
+    #[param(rename = "attestation", inline)]
     #[try_into(infallible)]
     pub attestation: Option<String>,
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only instances created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only instances created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only instances with a userSub starting with this string.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub user_sub: Option<String>,
 }

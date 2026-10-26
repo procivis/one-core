@@ -45,16 +45,16 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub consumed_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub expires_at: Option<OffsetDateTime>,
     pub state: CredentialStateRestEnum,
     pub r#type: CredentialTypeRestEnum,
@@ -69,7 +69,7 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
     pub role: CredentialRoleRestEnum,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
     pub protocol: String,
     /// Profile associated with this credential
@@ -124,15 +124,15 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     pub created_date: OffsetDateTime,
 
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: Option<OffsetDateTime>,
 
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
 
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub expires_at: Option<OffsetDateTime>,
     pub state: CredentialStateRestEnum,
 
@@ -165,7 +165,7 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     /// When this credential was used in a presentation. Only used for
     /// batch item credentials.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub consumed_at: Option<OffsetDateTime>,
 
     /// Differentiates between single credentials issued alone, credentials
@@ -184,7 +184,7 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
 
     /// Scheduled date for credential reactivation.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
     /// Validity details for ISO mdocs.
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
@@ -371,133 +371,120 @@ pub(crate) enum SearchType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = CredentialFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialQuery
 pub(crate) struct CredentialsFilterQueryParamsRest {
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only credentials with a name starting with this string.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Filter by one or more country profiles.
-    #[param(rename = "profiles[]", inline, nullable = false)]
+    #[param(rename = "profiles[]", inline)]
     #[try_into(infallible)]
     pub profiles: Option<Vec<String>>,
     /// Filter by one or more formatter configuration names.
-    #[param(rename = "formats[]", inline, nullable = false)]
+    #[param(rename = "formats[]", inline)]
     #[try_into(infallible)]
     pub formats: Option<Vec<CredentialFormat>>,
     /// Filter credentials by one or more roles: issued by the system,
     /// verified by the system, or held by the system as a wallet.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "roles[]", inline, nullable = false)]
+    #[param(rename = "roles[]", inline)]
     pub roles: Option<Vec<CredentialRoleRestEnum>>,
     /// Set which filters apply in an exact way.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     pub exact: Option<Vec<ExactCredentialFilterColumnRestEnum>>,
     /// Filter by one or more UUIDs.
-    #[param(rename = "ids[]", inline, nullable = false)]
+    #[param(rename = "ids[]", inline)]
     #[try_into(infallible)]
     pub ids: Option<Vec<CredentialId>>,
     /// Return only batch credentials under this batch parent.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub parent_id: Option<CredentialId>,
     /// Filter by one or more credential states.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "states[]", inline, nullable = false)]
+    #[param(rename = "states[]", inline)]
     pub states: Option<Vec<CredentialStateRestEnum>>,
     /// Filter credentials by one or more types: part of a batch or standalone credential
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "types[]", inline, nullable = false)]
+    #[param(rename = "types[]", inline)]
     pub types: Option<Vec<CredentialTypeRestEnum>>,
     /// Filter by one or more identifier IDs.
-    #[param(rename = "issuers[]", inline, nullable = false)]
+    #[param(rename = "issuers[]", inline)]
     #[try_into(infallible)]
     pub issuers: Option<Vec<IdentifierId>>,
     /// Search for a string.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub search_text: Option<String>,
     /// Changes where `searchText` is searched. To search credentials,
     /// choose one or more `searchType`s and pass a `searchText`.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "searchType[]", inline, nullable = false)]
+    #[param(rename = "searchType[]", inline)]
     pub search_type: Option<Vec<SearchType>>,
 
-    #[param(rename = "credentialSchemaIds[]", inline, nullable = false)]
+    #[param(rename = "credentialSchemaIds[]", inline)]
     #[try_into(infallible)]
     pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
 
     /// Return only credentials conforming to one of the specified ecosystems.
-    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[param(rename = "ecosystems[]", inline)]
     #[try_into(infallible)]
     pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only credentials created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only credentials created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only credentials last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only credentials last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
     /// Return only credentials issued after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub issuance_date_after: Option<OffsetDateTime>,
     /// Return only credentials issued before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub issuance_date_before: Option<OffsetDateTime>,
     /// Return only credentials revoked after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub revocation_date_after: Option<OffsetDateTime>,
     /// Return only credentials revoked before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub revocation_date_before: Option<OffsetDateTime>,
     /// Return only credentials with an expiration after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub expires_at_after: Option<OffsetDateTime>,
     /// Return only credentials with an expiration before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub expires_at_before: Option<OffsetDateTime>,
 }
@@ -549,7 +536,7 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// created via the identifiers API. Use the `id` field from the identifier,
     /// not the actual DID string or key value.
     pub issuer: Option<IdentifierId>,
-    #[schema(deprecated = true, nullable = false, value_type = Option<Uuid>)]
+    #[schema(deprecated = true, value_type = Option<Uuid>)]
     /// Deprecated. Use `issuer` to set the identifier, regardless of type.
     pub issuer_did: Option<DidId>,
     /// If multiple keys are specified for the assertion method of the DID,
@@ -562,7 +549,6 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// use this value to specify which certificate should be used
     /// for this credential. If a certificate isn't specified here,
     /// an active certificate will be used.
-    #[schema(nullable = false)]
     pub issuer_certificate: Option<CertificateId>,
     /// Issuance protocol to use for issuing the credential to a wallet. Check
     /// your `issuanceProtocol` configuration for supported options and
@@ -587,12 +573,10 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// Optional subscriber information associated with this credential.
     pub subscriber_information: Option<String>,
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     #[into(with_fn = convert_inner)]
     pub ecosystem: Option<String>,
     /// Optional selection of formats to be issued.
     #[modify_schema(field = format)]
-    #[schema(nullable = false)]
     #[into(with_fn = convert_inner_of_inner)]
     pub formats: Option<Vec<String>>,
 }
@@ -627,7 +611,7 @@ pub(crate) struct CredentialRevocationCheckRequestRestDTO {
 pub(crate) struct SuspendCredentialRequestRestDTO {
     /// Specify the time when the credential will reactivate, or omit for an indefinite suspension.
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
@@ -682,6 +666,6 @@ pub(crate) struct ShareCredentialResponseRestDTO {
     /// URL becomes unusable by wallet holder at this time. Call the share
     /// endpoint again to get a new URL.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub expires_at: Option<OffsetDateTime>,
 }

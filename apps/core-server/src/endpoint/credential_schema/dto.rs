@@ -49,7 +49,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
@@ -87,7 +87,7 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
@@ -246,90 +246,82 @@ pub(crate) enum CredentialSchemasV2ExactColumn {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = CredentialSchemaFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialSchemaQuery
 pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only entities with a name starting with this string. Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Set which filters apply in an exact way.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     pub exact: Option<Vec<CredentialSchemasExactColumn>>,
     /// Filter by specific UUIDs.
     #[try_into(rename = "credential_schema_ids", infallible)]
-    #[param(rename = "ids[]", inline, nullable = false)]
+    #[param(rename = "ids[]", inline)]
     pub ids: Option<Vec<CredentialSchemaId>>,
     /// Return credential schemas associated with the specified `ecosystemSchemaId`.
     /// This is the DocType for ISO mdocs and the `vct` for SD-JWT VCs.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub schema_id: Option<String>,
     /// Return only credential schemas which use one of the specified credential formats.
-    #[param(rename = "formats[]", inline, nullable = false)]
+    #[param(rename = "formats[]", inline)]
     #[try_into(infallible)]
     pub formats: Option<Vec<CredentialFormat>>,
 
-    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[param(rename = "ecosystems[]", inline)]
     #[try_into(infallible)]
     pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only credential schemas with matching wallet instance attestation requirement.
     #[try_into(with_fn = convert_inner, infallible)]
-    #[param(inline, nullable = false)]
+    #[param(inline)]
     pub requires_wallet_instance_attestation: Option<Boolean>,
 
     /// Return only credential schemas with a matching key storage security requirement.
     #[try_into(rename = "key_storage_security", with_fn = convert_inner_of_inner, infallible)]
-    #[param(rename = "keySecurityLevels[]", inline, nullable = false)]
+    #[param(rename = "keySecurityLevels[]", inline)]
     pub key_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
 
     /// Return only credential schemas created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only credential schemas created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only credential schemas last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only credential schemas last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
 
     /// Return only credential schemas which support batch issuance.
     #[try_into(with_fn = convert_inner, infallible)]
-    #[param(nullable = false)]
     pub uses_batch_issuance: Option<Boolean>,
 
     /// Return only credential schemas with multiple formats.
     #[try_into(with_fn = convert_inner, infallible)]
-    #[param(nullable = false)]
     pub is_multiformat_schema: Option<Boolean>,
 
     /// Return credential schemas associated with any of the specified schema IDs.
     /// Works across all format entries of a credential schema.
     #[try_into(infallible)]
-    #[param(rename = "schemaIds[]", inline, nullable = false)]
+    #[param(rename = "schemaIds[]", inline)]
     pub schema_ids: Option<Vec<String>>,
 }
 
@@ -440,7 +432,6 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub ecosystem: Option<String>,
 }
@@ -766,95 +757,88 @@ pub(crate) struct CredentialSchemaFormatRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = CredentialSchemaV2FilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialSchemaV2Query
 pub(crate) struct CredentialSchemasV2FilterQueryParamsRest {
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only entities with a name starting with this string. Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Set which filters apply in an exact way.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     pub exact: Option<Vec<CredentialSchemasV2ExactColumn>>,
     /// Filter by specific UUIDs.
     #[try_into(rename = "credential_schema_ids", infallible)]
-    #[param(rename = "ids[]", inline, nullable = false)]
+    #[param(rename = "ids[]", inline)]
     pub ids: Option<Vec<CredentialSchemaId>>,
     /// Return only credential schemas which use one of the specified credential formats.
-    #[param(rename = "formats[]", inline, nullable = false)]
+    #[param(rename = "formats[]", inline)]
     #[try_into(infallible)]
     pub formats: Option<Vec<CredentialFormat>>,
 
-    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[param(rename = "ecosystems[]", inline)]
     #[try_into(infallible)]
     pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only credential schemas with matching wallet instance attestation requirement.
     #[try_into(with_fn = convert_inner, infallible)]
-    #[param(inline, nullable = false)]
+    #[param(inline)]
     pub requires_wallet_instance_attestation: Option<Boolean>,
 
     /// Return only credential schemas with a matching key storage security requirement.
     #[try_into(rename = "key_storage_security", with_fn = convert_inner_of_inner, infallible)]
-    #[param(rename = "keySecurityLevels[]", inline, nullable = false)]
+    #[param(rename = "keySecurityLevels[]", inline)]
     pub key_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
 
     /// Return only credential schemas created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only credential schemas created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only credential schemas last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only credential schemas last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
 
     /// Return only credential schemas which support batch issuance.
     #[try_into(with_fn = convert_inner, infallible)]
-    #[param(nullable = false)]
     pub uses_batch_issuance: Option<Boolean>,
 
     /// Return only credential schemas with multiple formats.
     #[try_into(with_fn = convert_inner, infallible)]
-    #[param(nullable = false)]
     pub is_multiformat_schema: Option<Boolean>,
 
     /// Return credential schemas associated with any of the specified schema IDs.
     /// Works across all format entries of a credential schema.
     #[try_into(infallible)]
-    #[param(rename = "ecosystemSchemaIds[]", inline, nullable = false)]
+    #[param(rename = "ecosystemSchemaIds[]", inline)]
     pub ecosystem_schema_ids: Option<Vec<String>>,
 
     /// Return only credential schemas with an expiration (in seconds) greater than this value.
     #[serde(default, deserialize_with = "deserialize_duration_seconds")]
-    #[param(value_type = Option<i64>, nullable = false)]
+    #[param(value_type = Option<i64>)]
     #[try_into(infallible)]
     pub expiration_greater_than: Option<Duration>,
     /// Return only credential schemas with an expiration (in seconds) less than this value.
     #[serde(default, deserialize_with = "deserialize_duration_seconds")]
-    #[param(value_type = Option<i64>, nullable = false)]
+    #[param(value_type = Option<i64>)]
     #[try_into(infallible)]
     pub expiration_less_than: Option<Duration>,
 }
@@ -935,11 +919,10 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     /// from this schema. Must be greater than 0 if specified.
     #[serde(default)]
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
-    #[schema(value_type = Option<i64>, nullable = false, minimum = 1)]
+    #[schema(value_type = Option<i64>, minimum = 1)]
     #[try_into(infallible)]
     pub expiration: Option<Duration>,
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub ecosystem: Option<String>,
 }

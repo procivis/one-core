@@ -5,7 +5,7 @@ use darling::{Error, FromMeta};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Field, Fields, ItemEnum, ItemStruct, Type, parse_quote};
+use syn::{Field, Fields, ItemEnum, ItemStruct, Meta, Type, parse_quote};
 
 pub(super) fn options_not_nullable(args: TokenStream, input: TokenStream) -> TokenStream {
     #[derive(FromMeta)]
@@ -44,23 +44,33 @@ pub(super) fn options_not_nullable(args: TokenStream, input: TokenStream) -> Tok
     }
 }
 
-/// Add the `schema(nullable = false)` annotation to a field of a struct
+/// Add `nullable = false` to the `schema` attribute of an `Option` field, unless the attribute
+/// already declares `nullable`.
 fn add_utoipa_nullable_false(field: &mut Field) -> Result<(), Error> {
     if !is_std_option(&field.ty) {
         return Ok(());
     }
 
-    let has_schema = field_has_attribute(field, "schema");
-    // Do nothing if `schema`  is already present
-    if has_schema {
+    let schema = field
+        .attrs
+        .iter_mut()
+        .find(|attr| attr.path().is_ident("schema"));
+    let Some(schema) = schema else {
+        field.attrs.push(parse_quote!(#[schema(nullable = false)]));
         return Ok(());
-    }
+    };
 
-    // Add the `schema` attribute
-    let attr = parse_quote!(
-        #[schema(nullable = false)]
-    );
-    field.attrs.push(attr);
+    let Meta::List(list) = &mut schema.meta else {
+        return Err(Error::custom("expected `#[schema(...)]`").with_span(schema));
+    };
+    let declares_nullable =
+        list.tokens.clone().into_iter().any(
+            |token| matches!(token, proc_macro2::TokenTree::Ident(ident) if ident == "nullable"),
+        );
+    if !declares_nullable {
+        let existing = &list.tokens;
+        list.tokens = quote!(#existing, nullable = false);
+    }
     Ok(())
 }
 
@@ -97,15 +107,6 @@ fn is_std_option(type_: &Type) -> bool {
         }
         _ => false,
     }
-}
-
-fn field_has_attribute(field: &Field, namespace: &str) -> bool {
-    for attr in &field.attrs {
-        if attr.path().is_ident(namespace) {
-            return true;
-        }
-    }
-    false
 }
 
 /// Apply function on every field of structs or enums

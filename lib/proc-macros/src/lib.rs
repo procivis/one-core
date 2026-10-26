@@ -11,7 +11,8 @@ mod permission_check;
 mod provider;
 mod provider_mock;
 
-/// Marks all optional fields in the struct as `#[schema(nullable = false)]` and also adds a
+/// Marks all optional fields in the struct as `#[schema(nullable = false)]`, merging into an
+/// existing `#[schema(...)]` attribute unless it declares `nullable` itself, and also adds a
 /// `#[serde_with::skip_serializing_none]` to the struct.
 /// The latter can be disabled by setting `skip_serializing_none = false`
 ///

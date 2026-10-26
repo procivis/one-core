@@ -51,7 +51,6 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
     #[schema(min_items = 1)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub ecosystem: Option<String>,
 }
@@ -65,7 +64,7 @@ pub(crate) struct ProofInputSchemaRequestRestDTO {
     /// formats of the credential schema are selected.
     #[into(with_fn = convert_inner_of_inner)]
     #[modify_schema(field = format)]
-    #[schema(min_items = 1, nullable = false)]
+    #[schema(min_items = 1)]
     pub formats: Option<Vec<String>>,
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
@@ -140,7 +139,7 @@ pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
     /// to all formats of the resolved credential schema if omitted.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     #[modify_schema(field = format)]
-    #[schema(min_items = 1, nullable = false)]
+    #[schema(min_items = 1)]
     pub formats: Option<Vec<String>>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
@@ -237,59 +236,54 @@ pub(crate) type GetProofSchemaQuery =
     ListQueryParamsRest<ProofSchemasFilterQueryParamsRest, SortableProofSchemaColumnRestEnum>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = ProofSchemaFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetProofSchemaQuery
 pub(crate) struct ProofSchemasFilterQueryParamsRest {
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only proof schemas with a name starting with this string.
     /// Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Filter by specific UUIDs.
-    #[param(rename = "ids[]", inline, nullable = false)]
+    #[param(rename = "ids[]", inline)]
     #[try_into(infallible)]
     pub ids: Option<Vec<ProofSchemaId>>,
     /// Set which filters apply in an exact way.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     pub exact: Option<Vec<ExactProofSchemaFilterColumnRestEnum>>,
     /// Return only proof schemas which use only the specified credential formats.
-    #[param(rename = "formats[]", inline, nullable = false)]
+    #[param(rename = "formats[]", inline)]
     #[try_into(infallible)]
     pub formats: Option<Vec<String>>,
 
-    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[param(rename = "ecosystems[]", inline)]
     #[try_into(infallible)]
     pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only proof schemas created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only proof schemas created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only proof schemas last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only proof schemas last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
 }
@@ -304,7 +298,7 @@ pub(crate) struct GetProofSchemaListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]

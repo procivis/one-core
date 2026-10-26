@@ -92,14 +92,13 @@ pub(crate) struct CreateProofRequestRestDTO {
     #[into(rename = "verifier_did_id")]
     #[schema(
         example = "<uuid; did identifier>",
-        nullable = false,
         deprecated = true,
         value_type = Option<Uuid>
     )]
     /// Choose a DID to use as an identifier.
     pub verifier_did: Option<DidId>,
     #[into(rename = "verifier_identifier_id")]
-    #[schema(example = "<uuid; identifier id>", nullable = false)]
+    #[schema(example = "<uuid; identifier id>")]
     /// Choose an identifier to use when making the request.
     pub verifier: Option<IdentifierId>,
     /// Specify the verification protocol to use for credential exchange. Check
@@ -132,7 +131,6 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// reference the configuration instance.
     #[into(with_fn = convert_inner)]
     #[modify_schema(field = transport)]
-    #[schema(nullable = false)]
     pub transport: Option<Vec<String>>,
     /// Optional profile to associate with this proof request.
     pub profile: Option<String>,
@@ -149,10 +147,8 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// Optional transaction data to request authorization for.
     #[serde(default)]
     #[into(with_fn = convert_inner)]
-    #[schema(nullable = false)]
     pub transaction_data: Vec<ProofRequestTransactionDataRestDTO>,
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     #[into(with_fn = convert_inner)]
     pub ecosystem: Option<String>,
 }
@@ -187,103 +183,94 @@ pub(crate) enum SortableProofColumnRestEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetProofQuery
 #[try_into(T = ProofFilterParamsDTO, Error = ServiceError)]
 pub(crate) struct ProofsFilterQueryParamsRest {
     /// Return only proof requests with a name starting with this string.
     /// Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Filter by one or more country profiles.
-    #[param(rename = "profiles[]", nullable = false)]
+    #[param(rename = "profiles[]")]
     #[try_into(infallible)]
     pub profiles: Option<Vec<String>>,
     /// Filter by one or more proof states.
-    #[param(rename = "states[]", inline, nullable = false)]
+    #[param(rename = "states[]", inline)]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub states: Option<Vec<ProofStateRestEnum>>,
     /// Filter proof requests by one or more roles: requested by the system
     /// or received by the system.
-    #[param(rename = "roles[]", inline, nullable = false)]
+    #[param(rename = "roles[]", inline)]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub roles: Option<Vec<ProofRoleRestEnum>>,
     /// Filter proof requests by their associated proof schema. Pass an array
     /// of UUID strings.
-    #[param(rename = "proofSchemaIds[]", inline, nullable = false)]
+    #[param(rename = "proofSchemaIds[]", inline)]
     #[try_into(infallible)]
     pub proof_schema_ids: Option<Vec<ProofSchemaId>>,
     /// Filter proof requests by their associated verifier identifiers.
     /// Pass an array of UUID strings.
-    #[param(rename = "verifiers[]", inline, nullable = false)]
+    #[param(rename = "verifiers[]", inline)]
     #[try_into(infallible, rename = "verifier_ids")]
     pub verifiers: Option<Vec<IdentifierId>>,
     /// Filter by one or more UUIDs.
-    #[param(rename = "ids[]", inline, nullable = false)]
+    #[param(rename = "ids[]", inline)]
     #[try_into(infallible)]
     pub ids: Option<Vec<ProofId>>,
     /// Set which filters apply in an exact way.
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub exact: Option<Vec<ExactProofFilterColumnRestEnum>>,
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
 
     /// Return only proofs conforming to one of the specified ecosystems.
-    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[param(rename = "ecosystems[]", inline)]
     #[try_into(infallible)]
     pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only proof requests created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only proof requests created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only proof requests last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only proof requests last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
     /// Return only proof requests requested after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub requested_date_after: Option<OffsetDateTime>,
     /// Return only proof requests requested before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub requested_date_before: Option<OffsetDateTime>,
     /// Return only proof requests completed after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub completed_date_after: Option<OffsetDateTime>,
     /// Return only proof requests completed before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub completed_date_before: Option<OffsetDateTime>,
 }
@@ -309,18 +296,18 @@ pub(crate) struct ProofListItemResponseRestDTO {
     /// When proof request state changed from `PENDING` to `REQUESTED`.
     /// Not supported in all exchange protocols.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
     /// Time at which the data shared by the holder for this proof request will be deleted.
     /// Determined by the `expireDuration` parameter of the proof schema.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
     /// When holder submitted valid proof.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
     #[from(with_fn = convert_inner)]
@@ -363,17 +350,17 @@ pub(crate) struct ProofDetailResponseRestDTO {
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
     #[try_from(with_fn = convert_inner, infallible)]
@@ -411,7 +398,7 @@ pub(crate) struct ProofDetailResponseRestDTO {
 
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub claims_removed_at: Option<OffsetDateTime>,
 
     #[try_from(infallible)]
@@ -676,7 +663,7 @@ pub(crate) struct ShareProofResponseRestDTO {
     /// URL becomes unusable by wallet holder at this time. Call the share
     /// endpoint again to get a new URL.
     #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub expires_at: Option<OffsetDateTime>,
 }
 

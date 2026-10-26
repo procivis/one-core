@@ -131,7 +131,7 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deactivated_at: Option<OffsetDateTime>,
     /// The parent organization this organization inherits policy-level
@@ -258,41 +258,38 @@ pub(crate) enum SortableOrganisationColumnRestDTO {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[try_into(T = OrganisationFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetOrganisationQuery
 pub(crate) struct OrganisationFilterQueryParamsRest {
     /// Return only organizations created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only organizations created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only organizations last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only organizations last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
     /// If true, return only organizations that have a parent organization.
     /// If false, return only root organizations.
-    #[param(inline, nullable = false)]
+    #[param(inline)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub has_parent_organisation: Option<Boolean>,
     /// Return only organizations that are children of the given
     /// organization IDs.
-    #[param(rename = "parentOrganisations[]", nullable = false)]
+    #[param(rename = "parentOrganisations[]")]
     #[try_into(infallible)]
     pub parent_organisations: Option<Vec<OrganisationId>>,
 }
@@ -312,7 +309,7 @@ pub(crate) struct OrganisationListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deactivated_at: Option<OffsetDateTime>,
     #[from(with_fn = convert_inner)]

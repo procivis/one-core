@@ -35,6 +35,6 @@ pub(crate) enum CacheTypeRestEnum {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
 pub(crate) struct DeleteCacheQuery {
-    #[param(rename = "types[]", inline, nullable = false)]
+    #[param(rename = "types[]", inline)]
     pub types: Option<Vec<CacheTypeRestEnum>>,
 }

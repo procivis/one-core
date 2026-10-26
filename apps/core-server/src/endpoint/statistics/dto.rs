@@ -28,7 +28,6 @@ use crate::serialize::front_time;
 pub struct OrganisationStatsRequestQuery {
     /// Start of the reporting period (inclusive).
     #[try_into(infallible)]
-    #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
     /// End of the reporting period (exclusive).
@@ -39,7 +38,6 @@ pub struct OrganisationStatsRequestQuery {
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.    
     #[try_into(with_fn = fallback_organisation_id_from_session)]
-    #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
 }
 
@@ -151,13 +149,11 @@ pub(crate) enum SortableVerifierStatisticsColumnRestDTO {
 /// Stats per organization aggregated by either credential or proof schema.
 pub struct StatsBySchemaFilterParamsRest {
     /// Start of the reporting period (inclusive).
-    #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
     /// End of the reporting period (exclusive).
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub to: OffsetDateTime,
-    #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
 }
 
@@ -223,7 +219,6 @@ pub struct VerifierStatsRestDTO {
 #[into_params(parameter_in = Query)]
 pub struct SystemStatsRequestQuery {
     /// Start of the reporting period (inclusive).
-    #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
     /// End of the reporting period (exclusive).
@@ -232,10 +227,9 @@ pub struct SystemStatsRequestQuery {
     /// Maximum number of organizations to include in `topIssuers`,
     /// `topVerifiers`, and `newestOrganisations`. Does not affect
     /// system-wide totals in `current` and `previous`.
-    #[param(nullable = false)]
     pub organisation_count: Option<usize>,
     /// Return only statistics about these organisations
-    #[param(rename = "organisationIds[]", inline, nullable = false)]
+    #[param(rename = "organisationIds[]", inline)]
     pub organisation_ids: Option<Vec<OrganisationId>>,
 }
 
@@ -320,10 +314,9 @@ pub(crate) enum SortableSystemInteractionStatisticsColumnRestDTO {
 #[into_params(parameter_in = Query)]
 pub struct SystemStatsFilterParamsRest {
     /// Return only statistics about these organisations
-    #[param(rename = "organisationIds[]", inline, nullable = false)]
+    #[param(rename = "organisationIds[]", inline)]
     pub organisation_ids: Option<Vec<OrganisationId>>,
     /// Start of the reporting period (inclusive).
-    #[param(nullable = false)]
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
     /// End of the reporting period (exclusive).

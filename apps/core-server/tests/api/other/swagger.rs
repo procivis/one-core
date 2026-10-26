@@ -100,6 +100,23 @@ async fn test_openapi_schema_regressions() {
         "JwkUse should be a plain string, its unknown variant is untagged",
     );
 
+    for (schema, property, nullable) in [
+        (
+            "ImportProofSchemaCredentialSchemaRestDTO",
+            "deletedAt",
+            false,
+        ),
+        ("CredentialListItemResponseRestDTO", "issuanceDate", false),
+        ("PatchIdentifierRequestRestDTO", "logo", true),
+        ("PatchIdentifierRequestRestDTO", "translations", true),
+    ] {
+        assert_eq!(
+            nullable,
+            allows_null(find_property(&schemas[schema], property).unwrap()),
+            "{schema}.{property}: an optional field is absent, never null, unless it opts in",
+        );
+    }
+
     let mut dangling = vec![];
     collect_dangling_refs(&openapi, schemas, &mut dangling);
     dangling.sort();
@@ -132,6 +149,14 @@ fn collect_dangling_refs(
             .for_each(|v| collect_dangling_refs(v, schemas, dangling)),
         _ => {}
     }
+}
+
+fn allows_null(schema: &serde_json::Value) -> bool {
+    let is_null = |value: &serde_json::Value| value == "null" || value["type"] == "null";
+    [&schema["type"], &schema["oneOf"]]
+        .into_iter()
+        .filter_map(|value| value.as_array())
+        .any(|values| values.iter().any(is_null))
 }
 
 fn find_property<'a>(

@@ -275,8 +275,8 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_credential_offer(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
         ("DPoP" = inline(Option<String>), Header, description = "DPoP Proof", nullable = false),
         ("grant_type" = String, Query, example = "urn:ietf:params:oauth:grant-type:pre-authorized_code"),
-        ("pre-authorized_code" = Option<String>, Query, nullable = false),
-        ("refresh_token" = Option<String>, Query, nullable = false)
+        ("pre-authorized_code" = Option<String>, Query),
+        ("refresh_token" = Option<String>, Query)
     ),
     responses(
         (status = 200, description = "OK", body = TokenResponse,

@@ -101,7 +101,7 @@ where
 
 // only used for generation of swagger-ui params for pagination, sorting and data inclusion
 #[derive(IntoParams)]
-#[into_params(rename_all = "camelCase")]
+#[into_params(parameter_in = Query, rename_all = "camelCase")]
 #[expect(dead_code)]
 struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
     /// The page number to retrieve (0-based indexing).
@@ -112,15 +112,14 @@ struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
     pub page_size: u32,
 
     /// The field value to sort results by.
-    #[param(inline, nullable = false)]
+    #[param(inline)]
     pub sort: Option<SortColumn>,
     /// Direction to sort results. If a sorting value is passed, the
     /// direction defaults to ASC.
-    #[param(nullable = false)]
     pub sort_direction: Option<SortDirection>,
 
     /// Additional fields to include in response objects.
-    #[param(rename = "include[]", inline, nullable = false)]
+    #[param(rename = "include[]", inline)]
     pub include: Option<Vec<Include>>,
 }
 

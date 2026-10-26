@@ -284,7 +284,6 @@ pub(crate) struct WalletUnitAttestationMetadataRestDTO {
 pub(crate) struct AppVersionRestDTO {
     minimum: String,
     minimum_recommended: Option<String>,
-    #[schema(nullable = false)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     reject: Vec<String>,
     #[from(with_fn = convert_inner)]

@@ -42,7 +42,6 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     /// For configurations with multiple transport protocols enabled you can
     /// specify which one to use for this interaction.
     #[modify_schema(field = transport)]
-    #[schema(nullable = false)]
     #[try_into(infallible)]
     pub transport: Option<Vec<String>>,
     /// For issuer-initiated Authorization Code Flow, provide the authorization server
@@ -50,7 +49,6 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub ecosystem: Option<String>,
 }
@@ -146,7 +144,7 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
     /// will be used.
     pub key_id: Option<KeyId>,
     pub tx_code: Option<String>,
-    #[schema(deprecated = true, nullable = false, value_type = Option<Uuid>)]
+    #[schema(deprecated = true, value_type = Option<Uuid>)]
     #[expect(unused)]
     /// Deprecated. The holder wallet instance registered for the linked organisation is used
     pub holder_wallet_unit_id: Option<InstanceId>,
@@ -270,7 +268,6 @@ pub(crate) struct ProposeProofRequestRestDTO {
     #[try_into(infallible)]
     pub ui_message: Option<String>,
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub ecosystem: Option<String>,
 }
@@ -307,7 +304,6 @@ pub(crate) struct InitiateIssuanceRequestRestDTO {
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailRestDTO>>,
 
     #[modify_schema(field = ecosystem)]
-    #[schema(nullable = false)]
     pub ecosystem: Option<String>,
 }
 

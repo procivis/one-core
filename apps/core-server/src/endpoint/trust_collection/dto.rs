@@ -105,55 +105,50 @@ pub(crate) enum ExactTrustCollectionFilterColumnRestEnum {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetTrustCollectionListQuery
 #[try_into(T = TrustCollectionFilterParamsDTO, Error = ServiceError)]
 pub(crate) struct TrustCollectionFilterQueryParamsRestDTO {
     /// Filter by one or more UUIDs.
-    #[param(rename = "ids[]", nullable = false)]
+    #[param(rename = "ids[]")]
     #[try_into(infallible)]
     pub ids: Option<Vec<TrustCollectionId>>,
     /// Return only trust collections with a name starting with this string.
     /// Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
-    #[param(nullable = false)]
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Set which filters apply in an exact way.
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub exact: Option<Vec<ExactTrustCollectionFilterColumnRestEnum>>,
 
-    #[param(rename = "ecosystems[]", inline, nullable = false)]
+    #[param(rename = "ecosystems[]", inline)]
     #[try_into(infallible)]
     pub ecosystems: Option<Vec<EcosystemId>>,
 
     /// Return only trust lists created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only trust lists created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only trust lists last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only trust lists last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
     /// If true, include trust collections from the parent organization.
@@ -220,58 +215,53 @@ pub(crate) type ListTrustListSubscriptionsEntitiesQuery = ListQueryParamsRest<
 >;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams, TryInto)]
+#[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetTrustCollectionListQuery
 #[try_into(T = TrustListSubscriptionFilterParamsDTO, Error = ServiceError)]
 pub(crate) struct TrustListSubscriptionFilterQueryParamsRestDTO {
     /// Filter by one or more UUIDs.
-    #[param(rename = "ids[]", nullable = false)]
+    #[param(rename = "ids[]")]
     #[try_into(infallible)]
     pub ids: Option<Vec<TrustListSubscriptionId>>,
     /// Return only trust list subscriptions with a name starting with this string.
     /// Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub name: Option<String>,
     /// Return only trust list subscriptions with a reference starting with this string.
     /// Not case-sensitive.
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub reference: Option<String>,
-    #[param(rename = "roles[]", nullable = false)]
+    #[param(rename = "roles[]")]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub roles: Option<Vec<TrustListRoleRestEnum>>,
-    #[param(rename = "states[]", nullable = false)]
+    #[param(rename = "states[]")]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub states: Option<Vec<TrustListSubscriptionStateRestEnum>>,
-    #[param(rename = "types[]", nullable = false)]
+    #[param(rename = "types[]")]
     #[try_into(infallible)]
     pub types: Option<Vec<TrustListSubscriberId>>,
     /// Set which filters apply in an exact way.
-    #[param(rename = "exact[]", inline, nullable = false)]
+    #[param(rename = "exact[]", inline)]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub exact: Option<Vec<TrustListSubscriptionExactColumnRestEnum>>,
     /// Return only trust lists created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
     /// Return only trust lists created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
     /// Return only trust lists last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
     /// Return only trust lists last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, with = "time::serde::rfc3339::option")]
-    #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
 }
