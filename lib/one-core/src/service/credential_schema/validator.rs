@@ -88,10 +88,16 @@ pub(crate) fn validate_create_v2_request(
     if request.claims.is_empty() {
         return Err(CredentialSchemaServiceError::MissingClaimSchemas);
     }
-    if let Some(batch_size) = request.batch_size
-        && batch_size < 2
-    {
-        return Err(CredentialSchemaServiceError::BatchSizeTooSmall);
+    if let Some(batch_size) = request.batch_size {
+        if batch_size < 2 {
+            return Err(CredentialSchemaServiceError::BatchSizeTooSmall);
+        }
+        let max_batch_size = config.global_settings.credential_schema.max_batch_size;
+        if i32::try_from(max_batch_size).is_ok_and(|max| batch_size > max) {
+            return Err(CredentialSchemaServiceError::BatchSizeTooLarge(
+                max_batch_size,
+            ));
+        }
     }
 
     if let Some(expiration) = request.expiration

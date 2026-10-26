@@ -58,6 +58,8 @@ pub enum CredentialSchemaServiceError {
 
     #[error("Batch size must be at least 2")]
     BatchSizeTooSmall,
+    #[error("Batch size must not exceed {0}")]
+    BatchSizeTooLarge(u32),
     #[error("Expiration must be greater than 0")]
     InvalidExpiration,
     #[error("Wallet attestation lifetime must be greater than 0")]
@@ -114,6 +116,7 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
             Self::InvalidTransactionCodeDescriptionLength => ErrorCode::BR_0346,
             Self::BatchSizeTooSmall => ErrorCode::BR_0434,
+            Self::BatchSizeTooLarge(_) => ErrorCode::BR_0523,
             Self::InvalidExpiration => ErrorCode::BR_0474,
             Self::InvalidWalletAttestationLifetime => ErrorCode::BR_0504,
             Self::MappingFormatNotPartOfFormats(..) => ErrorCode::BR_0437,

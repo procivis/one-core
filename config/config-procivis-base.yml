@@ -739,6 +739,7 @@ globalSettings:
     maxResponseSize: 10485760 # 10MiB
   credentialSchema:
     maxExpirationSeconds: 315360000 # 10years
+    maxBatchSize: 20
 documentSignerProvider:
   SIGN8:
     type: WALLET_CENTRIC

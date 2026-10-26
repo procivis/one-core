@@ -113,12 +113,19 @@ pub struct CertificateValidationConfig {
 pub struct CredentialSchemaConfig {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub max_expiration_seconds: time::Duration,
+    #[serde(default = "default_max_batch_size")]
+    pub max_batch_size: u32,
+}
+
+fn default_max_batch_size() -> u32 {
+    20
 }
 
 impl Default for CredentialSchemaConfig {
     fn default() -> Self {
         Self {
             max_expiration_seconds: time::Duration::days(10 * 365),
+            max_batch_size: default_max_batch_size(),
         }
     }
 }

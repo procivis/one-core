@@ -1164,6 +1164,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Timestamp validation error")]
     BR_0521,
+
+    #[strum(message = "Batch size exceeds the configured maximum")]
+    BR_0523,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

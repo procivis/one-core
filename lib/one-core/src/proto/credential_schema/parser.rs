@@ -149,6 +149,18 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         {
             return Err(Error::BatchSizeTooSmall);
         }
+        let max_batch_size =
+            i32::try_from(self.config.global_settings.credential_schema.max_batch_size)
+                .unwrap_or(i32::MAX);
+        let batch_size = dto.schema.batch_size.map(|batch_size| {
+            if batch_size > max_batch_size {
+                tracing::warn!(
+                    "Imported credential schema `{}` has batch size {batch_size}, clamping to {max_batch_size}",
+                    dto.schema.name
+                );
+            }
+            batch_size.min(max_batch_size)
+        });
         let now = crate::clock::now_utc();
 
         let mut formatters = Vec::with_capacity(dto.schema.formats.len());
@@ -226,7 +238,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             organisation: dto.organisation.into(),
             formats: formats.into(),
             transaction_code: convert_inner(dto.schema.transaction_code),
-            batch_size: dto.schema.batch_size,
+            batch_size,
             allow_revocation: dto.schema.allow_revocation.unwrap_or(false),
             translations: match dto.schema.translations {
                 Some(translations) => {

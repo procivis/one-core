@@ -68,7 +68,8 @@ fn convert_internal_structure_to_dto() {
           "globalSettings": {
             "defaultLanguage": "",
             "credentialSchema": {
-              "maxExpirationSeconds": 315360000
+              "maxExpirationSeconds": 315360000,
+              "maxBatchSize": 20
             }
           }
         }),
@@ -136,7 +137,8 @@ fn do_not_serialize_private_parameters() {
           "globalSettings": {
             "defaultLanguage": "",
             "credentialSchema": {
-              "maxExpirationSeconds": 315360000
+              "maxExpirationSeconds": 315360000,
+              "maxBatchSize": 20
             }
           }
         }),

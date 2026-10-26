@@ -43,4 +43,5 @@ pub struct GlobalSettingsDTO {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaGlobalSettingsDTO {
     pub max_expiration_seconds: i64,
+    pub max_batch_size: u32,
 }

@@ -119,6 +119,8 @@ pub(crate) struct GlobalSettingsRestDTO {
 pub(crate) struct CredentialSchemaGlobalSettingsRestDTO {
     /// maximum allowed expiration when creating credential schema
     pub max_expiration_seconds: i64,
+    /// maximum allowed batch size when creating credential schema
+    pub max_batch_size: u32,
 }
 
 impl From<ConfigDTO> for ConfigRestDTO {

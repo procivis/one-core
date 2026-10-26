@@ -719,6 +719,30 @@ async fn test_fail_create_credential_schema_v2_batch_size_too_small() {
 }
 
 #[tokio::test]
+async fn test_fail_create_credential_schema_v2_batch_size_too_large() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            batch_size: Some(21),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0523");
+}
+
+#[tokio::test]
 async fn test_fail_create_credential_schema_v2_schema_id_not_allowed_for_jwt() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

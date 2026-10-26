@@ -317,6 +317,60 @@ async fn test_import_credential_schema_v2_with_expiration() {
 }
 
 #[tokio::test]
+async fn test_import_credential_schema_v2_clamps_batch_size_to_configured_maximum() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let import_schema = serde_json::json!(
+    {
+      "allowSuspension": false,
+      "batchSize": 25,
+      "claims": [
+        {
+          "array": false,
+          "claims": [],
+          "createdDate": "2026-05-18T13:53:49.979Z",
+          "datatype": "STRING",
+          "id": "ac18f142-50c4-4878-802a-7e3245ac0d05",
+          "key": "firstName",
+          "lastModified": "2026-05-18T13:53:49.979Z",
+          "required": true,
+          "translations": {
+            "name": {
+              "en": "firstName"
+            }
+          }
+        }
+      ],
+      "createdDate": "2026-05-18T13:53:49.979Z",
+      "formats": [
+        {
+          "format": "JWT",
+          "ecosystemSchemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+        }
+      ],
+      "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
+      "importedSourceUrl": "http://127.0.0.1:51147/ssi/schema/v2/6b457c8b-5af4-4fd9-9767-c87349675dd2",
+      "lastModified": "2026-05-18T13:53:49.979Z",
+      "layoutType": "CARD",
+      "name": "schema with large batch size",
+      "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7"
+    });
+
+    // WHEN
+    let import_resp = context
+        .api
+        .credential_schemas
+        .import_v2(organisation.id, import_schema)
+        .await;
+
+    // THEN
+    assert_eq!(import_resp.status(), 201);
+    let imported_id = import_resp.json_value().await["id"].parse();
+    let imported_schema = context.db.credential_schemas.get(&imported_id).await;
+    assert_eq!(imported_schema.batch_size, Some(20));
+}
+
+#[tokio::test]
 async fn test_import_credential_schema_v2_with_wallet_attestation() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
