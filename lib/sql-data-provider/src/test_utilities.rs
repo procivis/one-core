@@ -188,6 +188,7 @@ pub async fn insert_credential_schema_to_database(
         batch_size: Set(None),
         preferred_key_storage_attestation_lifetime: Set(None),
         preferred_instance_attestation_lifetime: Set(None),
+        wua_monitor_credential_lifetime: Set(false),
         allow_revocation: Set(allow_revocation),
         id: Set(new_id.to_owned()),
         imported_source_url: Set("CORE_URL".to_string()),

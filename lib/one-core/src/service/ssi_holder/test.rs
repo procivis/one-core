@@ -1967,6 +1967,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                     key_storage_security_level: Some(KeyStorageSecurity::Basic),
                     preferred_key_storage_attestation_lifetime: None,
                     preferred_instance_attestation_lifetime: None,
+                    monitor_credential_lifetime: false,
                 },
                 formats: vec![format.clone()].into(),
                 claim_schemas: vec![claim_schema].into(),

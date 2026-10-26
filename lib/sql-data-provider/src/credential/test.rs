@@ -262,6 +262,7 @@ async fn setup_empty() -> TestSetup {
             key_storage_security_level: Some(KeyStorageSecurity::Basic.into()),
             preferred_key_storage_attestation_lifetime: None,
             preferred_instance_attestation_lifetime: None,
+            monitor_credential_lifetime: false,
         },
         claim_schemas: new_claim_schemas
             .into_iter()

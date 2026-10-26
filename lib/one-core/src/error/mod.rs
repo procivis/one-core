@@ -1167,6 +1167,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Batch size exceeds the configured maximum")]
     BR_0523,
+
+    #[strum(message = "Credential lifetime monitoring requires revocation to be enabled")]
+    BR_0524,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

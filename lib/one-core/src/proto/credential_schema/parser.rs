@@ -106,6 +106,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 key_storage_security_level: dto.schema.key_storage_security,
                 preferred_key_storage_attestation_lifetime: None,
                 preferred_instance_attestation_lifetime: None,
+                monitor_credential_lifetime: false,
             }),
             layout_properties,
             imported_source_url: dto.schema.imported_source_url,

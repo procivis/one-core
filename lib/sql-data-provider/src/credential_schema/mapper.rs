@@ -209,6 +209,9 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
                 .wallet_attestation
                 .preferred_instance_attestation_lifetime
                 .map(|d| d.whole_seconds() as i32)),
+            wua_monitor_credential_lifetime: Set(value
+                .wallet_attestation
+                .monitor_credential_lifetime),
             transaction_code_type: Set(transaction_code_type),
             transaction_code_length: Set(transaction_code_length.map(|l| l as i32)),
             transaction_code_description: Set(transaction_code_description),
@@ -297,6 +300,7 @@ pub(super) fn credential_schema_from_models(
             preferred_instance_attestation_lifetime: credential_schema
                 .preferred_instance_attestation_lifetime
                 .map(|seconds| Duration::seconds(seconds as i64)),
+            monitor_credential_lifetime: credential_schema.wua_monitor_credential_lifetime,
         },
         formats,
         claim_schemas: RelatedVec::new(relations.claim_schemas.list(id)),

@@ -413,6 +413,7 @@ async fn test_get_proof_exists() {
                                 key_storage_security_level: Some(KeyStorageSecurity::Basic),
                                 preferred_key_storage_attestation_lifetime: None,
                                 preferred_instance_attestation_lifetime: None,
+                                monitor_credential_lifetime: false,
                             },
                             imported_source_url: "CORE_URL".to_string(),
                             last_modified: crate::clock::now_utc(),

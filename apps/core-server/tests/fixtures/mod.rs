@@ -518,6 +518,7 @@ pub async fn create_credential_schema(
             key_storage_security_level: params.key_storage_security.unwrap_or_default(),
             preferred_key_storage_attestation_lifetime: None,
             preferred_instance_attestation_lifetime: None,
+            monitor_credential_lifetime: false,
         },
         organisation: organisation.to_owned().into(),
         deleted_at: params.deleted_at,

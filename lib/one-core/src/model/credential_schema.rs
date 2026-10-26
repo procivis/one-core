@@ -176,6 +176,7 @@ pub struct WalletAttestation {
     pub key_storage_security_level: Option<KeyStorageSecurity>,
     pub preferred_key_storage_attestation_lifetime: Option<Duration>,
     pub preferred_instance_attestation_lifetime: Option<Duration>,
+    pub monitor_credential_lifetime: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -285,6 +285,7 @@ fn issuer_artifact() -> ProtocolArtifact<'static> {
         key_storage_security_level: None,
         preferred_key_storage_attestation_lifetime: None,
         preferred_instance_attestation_lifetime: None,
+        monitor_credential_lifetime: false,
     };
 
     ProtocolArtifact::IssuerIssuance {

@@ -100,6 +100,8 @@ pub(super) fn credential_from_unexportable_model(
                     preferred_instance_attestation_lifetime: value
                         .credential_schema_preferred_instance_attestation_lifetime
                         .map(|seconds| Duration::seconds(seconds as i64)),
+                    monitor_credential_lifetime: value
+                        .credential_schema_wua_monitor_credential_lifetime,
                 },
                 claim_schemas: claim_schemas.into(),
                 organisation: Related::new(

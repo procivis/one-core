@@ -261,6 +261,7 @@ fn generic_credential_schema() -> CredentialSchema {
             key_storage_security_level: Some(KeyStorageSecurity::Basic),
             preferred_key_storage_attestation_lifetime: None,
             preferred_instance_attestation_lifetime: None,
+            monitor_credential_lifetime: false,
         },
         formats: vec![CredentialSchemaFormat {
             id: format_id,

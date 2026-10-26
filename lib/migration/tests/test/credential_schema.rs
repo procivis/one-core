@@ -28,6 +28,7 @@ async fn test_db_schema_credential_schema() {
         "expiration",
         "preferred_key_storage_attestation_lifetime",
         "preferred_instance_attestation_lifetime",
+        "wua_monitor_credential_lifetime",
     ];
     if schema.backend() == DbBackend::MySql {
         columns.push("deleted_at_materialized");
@@ -152,6 +153,11 @@ async fn test_db_schema_credential_schema() {
         .column("preferred_instance_attestation_lifetime")
         .r#type(ColumnType::Integer)
         .nullable(true);
+    credential_schema
+        .column("wua_monitor_credential_lifetime")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
 }
 
 #[tokio::test]

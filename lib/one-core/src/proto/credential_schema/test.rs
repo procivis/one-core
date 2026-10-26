@@ -220,6 +220,7 @@ async fn test_importer_import_credential_schema_success() {
             key_storage_security_level: Some(KeyStorageSecurity::Basic),
             preferred_key_storage_attestation_lifetime: None,
             preferred_instance_attestation_lifetime: None,
+            monitor_credential_lifetime: false,
         },
         name: "Test Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
@@ -301,6 +302,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
             key_storage_security_level: Some(KeyStorageSecurity::Basic),
             preferred_key_storage_attestation_lifetime: None,
             preferred_instance_attestation_lifetime: None,
+            monitor_credential_lifetime: false,
         },
         name: "Existing Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
@@ -384,6 +386,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
             key_storage_security_level: Some(KeyStorageSecurity::Basic),
             preferred_key_storage_attestation_lifetime: None,
             preferred_instance_attestation_lifetime: None,
+            monitor_credential_lifetime: false,
         },
         name: "Existing Schema".to_string(),
         formats: vec![CredentialSchemaFormat {

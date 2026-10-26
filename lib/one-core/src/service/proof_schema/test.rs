@@ -580,6 +580,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                     key_storage_security_level: Some(KeyStorageSecurity::Basic),
                     preferred_key_storage_attestation_lifetime: None,
                     preferred_instance_attestation_lifetime: None,
+                    monitor_credential_lifetime: false,
                 },
                 claim_schemas: vec![claim_schema_software.clone()].into(),
                 organisation: dummy_organisation(None).into(),
@@ -598,6 +599,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                     key_storage_security_level: Some(KeyStorageSecurity::Moderate),
                     preferred_key_storage_attestation_lifetime: None,
                     preferred_instance_attestation_lifetime: None,
+                    monitor_credential_lifetime: false,
                 },
                 claim_schemas: vec![claim_schema_hardware.clone()].into(),
                 ..schema_software.clone()
@@ -735,6 +737,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                     key_storage_security_level: Some(KeyStorageSecurity::EnhancedBasic),
                     preferred_key_storage_attestation_lifetime: None,
                     preferred_instance_attestation_lifetime: None,
+                    monitor_credential_lifetime: false,
                 },
                 claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: dummy_organisation(None).into(),
@@ -2062,6 +2065,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                     key_storage_security_level: Some(KeyStorageSecurity::Moderate),
                     preferred_key_storage_attestation_lifetime: None,
                     preferred_instance_attestation_lifetime: None,
+                    monitor_credential_lifetime: false,
                 },
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
@@ -2263,6 +2267,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                     key_storage_security_level: Some(KeyStorageSecurity::Moderate),
                     preferred_key_storage_attestation_lifetime: None,
                     preferred_instance_attestation_lifetime: None,
+                    monitor_credential_lifetime: false,
                 },
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {

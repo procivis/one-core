@@ -165,6 +165,7 @@ pub struct CredentialSchemaWalletAttestationBindingDTO {
     #[from(with_fn = seconds_from_duration)]
     #[into(with_fn = duration_from_seconds)]
     pub preferred_instance_attestation_lifetime: Option<i64>,
+    pub monitor_credential_lifetime: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

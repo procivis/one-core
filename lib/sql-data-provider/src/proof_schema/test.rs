@@ -205,6 +205,7 @@ async fn test_create_proof_schema_already_exists() {
                         key_storage_security_level: Some(KeyStorageSecurity::Basic),
                         preferred_key_storage_attestation_lifetime: None,
                         preferred_instance_attestation_lifetime: None,
+                        monitor_credential_lifetime: false,
                     },
                     imported_source_url: "CORE_URL".to_string(),
                     created_date: get_dummy_date(),
@@ -329,6 +330,7 @@ async fn test_create_proof_schema_success() {
                         key_storage_security_level: Some(KeyStorageSecurity::Basic),
                         preferred_key_storage_attestation_lifetime: None,
                         preferred_instance_attestation_lifetime: None,
+                        monitor_credential_lifetime: false,
                     },
                     imported_source_url: "CORE_URL".to_string(),
                     created_date: get_dummy_date(),
@@ -1085,6 +1087,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         transaction_code_length: Set(None),
         transaction_code_description: Set(None),
         embedded_disclosure_policy: Set(None),
+        wua_monitor_credential_lifetime: Set(false),
     }
     .insert(&db)
     .await
@@ -1125,6 +1128,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         transaction_code_length: Set(None),
         transaction_code_description: Set(None),
         embedded_disclosure_policy: Set(None),
+        wua_monitor_credential_lifetime: Set(false),
     }
     .insert(&db)
     .await

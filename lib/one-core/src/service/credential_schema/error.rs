@@ -64,6 +64,8 @@ pub enum CredentialSchemaServiceError {
     InvalidExpiration,
     #[error("Wallet attestation lifetime must be greater than 0")]
     InvalidWalletAttestationLifetime,
+    #[error("Credential lifetime monitoring requires revocation to be enabled")]
+    MonitorCredentialLifetimeWithoutRevocation,
     #[error(
         "Credential schema mapping for claim with key `{0}`, format `{1}` is not part of schema formats for format"
     )]
@@ -119,6 +121,7 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::BatchSizeTooLarge(_) => ErrorCode::BR_0523,
             Self::InvalidExpiration => ErrorCode::BR_0474,
             Self::InvalidWalletAttestationLifetime => ErrorCode::BR_0504,
+            Self::MonitorCredentialLifetimeWithoutRevocation => ErrorCode::BR_0524,
             Self::MappingFormatNotPartOfFormats(..) => ErrorCode::BR_0437,
             Self::MappingNamespaceMissing(..) => ErrorCode::BR_0438,
             Self::MissingNestedClaims(_) => ErrorCode::BR_0106,

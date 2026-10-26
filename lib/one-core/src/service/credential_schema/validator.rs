@@ -111,16 +111,23 @@ pub(crate) fn validate_create_v2_request(
         return Err(CredentialSchemaServiceError::InvalidExpiration);
     }
 
-    if let Some(wallet_attestation) = &request.wallet_attestation
-        && [
+    if let Some(wallet_attestation) = &request.wallet_attestation {
+        if [
             wallet_attestation.preferred_key_storage_attestation_lifetime,
             wallet_attestation.preferred_instance_attestation_lifetime,
         ]
         .into_iter()
         .flatten()
         .any(|lifetime| lifetime <= time::Duration::ZERO)
-    {
-        return Err(CredentialSchemaServiceError::InvalidWalletAttestationLifetime);
+        {
+            return Err(CredentialSchemaServiceError::InvalidWalletAttestationLifetime);
+        }
+
+        if wallet_attestation.monitor_credential_lifetime
+            && !request.allow_revocation.unwrap_or(false)
+        {
+            return Err(CredentialSchemaServiceError::MonitorCredentialLifetimeWithoutRevocation);
+        }
     }
 
     if let Some(embedded_disclosure_policy) = &request.embedded_disclosure_policy {

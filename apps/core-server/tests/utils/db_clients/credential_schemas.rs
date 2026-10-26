@@ -153,6 +153,7 @@ impl CredentialSchemasDB {
                     .preferred_key_storage_attestation_lifetime,
                 preferred_instance_attestation_lifetime: params
                     .preferred_instance_attestation_lifetime,
+                monitor_credential_lifetime: false,
             },
             organisation: organisation.clone().into(),
             deleted_at: params.deleted_at,
@@ -239,6 +240,7 @@ impl CredentialSchemasDB {
                     .preferred_key_storage_attestation_lifetime,
                 preferred_instance_attestation_lifetime: params
                     .preferred_instance_attestation_lifetime,
+                monitor_credential_lifetime: false,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -372,6 +374,7 @@ impl CredentialSchemasDB {
                     .preferred_key_storage_attestation_lifetime,
                 preferred_instance_attestation_lifetime: params
                     .preferred_instance_attestation_lifetime,
+                monitor_credential_lifetime: false,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -505,6 +508,7 @@ impl CredentialSchemasDB {
                     .preferred_key_storage_attestation_lifetime,
                 preferred_instance_attestation_lifetime: params
                     .preferred_instance_attestation_lifetime,
+                monitor_credential_lifetime: false,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -650,6 +654,7 @@ impl CredentialSchemasDB {
                     .preferred_key_storage_attestation_lifetime,
                 preferred_instance_attestation_lifetime: params
                     .preferred_instance_attestation_lifetime,
+                monitor_credential_lifetime: false,
             },
             organisation: organisation.clone().into(),
             deleted_at: None,
@@ -937,6 +942,7 @@ impl CredentialSchemasDB {
                     .preferred_key_storage_attestation_lifetime,
                 preferred_instance_attestation_lifetime: params
                     .preferred_instance_attestation_lifetime,
+                monitor_credential_lifetime: false,
             },
             organisation: organisation.clone().into(),
             formats: vec![CredentialSchemaFormat {

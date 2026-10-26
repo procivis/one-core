@@ -411,7 +411,8 @@ async fn test_import_credential_schema_v2_with_wallet_attestation() {
         "requireInstanceAttestation": true,
         "keyStorageSecurityLevel": "HIGH",
         "preferredKeyStorageAttestationLifetime": 2678400,
-        "preferredInstanceAttestationLifetime": 5356800
+        "preferredInstanceAttestationLifetime": 5356800,
+        "monitorCredentialLifetime": true
       }
     });
 
@@ -433,6 +434,7 @@ async fn test_import_credential_schema_v2_with_wallet_attestation() {
             key_storage_security_level: Some(KeyStorageSecurity::High),
             preferred_key_storage_attestation_lifetime: Some(time::Duration::seconds(2678400)),
             preferred_instance_attestation_lifetime: Some(time::Duration::seconds(5356800)),
+            monitor_credential_lifetime: true,
         }
     );
 
@@ -458,6 +460,10 @@ async fn test_import_credential_schema_v2_with_wallet_attestation() {
     assert_eq!(
         get_resp["walletAttestation"]["preferredInstanceAttestationLifetime"],
         5356800
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["monitorCredentialLifetime"],
+        true
     );
 }
 

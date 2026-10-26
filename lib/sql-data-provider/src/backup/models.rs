@@ -46,6 +46,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_expiration: Option<i32>,
     pub credential_schema_preferred_key_storage_attestation_lifetime: Option<i32>,
     pub credential_schema_preferred_instance_attestation_lifetime: Option<i32>,
+    pub credential_schema_wua_monitor_credential_lifetime: bool,
 
     pub organisation_id: OrganisationId,
 

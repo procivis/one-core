@@ -328,6 +328,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                     key_storage_security_level: Some(KeyStorageSecurity::Basic),
                     preferred_key_storage_attestation_lifetime: None,
                     preferred_instance_attestation_lifetime: None,
+                    monitor_credential_lifetime: false,
                 },
                 formats: vec![format.clone()].into(),
                 imported_source_url: "CORE_URL".to_string(),

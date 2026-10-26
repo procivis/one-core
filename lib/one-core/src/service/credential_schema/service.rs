@@ -115,6 +115,7 @@ impl CredentialSchemaService {
                 key_storage_security_level: request.key_storage_security,
                 preferred_key_storage_attestation_lifetime: None,
                 preferred_instance_attestation_lifetime: None,
+                monitor_credential_lifetime: false,
             }),
             layout_properties: request.layout_properties,
             allow_suspension: request.allow_suspension,

@@ -224,6 +224,7 @@ async fn test_create_credential_schema_success() {
                 key_storage_security_level: Some(KeyStorageSecurity::Basic.into()),
                 preferred_key_storage_attestation_lifetime: None,
                 preferred_instance_attestation_lifetime: None,
+                monitor_credential_lifetime: false,
             },
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),

@@ -580,7 +580,9 @@ async fn test_create_credential_schema_v2_success_with_wallet_attestation() {
                 "keyStorageSecurityLevel": "HIGH",
                 "preferredKeyStorageAttestationLifetime": 2678400,
                 "preferredInstanceAttestationLifetime": 5356800,
+                "monitorCredentialLifetime": true,
             })),
+            allow_revocation: Some(true),
             ..Default::default()
         })
         .await;
@@ -597,6 +599,7 @@ async fn test_create_credential_schema_v2_success_with_wallet_attestation() {
             key_storage_security_level: Some(KeyStorageSecurity::High),
             preferred_key_storage_attestation_lifetime: Some(time::Duration::seconds(2678400)),
             preferred_instance_attestation_lifetime: Some(time::Duration::seconds(5356800)),
+            monitor_credential_lifetime: true,
         }
     );
 
@@ -622,6 +625,10 @@ async fn test_create_credential_schema_v2_success_with_wallet_attestation() {
     assert_eq!(
         get_resp["walletAttestation"]["preferredInstanceAttestationLifetime"],
         5356800
+    );
+    assert_eq!(
+        get_resp["walletAttestation"]["monitorCredentialLifetime"],
+        true
     );
 }
 
@@ -667,6 +674,10 @@ async fn test_create_credential_schema_v2_default_wallet_attestation() {
     assert!(get_resp["walletAttestation"]["keyStorageSecurityLevel"].is_null());
     assert!(get_resp["walletAttestation"]["preferredKeyStorageAttestationLifetime"].is_null());
     assert!(get_resp["walletAttestation"]["preferredInstanceAttestationLifetime"].is_null());
+    assert_eq!(
+        get_resp["walletAttestation"]["monitorCredentialLifetime"],
+        false
+    );
 }
 
 #[tokio::test]
@@ -716,6 +727,35 @@ async fn test_fail_create_credential_schema_v2_batch_size_too_small() {
 
     // THEN
     assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_v2_monitor_credential_lifetime_without_revocation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    for allow_revocation in [Some(false), None] {
+        // WHEN
+        let resp = context
+            .api
+            .credential_schemas
+            .create_v2(CreateSchemaV2Params {
+                name: "v2 schema".into(),
+                organisation_id: organisation.id.into(),
+                formats: vec![jwt_format()],
+                claims: default_claims(),
+                wallet_attestation: Some(serde_json::json!({
+                    "monitorCredentialLifetime": true,
+                })),
+                allow_revocation,
+                ..Default::default()
+            })
+            .await;
+
+        // THEN
+        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.error_code().await, "BR_0524");
+    }
 }
 
 #[tokio::test]

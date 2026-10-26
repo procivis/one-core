@@ -165,6 +165,8 @@ pub struct CredentialSchemaWalletAttestationDTO {
     #[serde(default)]
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub preferred_instance_attestation_lifetime: Option<Duration>,
+    #[serde(default)]
+    pub monitor_credential_lifetime: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

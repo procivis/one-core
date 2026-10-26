@@ -38,6 +38,8 @@ pub struct Model {
     pub ecosystem: Option<EcosystemId>,
     pub preferred_key_storage_attestation_lifetime: Option<i32>,
     pub preferred_instance_attestation_lifetime: Option<i32>,
+    #[serde(deserialize_with = "bool_from_int")]
+    pub wua_monitor_credential_lifetime: bool,
 }
 
 #[derive(

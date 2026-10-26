@@ -291,6 +291,10 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::PreferredInstanceAttestationLifetime,
                 "credential_schema_preferred_instance_attestation_lifetime",
             )
+            .column_as(
+                credential_schema::Column::WuaMonitorCredentialLifetime,
+                "credential_schema_wua_monitor_credential_lifetime",
+            )
             .column_as(organisation::Column::Id, "organisation_id")
             .expr_as(
                 coalesce_to_empty_array(

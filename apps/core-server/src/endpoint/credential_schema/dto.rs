@@ -206,6 +206,11 @@ pub(crate) struct CredentialSchemaWalletAttestationRestDTO {
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     #[schema(value_type = Option<i64>, minimum = 1)]
     pub preferred_instance_attestation_lifetime: Option<Duration>,
+    /// For credentials issued using an ecosystem of type `EUDI`: if `true`, the wallet unit
+    /// attestation must remain valid for the whole lifetime of credentials issued with this schema
+    /// and is monitored accordingly.
+    #[serde(default)]
+    pub monitor_credential_lifetime: bool,
 }
 
 #[options_not_nullable]
@@ -1270,6 +1275,7 @@ mod test {
                 key_storage_security_level: Some(KeyStorageSecurityRestEnum::Basic),
                 preferred_key_storage_attestation_lifetime: Some(Duration::seconds(2678400)),
                 preferred_instance_attestation_lifetime: Some(Duration::seconds(5356800)),
+                monitor_credential_lifetime: true,
             },
             imported_source_url: "imported_source_url".to_string(),
             layout_properties: None,
@@ -1312,5 +1318,6 @@ mod test {
             wallet_attestation.preferred_instance_attestation_lifetime,
             Some(Duration::seconds(5356800))
         );
+        assert!(wallet_attestation.monitor_credential_lifetime);
     }
 }

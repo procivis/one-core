@@ -91,6 +91,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                             key_storage_security_level: Some(KeyStorageSecurity::Basic),
                             preferred_key_storage_attestation_lifetime: None,
                             preferred_instance_attestation_lifetime: None,
+                            monitor_credential_lifetime: false,
                         },
                         name: "name".into(),
                         formats: vec![format.clone()].into(),
