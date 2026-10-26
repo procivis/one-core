@@ -5,6 +5,7 @@ use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk};
 use standardized_types::openid4vp::{
     AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, ClientMetadata,
+    ResponseMode,
 };
 use url::Url;
 
@@ -19,8 +20,8 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    CommonVerifierInteractionContent, HolderTxData, OpenID4VPHolderInteractionData,
-    TransactionDataRequest,
+    CommonVerifierInteractionContent, HolderTxData, HttpData, OpenID4VPHolderInteractionData,
+    TransactionDataRequest, TransportSpecificData,
 };
 use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 
@@ -257,31 +258,63 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
         let (client_id_without_prefix, client_id_scheme) =
             decode_client_id_with_scheme(&value.client_id, true)?;
 
-        let mut response_uri = value.response_uri;
+        let response_uri = match (value.response_uri, value.redirect_uri) {
+            (None, None) => {
+                // The Verifier MAY omit the redirect_uri Authorization Request parameter (or response_uri when Response Mode direct_post is used).
+                // <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.9.3-3.1.1>
+                if client_id_scheme == ClientIdPrefix::RedirectUri {
+                    client_id_without_prefix
+                        .parse::<Url>()
+                        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?
+                } else {
+                    return Err(VerificationProtocolError::Failed(
+                        "response_uri is missing".to_string(),
+                    ));
+                }
+            }
+            (None, Some(redirect_uri)) => Url::parse(&redirect_uri)
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+            (Some(response_uri), None) => response_uri,
+            (Some(_), Some(_)) => {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "Both response_uri and redirect_uri specified".to_string(),
+                ));
+            }
+        };
 
-        // The Verifier MAY omit the redirect_uri Authorization Request parameter (or response_uri when Response Mode direct_post is used).
-        // <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.9.3-3.1.1>
-        if response_uri.is_none() && client_id_scheme == ClientIdPrefix::RedirectUri {
-            response_uri = Some(
-                client_id_without_prefix
-                    .parse::<Url>()
-                    .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
-            );
+        if client_id_scheme == ClientIdPrefix::RedirectUri
+            && client_id_without_prefix != response_uri.as_str()
+        {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "client_id:redirect_uri mismatch with redirect_uri".to_string(),
+            ));
+        }
+
+        match (value.response_mode, client_id_scheme) {
+            (Some(ResponseMode::DirectPost | ResponseMode::DirectPostJwt), _)
+            | (None, ClientIdPrefix::RedirectUri) => {
+                // OK, continue
+            }
+            _ => {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "Invalid response_mode".to_string(),
+                ));
+            }
         }
 
         Ok(Self {
-            client_id: client_id_without_prefix,
+            transport: TransportSpecificData::Http(HttpData {
+                state: value.state,
+                client_id_scheme,
+                client_id: client_id_without_prefix,
+                response_uri,
+            }),
             response_type: value.response_type,
-            state: value.state,
             nonce: value.nonce,
-            client_id_scheme,
             client_metadata: value.client_metadata,
-            client_metadata_uri: None,
             response_mode: value.response_mode,
-            response_uri,
             dcql_query: value.dcql_query,
             transaction_data: HolderTxData::Unvalidated(value.transaction_data),
-            redirect_uri: value.redirect_uri,
             verifier_details: None,
             verifier_info: value.verifier_info,
         })

@@ -72,6 +72,21 @@ pub struct DigitalCredentialRequestOptions {
     pub requests: Vec<DigitalCredentialGetRequest>,
 }
 
+/// <https://www.w3.org/TR/digital-credentials/#the-digitalcredential-interface>
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "protocol", content = "data")]
+pub enum DigitalCredential {
+    #[serde(rename = "openid4vp-v1-unsigned")]
+    OpenID4VpV1Unsigned(serde_json::Value),
+    #[serde(rename = "openid4vp-v1-signed")]
+    OpenID4VpV1Signed(serde_json::Value),
+    // currently not supported:
+    //  #[serde(rename = "openid4vp-v1-multisigned")]
+    //  OpenID4VpV1Multisigned(JWSJsonSerialized),
+    //  #[serde(rename = "org-iso-mdoc")]
+    //  OrgIsoMdoc(...),
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

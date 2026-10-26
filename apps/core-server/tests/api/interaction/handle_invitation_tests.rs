@@ -2604,7 +2604,7 @@ async fn test_handle_invitation_fail_unencrypted_response() {
           params:
             public:
               holder:
-                allowUnencryptedResponse: false
+                requiresEncryptedResponse: true
     "}
     .to_string();
     let (context, organisation) = TestContext::new_with_organisation(Some(config_changes)).await;

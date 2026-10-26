@@ -9,19 +9,39 @@ use one_crypto::jwe::Header as JweHeader;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
-use shared_types::{TransactionDataId, TransactionDataType};
+use shared_types::{ProofId, TransactionDataId, TransactionDataType};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
+use standardized_types::openid4vp::dc_api::{
+    DigitalCredential, DigitalCredentialGetRequest, DigitalCredentialRequestOptions,
+    SignedAuthorizationRequestPayload,
+};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use standardized_types::openid4vp::{
     ClientIdPrefix, DirectPostResponse, ResponseMode, VpTokenResponse,
 };
 use time::Duration;
+use tokio::sync::Mutex;
 use url::Url;
 use uuid::Uuid;
 
+use super::dcql::get_presentation_definition_v2;
+use super::final1_0::dcql::create_dcql_query;
+use super::final1_0::mappers::{
+    create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
+    transaction_data_from_interaction,
+};
 use super::mapper::{format_to_type, unencrypted_params};
 use super::mdoc::mdoc_presentation_context;
+use super::model::{
+    CommonVerifierInteractionContent, HolderTxData, JwePayload, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, TransportSpecificData, ValidatedHolderTxData,
+    VpSubmissionData,
+};
+use super::validator::{
+    validate_did_request_token, validate_x509_hash_request_token, validate_x509_san_dns_token,
+};
+use super::{VerificationProtocolError, get_client_id_scheme};
 use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::fingerprint_into_sha256_thumbprint;
@@ -29,11 +49,14 @@ use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
+use crate::proto::jwt::Jwt;
+use crate::proto::native_credential_manager::NativeDcApiResponseHandler;
 use crate::proto::wrp_validator::WRPValidator;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
@@ -42,6 +65,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{CredentialToPresent, FormatPresentationCtx};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_dc_api::OID4VPDcApiHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::provider_directory::InitializationError;
@@ -58,18 +82,6 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
-use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_v2;
-use crate::provider::verification_protocol::openid4vp::final1_0::dcql::create_dcql_query;
-use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
-    create_open_id_for_vp_client_metadata_final1_0, transaction_data_from_interaction,
-};
-use crate::provider::verification_protocol::openid4vp::model::{
-    CommonVerifierInteractionContent, HolderTxData, JwePayload, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, ValidatedHolderTxData, VpSubmissionData,
-};
-use crate::provider::verification_protocol::openid4vp::{
-    VerificationProtocolError, get_client_id_scheme,
-};
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
@@ -82,6 +94,7 @@ use crate::service::oid4vp_final1_0::proof_request::{
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::util::jwe::{build_jwe, select_recipient_jwk};
+use crate::validator::x509::is_dns_name_matching;
 
 pub(super) mod dcql;
 pub mod mappers;
@@ -116,6 +129,9 @@ pub(crate) struct OpenID4VPFinal1_0 {
     base_url: Option<String>,
     params: Params,
     config: Arc<CoreConfig>,
+
+    /// active DC-API handlers (only available during DC-API flow)
+    dc_api_response_handler: Mutex<HashMap<ProofId, Arc<dyn NativeDcApiResponseHandler>>>,
 }
 
 struct EncryptionInfo {
@@ -170,6 +186,7 @@ impl OpenID4VPFinal1_0 {
             config,
             ecosystem_directory,
             transaction_data_provider,
+            dc_api_response_handler: Default::default(),
         })
     }
 
@@ -224,20 +241,13 @@ impl OpenID4VPFinal1_0 {
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
 
-        let response_mode =
-            interaction_data
-                .response_mode
-                .ok_or(VerificationProtocolError::InvalidRequest(
-                    "response_mode is None".to_string(),
-                ))?;
-
         // As per https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-8.3.1
         // the response should be encrypted only if the response type is direct_post.jwt
         // Also per https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.2
         // when response type is dc_api.jwt
-        let encryption_info = match response_mode {
-            ResponseMode::DirectPost | ResponseMode::DcApi => None,
-            ResponseMode::DirectPostJwt | ResponseMode::DcApiJwt => Some(
+        let encryption_info = match &interaction_data.response_mode {
+            None | Some(ResponseMode::DirectPost | ResponseMode::DcApi) => None,
+            Some(ResponseMode::DirectPostJwt | ResponseMode::DcApiJwt) => Some(
                 self.encryption_info_from_metadata(interaction_data)
                     .await?
                     .ok_or(VerificationProtocolError::InvalidRequest(
@@ -343,6 +353,7 @@ impl OpenID4VPFinal1_0 {
                             self.params.use_legacy_did_client_id_scheme,
                             credential_presentation.holder_did,
                             aggregated_tx_data,
+                            encryption_info.as_ref(),
                         )?,
                     )
                     .await
@@ -366,71 +377,160 @@ impl OpenID4VPFinal1_0 {
         ))
     }
 
-    async fn handle_proof_invitation<'a>(
+    async fn handle_url_invitation(
         &self,
         url: Url,
-        organisation: Organisation,
-        transport: String,
-    ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
+    ) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
         let query = url
             .query()
             .ok_or(VerificationProtocolError::InvalidRequest(
                 "Query cannot be empty".to_string(),
             ))?;
 
-        let proof_id = Uuid::new_v4().into();
-        let mut holder_interaction_data = {
-            let (authorization_request, verifier_details) =
-                self.request_from_openid4vp_query(query).await?;
+        let (authorization_request, verifier_details) =
+            self.request_from_openid4vp_query(query).await?;
 
-            let mut interaction_data: OpenID4VPHolderInteractionData =
-                authorization_request.try_into()?;
-            interaction_data.verifier_details = verifier_details;
-            if let Some(predefined_metadata) = &self.params.predefined_vp_formats_supported
-                && let Some(metadata) = interaction_data.client_metadata.as_mut()
-            {
-                metadata.vp_formats_supported = predefined_metadata.clone();
+        let mut interaction_data: OpenID4VPHolderInteractionData =
+            authorization_request.try_into()?;
+
+        interaction_data.verifier_details = verifier_details;
+
+        if let Some(predefined_metadata) = &self.params.predefined_vp_formats_supported
+            && let Some(metadata) = interaction_data.client_metadata.as_mut()
+        {
+            metadata.vp_formats_supported = predefined_metadata.clone();
+        }
+
+        Ok(interaction_data)
+    }
+
+    async fn handle_dc_api_invitation(
+        &self,
+        request_json: &str,
+        origin: String,
+    ) -> Result<OpenID4VPHolderInteractionData, VerificationProtocolError> {
+        let DigitalCredentialRequestOptions { requests } = serde_json::from_str(request_json)?;
+        let request =
+            requests
+                .into_iter()
+                .next()
+                .ok_or(VerificationProtocolError::InvalidRequest(
+                    "Missing request".to_string(),
+                ))?;
+
+        let interaction_data = match request {
+            DigitalCredentialGetRequest::OpenID4VpV1Unsigned(request) => {
+                OpenID4VPHolderInteractionData {
+                    transport: TransportSpecificData::DcApiUnsigned { origin },
+                    response_type: request.response_type,
+                    nonce: request.nonce,
+                    client_metadata: request.client_metadata,
+                    response_mode: Some(request.response_mode),
+                    dcql_query: request.dcql_query,
+                    transaction_data: HolderTxData::Unvalidated(request.transaction_data),
+                    verifier_info: vec![], // verifier info ignored since it cannot be validated
+                    verifier_details: None,
+                }
             }
-            interaction_data
+            DigitalCredentialGetRequest::OpenID4VpV1Signed(jwscompact_serialized) => {
+                let jwt = Jwt::<SignedAuthorizationRequestPayload>::decompose_token(
+                    &jwscompact_serialized.request,
+                )
+                .error_while("parsing signed request")?;
+
+                if !jwt.payload.custom.expected_origins.contains(&origin) {
+                    return Err(VerificationProtocolError::InvalidRequest(format!(
+                        "Unexpected origin: `{origin}`"
+                    )));
+                }
+
+                let (client_id_without_prefix, client_id_scheme) = decode_client_id_with_scheme(
+                    &jwt.payload.custom.client_id,
+                    self.params.use_legacy_did_client_id_scheme,
+                )?;
+
+                self.validate_supported_client_id_scheme(client_id_scheme)?;
+
+                let verifier_details = match client_id_scheme {
+                    ClientIdPrefix::VerifierAttestation | ClientIdPrefix::RedirectUri => {
+                        return Err(VerificationProtocolError::InvalidRequest(format!(
+                            "Invalid client_id_scheme: `{client_id_scheme}`"
+                        )));
+                    }
+                    ClientIdPrefix::X509SanDns => {
+                        let certificate = validate_x509_san_dns_token(
+                            &jwt,
+                            &client_id_without_prefix,
+                            &*self.certificate_validator,
+                        )
+                        .await?;
+
+                        let origin = Url::parse(&origin).map_err(|e| {
+                            VerificationProtocolError::InvalidRequest(e.to_string())
+                        })?;
+
+                        // The origin must match client_id
+                        if !origin.domain().is_some_and(|origin_domain| {
+                            client_id_without_prefix == origin_domain
+                                || is_dns_name_matching(
+                                    &format!("*.{client_id_without_prefix}"),
+                                    origin_domain,
+                                )
+                        }) {
+                            return Err(VerificationProtocolError::Failed(
+                                "origin client_id mismatch".to_string(),
+                            ));
+                        }
+
+                        Some(IdentifierDetails::Certificate(certificate))
+                    }
+                    ClientIdPrefix::X509Hash => {
+                        let certificate = validate_x509_hash_request_token(
+                            &jwt,
+                            &client_id_without_prefix,
+                            &*self.certificate_validator,
+                        )
+                        .await?;
+                        Some(IdentifierDetails::Certificate(certificate))
+                    }
+                    ClientIdPrefix::DecentralizedIdentifier => {
+                        let verifier_did = validate_did_request_token(
+                            &jwt,
+                            &client_id_without_prefix,
+                            self.did_method_provider.as_ref(),
+                            self.key_algorithm_provider.as_ref(),
+                        )
+                        .await?;
+                        Some(IdentifierDetails::Did(verifier_did))
+                    }
+                };
+
+                OpenID4VPHolderInteractionData {
+                    transport: TransportSpecificData::DcApiSigned { origin },
+                    response_type: jwt.payload.custom.common.response_type,
+                    nonce: jwt.payload.custom.common.nonce,
+                    client_metadata: jwt.payload.custom.common.client_metadata,
+                    response_mode: Some(jwt.payload.custom.common.response_mode),
+                    dcql_query: jwt.payload.custom.common.dcql_query,
+                    transaction_data: HolderTxData::Unvalidated(
+                        jwt.payload.custom.common.transaction_data,
+                    ),
+                    verifier_info: jwt.payload.custom.common.verifier_info,
+                    verifier_details,
+                }
+            }
         };
 
-        self.validate_interaction_data(&holder_interaction_data)?;
-        self.process_transaction_data(&mut holder_interaction_data)?;
-        let data = serialize_interaction_data(&holder_interaction_data)?;
-
-        let Some(_) = holder_interaction_data.response_uri else {
-            return Err(VerificationProtocolError::Failed(
-                "response_uri is missing".to_string(),
+        if !matches!(
+            interaction_data.response_mode,
+            Some(ResponseMode::DcApi | ResponseMode::DcApiJwt)
+        ) {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "Invalid response_mode".to_string(),
             ));
-        };
+        }
 
-        let now = crate::clock::now_utc();
-        let interaction =
-            create_and_store_interaction(self.interaction_repository.as_ref(), data, organisation)
-                .await?;
-        let interaction_id = interaction.id;
-
-        let proof = proof_from_handle_invitation(
-            proof_id,
-            self.config_name(),
-            holder_interaction_data.redirect_uri,
-            None,
-            interaction,
-            now,
-            transport,
-            ProofStateEnum::Requested,
-        );
-
-        Ok(InvitationResponseDTO {
-            interaction_id,
-            proof,
-            ecosystem_artifact: ProtocolArtifact::HolderProof {
-                verifier_details: holder_interaction_data.verifier_details,
-                dcql_query: holder_interaction_data.dcql_query,
-                verifier_info: holder_interaction_data.verifier_info,
-                proof_id,
-            },
-        })
+        Ok(interaction_data)
     }
 
     fn process_transaction_data(
@@ -491,6 +591,33 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
     }
 
     fn holder_can_handle(&self, request: &InvitationRequest) -> bool {
+        if !self.params.swiyu_mode
+            && let InvitationRequest::OpenID4VpDcApi { request_json, .. } = &request
+            && let Ok(DigitalCredentialRequestOptions { requests }) =
+                serde_json::from_str(request_json)
+            && let Some(request) = requests.first()
+        {
+            let response_mode = match request {
+                DigitalCredentialGetRequest::OpenID4VpV1Unsigned(
+                    unsigned_authorization_request,
+                ) => unsigned_authorization_request.response_mode,
+                DigitalCredentialGetRequest::OpenID4VpV1Signed(signed_request) => {
+                    let Ok(request) = Jwt::<SignedAuthorizationRequestPayload>::decompose_token(
+                        &signed_request.request,
+                    ) else {
+                        return false;
+                    };
+                    request.payload.custom.common.response_mode
+                }
+            };
+
+            return match response_mode {
+                ResponseMode::DcApi => !self.params.holder.requires_encrypted_response,
+                ResponseMode::DcApiJwt => true,
+                _ => false,
+            };
+        }
+
         let InvitationRequest::Url(url) = request else {
             return false;
         };
@@ -538,9 +665,14 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             verifier_identifier_types.insert(IdentifierType::Certificate);
         }
 
+        let mut supported_transports = vec![TransportType::Http];
+        if !self.params.swiyu_mode {
+            supported_transports.push(TransportType::DcApi);
+        }
+
         VerificationProtocolCapabilities {
             features,
-            supported_transports: vec![TransportType::Http],
+            supported_transports,
             did_methods,
             verifier_identifier_types: verifier_identifier_types.into_iter().collect(),
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
@@ -565,26 +697,61 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             ));
         }
 
-        let InvitationRequest::Url(url) = request else {
-            return Err(VerificationProtocolError::Failed(
-                "Invalid request".to_string(),
-            ));
+        let (mut interaction_data, dc_api_response_handler) = match request {
+            InvitationRequest::Url(url) => (self.handle_url_invitation(url).await?, None),
+            InvitationRequest::OpenID4VpDcApi {
+                origin,
+                request_json,
+                response_handler,
+            } => (
+                self.handle_dc_api_invitation(&request_json, origin).await?,
+                Some(response_handler),
+            ),
+            InvitationRequest::IsoDcApi { .. } => {
+                return Err(VerificationProtocolError::Failed(
+                    "Invalid request".to_string(),
+                ));
+            }
         };
 
-        self.handle_proof_invitation(url, organisation, transport)
-            .await
+        self.validate_interaction_data(&interaction_data)?;
+        self.process_transaction_data(&mut interaction_data)?;
+        let data = serialize_interaction_data(&interaction_data)?;
+
+        let interaction =
+            create_and_store_interaction(self.interaction_repository.as_ref(), data, organisation)
+                .await?;
+        let interaction_id = interaction.id;
+
+        let proof_id = Uuid::new_v4().into();
+        let proof = proof_from_handle_invitation(
+            proof_id,
+            self.config_name(),
+            None,
+            interaction,
+            transport,
+        );
+
+        if let Some(response_handler) = dc_api_response_handler {
+            self.dc_api_response_handler
+                .lock()
+                .await
+                .insert(proof_id, response_handler);
+        }
+
+        Ok(InvitationResponseDTO {
+            interaction_id,
+            proof,
+            ecosystem_artifact: ProtocolArtifact::HolderProof {
+                verifier_details: interaction_data.verifier_details,
+                dcql_query: interaction_data.dcql_query,
+                verifier_info: interaction_data.verifier_info,
+                proof_id,
+            },
+        })
     }
 
-    async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
-        // Rejection not supported and handled as no-op on holder side
-        Ok(())
-    }
-
-    async fn holder_submit_proof(
-        &self,
-        proof: &Proof,
-        credential_presentations: Vec<FormattedCredentialPresentation>,
-    ) -> Result<(), VerificationProtocolError> {
+    async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
         let interaction = proof
             .interaction
             .as_ref()
@@ -596,19 +763,44 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 
         let interaction_data: OpenID4VPHolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
+
+        match interaction_data.transport {
+            TransportSpecificData::Http(_) => {
+                // Rejection not supported and handled as no-op on holder side
+            }
+            TransportSpecificData::DcApiUnsigned { .. }
+            | TransportSpecificData::DcApiSigned { .. } => {
+                let response_handler = self
+                    .dc_api_response_handler
+                    .lock()
+                    .await
+                    .remove(&proof.id)
+                    .ok_or(VerificationProtocolError::Failed(
+                        "missing DC-API response handler".to_string(),
+                    ))?;
+                response_handler
+                    .on_reject()
+                    .error_while("calling DC-API on_reject")?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn holder_submit_proof(
+        &self,
+        proof: &Proof,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
+    ) -> Result<(), VerificationProtocolError> {
+        let interaction = proof.interaction.as_required_ref().await?;
+
+        let interaction_data: OpenID4VPHolderInteractionData =
+            deserialize_interaction_data(interaction.data.as_ref())?;
         let holder_nonce = utilities::generate_alphanumeric(32);
 
         let (submission_data, encryption_info) = self
             .dcql_submission_data(credential_presentations, &interaction_data)
             .await?;
-
-        let response_uri =
-            interaction_data
-                .response_uri
-                .clone()
-                .ok_or(VerificationProtocolError::Failed(
-                    "response_uri is None".to_string(),
-                ))?;
 
         let params = if let Some(EncryptionInfo {
             verifier_key,
@@ -616,7 +808,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         }) = encryption_info
         {
             encrypted_params(
-                interaction_data,
+                &interaction_data,
                 submission_data,
                 &holder_nonce,
                 verifier_key,
@@ -625,36 +817,99 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             )
             .await?
         } else {
-            unencrypted_params(&submission_data, interaction_data.state.clone())?
+            let state = if let TransportSpecificData::Http(http_data) = &interaction_data.transport
+            {
+                http_data.state.clone()
+            } else {
+                None
+            };
+            unencrypted_params(&submission_data, state)?
         };
 
-        let response = async {
-            self.client
-                .post(response_uri.as_str())
-                .form(&params)?
-                .send()
-                .await?
-                .error_for_status()
-        }
-        .await
-        .error_while("posting submission")?;
+        match interaction_data.transport {
+            TransportSpecificData::Http(mut http_data) => {
+                let redirect_uri = match interaction_data.response_mode {
+                    // defaults to fragment (combined with redirect_uri client_id_scheme)
+                    // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.6-2.2
+                    None => {
+                        let fragment = serde_urlencoded::to_string(params)
+                            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+                        http_data.response_uri.set_fragment(Some(&fragment));
+                        Some(http_data.response_uri.to_string())
+                    }
+                    Some(ResponseMode::DirectPost | ResponseMode::DirectPostJwt) => {
+                        let response = async {
+                            self.client
+                                .post(http_data.response_uri.as_str())
+                                .form(&params)?
+                                .send()
+                                .await?
+                                .error_for_status()
+                        }
+                        .await
+                        .error_while("posting submission")?;
 
-        let response: Result<DirectPostResponse, _> = response.json();
-        if let Ok(response) = response
-            && proof.redirect_uri != response.redirect_uri
-        {
-            self.proof_repository
-                .update_proof(
-                    &proof.id,
-                    UpdateProofRequest {
-                        redirect_uri: Some(response.redirect_uri),
-                        ..Default::default()
-                    },
-                    None,
-                )
-                .await
-                .error_while("updating proof")?;
-        }
+                        let response: Result<DirectPostResponse, _> = response.json();
+                        response.ok().and_then(|response| response.redirect_uri)
+                    }
+                    _ => {
+                        return Err(VerificationProtocolError::Failed(
+                            "Invalid response_mode".to_string(),
+                        ));
+                    }
+                };
+
+                if proof.redirect_uri != redirect_uri {
+                    self.proof_repository
+                        .update_proof(
+                            &proof.id,
+                            UpdateProofRequest {
+                                redirect_uri: Some(redirect_uri),
+                                ..Default::default()
+                            },
+                            None,
+                        )
+                        .await
+                        .error_while("updating proof")?;
+                }
+            }
+            transport @ (TransportSpecificData::DcApiUnsigned { .. }
+            | TransportSpecificData::DcApiSigned { .. }) => {
+                let response_data = serde_json::Value::Object(
+                    params
+                        .into_iter()
+                        .map(|(k, v)| (k, serde_json::Value::String(v)))
+                        .collect::<serde_json::Map<String, serde_json::Value>>(),
+                );
+
+                let response = match transport {
+                    TransportSpecificData::DcApiUnsigned { .. } => {
+                        DigitalCredential::OpenID4VpV1Unsigned(response_data)
+                    }
+                    TransportSpecificData::DcApiSigned { .. } => {
+                        DigitalCredential::OpenID4VpV1Signed(response_data)
+                    }
+                    TransportSpecificData::Http(_) => {
+                        return Err(VerificationProtocolError::Failed(
+                            "Invalid transport".to_string(),
+                        ));
+                    }
+                };
+                let response_json = serde_json::to_string(&response)?;
+
+                let response_handler = self
+                    .dc_api_response_handler
+                    .lock()
+                    .await
+                    .remove(&proof.id)
+                    .ok_or(VerificationProtocolError::Failed(
+                        "missing DC-API response handler".to_string(),
+                    ))?;
+                response_handler
+                    .on_submit(response_json)
+                    .error_while("calling DC-API on_submit")?;
+            }
+        };
 
         Ok(())
     }
@@ -878,6 +1133,7 @@ fn format_presentation_context(
     use_legacy_did_client_id_scheme: bool,
     holder_did: Option<Did>,
     transaction_data: Option<ProcessedTransactionData>,
+    encryption_info: Option<&EncryptionInfo>,
 ) -> Result<FormatPresentationCtx, VerificationProtocolError> {
     let verifier_nonce =
         interaction_data
@@ -886,82 +1142,90 @@ fn format_presentation_context(
             .ok_or(VerificationProtocolError::Failed(
                 "nonce is None".to_string(),
             ))?;
-    let response_uri =
-        interaction_data
-            .response_uri
-            .clone()
-            .ok_or(VerificationProtocolError::Failed(
-                "response_uri is None".to_string(),
-            ))?;
-    let ctx = if presentation_format == FormatType::Mdoc {
-        let Some(metadata) = &interaction_data.client_metadata else {
-            return Err(VerificationProtocolError::Failed(
-                "missing or invalid client_metadata".to_string(),
-            ));
+
+    Ok(if presentation_format == FormatType::Mdoc {
+        let encryption_key = encryption_info.map(|info| &info.verifier_key);
+
+        let handover = match &interaction_data.transport {
+            TransportSpecificData::Http(http_data) => Handover::OID4VPFinal1_0(
+                OID4VPFinal1_0Handover::compute(
+                    &encode_client_id_with_scheme(
+                        http_data.client_id.clone(),
+                        http_data.client_id_scheme,
+                        use_legacy_did_client_id_scheme,
+                    ),
+                    http_data.response_uri.as_str(),
+                    &verifier_nonce,
+                    encryption_key,
+                )
+                .error_while("computing handover")?,
+            ),
+            TransportSpecificData::DcApiUnsigned { origin }
+            | TransportSpecificData::DcApiSigned { origin } => Handover::OID4VPDcApi(
+                OID4VPDcApiHandover::compute(origin, &verifier_nonce, encryption_key)
+                    .error_while("computing handover")?,
+            ),
         };
 
-        let encryption_key = if interaction_data.response_mode == Some(ResponseMode::DirectPostJwt)
-        {
-            metadata
-                .jwks
-                .as_ref()
-                .and_then(|jwks| jwks.keys.first())
-                .cloned()
-        } else {
-            None
-        };
-
-        let handover = OID4VPFinal1_0Handover::compute(
-            &encode_client_id_with_scheme(
-                interaction_data.client_id.clone(),
-                interaction_data.client_id_scheme,
+        mdoc_presentation_context(handover, transaction_data)?
+    } else {
+        let audience = match &interaction_data.transport {
+            TransportSpecificData::Http(http_data) => encode_client_id_with_scheme(
+                http_data.client_id.clone(),
+                http_data.client_id_scheme,
                 use_legacy_did_client_id_scheme,
             ),
-            response_uri.as_str(),
-            &verifier_nonce,
-            encryption_key.as_ref(),
-        )
-        .error_while("computing handover")?;
-        mdoc_presentation_context(Handover::OID4VPFinal1_0(handover), transaction_data)?
-    } else {
+            TransportSpecificData::DcApiUnsigned { origin }
+            | TransportSpecificData::DcApiSigned { origin } => {
+                // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.4-6
+                format!("origin:{origin}")
+            }
+        };
+
         FormatPresentationCtx {
             nonce: Some(verifier_nonce),
-            audience: Some(encode_client_id_with_scheme(
-                interaction_data.client_id.clone(),
-                interaction_data.client_id_scheme,
-                use_legacy_did_client_id_scheme,
-            )),
+            audience: Some(audience),
             holder_did: holder_did.map(|did| did.did),
             transaction_data,
             ..Default::default()
         }
-    };
-    Ok(ctx)
+    })
 }
 
 async fn encrypted_params(
-    interaction_data: OpenID4VPHolderInteractionData,
+    interaction_data: &OpenID4VPHolderInteractionData,
     submission_data: VpSubmissionData,
     holder_nonce: &str,
     verifier_key: PublicJwk,
     encryption_algorithms: Vec<EncryptionAlgorithm>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<HashMap<String, String>, VerificationProtocolError> {
-    let aud = interaction_data
-        .response_uri
-        .ok_or(VerificationProtocolError::Failed(
-            "response_uri is None".to_string(),
-        ))?;
-    let verifier_nonce = interaction_data
-        .nonce
-        .ok_or(VerificationProtocolError::Failed(
-            "nonce is None".to_string(),
-        ))?;
+    let aud = match &interaction_data.transport {
+        TransportSpecificData::Http(http_data) => http_data.response_uri.clone(),
+        TransportSpecificData::DcApiUnsigned { origin }
+        | TransportSpecificData::DcApiSigned { origin } => Url::parse(&format!("origin:{origin}"))
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+    };
+
+    let state = match &interaction_data.transport {
+        TransportSpecificData::Http(http_data) => http_data.state.to_owned(),
+        TransportSpecificData::DcApiUnsigned { .. } | TransportSpecificData::DcApiSigned { .. } => {
+            None
+        }
+    };
+
+    let verifier_nonce =
+        interaction_data
+            .nonce
+            .clone()
+            .ok_or(VerificationProtocolError::Failed(
+                "nonce is None".to_string(),
+            ))?;
     let payload = JwePayload {
         aud: Some(aud),
         exp: Some(crate::clock::now_utc() + Duration::minutes(10)),
         submission_data,
-        state: interaction_data.state,
+        state,
     };
 
     // All algorithms defined in the AuthorizationEncryptedResponseContentEncryptionAlgorithm enum are supported

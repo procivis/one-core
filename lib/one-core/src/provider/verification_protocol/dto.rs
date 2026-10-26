@@ -57,7 +57,6 @@ pub(crate) enum InvitationRequest {
         device_request: String,
         response_handler: Arc<dyn NativeDcApiResponseHandler>,
     },
-    #[expect(unused)]
     OpenID4VpDcApi {
         origin: String,
         request_json: String,

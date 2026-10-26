@@ -85,7 +85,7 @@ pub(crate) fn swiyu_to_final_params(mut params: Value) -> Result<Value, serde_js
             }
         },
         "holder": {
-            "allowUnencryptedResponse": false,
+            "requiresEncryptedResponse": true,
             "supportedClientIdSchemes": [ClientIdPrefix::DecentralizedIdentifier]
         },
         "verifier": verifier,

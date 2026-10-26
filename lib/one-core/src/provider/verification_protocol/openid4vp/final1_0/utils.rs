@@ -12,9 +12,7 @@ use url::Url;
 use super::mappers::{authorization_request_from_query_params, decode_client_id_with_scheme};
 use super::{OpenID4VPFinal1_0, encode_client_id_with_scheme};
 use crate::error::ContextWithErrorCode;
-use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
-use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
@@ -25,8 +23,8 @@ use crate::provider::did_method::error::DidMethodError;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::provider::verification_protocol::openid4vp::validator::{
-    validate_against_redirect_uris, validate_san_dns_matching_client_id,
-    validate_x509_hash_request_token,
+    validate_against_redirect_uris, validate_did_request_token, validate_x509_hash_request_token,
+    validate_x509_san_dns_token,
 };
 use crate::validator::x509::is_dns_name_matching;
 
@@ -35,46 +33,17 @@ impl OpenID4VPFinal1_0 {
         &self,
         request_token: DecomposedJwt<AuthorizationRequest>,
     ) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
-        let x5c = request_token
-            .header
-            .x5c
-            .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
-
-        let (client_id, _) = decode_client_id_with_scheme(
+        let (client_id_domain, _) = decode_client_id_with_scheme(
             &request_token.payload.custom.client_id,
             self.params.use_legacy_did_client_id_scheme,
         )?;
 
-        let pem_chain = x5c_into_pem_chain(&x5c).error_while("parsing x5c")?;
-
-        let ParsedCertificate {
-            public_key,
-            attributes,
-            subject_common_name,
-            ..
-        } = self
-            .certificate_validator
-            .parse_pem_chain(
-                &pem_chain,
-                CertificateValidationOptions::signature_and_revocation(None),
-            )
-            .await
-            .error_while("parsing PEM chain")?;
-
-        public_key
-            .signature()
-            .ok_or(VerificationProtocolError::Failed(
-                "Signature key missing".to_string(),
-            ))?
-            .public()
-            .verify(
-                request_token.unverified_jwt.as_bytes(),
-                &request_token.signature,
-            )
-            .error_while("verifying signature")?;
-
-        // x509 SAN must match client_id
-        validate_san_dns_matching_client_id(&attributes, &client_id)?;
+        let certificate_details = validate_x509_san_dns_token(
+            &request_token,
+            &client_id_domain,
+            &*self.certificate_validator,
+        )
+        .await?;
 
         // The response_uri must match client_id
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-5.7-12.2.1
@@ -85,8 +54,8 @@ impl OpenID4VPFinal1_0 {
             .as_ref()
             .is_none_or(|response_uri| {
                 !response_uri.domain().is_some_and(|response_domain| {
-                    client_id == response_domain
-                        || is_dns_name_matching(&format!("*.{client_id}"), response_domain)
+                    client_id_domain == response_domain
+                        || is_dns_name_matching(&format!("*.{client_id_domain}"), response_domain)
                 })
             })
         {
@@ -95,16 +64,7 @@ impl OpenID4VPFinal1_0 {
             ));
         }
 
-        Ok((
-            request_token.payload.custom,
-            CertificateDetails {
-                chain: pem_chain,
-                fingerprint: attributes.fingerprint,
-                expiry: attributes.not_after,
-                subject_common_name,
-                x5_references: Default::default(),
-            },
-        ))
+        Ok((request_token.payload.custom, certificate_details))
     }
 
     async fn parse_referenced_data_from_x509_hash_token(
@@ -135,54 +95,13 @@ impl OpenID4VPFinal1_0 {
             self.params.use_legacy_did_client_id_scheme,
         )?;
 
-        let Some(kid) = request_token.header.key_id.clone() else {
-            return Err(VerificationProtocolError::Failed(
-                "JOSE header missing kid".to_string(),
-            ));
-        };
-
-        let verifier_did = client_id
-            .parse()
-            .map_err(DidMethodError::DidValueError)
-            .error_while("parsing verifier DID")?;
-
-        let did_document = self
-            .did_method_provider
-            .resolve(&verifier_did)
-            .await
-            .error_while("resolving verifier DID")?;
-
-        let (_, alg) = self
-            .key_algorithm_provider
-            .key_algorithm_from_jose_alg(&request_token.header.algorithm)
-            .ok_or(VerificationProtocolError::Failed(format!(
-                "Missing algorithm: {}",
-                request_token.header.algorithm
-            )))?;
-
-        let key = did_document
-            .find_verification_method(Some(&kid), Some(KeyRole::Authentication))
-            .or_else(|| {
-                did_document.find_verification_method(Some(&kid), Some(KeyRole::AssertionMethod))
-            })
-            .ok_or(VerificationProtocolError::Failed(
-                "Missing key in did".to_string(),
-            ))?
-            .public_key_jwk
-            .clone();
-
-        alg.parse_jwk(&key)
-            .error_while("parsing JWK")?
-            .signature()
-            .ok_or(VerificationProtocolError::Failed(
-                "signature missing".to_string(),
-            ))?
-            .public()
-            .verify(
-                request_token.unverified_jwt.as_bytes(),
-                &request_token.signature,
-            )
-            .error_while("verifying signature")?;
+        let verifier_did = validate_did_request_token(
+            &request_token,
+            &client_id,
+            self.did_method_provider.as_ref(),
+            self.key_algorithm_provider.as_ref(),
+        )
+        .await?;
 
         Ok((request_token.payload.custom, verifier_did))
     }
@@ -358,7 +277,7 @@ impl OpenID4VPFinal1_0 {
         Ok((referenced_params, verifier_details))
     }
 
-    fn validate_supported_client_id_scheme(
+    pub(super) fn validate_supported_client_id_scheme(
         &self,
         client_id_scheme: ClientIdPrefix,
     ) -> Result<(), VerificationProtocolError> {
@@ -455,12 +374,6 @@ impl OpenID4VPFinal1_0 {
         &self,
         interaction_data: &OpenID4VPHolderInteractionData,
     ) -> Result<(), VerificationProtocolError> {
-        if interaction_data.redirect_uri.is_some() {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "redirect_uri must be None".to_string(),
-            ));
-        }
-
         if let Some(credential_sets) = &interaction_data.dcql_query.credential_sets {
             for query_id in credential_sets
                 .iter()
@@ -484,12 +397,6 @@ impl OpenID4VPFinal1_0 {
         )?;
         assert_query_param(response_type, &["vp_token"], "response_type")?;
 
-        interaction_data
-            .response_mode
-            .ok_or(VerificationProtocolError::InvalidRequest(
-                "response_mode is None".to_string(),
-            ))?;
-
         let Some(client_metadata) = interaction_data.client_metadata.as_ref() else {
             return Err(VerificationProtocolError::Failed(
                 "client_metadata is None".to_string(),
@@ -508,33 +415,18 @@ impl OpenID4VPFinal1_0 {
             ))?;
         }
 
-        let Some(response_uri) = interaction_data.response_uri.as_ref() else {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "response_uri must be set".to_string(),
-            ));
-        };
-        if interaction_data.client_id_scheme == ClientIdPrefix::RedirectUri
-            && interaction_data.client_id.as_str() != response_uri.as_str()
-        {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "client_id must match response_uri for client_id_scheme=redirect_uri".to_string(),
-            ));
-        }
-
         if interaction_data.nonce.is_none() {
             return Err(VerificationProtocolError::InvalidRequest(
                 "nonce must be set".to_string(),
             ));
         }
 
-        if !self.params.holder.allow_unencrypted_response {
-            match interaction_data.response_mode.as_ref().ok_or(
-                VerificationProtocolError::InvalidRequest("Missing response_mode".to_string()),
-            )? {
-                ResponseMode::DirectPostJwt | ResponseMode::DcApiJwt => {}
-                response_mode @ (ResponseMode::DirectPost | ResponseMode::DcApi) => {
+        if self.params.holder.requires_encrypted_response {
+            match &interaction_data.response_mode {
+                Some(ResponseMode::DirectPostJwt | ResponseMode::DcApiJwt) => {}
+                other_response_mode => {
                     return Err(VerificationProtocolError::InvalidRequest(format!(
-                        "Unencrypted response_mode: {response_mode}"
+                        "Unencrypted response_mode: {other_response_mode:?}"
                     )));
                 }
             }

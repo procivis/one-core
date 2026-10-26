@@ -356,8 +356,6 @@ impl SSIHolderService {
             )
             .await
             .error_while("resolving ecosystem")?;
-
-        proof.protocol = protocol.clone();
         proof.ecosystem = resolved.ecosystem.to_owned();
 
         self.fill_verifier_in_proof(&mut proof).await?;

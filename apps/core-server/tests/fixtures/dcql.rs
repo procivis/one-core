@@ -54,13 +54,17 @@ fn interaction_data_dcql(
     verifier_details: Option<IdentifierDetails>,
 ) -> Vec<u8> {
     json!({
+        "transport": {
+            "Http": {
+                "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+                "client_id_scheme": "redirect_uri",
+                "client_id": "http://0.0.0.0:3000/ssi/openid4vp/final-1.0/response",
+                "response_uri": "http://0.0.0.0:3000/ssi/openid4vp/final-1.0/response",
+            }
+        },
         "response_type": "vp_token",
-        "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
         "nonce": "xKpt9wiB4apJ1MVTzQv1zdDty2dVWkl7",
-        "client_id_scheme": "redirect_uri",
-        "client_id": "http://0.0.0.0:3000/ssi/openid4vp/final-1.0/response",
         "response_mode": "direct_post",
-        "response_uri": "http://0.0.0.0:3000/ssi/openid4vp/final-1.0/response",
         "dcql_query": dcql_query,
         "verifier_details": verifier_details
     })

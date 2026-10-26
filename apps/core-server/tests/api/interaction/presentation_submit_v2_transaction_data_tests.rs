@@ -235,14 +235,18 @@ async fn setup_submittable_mdoc_with_transaction_data(
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
         json!({
+            "transport": {
+                "Http": {
+                    "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
+                    "client_id_scheme":"redirect_uri",
+                    "client_id": format!("{verifier_url}/mock/response"),
+                    "response_uri": format!("{verifier_url}/mock/response"),
+                }
+            },
             "response_type": "vp_token",
-            "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
             "nonce": "QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
-            "client_id_scheme": "redirect_uri",
-            "client_id": format!("{verifier_url}/mock/response"),
             "client_metadata": client_metadata,
             "response_mode": "direct_post",
-            "response_uri": format!("{verifier_url}/mock/response"),
             "dcql_query": {
                 "credentials": [
                     {

@@ -41,7 +41,7 @@ use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -734,12 +734,9 @@ pub(super) async fn create_interaction_and_proof(
         proof_from_handle_invitation(
             proof_id,
             verification_protocol_type.as_ref(),
-            None,
             verifier_identifier,
             interaction,
-            now,
             transport,
-            ProofStateEnum::Requested,
         ),
     ))
 }

@@ -193,7 +193,7 @@ verificationProtocol:
               x509_san_dns,
             ]
         holder:
-          allowUnencryptedResponse: true
+          requiresEncryptedResponse: false
           supportedClientIdSchemes:
             [
               verifier_attestation,
@@ -220,7 +220,7 @@ verificationProtocol:
           interactionExpiresInSeconds: 3600
           supportedClientIdSchemes: [x509_hash]
         holder:
-          allowUnencryptedResponse: false
+          requiresEncryptedResponse: true
           supportedClientIdSchemes: [x509_hash]
         redirectUri:
           enabled: true

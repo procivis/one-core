@@ -42,25 +42,22 @@ pub(crate) fn interaction_from_handle_invitation(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
-pub(crate) fn proof_from_handle_invitation(
+pub(super) fn proof_from_handle_invitation(
     proof_id: ProofId,
     protocol: &str,
-    redirect_uri: Option<String>,
     verifier_identifier: Option<Identifier>,
     interaction: Interaction,
-    now: OffsetDateTime,
     transport: String,
-    state: ProofStateEnum,
 ) -> Proof {
+    let now = crate::clock::now_utc();
     Proof {
         id: proof_id,
         created_date: now,
         last_modified: now,
         protocol: protocol.to_owned(),
-        redirect_uri,
+        redirect_uri: None,
         transport,
-        state,
+        state: ProofStateEnum::Requested,
         role: ProofRole::Holder,
         requested_date: Some(now),
         completed_date: None,

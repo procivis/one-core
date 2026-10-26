@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
 use one_crypto::jwe::MockPrivateKeyAgreementHandle;
@@ -10,10 +11,13 @@ use shared_types::{CredentialFormat, TransactionDataId};
 use similar_asserts::assert_eq;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
+use standardized_types::openid4vp::dc_api::{
+    DigitalCredentialGetRequest, DigitalCredentialRequestOptions, UnsignedAuthorizationRequest,
+};
 use standardized_types::openid4vp::dcql::{CredentialQuery, CredentialQueryId, DcqlQuery};
 use standardized_types::openid4vp::{
     AuthorizationRequestQueryParams, ClientIdPrefix, ClientMetadata, MdocAlgs, ResponseMode,
-    VPFormatsSupported,
+    VPFormatsSupported, VerifierInfoAttestation, VerifierInfoAttestationFormat, W3CJwtAlgs,
 };
 use url::Url;
 use uuid::Uuid;
@@ -29,10 +33,12 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
+use crate::proto::native_credential_manager::MockNativeDcApiResponseHandler;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -52,12 +58,17 @@ use crate::provider::transaction_data::provider::MockTransactionDataProvider;
 use crate::provider::transaction_data::{
     Features, MockTransactionData, TransactionDataCapabilities,
 };
-use crate::provider::verification_protocol::dto::{FormattedCredentialPresentation, ShareResponse};
+use crate::provider::verification_protocol::dto::{
+    FormattedCredentialPresentation, InvitationRequest, ShareResponse,
+};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    HolderTxData, OpenID4VPHolderInteractionData, ValidatedHolderTxData,
+    HolderTxData, HttpData, OpenID4VPHolderInteractionData, TransportSpecificData,
+    ValidatedHolderTxData,
 };
-use crate::provider::verification_protocol::{VerificationProtocol, serialize_interaction_data};
+use crate::provider::verification_protocol::{
+    VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
+};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
@@ -115,7 +126,7 @@ fn generic_params() -> serde_json::Value {
         "useRequestUri": false,
         "urlScheme": "openid4vp",
         "holder":  {
-            "allowUnencryptedResponse": true,
+            "requiresEncryptedResponse": false,
             "supportedClientIdSchemes": [
                 ClientIdPrefix::RedirectUri,
                 ClientIdPrefix::VerifierAttestation
@@ -263,10 +274,13 @@ fn test_holder_interaction_data(
 ) -> OpenID4VPHolderInteractionData {
     OpenID4VPHolderInteractionData {
         response_type: Some("vp_token".to_string()),
-        state: Some(Uuid::new_v4().to_string()),
+        transport: TransportSpecificData::Http(HttpData {
+            state: Some(Uuid::new_v4().to_string()),
+            client_id_scheme: ClientIdPrefix::RedirectUri,
+            client_id: "https://verifier.example.com/response".to_string(),
+            response_uri: "https://verifier.example.com/response".parse().unwrap(),
+        }),
         nonce: Some("test-nonce-12345".to_string()),
-        client_id_scheme: ClientIdPrefix::RedirectUri,
-        client_id: "https://verifier.example.com".to_string(),
         client_metadata: Some(ClientMetadata {
             vp_formats_supported: VPFormatsSupported {
                 mso_mdoc: Some(MdocAlgs {
@@ -277,21 +291,15 @@ fn test_holder_interaction_data(
             },
             ..Default::default()
         }),
-        client_metadata_uri: None,
         response_mode,
-        response_uri: Some("https://verifier.example.com/response".parse().unwrap()),
         dcql_query: dummy_dcql_query(true),
         transaction_data: Default::default(),
-        redirect_uri: None,
         verifier_details: None,
         verifier_info: vec![],
     }
 }
 
-fn test_holder_proof(
-    interaction_data: OpenID4VPHolderInteractionData,
-    format: CredentialFormat,
-) -> Proof {
+fn test_holder_proof(interaction_data: OpenID4VPHolderInteractionData) -> Proof {
     let interaction = Interaction {
         dpop_key: None,
         client_attestation_key: None,
@@ -318,26 +326,7 @@ fn test_holder_proof(
         role: ProofRole::Holder,
         requested_date: None,
         completed_date: None,
-        schema: Some(
-            ProofSchema {
-                ecosystem: None,
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                deleted_at: None,
-                name: "test-holder-proof".into(),
-                expire_duration: 300,
-                imported_source_url: None,
-                organisation: dummy_organisation(None).into(),
-                input_schemas: vec![ProofInputSchema {
-                    formats: vec![format.clone()],
-                    claim_schemas: Default::default(),
-                    credential_schema: test_credential_schema(format).into(),
-                }]
-                .into(),
-            }
-            .into(),
-        ),
+        schema: None,
         claims: Default::default(),
         verifier_identifier: None,
         verifier_key: Some(test_key("ECDSA").into()),
@@ -681,26 +670,39 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
 }
 
 #[tokio::test]
-async fn test_holder_submit_missing_response_mode_fails() {
-    let protocol = setup_protocol(TestInputs::default());
-    let proof = test_holder_proof(test_holder_interaction_data(None), "MDOC".into());
+async fn test_holder_submit_no_response_mode_fragment_in_redirect_uri() {
+    let proof = test_holder_proof(test_holder_interaction_data(None));
+    let proof_id = proof.id;
 
-    let result = protocol.holder_submit_proof(&proof, vec![]).await;
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .withf(move |id, request, _| {
+            assert_eq!(id, &proof_id);
+            let_assert!(Some(Some(redirect_uri)) = &request.redirect_uri);
+            // params added as fragment
+            assert!(redirect_uri.starts_with("https://verifier.example.com/response#"));
+            assert!(redirect_uri.contains("state"));
+            assert!(redirect_uri.contains("vp_token"));
+            true
+        })
+        .returning(|_, _, _| Ok(()));
 
-    assert!(
-        matches!(&result, Err(VerificationProtocolError::InvalidRequest(_))),
-        "Expected InvalidRequest error for missing response_mode, got: {:?}",
-        result
-    );
+    let protocol = setup_protocol(TestInputs {
+        proof_repository,
+        ..Default::default()
+    });
+
+    protocol.holder_submit_proof(&proof, vec![]).await.unwrap();
 }
 
 #[tokio::test]
 async fn test_holder_submit_direct_post_jwt_no_encryption_keys_fails() {
     let protocol = setup_protocol(TestInputs::default());
-    let proof = test_holder_proof(
-        test_holder_interaction_data(Some(ResponseMode::DirectPostJwt)),
-        "MDOC".into(),
-    );
+    let proof = test_holder_proof(test_holder_interaction_data(Some(
+        ResponseMode::DirectPostJwt,
+    )));
 
     let result = protocol.holder_submit_proof(&proof, vec![]).await;
 
@@ -718,10 +720,7 @@ async fn test_holder_submit_mdoc_direct_post() {
         ..Default::default()
     });
 
-    let proof = test_holder_proof(
-        test_holder_interaction_data(Some(ResponseMode::DirectPost)),
-        "MDOC".into(),
-    );
+    let proof = test_holder_proof(test_holder_interaction_data(Some(ResponseMode::DirectPost)));
 
     // Verifies: response_mode validation passes, no MDOC-requires-encryption error, HTTP POST succeeds
     let result = protocol.holder_submit_proof(&proof, vec![]).await;
@@ -874,7 +873,7 @@ async fn test_holder_submit_transaction_data_unknown_selection_fails() {
 
     let tx_id = TransactionDataId::from(Uuid::new_v4());
     let interaction = interaction_with_tx_data(vec![(tx_id, "raw-tx", vec!["cred1"])]);
-    let proof = test_holder_proof(interaction, "MDOC".into());
+    let proof = test_holder_proof(interaction);
 
     // Select a transaction data id that does not exist in the interaction data.
     let presentation =
@@ -899,7 +898,7 @@ async fn test_holder_submit_transaction_data_non_applicable_selection_fails() {
     // Transaction data applies only to `cred2`.
     let tx_id = TransactionDataId::from(Uuid::new_v4());
     let interaction = interaction_with_tx_data(vec![(tx_id, "raw-tx", vec!["cred2"])]);
-    let proof = test_holder_proof(interaction, "MDOC".into());
+    let proof = test_holder_proof(interaction);
 
     // `cred1` selects it even though it is not applicable to `cred1`.
     let presentation = test_credential_presentation("cred1", vec![tx_id]);
@@ -925,7 +924,7 @@ async fn test_holder_submit_transaction_data_duplicate_selection_fails() {
 
     let tx_id = TransactionDataId::from(Uuid::new_v4());
     let interaction = interaction_with_tx_data(vec![(tx_id, "raw-tx", vec!["cred1"])]);
-    let proof = test_holder_proof(interaction, "MDOC".into());
+    let proof = test_holder_proof(interaction);
 
     // The same transaction data id is selected twice.
     let presentation = test_credential_presentation("cred1", vec![tx_id, tx_id]);
@@ -1433,4 +1432,86 @@ async fn test_request_from_openid4vp_query_unsigned_request_fails_for_unsupporte
         Err(VerificationProtocolError::InvalidRequest(reason))
             if reason.contains("Unsupported client_id_scheme")
     ));
+}
+
+#[tokio::test]
+async fn test_holder_handle_invitation_and_reject_dc_api_unsigned_request() {
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .returning(|interaction| Ok(interaction.id));
+
+    let protocol = setup_protocol(TestInputs {
+        interaction_repository,
+        ..Default::default()
+    });
+
+    let request = UnsignedAuthorizationRequest {
+        response_type: Some("vp_token".to_string()),
+        response_mode: ResponseMode::DcApi,
+        nonce: Some("test-nonce-12345".to_string()),
+        client_metadata: Some(ClientMetadata {
+            vp_formats_supported: VPFormatsSupported {
+                jwt_vc_json: Some(W3CJwtAlgs {
+                    alg_values: vec!["ES256".to_string()],
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+        dcql_query: dummy_dcql_query(true),
+        verifier_info: vec![VerifierInfoAttestation {
+            format: VerifierInfoAttestationFormat::RegistrationCert,
+            data: "registration-cert".to_string(),
+            credential_ids: vec![],
+        }],
+        transaction_data: vec![],
+    };
+    let request_json = serde_json::to_string(&DigitalCredentialRequestOptions {
+        requests: vec![DigitalCredentialGetRequest::OpenID4VpV1Unsigned(Box::new(
+            request,
+        ))],
+    })
+    .unwrap();
+
+    let mut response_handler = MockNativeDcApiResponseHandler::new();
+    response_handler
+        .expect_on_reject()
+        .once()
+        .return_const(Ok(()));
+
+    let origin = "https://verifier.example.com".to_string();
+    let invitation = protocol
+        .holder_handle_invitation(
+            InvitationRequest::OpenID4VpDcApi {
+                origin: origin.clone(),
+                request_json,
+                response_handler: Arc::new(response_handler),
+            },
+            dummy_organisation(None),
+            "DC_API".to_string(),
+        )
+        .await
+        .unwrap();
+
+    let proof = invitation.proof;
+    assert_eq!("DC_API", proof.transport);
+    assert_eq!(ProofRole::Holder, proof.role);
+    assert_eq!(ProofStateEnum::Requested, proof.state);
+
+    let interaction = proof.interaction.as_required_ref().await.unwrap();
+    assert_eq!(invitation.interaction_id, interaction.id);
+    let interaction_data: OpenID4VPHolderInteractionData =
+        deserialize_interaction_data(interaction.data.as_ref()).unwrap();
+    let_assert!(
+        TransportSpecificData::DcApiUnsigned {
+            origin: stored_origin
+        } = interaction_data.transport
+    );
+    assert_eq!(stored_origin, origin);
+    assert!(interaction_data.verifier_info.is_empty());
+    assert!(interaction_data.verifier_details.is_none());
+
+    protocol.holder_reject_proof(&proof).await.unwrap();
 }

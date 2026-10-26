@@ -152,31 +152,41 @@ pub(crate) struct ProvedCredential {
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPHolderInteractionData {
-    pub response_type: Option<String>,
-    pub state: Option<String>,
-    pub nonce: Option<String>,
-    pub client_id_scheme: ClientIdPrefix,
+    pub transport: TransportSpecificData,
 
-    /// without client_id_scheme prefix (in case of Final 1.0)
-    pub client_id: String,
+    pub response_type: Option<String>,
+    pub nonce: Option<String>,
+
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<ClientMetadata>,
-    pub client_metadata_uri: Option<Url>,
     pub response_mode: Option<ResponseMode>,
-    pub response_uri: Option<Url>,
+
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub dcql_query: DcqlQuery,
     #[serde(default)]
     pub transaction_data: HolderTxData,
-
-    #[serde(default, skip_serializing)]
-    pub redirect_uri: Option<String>,
-
-    #[serde(default)]
-    pub verifier_details: Option<IdentifierDetails>,
     #[serde(default)]
     pub verifier_info: Vec<VerifierInfoAttestation>,
+    #[serde(default)]
+    pub verifier_details: Option<IdentifierDetails>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub(crate) enum TransportSpecificData {
+    Http(HttpData),
+    DcApiUnsigned { origin: String },
+    DcApiSigned { origin: String },
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub(crate) struct HttpData {
+    pub state: Option<String>,
+    pub client_id_scheme: ClientIdPrefix,
+    /// without client_id_scheme prefix
+    pub client_id: String,
+    pub response_uri: Url,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
