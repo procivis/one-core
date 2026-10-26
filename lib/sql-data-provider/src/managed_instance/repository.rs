@@ -6,7 +6,7 @@ use one_core::model::managed_instance::{
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::managed_instance_repository::ManagedInstanceRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, Set, Unchanged};
+use sea_orm::{EntityTrait, QueryOrder, Set, Unchanged};
 use shared_types::ManagedInstanceId;
 
 use super::ManagedInstanceProvider;
@@ -20,11 +20,12 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 #[async_trait::async_trait]
 impl ManagedInstanceRepository for ManagedInstanceProvider {
     async fn create(&self, request: ManagedInstance) -> Result<ManagedInstanceId, DataLayerError> {
+        let id = request.id;
         let attestations = request.attestations.clone();
         self.db
             .tx(async {
-                let wallet_unit = managed_instance::ActiveModel::try_from(request)?
-                    .insert(&self.db)
+                managed_instance::Entity::insert(managed_instance::ActiveModel::try_from(request)?)
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_data_layer_error)?;
 
@@ -34,7 +35,7 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
                         .await?;
                 }
 
-                Ok(wallet_unit.id)
+                Ok(id)
             }
             .boxed())
             .await?
@@ -121,8 +122,8 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
             ..Default::default()
         };
 
-        update_model
-            .update(&self.db)
+        managed_instance::Entity::update(update_model)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

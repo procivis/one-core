@@ -4,10 +4,7 @@ use one_core::model::common::LockType;
 use one_core::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set,
-    Unchanged,
-};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, Unchanged};
 use shared_types::{DidId, DidValue, OrganisationId};
 
 use super::DidProvider;
@@ -97,13 +94,13 @@ impl DidRepository for DidProvider {
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {
+        let did_id = request.id;
         let keys = request.keys.to_owned();
 
-        let did = self
-            .db
+        self.db
             .tx(async {
-                let did = did::ActiveModel::from(request)
-                    .insert(&self.db)
+                did::Entity::insert(did::ActiveModel::from(request))
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_data_layer_error)?;
 
@@ -112,7 +109,7 @@ impl DidRepository for DidProvider {
                     key_did::Entity::insert_many(
                         keys.into_iter()
                             .map(|key| key_did::ActiveModel {
-                                did_id: Set(did.id),
+                                did_id: Set(did_id),
                                 key_id: Set(key.key.id),
                                 role: Set(key.role.into()),
                                 reference: Set(key.reference.to_owned()),
@@ -124,11 +121,11 @@ impl DidRepository for DidProvider {
                     .map_err(to_data_layer_error)?;
                 }
 
-                Ok::<_, DataLayerError>(did)
+                Ok::<_, DataLayerError>(())
             })
             .await??;
 
-        Ok(did.id)
+        Ok(did_id)
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
@@ -146,7 +143,8 @@ impl DidRepository for DidProvider {
             ..Default::default()
         };
 
-        did.update(&self.db)
+        did::Entity::update(did)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -161,12 +159,12 @@ impl DidRepository for DidProvider {
     ) -> Result<(), DataLayerError> {
         self.db
             .tx(async {
-                did::ActiveModel {
+                did::Entity::update(did::ActiveModel {
                     id: Unchanged(*id),
                     last_modified: Set(one_core::clock::now_utc()),
                     ..Default::default()
-                }
-                .update(&self.db)
+                })
+                .exec_without_returning(&self.db)
                 .await
                 .map_err(to_update_data_layer_error)?;
 
@@ -207,7 +205,7 @@ impl DidRepository for DidProvider {
             .validate()
             .map_err(to_update_data_layer_error)?
             .filter(did::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec_without_returning(&self.db)
             .await
             .map(|_| ())
             .map_err(to_update_data_layer_error)

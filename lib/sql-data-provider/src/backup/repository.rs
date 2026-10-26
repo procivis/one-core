@@ -17,9 +17,9 @@ use one_dto_mapper::{Into, try_convert_inner};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func, Query, SelectStatement, SimpleExpr};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, ExprTrait,
-    FromQueryResult, Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait,
-    RelationTrait, Statement, UpdateResult, Values,
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, ExprTrait, FromQueryResult,
+    Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
+    Statement, UpdateResult, Values,
 };
 use time::OffsetDateTime;
 
@@ -591,8 +591,8 @@ impl BackupRepository for BackupProvider {
     async fn add_history_event(&self, path: &Path, history: History) -> Result<(), DataLayerError> {
         let db = open_sqlite_on_path(path).await?;
 
-        history::ActiveModel::try_from(history)?
-            .insert(&db)
+        history::Entity::insert(history::ActiveModel::try_from(history)?)
+            .exec_without_returning(&db)
             .await
             .map_err(to_data_layer_error)?;
 

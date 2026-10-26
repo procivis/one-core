@@ -7,9 +7,7 @@ use one_core::model::proof_schema::{
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
-};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged};
 use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
 
@@ -65,8 +63,8 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                 .collect();
 
         let action = async {
-            proof_schema
-                .insert(&self.db)
+            proof_schema::Entity::insert(proof_schema)
+                .exec_without_returning(&self.db)
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -187,7 +185,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .validate()
             .map_err(to_update_data_layer_error)?
             .filter(proof_schema::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

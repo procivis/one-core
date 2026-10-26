@@ -3,7 +3,7 @@ use autometrics::autometrics;
 use one_core::model::blob::{Blob, UpdateBlobRequest};
 use one_core::repository::blob_repository::BlobRepository;
 use one_core::repository::error::DataLayerError;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::BlobId;
 
 use crate::blob::BlobProvider;
@@ -39,8 +39,8 @@ impl BlobRepository for BlobProvider {
             ..Default::default()
         };
 
-        update_model
-            .update(&self.db)
+        blob::Entity::update(update_model)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

@@ -6,9 +6,7 @@ use one_core::model::trust_list_subscription::{
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
-};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged};
 use shared_types::TrustListSubscriptionId;
 
 use super::TrustListSubscriptionProvider;
@@ -27,7 +25,10 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
     ) -> Result<TrustListSubscriptionId, DataLayerError> {
         let id = entity.id;
         let model: trust_list_subscription::ActiveModel = entity.into();
-        model.insert(&self.db).await.map_err(to_data_layer_error)?;
+        trust_list_subscription::Entity::insert(model)
+            .exec_without_returning(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
         Ok(id)
     }
 
@@ -42,7 +43,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
             state: Set(state.into()),
             ..Default::default()
         })
-        .exec(&self.db)
+        .exec_without_returning(&self.db)
         .await
         .map_err(to_update_data_layer_error)?;
         Ok(())
@@ -96,7 +97,7 @@ impl TrustListSubscriptionRepository for TrustListSubscriptionProvider {
             deactivated_at: Set(Some(now)),
             ..Default::default()
         })
-        .exec(&self.db)
+        .exec_without_returning(&self.db)
         .await
         .map_err(to_update_data_layer_error)?;
 

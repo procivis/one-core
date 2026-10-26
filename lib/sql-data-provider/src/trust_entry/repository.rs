@@ -6,9 +6,7 @@ use one_core::model::trust_entry::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use sea_orm::ActiveValue::{Set, Unchanged};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
-};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait};
 use shared_types::{TrustEntryId, TrustListPublicationId};
 
 use super::TrustEntryProvider;
@@ -25,7 +23,10 @@ impl TrustEntryRepository for TrustEntryProvider {
     async fn create(&self, entity: TrustEntry) -> Result<TrustEntryId, DataLayerError> {
         let id = entity.id;
         let model: trust_entry::ActiveModel = entity.into();
-        model.insert(&self.db).await.map_err(to_data_layer_error)?;
+        trust_entry::Entity::insert(model)
+            .exec_without_returning(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
         Ok(id)
     }
 
@@ -134,14 +135,14 @@ impl TrustEntryRepository for TrustEntryProvider {
             Some(metadata) => Set(metadata),
         };
 
-        trust_entry::ActiveModel {
+        trust_entry::Entity::update(trust_entry::ActiveModel {
             id: Unchanged(id),
             last_modified: Set(one_core::clock::now_utc()),
             state,
             metadata,
             ..Default::default()
-        }
-        .update(&self.db)
+        })
+        .exec_without_returning(&self.db)
         .await
         .map_err(to_update_data_layer_error)?;
 

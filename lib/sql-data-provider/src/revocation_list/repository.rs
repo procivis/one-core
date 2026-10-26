@@ -11,8 +11,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::sea_query::IntoCondition;
 use sea_orm::{
-    ActiveEnum, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, ExprTrait, NotSet,
-    QueryFilter, QueryOrder, QuerySelect, Set, Unchanged,
+    ActiveEnum, ColumnTrait, Condition, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder,
+    QuerySelect, Set, Unchanged,
 };
 use shared_types::{
     CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
@@ -57,7 +57,7 @@ impl RevocationListRepository for RevocationListProvider {
         &self,
         request: RevocationList,
     ) -> Result<RevocationListId, DataLayerError> {
-        revocation_list::ActiveModel {
+        revocation_list::Entity::insert(revocation_list::ActiveModel {
             id: Set(request.id),
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
@@ -67,8 +67,8 @@ impl RevocationListRepository for RevocationListProvider {
             format: Set(request.format.into()),
             r#type: Set(request.r#type),
             issuer_certificate_id: Set(request.issuer_certificate.map(|c| c.id())),
-        }
-        .insert(&self.db)
+        })
+        .exec_without_returning(&self.db)
         .await
         .map_err(to_data_layer_error)?;
 
@@ -146,8 +146,8 @@ impl RevocationListRepository for RevocationListProvider {
             ..Default::default()
         };
 
-        update_model
-            .update(&self.db)
+        revocation_list::Entity::update(update_model)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -254,7 +254,7 @@ impl RevocationListRepository for RevocationListProvider {
 
         self.db
             .tx(async move {
-                revocation_list_entry::ActiveModel {
+                revocation_list_entry::Entity::insert(revocation_list_entry::ActiveModel {
                     id: Set(entry_id),
                     created_date: Set(now),
                     last_modified: Set(now),
@@ -265,8 +265,8 @@ impl RevocationListRepository for RevocationListProvider {
                     signature_type: Set(signature_type.map(|t| t.to_string())),
                     state: Set(RevocationListEntryState::Active),
                     serial: Set(serial),
-                }
-                .insert(&self.db)
+                })
+                .exec_without_returning(&self.db)
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -279,7 +279,7 @@ impl RevocationListRepository for RevocationListProvider {
                             ..Default::default()
                         },
                     )
-                    .exec(&self.db)
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_update_data_layer_error)?;
                 }

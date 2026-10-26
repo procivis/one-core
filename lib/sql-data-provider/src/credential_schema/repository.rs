@@ -13,7 +13,7 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged};
 use shared_types::CredentialSchemaId;
 
 use crate::common::list_query_with_custom_models;
@@ -46,13 +46,13 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         let mut localized_texts = vec![];
         localized_texts.extend(schema.translations.as_ref().await?.to_owned());
+        let id = schema.id;
         let credential_schema: credential_schema::ActiveModel = schema.into();
 
-        let credential_schema = self
-            .db
+        self.db
             .tx(async {
-                let credential_schema = credential_schema
-                    .insert(&self.db)
+                credential_schema::Entity::insert(credential_schema)
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_data_layer_error)?;
 
@@ -61,8 +61,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         localized_texts
                             .extend(claim_schema.translations.as_ref().await?.to_owned());
                     }
-                    let claim_schema_models =
-                        claim_schemas_to_model_vec(claim_schemas, &credential_schema.id, 0);
+                    let claim_schema_models = claim_schemas_to_model_vec(claim_schemas, &id, 0);
 
                     claim_schema::Entity::insert_many(claim_schema_models)
                         .exec(&self.db)
@@ -83,10 +82,10 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         .upsert_many(localized_texts)
                         .await?;
                 }
-                Ok::<_, DataLayerError>(credential_schema)
+                Ok::<_, DataLayerError>(())
             })
             .await??;
-        Ok(credential_schema.id)
+        Ok(id)
     }
 
     async fn delete_credential_schema(
@@ -105,7 +104,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .validate()
             .map_err(to_update_data_layer_error)?
             .filter(credential_schema::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -193,8 +192,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         self.db
             .tx(async {
-                update_model
-                    .update(&self.db)
+                credential_schema::Entity::update(update_model)
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_update_data_layer_error)?;
 
@@ -222,10 +221,12 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         localized_texts
                             .extend(claim_schema.translations.as_ref().await?.to_owned());
                         if existing_ids.contains(&claim_schema.id) {
-                            claim_schema_to_update_model(claim_schema)
-                                .update(&self.db)
-                                .await
-                                .map_err(to_update_data_layer_error)?;
+                            claim_schema::Entity::update(claim_schema_to_update_model(
+                                claim_schema,
+                            ))
+                            .exec_without_returning(&self.db)
+                            .await
+                            .map_err(to_update_data_layer_error)?;
                         } else {
                             new_claim_schemas.push(claim_schema);
                         }

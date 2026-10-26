@@ -5,7 +5,7 @@ use one_core::model::wallet_attestation::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_attestation_repository::WalletAttestationRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder};
+use sea_orm::{EntityTrait, QueryOrder};
 use shared_types::WalletAttestationId;
 
 use super::mapper::wallet_instance_attestation_from_model;
@@ -22,12 +22,13 @@ impl WalletAttestationRepository for WalletAttestationProvider {
         &self,
         request: WalletAttestation,
     ) -> Result<WalletAttestationId, DataLayerError> {
-        let wallet_attestation = wallet_attestation::ActiveModel::from(request)
-            .insert(&self.db)
+        let id = request.id;
+        wallet_attestation::Entity::insert(wallet_attestation::ActiveModel::from(request))
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(wallet_attestation.id)
+        Ok(id)
     }
 
     async fn get_attestations(

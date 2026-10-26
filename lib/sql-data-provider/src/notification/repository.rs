@@ -7,7 +7,7 @@ use one_core::model::notification::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::notification_repository::NotificationRepository;
 use sea_orm::ActiveValue::Unchanged;
-use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, QuerySelect};
+use sea_orm::{EntityTrait, QueryOrder, QuerySelect};
 use shared_types::NotificationId;
 
 use super::NotificationProvider;
@@ -21,8 +21,8 @@ use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_err
 impl NotificationRepository for NotificationProvider {
     async fn create(&self, request: Notification) -> Result<NotificationId, DataLayerError> {
         let id = request.id;
-        notification::ActiveModel::from(request)
-            .insert(&self.db)
+        notification::Entity::insert(notification::ActiveModel::from(request))
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -70,8 +70,8 @@ impl NotificationRepository for NotificationProvider {
     ) -> Result<(), DataLayerError> {
         let mut model = notification::ActiveModel::from(request);
         model.id = Unchanged(*id);
-        model
-            .update(&self.db)
+        notification::Entity::update(model)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

@@ -9,7 +9,7 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::prelude::Expr;
-use sea_orm::{ActiveModelTrait, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
 use shared_types::TrustListPublicationId;
 
 use super::TrustListPublicationProvider;
@@ -28,7 +28,10 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
     ) -> Result<TrustListPublicationId, DataLayerError> {
         let id = entity.id;
         let model: trust_list_publication::ActiveModel = entity.into();
-        model.insert(&self.db).await.map_err(to_data_layer_error)?;
+        trust_list_publication::Entity::insert(model)
+            .exec_without_returning(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
         Ok(id)
     }
 

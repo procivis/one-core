@@ -4,8 +4,7 @@ use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait,
+    ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
 };
 use shared_types::RemoteEntityCacheEntryId;
 
@@ -20,12 +19,13 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         &self,
         request: RemoteEntityCacheEntry,
     ) -> Result<RemoteEntityCacheEntryId, DataLayerError> {
-        let context = remote_entity_cache::ActiveModel::from(request)
-            .insert(&self.db)
+        let id = request.id;
+        remote_entity_cache::Entity::insert(remote_entity_cache::ActiveModel::from(request))
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(context.id)
+        Ok(id)
     }
 
     async fn delete_expired_or_least_used(
@@ -146,8 +146,8 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
     }
 
     async fn update(&self, request: RemoteEntityCacheEntry) -> Result<(), DataLayerError> {
-        remote_entity_cache::ActiveModel::from(request)
-            .update(&self.db)
+        remote_entity_cache::Entity::update(remote_entity_cache::ActiveModel::from(request))
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

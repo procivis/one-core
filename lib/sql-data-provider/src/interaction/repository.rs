@@ -6,10 +6,7 @@ use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::Query;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, QueryFilter,
-    QuerySelect,
-};
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, QueryFilter, QuerySelect};
 use shared_types::{CredentialId, InteractionId, NonceId, ProofId};
 use time::OffsetDateTime;
 
@@ -25,11 +22,12 @@ impl InteractionRepository for InteractionProvider {
         &self,
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError> {
-        let interaction = interaction::ActiveModel::try_from(request)?
-            .insert(&self.db)
+        let id = request.id;
+        interaction::Entity::insert(interaction::ActiveModel::try_from(request)?)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_data_layer_error)?;
-        Ok(interaction.id)
+        Ok(id)
     }
 
     async fn update_interaction(
@@ -39,8 +37,8 @@ impl InteractionRepository for InteractionProvider {
     ) -> Result<(), DataLayerError> {
         let mut model: interaction::ActiveModel = request.try_into()?;
         model.id = Unchanged(id);
-        model
-            .update(&self.db)
+        interaction::Entity::update(model)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

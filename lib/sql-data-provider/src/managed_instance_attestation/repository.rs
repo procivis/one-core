@@ -5,7 +5,7 @@ use one_core::model::managed_instance_attestation::{
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
 
 use super::ManagedInstanceAttestationProvider;
@@ -20,9 +20,13 @@ impl ManagedInstanceAttestationRepository for ManagedInstanceAttestationProvider
         &self,
         request: ManagedInstanceAttestation,
     ) -> Result<ManagedInstanceAttestationId, DataLayerError> {
+        let id = request.id;
         let model: managed_instance_attestation::ActiveModel = request.into();
-        let result = model.insert(&self.db).await.map_err(to_data_layer_error)?;
-        Ok(result.id)
+        managed_instance_attestation::Entity::insert(model)
+            .exec_without_returning(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+        Ok(id)
     }
 
     async fn update_attestation(
@@ -41,7 +45,7 @@ impl ManagedInstanceAttestationRepository for ManagedInstanceAttestationProvider
             ..Default::default()
         };
         managed_instance_attestation::Entity::update(model)
-            .exec(&self.db)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

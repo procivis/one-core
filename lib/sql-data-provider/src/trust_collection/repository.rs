@@ -7,9 +7,7 @@ use one_core::model::trust_collection::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use sea_orm::prelude::Expr;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, QueryFilter, QueryOrder, Set, Unchanged,
-};
+use sea_orm::{ColumnTrait, EntityTrait, ExprTrait, QueryFilter, QueryOrder, Set, Unchanged};
 use shared_types::TrustCollectionId;
 
 use super::TrustCollectionProvider;
@@ -25,7 +23,10 @@ impl TrustCollectionRepository for TrustCollectionProvider {
     async fn create(&self, entity: TrustCollection) -> Result<TrustCollectionId, DataLayerError> {
         let id = entity.id;
         let model: trust_collection::ActiveModel = entity.into();
-        model.insert(&self.db).await.map_err(to_data_layer_error)?;
+        trust_collection::Entity::insert(model)
+            .exec_without_returning(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
         Ok(id)
     }
 
@@ -84,7 +85,7 @@ impl TrustCollectionRepository for TrustCollectionProvider {
                     deactivated_at: Set(Some(now)),
                     ..Default::default()
                 })
-                .exec(&self.db)
+                .exec_without_returning(&self.db)
                 .await
                 .map_err(to_update_data_layer_error)?;
                 Ok(())

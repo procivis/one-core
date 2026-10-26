@@ -8,8 +8,8 @@ use one_core::model::identifier::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::identifier_repository::IdentifierRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-    Select, Set, Unchanged,
+    ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Select, Set,
+    Unchanged,
 };
 use shared_types::{CredentialId, DidId, IdentifierId};
 
@@ -41,12 +41,12 @@ impl IdentifierProvider {
 #[async_trait]
 impl IdentifierRepository for IdentifierProvider {
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError> {
+        let id = request.id;
         let localized_texts = request.translations.as_ref().await?.to_owned();
-        let identifier = self
-            .db
+        self.db
             .tx(async {
-                let identifier = identifier::ActiveModel::from(request)
-                    .insert(&self.db)
+                identifier::Entity::insert(identifier::ActiveModel::from(request))
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_data_layer_error)?;
 
@@ -55,10 +55,10 @@ impl IdentifierRepository for IdentifierProvider {
                         .upsert_many(localized_texts)
                         .await?;
                 }
-                Ok::<_, DataLayerError>(identifier)
+                Ok::<_, DataLayerError>(())
             })
             .await??;
-        Ok(identifier.id)
+        Ok(id)
     }
 
     async fn get(&self, id: IdentifierId) -> Result<Identifier, DataLayerError> {
@@ -110,8 +110,8 @@ impl IdentifierRepository for IdentifierProvider {
         let localized_texts = request.translations.unwrap_or_default();
         self.db
             .tx(async {
-                update_model
-                    .update(&self.db)
+                identifier::Entity::update(update_model)
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_update_data_layer_error)?;
                 if !localized_texts.is_empty() {
@@ -141,7 +141,7 @@ impl IdentifierRepository for IdentifierProvider {
             .validate()
             .map_err(to_update_data_layer_error)?
             .filter(identifier::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

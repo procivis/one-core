@@ -43,7 +43,7 @@ impl OrganisationRepository for OrganisationProvider {
         request: UpdateOrganisationRequest,
     ) -> Result<(), DataLayerError> {
         organisation::Entity::update(update_request_to_active_model(*id, request))
-            .exec(&self.db)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

@@ -8,9 +8,7 @@ use one_core::model::instance::{
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::instance_repository::InstanceRepository;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
-};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged};
 use shared_types::{InstanceId, OrganisationId};
 
 use crate::common::list_query_with_custom_model;
@@ -32,12 +30,13 @@ impl InstanceRepository for InstanceProvider {
             .into());
         }
 
-        let model = instance::ActiveModel::from(request)
-            .insert(&self.db)
+        let id = request.id;
+        instance::Entity::insert(instance::ActiveModel::from(request))
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(model.id)
+        Ok(id)
     }
 
     async fn get(&self, id: &InstanceId) -> Result<Instance, DataLayerError> {
@@ -98,8 +97,8 @@ impl InstanceRepository for InstanceProvider {
                     .unwrap_or_default(),
                 ..Default::default()
             };
-            update_model
-                .update(&self.db)
+            instance::Entity::update(update_model)
+                .exec_without_returning(&self.db)
                 .await
                 .map_err(to_update_data_layer_error)?;
 

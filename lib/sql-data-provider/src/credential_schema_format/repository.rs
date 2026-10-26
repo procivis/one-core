@@ -2,7 +2,7 @@ use autometrics::autometrics;
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::repository::credential_schema_format_repository::CredentialSchemaFormatRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 use shared_types::{CredentialSchemaFormatId, CredentialSchemaId};
 
 use crate::credential_schema_format::CredentialSchemaFormatProvider;
@@ -19,13 +19,13 @@ impl CredentialSchemaFormatRepository for CredentialSchemaFormatProvider {
         request: CredentialSchemaFormat,
     ) -> Result<CredentialSchemaFormatId, DataLayerError> {
         let claim_mappings = request.claim_mappings.as_ref().await?.to_owned();
+        let id = request.id;
         let format_active: credential_schema_format::ActiveModel = request.into();
 
-        let inserted_id = self
-            .db
+        self.db
             .tx(async {
-                let inserted = format_active
-                    .insert(&self.db)
+                credential_schema_format::Entity::insert(format_active)
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_data_layer_error)?;
 
@@ -38,11 +38,11 @@ impl CredentialSchemaFormatRepository for CredentialSchemaFormatProvider {
                         .map_err(|e| DataLayerError::Db(e.into()))?;
                 }
 
-                Ok::<_, DataLayerError>(inserted.id)
+                Ok::<_, DataLayerError>(())
             })
             .await??;
 
-        Ok(inserted_id)
+        Ok(id)
     }
 
     async fn get_credential_schema_format(

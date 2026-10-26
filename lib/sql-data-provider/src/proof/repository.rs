@@ -8,8 +8,8 @@ use one_core::model::proof::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_repository::ProofRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-    RelationTrait, Select, Set, SqlErr, Unchanged,
+    ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
+    SqlErr, Unchanged,
 };
 use shared_types::{InteractionId, ProofId};
 
@@ -29,8 +29,8 @@ use crate::mapper::{map_lock_type, to_update_data_layer_error};
 impl ProofRepository for ProofProvider {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
         let proof: proof::ActiveModel = request.clone().try_into()?;
-        proof
-            .insert(&self.db)
+        proof::Entity::insert(proof)
+            .exec_without_returning(&self.db)
             .await
             .map_err(|e| match e.sql_err() {
                 Some(SqlErr::UniqueConstraintViolation(_)) => {
@@ -260,8 +260,8 @@ impl ProofRepository for ProofProvider {
             update_model.state = Set(state.into());
         };
 
-        update_model
-            .update(&self.db)
+        proof::Entity::update(update_model)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

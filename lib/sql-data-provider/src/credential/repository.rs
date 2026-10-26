@@ -12,8 +12,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Alias, Expr, Func, IntoCondition, SimpleExpr};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, FromQueryResult, JoinType, QueryFilter,
-    QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select, Set, TryIntoModel, Unchanged,
+    ColumnTrait, EntityTrait, ExprTrait, FromQueryResult, JoinType, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait, RelationTrait, Select, Set, TryIntoModel, Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
 
@@ -486,8 +486,8 @@ impl CredentialRepository for CredentialProvider {
                     }
                     error => error,
                 })?;
-                merged
-                    .update(&self.db)
+                credential::Entity::update(merged)
+                    .exec_without_returning(&self.db)
                     .await
                     .map_err(to_update_data_layer_error)?;
                 Ok::<_, DataLayerError>(())

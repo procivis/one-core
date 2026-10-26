@@ -10,9 +10,7 @@ use one_core::model::certificate::{
 use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::{DataLayerError, EntityKind};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
-};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged};
 use shared_types::CertificateId;
 
 use super::CertificateProvider;
@@ -60,12 +58,13 @@ impl CertificateProvider {
 #[async_trait]
 impl CertificateRepository for CertificateProvider {
     async fn create(&self, request: Certificate) -> Result<CertificateId, DataLayerError> {
-        let identifier = certificate::ActiveModel::from(request)
-            .insert(&self.db)
+        let id = request.id;
+        certificate::Entity::insert(certificate::ActiveModel::from(request))
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(identifier.id)
+        Ok(id)
     }
 
     async fn get(&self, id: CertificateId) -> Result<Certificate, DataLayerError> {
@@ -112,8 +111,8 @@ impl CertificateRepository for CertificateProvider {
             ..Default::default()
         };
 
-        update_model
-            .update(&self.db)
+        certificate::Entity::update(update_model)
+            .exec_without_returning(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -133,7 +132,7 @@ impl CertificateRepository for CertificateProvider {
             .validate()
             .map_err(to_update_data_layer_error)?
             .filter(certificate::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec_without_returning(&self.db)
             .await
             .map(|_| ())
             .map_err(to_update_data_layer_error)

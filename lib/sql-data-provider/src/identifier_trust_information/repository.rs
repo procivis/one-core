@@ -3,7 +3,7 @@ use one_core::model::identifier_trust_information::IdentifierTrustInformation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_dto_mapper::try_convert_inner;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::{IdentifierId, IdentifierTrustInformationId};
 
 use crate::entity::identifier_trust_information;
@@ -17,12 +17,15 @@ impl IdentifierTrustInformationRepository for IdentifierTrustInformationProvider
         &self,
         trust_information: IdentifierTrustInformation,
     ) -> Result<IdentifierTrustInformationId, DataLayerError> {
-        let model = identifier_trust_information::ActiveModel::from(trust_information)
-            .insert(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
+        let id = trust_information.id;
+        identifier_trust_information::Entity::insert(
+            identifier_trust_information::ActiveModel::from(trust_information),
+        )
+        .exec_without_returning(&self.db)
+        .await
+        .map_err(to_data_layer_error)?;
 
-        Ok(model.id)
+        Ok(id)
     }
 
     async fn get_by_identifier_id(
