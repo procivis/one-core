@@ -41,7 +41,9 @@ use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgor
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::{JwkUse, Jwks, PublicJwk};
 use standardized_types::oauth2::TokenType;
-use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
+use standardized_types::oauth2::attestation_based_client_auth::{
+    ChallengeResponse, OAUTH_CLIENT_ATTESTATION_CHALLENGE_HEADER,
+};
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dpop::DPOP_HEADER;
 use standardized_types::oauth2::token::{
@@ -233,6 +235,20 @@ fn with_wallet_attestation(
         }
         None => request,
     }
+}
+
+/// The challenge to repeat a token request with, if the issuer rejected the Client Attestation PoP
+/// for lack of a valid challenge.
+///
+/// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-6.1>
+fn demanded_attestation_challenge(response: &Response) -> Option<String> {
+    if !response.status.is_client_error() {
+        return None;
+    }
+    let challenge = response.header_get(OAUTH_CLIENT_ATTESTATION_CHALLENGE_HEADER)?;
+    serde_json::from_slice::<TokenErrorResponse>(&response.body)
+        .is_ok_and(|error| error.error == TokenErrorCode::UseAttestationChallenge)
+        .then(|| challenge.to_owned())
 }
 
 /// Copies the most recent DPoP nonce into the interaction data so that the next flow starts
@@ -519,7 +535,7 @@ impl OpenID4VCIFinal1_0 {
         wallet_attestation: Option<&TokenRequestAttestationHeaders>,
     ) -> Result<(), IssuanceProtocolError> {
         let keep_key = wallet_attestation
-            .is_some_and(|attestation| attestation.client_attestation_key_id == key_id);
+            .is_some_and(|attestation| attestation.client_attestation_key.id == key_id);
         interaction_data.dpop_nonce = None;
         interaction_data.dpop_signing_alg_values_supported = None;
 
@@ -617,6 +633,46 @@ impl OpenID4VCIFinal1_0 {
         }
     }
 
+    /// Sends a token request, repeated once with a renewed Client Attestation PoP if the issuer
+    /// demands a fresh attestation challenge.
+    ///
+    /// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-6>
+    async fn send_token_request(
+        &self,
+        interaction_data: &HolderInteractionData,
+        token_endpoint: &str,
+        dpop: Option<&DpopContext>,
+        form: &TokenRequest,
+        wallet_attestation: Option<&TokenRequestAttestationHeaders>,
+    ) -> Result<Response, IssuanceProtocolError> {
+        let send = async |wallet_attestation: Option<&TokenRequestAttestationHeaders>| {
+            self.send_authorized_request(dpop, Method::Post, token_endpoint, None, |request| {
+                let mut request = request.form(form)?;
+                if let Some(wallet_attestation) = wallet_attestation {
+                    request = with_wallet_attestation(request, wallet_attestation);
+                }
+                Ok(request)
+            })
+            .await
+        };
+
+        let response = send(wallet_attestation).await?;
+        let Some((wallet_attestation, challenge)) =
+            wallet_attestation.zip(demanded_attestation_challenge(&response))
+        else {
+            return Ok(response);
+        };
+        let Some(renewed_wallet_attestation) = self
+            .renew_client_attestation_pop(wallet_attestation, interaction_data, challenge)
+            .await?
+        else {
+            return Ok(response);
+        };
+
+        tracing::debug!("Repeating token request with the attestation challenge of the issuer");
+        send(Some(&renewed_wallet_attestation)).await
+    }
+
     async fn holder_fetch_token(
         &self,
         interaction_data: &HolderInteractionData,
@@ -662,18 +718,12 @@ impl OpenID4VCIFinal1_0 {
         };
 
         let response = self
-            .send_authorized_request(
+            .send_token_request(
+                interaction_data,
+                token_endpoint,
                 dpop,
-                Method::Post,
-                token_endpoint.as_str(),
-                None,
-                |request| {
-                    let mut request = request.form(&form)?;
-                    if let Some(wallet_attestation_request) = wallet_attestation_request {
-                        request = with_wallet_attestation(request, wallet_attestation_request);
-                    }
-                    Ok(request)
-                },
+                &form,
+                wallet_attestation_request,
             )
             .await?;
 
@@ -772,18 +822,12 @@ impl OpenID4VCIFinal1_0 {
             refresh_token: refresh_token.expose_secret().to_string(),
         };
         let response = self
-            .send_authorized_request(
-                dpop.as_ref(),
-                Method::Post,
+            .send_token_request(
+                interaction_data,
                 token_endpoint,
-                None,
-                |request| {
-                    let mut request = request.form(&form)?;
-                    if let Some(wia_tokens) = &wia_tokens {
-                        request = with_wallet_attestation(request, wia_tokens);
-                    }
-                    Ok(request)
-                },
+                dpop.as_ref(),
+                &form,
+                wia_tokens.as_ref(),
             )
             .await?;
         let token_response: TokenResponse = response

@@ -208,7 +208,7 @@ impl OpenID4VCIFinal1_0 {
                 Ok(Some(TokenRequestAttestationHeaders {
                     wallet_attestation: wia.to_owned(),
                     wallet_attestation_pop,
-                    client_attestation_key_id: client_attestation_key.id,
+                    client_attestation_key,
                 }))
             }
             (Some(_), None) => Err(IssuanceProtocolError::Failed(
@@ -375,6 +375,54 @@ impl OpenID4VCIFinal1_0 {
         wia: &str,
         interaction_data: &HolderInteractionData,
     ) -> Result<String, IssuanceProtocolError> {
+        let challenge = if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
+            Some(self.holder_fetch_challenge(challenge_endpoint).await?)
+        } else {
+            None
+        };
+        self.sign_client_attestation_pop(
+            client_attestation_key,
+            wia,
+            &interaction_data.issuer_url,
+            challenge,
+        )
+        .await
+    }
+
+    /// Replaces the Client Attestation PoP by one carrying the challenge demanded by the issuer.
+    ///
+    /// `None` in DPoP combined mode, where no Client Attestation PoP is sent.
+    pub(super) async fn renew_client_attestation_pop(
+        &self,
+        wallet_attestation: &TokenRequestAttestationHeaders,
+        interaction_data: &HolderInteractionData,
+        challenge: String,
+    ) -> Result<Option<TokenRequestAttestationHeaders>, IssuanceProtocolError> {
+        if wallet_attestation.wallet_attestation_pop.is_none() {
+            return Ok(None);
+        }
+        let wallet_attestation_pop = self
+            .sign_client_attestation_pop(
+                &wallet_attestation.client_attestation_key,
+                &wallet_attestation.wallet_attestation,
+                &interaction_data.issuer_url,
+                Some(challenge),
+            )
+            .await?;
+        Ok(Some(TokenRequestAttestationHeaders {
+            wallet_attestation: wallet_attestation.wallet_attestation.to_owned(),
+            wallet_attestation_pop: Some(wallet_attestation_pop),
+            client_attestation_key: wallet_attestation.client_attestation_key.to_owned(),
+        }))
+    }
+
+    async fn sign_client_attestation_pop(
+        &self,
+        client_attestation_key: &Key,
+        wia: &str,
+        audience: &str,
+        challenge: Option<String>,
+    ) -> Result<String, IssuanceProtocolError> {
         // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
         // The WIA sub (subject) claim MUST specify client_id value of the OAuth Client.
         let wia_jwt: Jwt<()> = Jwt::build_from_token(wia, None, None)
@@ -387,24 +435,12 @@ impl OpenID4VCIFinal1_0 {
                 "WIA missing subject claim".to_string(),
             ))?;
 
-        let challenge = if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
-            Some(self.holder_fetch_challenge(challenge_endpoint).await?)
-        } else {
-            None
-        };
-
         let auth_fn = self.key_provider.get_signature_provider(
             client_attestation_key,
             None,
             self.key_algorithm_provider.clone(),
         )?;
-        create_wallet_unit_attestation_pop(
-            &auth_fn,
-            &interaction_data.issuer_url,
-            challenge,
-            &client_id,
-        )
-        .await
+        create_wallet_unit_attestation_pop(&auth_fn, audience, challenge, &client_id).await
     }
 
     async fn store_received_attestation(

@@ -8,6 +8,11 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
+/// Carries a fresh challenge in responses of the authorization server.
+///
+/// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-6.2>
+pub const OAUTH_CLIENT_ATTESTATION_CHALLENGE_HEADER: &str = "OAuth-Client-Attestation-Challenge";
+
 /// Response of the challenge endpoint.
 ///
 /// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-8>

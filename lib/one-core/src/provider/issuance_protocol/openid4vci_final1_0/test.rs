@@ -17,8 +17,10 @@ use standardized_types::etsi_119_472::disclosure_policy::{DisclosurePolicy, Poli
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk, PublicJwkEc};
+use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::oauth2::dpop::{DPOP_JWT_TYPE, DPoPClaims};
+use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::{
     ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialIssuerMetadata, CredentialMetadata,
     CredentialRequest, CredentialRequestEncryption, CredentialRequestIdentifier,
@@ -36,7 +38,7 @@ use super::OpenID4VCIFinal1_0;
 use super::dpop::DpopContext;
 use super::model::{
     HolderBinding, HolderCredentialConfiguration, HolderInteractionData,
-    OpenID4VCIIssuerInteractionDataDTO, RequestedCredential,
+    OpenID4VCIIssuerInteractionDataDTO, RequestedCredential, TokenRequestAttestationHeaders,
 };
 use super::service::{build_issuer_display, calculate_mandatory_claims, create_credential_offer};
 use crate::clock::now_utc;
@@ -8051,4 +8053,189 @@ async fn test_client_attestation_key_of_the_interaction_is_reused() {
         .unwrap();
 
     assert_eq!(stored_key.id, key.id);
+}
+
+/// Wallet attestation headers in normal mode, with a Client Attestation PoP carrying no challenge.
+fn token_request_attestation_headers(
+    wallet_attestation_pop: Option<&str>,
+) -> TokenRequestAttestationHeaders {
+    let encode =
+        |value: Value| Base64UrlSafeNoPadding::encode_to_string(value.to_string()).unwrap();
+    let wallet_attestation = format!(
+        "{}.{}.c2lnbmF0dXJl",
+        encode(json!({"alg": "ES256", "typ": "oauth-client-attestation+jwt"})),
+        encode(json!({"sub": "wallet-client-id"})),
+    );
+    TokenRequestAttestationHeaders {
+        wallet_attestation,
+        wallet_attestation_pop: wallet_attestation_pop.map(ToOwned::to_owned),
+        client_attestation_key: dummy_key(),
+    }
+}
+
+fn protocol_signing_client_attestation_pops() -> OpenID4VCIFinal1_0 {
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_signature_provider()
+        .returning(|_, _, _| {
+            let mut signature_provider = MockSignatureProvider::new();
+            signature_provider
+                .expect_jose_alg()
+                .returning(|| Ok("ES256".to_string()));
+            signature_provider.expect_get_key_id().returning(|| None);
+            signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 64]));
+            Ok(Box::new(signature_provider))
+        });
+    setup_protocol(TestInputs {
+        key_provider,
+        ..Default::default()
+    })
+}
+
+fn use_attestation_challenge_response(challenge: &str) -> ResponseTemplate {
+    ResponseTemplate::new(400)
+        .insert_header("OAuth-Client-Attestation-Challenge", challenge)
+        .set_body_json(json!({"error": "use_attestation_challenge"}))
+}
+
+fn sent_client_attestation_pops(
+    requests: &[wiremock::Request],
+) -> Vec<DecomposedJwt<OAuthClientAttestationPopCustomClaims>> {
+    requests
+        .iter()
+        .map(|request| {
+            let pop = request
+                .headers
+                .get("OAuth-Client-Attestation-PoP")
+                .expect("request carries a Client Attestation PoP")
+                .to_str()
+                .unwrap();
+            Jwt::<OAuthClientAttestationPopCustomClaims>::decompose_token(pop).unwrap()
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn test_token_request_is_repeated_with_the_attestation_challenge_demanded_by_the_issuer() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(use_attestation_challenge_response("fresh-challenge"))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let protocol = protocol_signing_client_attestation_pops();
+    let interaction_data = holder_interaction_data(json!([]));
+    let wallet_attestation = token_request_attestation_headers(Some("stale-pop"));
+
+    let response = protocol
+        .send_token_request(
+            &interaction_data,
+            &format!("{}/token", mock_server.uri()),
+            None,
+            &TokenRequest::PreAuthorizedCode {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+            },
+            Some(&wallet_attestation),
+        )
+        .await
+        .unwrap();
+
+    assert!(response.status.is_success());
+    let requests = mock_server.received_requests().await.unwrap();
+    assert_eq!(2, requests.len());
+    for request in &requests {
+        assert_eq!(
+            wallet_attestation.wallet_attestation.as_str(),
+            request.headers.get("OAuth-Client-Attestation").unwrap()
+        );
+    }
+    assert_eq!(
+        "stale-pop",
+        requests[0]
+            .headers
+            .get("OAuth-Client-Attestation-PoP")
+            .unwrap()
+    );
+    let renewed_pops = sent_client_attestation_pops(&requests[1..]);
+    let_assert!([renewed_pop] = renewed_pops.as_slice());
+    assert_eq!(
+        Some("fresh-challenge".to_string()),
+        renewed_pop.payload.custom.challenge
+    );
+    assert_eq!(
+        Some("wallet-client-id".to_string()),
+        renewed_pop.payload.issuer
+    );
+    assert_eq!(
+        Some(vec![interaction_data.issuer_url.to_owned()]),
+        renewed_pop.payload.audience
+    );
+}
+
+#[tokio::test]
+async fn test_token_request_is_repeated_only_once_for_an_attestation_challenge() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(use_attestation_challenge_response("fresh-challenge"))
+        .expect(2)
+        .mount(&mock_server)
+        .await;
+
+    let protocol = protocol_signing_client_attestation_pops();
+    let response = protocol
+        .send_token_request(
+            &holder_interaction_data(json!([])),
+            &format!("{}/token", mock_server.uri()),
+            None,
+            &TokenRequest::PreAuthorizedCode {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+            },
+            Some(&token_request_attestation_headers(Some("stale-pop"))),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(400, response.status.0);
+}
+
+#[tokio::test]
+async fn test_token_request_is_not_repeated_for_an_attestation_challenge_in_dpop_combined_mode() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(use_attestation_challenge_response("fresh-challenge"))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let protocol = setup_protocol(TestInputs::default());
+    let response = protocol
+        .send_token_request(
+            &holder_interaction_data(json!([])),
+            &format!("{}/token", mock_server.uri()),
+            None,
+            &TokenRequest::PreAuthorizedCode {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+            },
+            Some(&token_request_attestation_headers(None)),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(400, response.status.0);
 }

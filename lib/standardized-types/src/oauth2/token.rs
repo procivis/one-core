@@ -114,6 +114,12 @@ pub enum TokenErrorCode {
     /// Spec: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#name-oauth-extensions-error-regi)
     UseDpopNonce,
 
+    /// The request has to be repeated with a Client Attestation PoP carrying the challenge provided
+    /// in the [`super::attestation_based_client_auth::OAUTH_CLIENT_ATTESTATION_CHALLENGE_HEADER`].
+    ///
+    /// Spec: <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-7.4>
+    UseAttestationChallenge,
+
     #[serde(untagged)]
     #[strum(to_string = "{0}")]
     Other(String),

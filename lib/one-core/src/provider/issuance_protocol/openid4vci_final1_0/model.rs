@@ -8,7 +8,7 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::formats::PreferMany;
 use serde_with::{DurationSeconds, OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{CredentialId, CredentialSchemaFormatId, KeyId, SerializedCredential};
+use shared_types::{CredentialId, CredentialSchemaFormatId, SerializedCredential};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::{
@@ -665,7 +665,7 @@ pub(super) struct TokenRequestAttestationHeaders {
     /// `None` in DPoP combined mode, where the DPoP proof serves as proof of possession
     pub wallet_attestation_pop: Option<String>,
     /// Client Instance Key of the wallet attestation
-    pub client_attestation_key_id: KeyId,
+    pub client_attestation_key: Key,
 }
 
 /// holder binding of a credential, with the key attestation when the issuer requires one
