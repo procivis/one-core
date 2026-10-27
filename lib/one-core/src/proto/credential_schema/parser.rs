@@ -24,6 +24,7 @@ use crate::mapper::credential_schema_claim::{
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CredentialSchema, LayoutProperties, LogoProperties,
+    WalletAttestation,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -216,6 +217,27 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         }
         claim_schemas.extend(metadata_claim_schemas.into_values());
 
+        let allow_revocation = dto.schema.allow_revocation.unwrap_or(false);
+        let mut wallet_attestation: WalletAttestation = dto
+            .schema
+            .wallet_attestation
+            .map(Into::into)
+            .unwrap_or_default();
+        // monitored credentials are revoked once their wallet is, which needs revocation enabled
+        // and a revocation method for every format the credentials can be issued in
+        if wallet_attestation.monitor_credential_lifetime
+            && (!allow_revocation
+                || formatters
+                    .iter()
+                    .any(|(_, formatter)| formatter.revocation_method_id().is_none()))
+        {
+            tracing::warn!(
+                "Inconsistent import data: WUA credential lifetime monitoring enabled for credential schema `{}` without revocation enabled and supported by all formats, disabling WUA credential lifetime monitoring",
+                dto.schema.name
+            );
+            wallet_attestation.monitor_credential_lifetime = false;
+        }
+
         Ok(CredentialSchema {
             ecosystem: dto.schema.ecosystem,
             id: credential_schema_id,
@@ -223,11 +245,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             created_date: now,
             last_modified: now,
             name: dto.schema.name,
-            wallet_attestation: dto
-                .schema
-                .wallet_attestation
-                .map(Into::into)
-                .unwrap_or_default(),
+            wallet_attestation,
             layout_properties: self.parse_layout_properties(
                 dto.schema.layout_properties,
                 &claim_schemas,
@@ -240,7 +258,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             formats: formats.into(),
             transaction_code: convert_inner(dto.schema.transaction_code),
             batch_size,
-            allow_revocation: dto.schema.allow_revocation.unwrap_or(false),
+            allow_revocation,
             translations: match dto.schema.translations {
                 Some(translations) => {
                     schema_translations_from_dto(credential_schema_id, translations, now).into()

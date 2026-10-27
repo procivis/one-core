@@ -184,6 +184,17 @@ impl IntoFilterCondition for CredentialFilterValue {
             }
             Self::Deleted(false) => credential::Column::DeletedAt.is_null().into_condition(),
             Self::Deleted(true) => credential::Column::DeletedAt.is_not_null().into_condition(),
+            Self::WuaMonitorCredentialLifetime(value) => credential::Column::CredentialSchemaId
+                .in_subquery(
+                    Query::select()
+                        .column(credential_schema::Column::Id)
+                        .from(credential_schema::Entity)
+                        .cond_where(
+                            credential_schema::Column::WuaMonitorCredentialLifetime.eq(value),
+                        )
+                        .to_owned(),
+                )
+                .into_condition(),
         }
     }
 }

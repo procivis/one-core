@@ -6,7 +6,7 @@ use shared_types::CredentialId;
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct EudiLifecycleResultDTO {
-    /// issued PIDs whose wallet attestations were inspected
+    /// issued credentials whose wallet attestations were inspected
     pub total_checks: u64,
     /// revoked through the credential's revocation method
     pub revoked_credential_ids: Vec<CredentialId>,

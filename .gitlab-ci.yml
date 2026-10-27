@@ -237,7 +237,7 @@ tests:compile:
     WAIT_ON_TIMEOUT: 10m
   trigger:
     project: procivis/one/one-tests
-    branch: v1.89.0
+    branch: v1.89.1
     strategy: depend
     forward:
       pipeline_variables: true

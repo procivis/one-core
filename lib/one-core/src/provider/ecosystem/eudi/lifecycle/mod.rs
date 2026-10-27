@@ -1,16 +1,16 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use shared_types::{BlobId, CredentialId, CredentialSchemaId};
+use shared_types::{BlobId, CredentialId};
 
 use self::dto::EudiLifecycleResultDTO;
 use super::EudiEcosystem;
 use crate::config::core_config::BlobStorageType;
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum,
     CredentialType,
 };
-use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
+use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
@@ -26,25 +26,15 @@ mod test;
 const PAGE_SIZE: u32 = 1000;
 
 impl EudiEcosystem {
-    /// Checks every accepted PID this core issued into the EUDI ecosystem: if the wallet
-    /// instance attestation or the wallet unit attestation that was accepted at issuance time
-    /// has since been revoked, the PID must not stay valid either.
+    /// Checks every accepted credential this core issued into the EUDI ecosystem whose schema
+    /// opted into WUA lifetime monitoring: if the wallet instance attestation or the wallet unit
+    /// attestation that was accepted at issuance time has since been revoked, the credential must
+    /// not stay valid either.
     ///
     /// The two attestations differ in scope: a revoked WIA invalidates the wallet instance and
     /// with it a whole issued batch, while a revoked WUA only invalidates the single credential
     /// it was issued for.
     pub(super) async fn run_lifecycle_check(&self) -> Result<serde_json::Value, EcosystemError> {
-        let pid_schema_ids: Vec<_> = self
-            .params
-            .credential_schemas
-            .iter()
-            .flat_map(|schema| schema.pid_schema_ids.iter().cloned())
-            .collect();
-
-        if pid_schema_ids.is_empty() {
-            return result_to_value(EudiLifecycleResultDTO::default());
-        }
-
         // batch items rather than batch parents: the WUA is written per issued credential, so
         // only the items carry one, while the WIA is taken from the parent
         let filtering = CredentialFilterValue::Roles(vec![CredentialRole::Issuer]).condition()
@@ -57,12 +47,7 @@ impl EudiEcosystem {
             & CredentialFilterValue::Types(vec![CredentialType::Single, CredentialType::BatchItem])
             & CredentialFilterValue::Deleted(false)
             & CredentialFilterValue::Ecosystems(vec![self.config_id.to_owned()])
-            & ListFilterCondition::Or(
-                pid_schema_ids
-                    .into_iter()
-                    .map(|schema_id| CredentialFilterValue::SchemaId(schema_id).condition())
-                    .collect(),
-            );
+            & CredentialFilterValue::WuaMonitorCredentialLifetime(true);
 
         let blob_storage = self
             .blob_storage_provider
@@ -70,13 +55,10 @@ impl EudiEcosystem {
 
         let mut result = EudiLifecycleResultDTO::default();
         let mut cached_wia_status: HashMap<CredentialId, bool> = HashMap::new();
-        // schemas already reported as not supporting revocation, so that the warning is printed
-        // once per run and schema rather than once per PID
-        let mut schemas_without_revocation: HashSet<CredentialSchemaId> = HashSet::new();
         let mut page = 0;
 
         loop {
-            tracing::debug!("Checking PIDs page {}", page);
+            tracing::debug!("Checking credentials page {}", page);
             let credentials = self
                 .credential_repository
                 .get_credential_list(CredentialListQuery {
@@ -89,7 +71,7 @@ impl EudiEcosystem {
                     ..Default::default()
                 })
                 .await
-                .error_while("getting issued PIDs")?;
+                .error_while("getting issued credentials")?;
 
             if credentials.values.is_empty() {
                 break;
@@ -130,12 +112,7 @@ impl EudiEcosystem {
                         cached_wia_status.insert(main_credential.common().id, revoked);
 
                         if revoked {
-                            self.revoke_pid(
-                                main_credential,
-                                &mut result,
-                                &mut schemas_without_revocation,
-                            )
-                            .await;
+                            self.revoke_credential(main_credential, &mut result).await;
                         }
                         revoked
                     }
@@ -156,71 +133,46 @@ impl EudiEcosystem {
                     )
                     .await?
                 {
-                    self.revoke_pid(credential, &mut result, &mut schemas_without_revocation)
-                        .await;
+                    self.revoke_credential(credential, &mut result).await;
                 }
             }
 
             page += 1;
         }
-
         result_to_value(result)
     }
 
-    /// Revokes a PID whose wallet has been revoked. The revocation is published through the
+    /// Revokes a credential whose wallet has been revoked. The revocation is published through the
     /// credential's revocation method, which for a batch parent also updates every batch item.
-    async fn revoke_pid(
+    ///
+    /// A failure is only recorded in `failures`, the check moves on to the next credential and
+    /// reports all failures once at the end of the run.
+    async fn revoke_credential(
         &self,
         credential: &Credential,
         result: &mut EudiLifecycleResultDTO,
-        schemas_without_revocation: &mut HashSet<CredentialSchemaId>,
     ) {
-        let Err(error) = self
+        let credential_id = credential.common().id;
+        match self
             .credential_validity_manager
-            .change_credential_state(&credential.common().id, ChangeCredentialState::Revoked)
-            .await
-        else {
-            result.revoked_credential_ids.push(credential.common().id);
-            return;
-        };
-
-        result.failed_credential_ids.push(credential.common().id);
-
-        if error.error_code() == ErrorCode::BR_0098 {
-            let schema_id = credential.common().schema.id();
-            if schemas_without_revocation.insert(schema_id) {
-                tracing::warn!(
-                    "PIDs of credential schema {schema_id} cannot be revoked because the schema does \
-                     not support revocation - this is not EUDI compliant"
-                );
-            }
-        } else {
-            tracing::warn!("Failed to revoke PID `{}`: {error}", credential.common().id);
-        }
-
-        if !matches!(
-            credential,
-            Credential::IssuerBatchParent { .. } | Credential::HolderBatchParent { .. }
-        ) {
-            // Only batch parents can be flagged as expiring
-            return;
-        }
-
-        if let Err(error) = self
-            .credential_validity_manager
-            .change_credential_state(&credential.common().id, ChangeCredentialState::Expiring)
+            .change_credential_state(&credential_id, ChangeCredentialState::Revoked)
             .await
         {
-            tracing::warn!(
-                "Failed to flag PID `{}` as expiring: {error}",
-                credential.common().id
-            );
+            Ok(()) => result.revoked_credential_ids.push(credential_id),
+            Err(error) => {
+                tracing::warn!(
+                    "Failed to revoke credential {}: `{:?}`",
+                    credential_id,
+                    error
+                );
+                result.failed_credential_ids.push(credential_id)
+            }
         }
     }
 
     /// `true` only when the attestation stored in `blob_id` is known to be revoked. A missing or expired
     /// attestation, a missing status list entry or an inconclusive check (network failure,
-    /// unresolvable issuer) never revokes a PID.
+    /// unresolvable issuer) never revokes a credential.
     async fn attestation_revoked(
         &self,
         credential: &Credential,

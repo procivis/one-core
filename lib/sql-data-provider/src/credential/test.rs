@@ -953,6 +953,88 @@ async fn test_get_credential_list_filter_schema_name_without_pagination() {
 }
 
 #[tokio::test]
+async fn test_get_credential_list_filter_wua_monitor_credential_lifetime() {
+    use sea_orm::ActiveModelTrait;
+
+    let TestSetup {
+        credential_schema,
+        db,
+        identifier,
+        ..
+    } = setup_empty().await;
+
+    crate::entity::credential_schema::ActiveModel {
+        id: Set(credential_schema.id),
+        wua_monitor_credential_lifetime: Set(true),
+        ..Default::default()
+    }
+    .update(&db)
+    .await
+    .unwrap();
+
+    let unmonitored_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        credential_schema.organisation.id(),
+        "unmonitored schema",
+        false,
+        None,
+    )
+    .await
+    .unwrap();
+    insert_credential_schema_with_revocation_to_database(&db, unmonitored_schema_id, "JWT")
+        .await
+        .unwrap();
+
+    let monitored = insert_credential(
+        &db,
+        &credential_schema.id,
+        CredentialStateEnum::Accepted,
+        "OPENID4VCI_DRAFT13",
+        identifier.id,
+        None,
+        None,
+        Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
+    )
+    .await
+    .unwrap();
+
+    let unmonitored = insert_credential(
+        &db,
+        &unmonitored_schema_id,
+        CredentialStateEnum::Accepted,
+        "OPENID4VCI_DRAFT13",
+        identifier.id,
+        None,
+        None,
+        Uuid::new_v4().into(),
+        credential::CredentialRole::Issuer,
+    )
+    .await
+    .unwrap();
+
+    let provider = credential_repository(db, None);
+
+    for (flag, expected_id) in [
+        (true, monitored.common().id),
+        (false, unmonitored.common().id),
+    ] {
+        let credentials = provider
+            .get_credential_list(CredentialListQuery {
+                filtering: Some(
+                    CredentialFilterValue::WuaMonitorCredentialLifetime(flag).condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(1, credentials.values.len());
+        assert_eq!(expected_id, credentials.values[0].common().id);
+    }
+}
+
+#[tokio::test]
 async fn test_get_credential_list_success_filter_suspend_end_date() {
     let TestSetupWithCredential {
         db, credential_id, ..

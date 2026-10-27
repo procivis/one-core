@@ -64,7 +64,9 @@ pub enum CredentialSchemaServiceError {
     InvalidExpiration,
     #[error("Wallet attestation lifetime must be greater than 0")]
     InvalidWalletAttestationLifetime,
-    #[error("Credential lifetime monitoring requires revocation to be enabled")]
+    #[error(
+        "Credential lifetime monitoring requires revocation to be enabled and supported by all formats"
+    )]
     MonitorCredentialLifetimeWithoutRevocation,
     #[error(
         "Credential schema mapping for claim with key `{0}`, format `{1}` is not part of schema formats for format"

@@ -376,6 +376,7 @@ async fn test_import_credential_schema_v2_with_wallet_attestation() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
     let import_schema = serde_json::json!(
     {
+      "allowRevocation": true,
       "allowSuspension": false,
       "claims": [
         {
@@ -464,6 +465,160 @@ async fn test_import_credential_schema_v2_with_wallet_attestation() {
     assert_eq!(
         get_resp["walletAttestation"]["monitorCredentialLifetime"],
         true
+    );
+}
+
+#[tokio::test]
+async fn test_import_credential_schema_v2_disables_monitoring_without_revocation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let import_schema = serde_json::json!(
+    {
+      "allowRevocation": false,
+      "allowSuspension": false,
+      "claims": [
+        {
+          "array": false,
+          "claims": [],
+          "createdDate": "2026-05-18T13:53:49.979Z",
+          "datatype": "STRING",
+          "id": "ac18f142-50c4-4878-802a-7e3245ac0d05",
+          "key": "firstName",
+          "lastModified": "2026-05-18T13:53:49.979Z",
+          "required": true,
+          "translations": {
+            "name": {
+              "en": "firstName"
+            }
+          }
+        }
+      ],
+      "createdDate": "2026-05-18T13:53:49.979Z",
+      "formats": [
+        {
+          "format": "JWT",
+          "ecosystemSchemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+        }
+      ],
+      "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
+      "importedSourceUrl": "http://127.0.0.1:51147/ssi/schema/v2/6b457c8b-5af4-4fd9-9767-c87349675dd2",
+      "lastModified": "2026-05-18T13:53:49.979Z",
+      "layoutType": "CARD",
+      "name": "monitored schema without revocation",
+      "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7",
+      "walletAttestation": {
+        "requireInstanceAttestation": true,
+        "monitorCredentialLifetime": true
+      }
+    });
+
+    // WHEN
+    let import_resp = context
+        .api
+        .credential_schemas
+        .import_v2(organisation.id, import_schema)
+        .await;
+
+    // THEN
+    assert_eq!(import_resp.status(), 201);
+    let imported_id = import_resp.json_value().await["id"].parse();
+    let imported_schema = context.db.credential_schemas.get(&imported_id).await;
+    assert!(!imported_schema.allow_revocation);
+    assert!(
+        imported_schema
+            .wallet_attestation
+            .require_instance_attestation
+    );
+    assert!(
+        !imported_schema
+            .wallet_attestation
+            .monitor_credential_lifetime
+    );
+}
+
+#[tokio::test]
+async fn test_import_credential_schema_v2_disables_monitoring_for_format_without_revocation_method()
+{
+    // GIVEN
+    let config = indoc::indoc! {"
+        format:
+          JWT_NO_REVOCATION:
+            type: JWT
+            display: JWT without revocation
+            order: 301
+            params:
+              public:
+                expirationSeconds: 63072000
+                leewaySeconds: 60
+                embedLayoutProperties: true
+    "};
+    let (context, organisation) =
+        TestContext::new_with_organisation(Some(config.to_string())).await;
+    let import_schema = serde_json::json!(
+    {
+      "allowRevocation": true,
+      "allowSuspension": false,
+      "claims": [
+        {
+          "array": false,
+          "claims": [],
+          "createdDate": "2026-05-18T13:53:49.979Z",
+          "datatype": "STRING",
+          "id": "ac18f142-50c4-4878-802a-7e3245ac0d05",
+          "key": "firstName",
+          "lastModified": "2026-05-18T13:53:49.979Z",
+          "required": true,
+          "translations": {
+            "name": {
+              "en": "firstName"
+            }
+          }
+        }
+      ],
+      "createdDate": "2026-05-18T13:53:49.979Z",
+      "formats": [
+        {
+          "format": "JWT",
+          "ecosystemSchemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+        },
+        {
+          "format": "JWT_NO_REVOCATION",
+          "ecosystemSchemaId": "c5d3f6a0-6f0e-4b4e-9d9b-2f1d2c3b4a59"
+        }
+      ],
+      "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
+      "importedSourceUrl": "http://127.0.0.1:51147/ssi/schema/v2/6b457c8b-5af4-4fd9-9767-c87349675dd2",
+      "lastModified": "2026-05-18T13:53:49.979Z",
+      "layoutType": "CARD",
+      "name": "monitored schema without revocation",
+      "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7",
+      "walletAttestation": {
+        "requireInstanceAttestation": true,
+        "monitorCredentialLifetime": true
+      }
+    });
+
+    // WHEN
+    let import_resp = context
+        .api
+        .credential_schemas
+        .import_v2(organisation.id, import_schema)
+        .await;
+
+    // THEN
+    assert_eq!(import_resp.status(), 201);
+    let imported_id = import_resp.json_value().await["id"].parse();
+    let imported_schema = context.db.credential_schemas.get(&imported_id).await;
+    assert!(imported_schema.allow_revocation);
+    assert!(
+        imported_schema
+            .wallet_attestation
+            .require_instance_attestation
+    );
+    assert!(
+        !imported_schema
+            .wallet_attestation
+            .monitor_credential_lifetime
     );
 }
 

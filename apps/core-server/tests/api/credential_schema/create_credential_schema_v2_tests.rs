@@ -759,6 +759,50 @@ async fn test_fail_create_credential_schema_v2_monitor_credential_lifetime_witho
 }
 
 #[tokio::test]
+async fn test_fail_create_credential_schema_v2_monitor_credential_lifetime_format_without_revocation_method()
+ {
+    // GIVEN
+    let config = indoc::indoc! {"
+        format:
+          JWT_NO_REVOCATION:
+            type: JWT
+            display: JWT without revocation
+            order: 301
+            params:
+              public:
+                expirationSeconds: 63072000
+                leewaySeconds: 60
+                embedLayoutProperties: true
+    "};
+    let (context, organisation) =
+        TestContext::new_with_organisation(Some(config.to_string())).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![
+                jwt_format(),
+                serde_json::json!({ "format": "JWT_NO_REVOCATION" }),
+            ],
+            claims: default_claims(),
+            wallet_attestation: Some(serde_json::json!({
+                "monitorCredentialLifetime": true,
+            })),
+            allow_revocation: Some(true),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0524");
+}
+
+#[tokio::test]
 async fn test_fail_create_credential_schema_v2_batch_size_too_large() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

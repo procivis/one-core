@@ -72,7 +72,12 @@ async fn test_db_schema_credential() {
             false,
             &["suspend_end_date"],
         )
-        .index("index-Credential-Ecosystem", false, &["ecosystem"]);
+        .index("index-Credential-Ecosystem", false, &["ecosystem"])
+        .index(
+            "index-Credential-CredentialSchemaId",
+            false,
+            &["credential_schema_id"],
+        );
     credential
         .column("id")
         .r#type(ColumnType::Uuid)

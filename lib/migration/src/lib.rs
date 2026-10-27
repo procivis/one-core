@@ -359,6 +359,9 @@ impl MigratorTrait for Migrator {
                 Box::new(
                 migrations::m20261026_120000_credential_schema_wua_monitor_credential_lifetime::Migration,
             ),
+            Box::new(
+                migrations::m20261027_120000_add_credential_credential_schema_id_index::Migration,
+            ),
         ]
     }
 }

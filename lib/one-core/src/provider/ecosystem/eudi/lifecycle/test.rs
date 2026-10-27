@@ -64,11 +64,8 @@ fn revokes_successfully() -> MockCredentialValidityManager {
 fn setup(mocks: Mocks) -> EudiEcosystem {
     EudiEcosystem::new(
         "EUDI".into(),
-        json!({
-            "credentialSchemas": [
-                { "format": "SD_JWT_VC", "pidSchemaIds": ["urn:eudi:pid:1"] }
-            ]
-        }),
+        // no PID schemas configured - the check selects credentials by the schema flag alone
+        json!({}),
         CoreConfig::default(),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(MockWRPValidator::new()),
@@ -226,30 +223,6 @@ fn batch_parent(wia_blob_id: Option<BlobId>) -> Credential {
 }
 
 #[tokio::test]
-async fn test_no_pid_schemas_configured_skips_the_check() {
-    let ecosystem = EudiEcosystem::new(
-        "EUDI".into(),
-        json!({}),
-        CoreConfig::default(),
-        Arc::new(MockHistoryRepository::new()),
-        Arc::new(MockWRPValidator::new()),
-        Arc::new(MockBlobStorageProvider::new()),
-        Arc::new(NoSessionProvider),
-        Arc::new(MockCredentialFormatterProvider::new()),
-        // no repository call expected
-        Arc::new(MockCredentialRepository::new()),
-        Arc::new(MockCredentialSchemaRepository::new()),
-        Arc::new(MockProofSchemaRepository::new()),
-        Arc::new(MockHolderWalletUnitProto::new()),
-        Arc::new(MockCredentialValidityManager::new()),
-    )
-    .unwrap();
-
-    let result = ecosystem.run_lifecycle_check().await.unwrap();
-    assert_eq!(empty_result(0), result);
-}
-
-#[tokio::test]
 async fn test_credential_with_valid_attestations_is_not_revoked() {
     let wua_blob_id: BlobId = Uuid::new_v4().into();
     let credential = accepted_pid(Some(wua_blob_id), None);
@@ -266,7 +239,7 @@ async fn test_credential_with_valid_attestations_is_not_revoked() {
                 "Types([Single, BatchItem])",
                 "Deleted(false)",
                 r#"Ecosystems([EcosystemId("EUDI")])"#,
-                r#"SchemaId("urn:eudi:pid:1")"#,
+                "WuaMonitorCredentialLifetime(true)",
             ]
             .iter()
             .all(|expected| filter.contains(expected))
@@ -615,10 +588,10 @@ async fn test_pid_that_cannot_be_revoked_is_reported() {
     assert_eq!(json!([credential_id]), result["failedCredentialIds"]);
 }
 
-/// A schema without a revocation method cannot express revocation, so the batch is flagged as
-/// `Expiring` instead - it stays valid, but can never be refreshed.
+/// A batch whose parent cannot be revoked is only reported as failed - the mock panics on any
+/// further state change, such as flagging the batch as `Expiring`.
 #[tokio::test]
-async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
+async fn test_batch_parent_that_cannot_be_revoked_is_only_reported() {
     let wia_blob_id: BlobId = Uuid::new_v4().into();
     let parent = batch_parent(Some(wia_blob_id));
     let parent_id = parent.common().id;
@@ -645,13 +618,6 @@ async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
                 Uuid::new_v4().into(),
             ))
         });
-    credential_validity_manager
-        .expect_change_credential_state()
-        .once()
-        .withf(move |id, state| {
-            *id == parent_id && matches!(state, ChangeCredentialState::Expiring)
-        })
-        .returning(|_, _| Ok(()));
 
     let ecosystem = setup(Mocks {
         credential_repository: credential_repository_serving(vec![items]),
@@ -663,22 +629,22 @@ async fn test_batch_parent_that_cannot_be_revoked_is_flagged_expiring() {
     let result = ecosystem.run_lifecycle_check().await.unwrap();
 
     assert_eq!(json!([parent_id]), result["failedCredentialIds"]);
+    assert_eq!(json!([]), result["revokedCredentialIds"]);
 }
 
-/// `Expiring` is a batch-parent-only flag, so an item revoked through its own WUA has no
-/// fallback - it is reported as failed and left alone. The mock panics on any second state change.
+/// A failed revocation is skipped over, the remaining credentials are still checked and revoked.
 #[tokio::test]
-async fn test_batch_item_that_cannot_be_revoked_is_not_flagged_expiring() {
-    let parent = batch_parent(None);
-
+async fn test_failed_revocation_does_not_stop_the_check() {
     let wua_blob_id: BlobId = Uuid::new_v4().into();
-    let item = batch_item(&parent, Some(wua_blob_id));
-    let item_id = item.common().id;
+    let failing = accepted_pid(Some(wua_blob_id), None);
+    let failing_id = failing.common().id;
+    let revocable = accepted_pid(Some(wua_blob_id), None);
+    let revocable_id = revocable.common().id;
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
     wallet_unit_proto
         .expect_check_attestation_status()
-        .once()
+        .times(2)
         .returning(|_, _| {
             Ok(AttestationCheckResult {
                 status: WalletUnitStatusCheckResponse::Revoked,
@@ -689,16 +655,20 @@ async fn test_batch_item_that_cannot_be_revoked_is_not_flagged_expiring() {
     let mut credential_validity_manager = MockCredentialValidityManager::new();
     credential_validity_manager
         .expect_change_credential_state()
-        .once()
-        .withf(move |id, state| *id == item_id && matches!(state, ChangeCredentialState::Revoked))
-        .returning(|_, _| {
-            Err(CredentialValidityManagerError::NoRevocationMethod(
-                Uuid::new_v4().into(),
-            ))
+        .times(2)
+        .withf(|_, state| matches!(state, ChangeCredentialState::Revoked))
+        .returning(move |id, _| {
+            if *id == failing_id {
+                Err(CredentialValidityManagerError::MappingError(
+                    "revocation failed".to_string(),
+                ))
+            } else {
+                Ok(())
+            }
         });
 
     let ecosystem = setup(Mocks {
-        credential_repository: credential_repository_serving(vec![vec![item]]),
+        credential_repository: credential_repository_serving(vec![vec![failing, revocable]]),
         blob_storage_provider: blob_storage_provider(vec![wua_blob(wua_blob_id)]),
         wallet_unit_proto,
         credential_validity_manager,
@@ -706,5 +676,6 @@ async fn test_batch_item_that_cannot_be_revoked_is_not_flagged_expiring() {
 
     let result = ecosystem.run_lifecycle_check().await.unwrap();
 
-    assert_eq!(json!([item_id]), result["failedCredentialIds"]);
+    assert_eq!(json!([failing_id]), result["failedCredentialIds"]);
+    assert_eq!(json!([revocable_id]), result["revokedCredentialIds"]);
 }

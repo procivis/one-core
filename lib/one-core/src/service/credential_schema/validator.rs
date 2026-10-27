@@ -111,7 +111,8 @@ pub(crate) fn validate_create_v2_request(
         return Err(CredentialSchemaServiceError::InvalidExpiration);
     }
 
-    if let Some(wallet_attestation) = &request.wallet_attestation {
+    let monitor_credential_lifetime = if let Some(wallet_attestation) = &request.wallet_attestation
+    {
         if [
             wallet_attestation.preferred_key_storage_attestation_lifetime,
             wallet_attestation.preferred_instance_attestation_lifetime,
@@ -128,7 +129,10 @@ pub(crate) fn validate_create_v2_request(
         {
             return Err(CredentialSchemaServiceError::MonitorCredentialLifetimeWithoutRevocation);
         }
-    }
+        wallet_attestation.monitor_credential_lifetime
+    } else {
+        false
+    };
 
     if let Some(embedded_disclosure_policy) = &request.embedded_disclosure_policy {
         validate_disclosure_policy(&embedded_disclosure_policy.policy)?;
@@ -141,6 +145,11 @@ pub(crate) fn validate_create_v2_request(
         validate_format(&format_req.format, &config.format).error_while("validating format")?;
 
         let formatter = formatter_provider.get_credential_formatter(&format_req.format)?;
+
+        // monitored credentials must be revocable in whichever format they are issued
+        if monitor_credential_lifetime && formatter.revocation_method_id().is_none() {
+            return Err(CredentialSchemaServiceError::MonitorCredentialLifetimeWithoutRevocation);
+        }
 
         validate_nested_claim_schemas(&request.claims, config)?;
         validate_claim_names_for_formatter(&request.claims, &*formatter)?;

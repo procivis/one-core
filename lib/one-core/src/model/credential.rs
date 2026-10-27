@@ -522,6 +522,8 @@ pub enum CredentialFilterValue {
     /// Items without an expiry sort last; ties are broken by descending ID.
     EarliestExpiringBatchItemPerFormat,
     Deleted(bool),
+    /// Matches the `monitor_credential_lifetime` wallet attestation flag of the credential schema.
+    WuaMonitorCredentialLifetime(bool),
 }
 
 impl ListFilterValue for CredentialFilterValue {}
