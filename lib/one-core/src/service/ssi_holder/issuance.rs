@@ -707,7 +707,6 @@ impl SSIHolderService {
                 tx_code,
                 key_storage_security,
                 key_algorithms,
-                requires_wallet_instance_attestation,
                 ecosystem_artifact,
             } => {
                 let ecosystem_outcomes = self
@@ -727,7 +726,6 @@ impl SSIHolderService {
                     key_storage_security_levels: key_storage_security,
                     key_algorithms,
                     protocol: exchange,
-                    requires_wallet_instance_attestation,
                     ecosystem: user_selected_ecosystem,
                     ecosystem_outcomes,
                 })
@@ -946,7 +944,6 @@ impl SSIHolderService {
             interaction_id,
             key_storage_security_levels: key_storage_security,
             key_algorithms,
-            requires_wallet_instance_attestation,
             protocol,
             ecosystem_artifact,
         } = self
@@ -1009,7 +1006,6 @@ impl SSIHolderService {
             interaction_type: InteractionType::Issuance,
             key_storage_security_levels: key_storage_security,
             key_algorithms,
-            requires_wallet_instance_attestation,
             protocol,
             ecosystem: user_selected_ecosystem,
         })

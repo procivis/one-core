@@ -1172,6 +1172,9 @@ pub enum ErrorCode {
         message = "Credential lifetime monitoring requires revocation to be enabled and supported by all formats"
     )]
     BR_0524,
+
+    #[strum(message = "Wallet instance required")]
+    BR_0525,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

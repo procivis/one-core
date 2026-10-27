@@ -211,8 +211,6 @@ pub enum HandleInvitationResponseBindingEnum {
         tx_code: Option<OpenID4VCITxCodeBindingDTO>,
         /// Protocol used for issuance.
         protocol: String,
-        /// Whether a valid WIA is required to complete issuance.
-        requires_wallet_instance_attestation: bool,
         /// Ecosystem applied to this interaction.
         ecosystem: Option<String>,
         /// One entry per ecosystem provider that rejected the artifact, keyed by provider id.
@@ -258,8 +256,6 @@ pub struct ContinueIssuanceResponseBindingDTO {
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
     /// Key algorithms suitable for issuance.
     pub key_algorithms: Option<Vec<String>>,
-    /// Whether a valid WIA is required to complete issuance.
-    pub requires_wallet_instance_attestation: bool,
     /// Protocol used for issuance.
     pub protocol: String,
     /// Ecosystem applied to this interaction.

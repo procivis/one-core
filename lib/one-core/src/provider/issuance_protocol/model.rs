@@ -45,7 +45,6 @@ pub(crate) enum InvitationResponseEnum<'a> {
         tx_code: Option<TxCode>,
         key_storage_security: Option<Vec<KeyStorageSecurity>>,
         key_algorithms: Option<Vec<String>>,
-        requires_wallet_instance_attestation: bool,
         ecosystem_artifact: ProtocolArtifact<'a>,
     },
     AuthorizationFlow {
@@ -150,7 +149,6 @@ pub(crate) struct ContinueIssuanceResponseDTO<'a> {
     pub interaction_id: InteractionId,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
     pub key_algorithms: Option<Vec<String>>,
-    pub requires_wallet_instance_attestation: bool,
     pub protocol: String,
     pub ecosystem_artifact: ProtocolArtifact<'a>,
 }

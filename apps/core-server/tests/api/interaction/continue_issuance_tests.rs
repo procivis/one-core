@@ -174,7 +174,6 @@ async fn test_continue_issuance_endpoint() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-    assert_eq!(resp["requiresWalletInstanceAttestation"], false);
     resp["keyAlgorithms"].assert_eq_unordered(&[
         "ECDSA".to_string(),
         "EDDSA".to_string(),
@@ -425,4 +424,102 @@ async fn test_dpop_bound_authorization_code_flow() {
         .await
         .unwrap();
     assert!(initiated_interaction.dpop_key.is_none());
+}
+
+#[tokio::test]
+async fn test_continue_issuance_endpoint_fails_wallet_instance_required() {
+    // given
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let interaction_id = Uuid::new_v4().into();
+    let credential_schema_id = Uuid::new_v4();
+
+    let credential_issuer = format!(
+        "{}/ssi/openid4vci/final-1.0/{credential_schema_id}",
+        mock_server.uri()
+    );
+
+    let interaction_body = json!({
+        "request": {
+            "organisation_id": organisation.id,
+            "protocol": "OPENID4VCI_FINAL1",
+            "issuer": credential_issuer,
+            "client_id": "clientId",
+            "scope": ["scope1"],
+        }
+    });
+
+    context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&interaction_body).unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            ".well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .and(header("Accept", "application/json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported": {
+                    "doctype": {
+                        "scope": "scope1",
+                        "format": "mso_mdoc",
+                        "doctype": "doctype",
+                        "proof_types_supported": {
+                            "jwt": {
+                                "proof_signing_alg_values_supported": ["ES256"]
+                            }
+                        }
+                    }
+                }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            ".well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "issuer": credential_issuer,
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "token_endpoint": format!("{credential_issuer}/token"),
+                "response_types_supported": ["code"],
+                "token_endpoint_auth_methods_supported": ["attest_jwt_client_auth"],
+                "client_attestation_signing_alg_values_supported": ["ES256"],
+                "client_attestation_pop_signing_alg_values_supported": ["ES256"]
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // when
+    let resp = context
+        .api
+        .interactions
+        .continue_issuance(format!(
+            "https://localhost:3000/some_path?state={interaction_id}&code=aUtH_CoDe"
+        ))
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0525");
 }

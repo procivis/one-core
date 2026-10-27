@@ -1478,7 +1478,6 @@ async fn test_continue_issuance() {
                 interaction_id,
                 key_storage_security_levels: None,
                 key_algorithms: None,
-                requires_wallet_instance_attestation: false,
                 protocol: "protocol".to_string(),
                 ecosystem_artifact: ProtocolArtifact::HolderIssuanceInvitation {
                     issuer_metadata: IssuerMetadataRepresentation::Unsigned(Box::new(
@@ -1807,7 +1806,6 @@ async fn test_continue_issuance_hands_over_dpop_key() {
                 interaction_id: continued_interaction_id,
                 key_storage_security_levels: None,
                 key_algorithms: None,
-                requires_wallet_instance_attestation: false,
                 protocol: "protocol".to_string(),
                 ecosystem_artifact: ProtocolArtifact::HolderIssuanceInvitation {
                     issuer_metadata: IssuerMetadataRepresentation::Unsigned(Box::new(

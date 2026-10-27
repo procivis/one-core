@@ -328,7 +328,6 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 key_storage_security_levels,
                 key_algorithms,
                 protocol,
-                requires_wallet_instance_attestation,
                 ecosystem,
                 ecosystem_outcomes,
             } => Self::CredentialIssuance {
@@ -337,7 +336,6 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 protocol,
                 key_storage_security_levels: convert_inner_of_inner(key_storage_security_levels),
                 key_algorithms,
-                requires_wallet_instance_attestation,
                 ecosystem: convert_inner(ecosystem),
                 ecosystem_errors: convert_ecosystem_errors(&ecosystem_outcomes),
             },

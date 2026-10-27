@@ -82,7 +82,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
             Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
             Self::KeyRequirementsNotSupported => ErrorCode::BR_0225,
-            Self::WalletInstanceRequired => ErrorCode::BR_0081,
+            Self::WalletInstanceRequired => ErrorCode::BR_0525,
             Self::RejectionNotSupported => ErrorCode::BR_0237,
             Self::DisallowedCredentialConfiguration => ErrorCode::BR_0490,
             Self::Suspended | Self::RefreshTooSoon | Self::RefreshNotPossible => ErrorCode::BR_0238,

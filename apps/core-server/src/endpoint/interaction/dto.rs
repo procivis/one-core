@@ -73,7 +73,6 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     pub authorization_code_flow_url: Option<String>,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
     pub key_algorithms: Option<Vec<String>>,
-    pub requires_wallet_instance_attestation: Option<bool>,
     pub protocol: Option<String>,
     pub ecosystem: Option<EcosystemId>,
 }
@@ -97,7 +96,6 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     #[from(with_fn = convert_inner_of_inner)]
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
     pub key_algorithms: Option<Vec<String>>,
-    pub requires_wallet_instance_attestation: bool,
     pub protocol: String,
     pub ecosystem: Option<EcosystemId>,
 }

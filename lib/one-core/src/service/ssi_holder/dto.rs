@@ -80,7 +80,6 @@ pub enum HandleInvitationResultDTO {
         key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
         key_algorithms: Option<Vec<String>>,
         protocol: String,
-        requires_wallet_instance_attestation: bool,
         ecosystem: Option<EcosystemId>,
         ecosystem_outcomes: EcosystemOutcomes,
     },
@@ -106,7 +105,6 @@ pub struct ContinueIssuanceResponseDTO {
     pub interaction_type: InteractionType,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
     pub key_algorithms: Option<Vec<String>>,
-    pub requires_wallet_instance_attestation: bool,
     pub protocol: String,
     pub ecosystem: Option<EcosystemId>,
 }

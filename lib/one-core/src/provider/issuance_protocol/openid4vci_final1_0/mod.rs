@@ -2713,10 +2713,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         }
 
         let tx_code = credential_offer.grants.tx_code().cloned();
-        let requires_wallet_instance_attestation =
-            requires_wia(&oauth_metadata.token_endpoint_auth_methods_supported);
-
-        if requires_wallet_instance_attestation {
+        if requires_wia(&oauth_metadata.token_endpoint_auth_methods_supported) {
             validator::validate_has_active_wallet_instance(
                 self.holder_wallet_unit_repository.as_ref(),
                 organisation.id,
@@ -2745,7 +2742,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             tx_code,
             key_storage_security,
             key_algorithms,
-            requires_wallet_instance_attestation,
             ecosystem_artifact: ProtocolArtifact::HolderIssuanceInvitation {
                 issuer_metadata: issuer_metadata.into(),
                 credential_configuration_ids: credential_offer.credential_configuration_ids,
@@ -3236,8 +3232,13 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         ]
         .concat();
 
-        let requires_wallet_instance_attestation =
-            requires_wia(&oauth_metadata.token_endpoint_auth_methods_supported);
+        if requires_wia(&oauth_metadata.token_endpoint_auth_methods_supported) {
+            validator::validate_has_active_wallet_instance(
+                self.holder_wallet_unit_repository.as_ref(),
+                organisation.id,
+            )
+            .await?;
+        }
 
         let PrepareIssuanceSuccess {
             interaction_id,
@@ -3262,7 +3263,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             interaction_id,
             key_storage_security_levels: key_storage_security,
             key_algorithms,
-            requires_wallet_instance_attestation,
             protocol: self.config_id.to_owned(),
             ecosystem_artifact: ProtocolArtifact::HolderIssuanceInvitation {
                 issuer_metadata: issuer_metadata.into(),
