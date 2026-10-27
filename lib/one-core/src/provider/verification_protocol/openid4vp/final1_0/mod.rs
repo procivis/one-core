@@ -802,40 +802,35 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .dcql_submission_data(credential_presentations, &interaction_data)
             .await?;
 
-        let params = if let Some(EncryptionInfo {
-            verifier_key,
-            supported_algorithms,
-        }) = encryption_info
-        {
-            encrypted_params(
-                &interaction_data,
-                submission_data,
-                &holder_nonce,
-                verifier_key,
-                supported_algorithms,
-                &*self.key_algorithm_provider,
-            )
-            .await?
-        } else {
-            let state = if let TransportSpecificData::Http(http_data) = &interaction_data.transport
-            {
-                http_data.state.clone()
-            } else {
-                None
-            };
-            unencrypted_params(&submission_data, state)?
-        };
+        match &interaction_data.transport {
+            TransportSpecificData::Http(http_data) => {
+                let params = if let Some(EncryptionInfo {
+                    verifier_key,
+                    supported_algorithms,
+                }) = encryption_info
+                {
+                    encrypted_params(
+                        &interaction_data,
+                        submission_data,
+                        &holder_nonce,
+                        verifier_key,
+                        supported_algorithms,
+                        &*self.key_algorithm_provider,
+                    )
+                    .await?
+                } else {
+                    unencrypted_params(&submission_data, http_data.state.clone())?
+                };
 
-        match interaction_data.transport {
-            TransportSpecificData::Http(mut http_data) => {
                 let redirect_uri = match interaction_data.response_mode {
                     // defaults to fragment (combined with redirect_uri client_id_scheme)
                     // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-5.6-2.2
                     None => {
+                        let mut redirect_uri = http_data.response_uri.to_owned();
                         let fragment = serde_urlencoded::to_string(params)
                             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-                        http_data.response_uri.set_fragment(Some(&fragment));
-                        Some(http_data.response_uri.to_string())
+                        redirect_uri.set_fragment(Some(&fragment));
+                        Some(redirect_uri.to_string())
                     }
                     Some(ResponseMode::DirectPost | ResponseMode::DirectPostJwt) => {
                         let response = async {
@@ -875,12 +870,25 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             }
             transport @ (TransportSpecificData::DcApiUnsigned { .. }
             | TransportSpecificData::DcApiSigned { .. }) => {
-                let response_data = serde_json::Value::Object(
-                    params
-                        .into_iter()
-                        .map(|(k, v)| (k, serde_json::Value::String(v)))
-                        .collect::<serde_json::Map<String, serde_json::Value>>(),
-                );
+                let response_data = if let Some(EncryptionInfo {
+                    verifier_key,
+                    supported_algorithms,
+                }) = encryption_info
+                {
+                    serde_json::to_value(
+                        encrypted_params(
+                            &interaction_data,
+                            submission_data,
+                            &holder_nonce,
+                            verifier_key,
+                            supported_algorithms,
+                            &*self.key_algorithm_provider,
+                        )
+                        .await?,
+                    )?
+                } else {
+                    serde_json::to_value(submission_data)?
+                };
 
                 let response = match transport {
                     TransportSpecificData::DcApiUnsigned { .. } => {
