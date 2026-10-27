@@ -2239,10 +2239,10 @@ impl OpenID4VCIFinal1_0 {
 
         // past this point the issuer supports DPoP and may well require it, so every remaining
         // reason to skip it is a misconfiguration that will surface as a rejected token request
-        let Some(dpop_key_storage) = &self.params.holder_dpop_key_storage else {
+        let Some(dpop_key_storage) = &self.params.holder.dpop_key_storage else {
             tracing::warn!(
                 issuer,
-                "Authorization server supports DPoP but `holderDpopKeyStorage` is not configured for `{}`: issuance will fail if the issuer enforces DPoP",
+                "Authorization server supports DPoP but `holder.dpopKeyStorage` is not configured for `{}`: issuance will fail if the issuer enforces DPoP",
                 self.config_id
             );
             return Ok(None);

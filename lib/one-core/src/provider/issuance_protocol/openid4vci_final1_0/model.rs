@@ -1,4 +1,5 @@
 use std::fmt;
+use std::num::NonZeroU32;
 
 use indexmap::IndexMap;
 use one_dto_mapper::{Into, convert_inner};
@@ -65,15 +66,8 @@ pub(crate) struct OpenID4VCIFinal1Params {
     #[serde(flatten)]
     pub common: CommonParams,
 
-    /// Holder-side DPoP key configuration.
-    /// If not configured, the holder will not use DPoP.
     #[serde(default)]
-    pub holder_dpop_key_storage: Option<String>,
-
-    /// Holder-side key storage of the Client Instance Keys of client attestations (WIA), needed
-    /// when the DPoP key cannot be used as Client Instance Key.
-    #[serde(default)]
-    pub holder_client_attestation_key_storage: Option<String>,
+    pub holder: OpenID4VCIFinal1HolderParams,
 
     /// Issuer DPoP configuration
     #[serde(default)]
@@ -86,6 +80,47 @@ pub(crate) struct OpenID4VCIFinal1Params {
     /// Holders using a new key for every client attestation cannot refresh tokens while enabled.
     #[serde(default = "default_true")]
     pub enforce_client_instance_binding: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VCIFinal1HolderParams {
+    /// Holder-side DPoP key configuration.
+    /// If not configured, the holder will not use DPoP.
+    #[serde(default)]
+    pub dpop_key_storage: Option<String>,
+
+    /// Holder-side key storage of the Client Instance Keys of client attestations (WIA), needed
+    /// when the DPoP key cannot be used as Client Instance Key.
+    #[serde(default)]
+    pub client_attestation_key_storage: Option<String>,
+
+    /// Maximum number of proofs per credential request. A batch with more holder bindings is
+    /// split into several credential requests. If not configured, one credential request
+    /// contains all proofs of the batch.
+    #[serde(default)]
+    #[expect(dead_code)] // unused until credential requests are split (ONE-11759)
+    pub max_proofs_per_credential_request: Option<NonZeroU32>,
+
+    /// Maximum number of concurrent credential requests of one batch.
+    #[serde(default = "default_max_parallel_credential_requests")]
+    #[expect(dead_code)] // unused until credential requests are split (ONE-11759)
+    pub max_parallel_credential_requests: NonZeroU32,
+}
+
+fn default_max_parallel_credential_requests() -> NonZeroU32 {
+    NonZeroU32::MIN
+}
+
+impl Default for OpenID4VCIFinal1HolderParams {
+    fn default() -> Self {
+        Self {
+            dpop_key_storage: None,
+            client_attestation_key_storage: None,
+            max_proofs_per_credential_request: None,
+            max_parallel_credential_requests: default_max_parallel_credential_requests(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

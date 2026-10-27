@@ -111,8 +111,10 @@ issuanceProtocol:
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
-        holderDpopKeyStorage: "INTERNAL"
-        holderClientAttestationKeyStorage: "INTERNAL"
+        holder:
+          dpopKeyStorage: "INTERNAL"
+          clientAttestationKeyStorage: "INTERNAL"
+          maxParallelCredentialRequests: 1
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -130,8 +132,10 @@ issuanceProtocol:
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
-        holderDpopKeyStorage: "INTERNAL"
-        holderClientAttestationKeyStorage: "INTERNAL"
+        holder:
+          dpopKeyStorage: "INTERNAL"
+          clientAttestationKeyStorage: "INTERNAL"
+          maxParallelCredentialRequests: 1
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -151,8 +155,10 @@ issuanceProtocol:
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
-        holderDpopKeyStorage: "INTERNAL"
-        holderClientAttestationKeyStorage: "INTERNAL"
+        holder:
+          dpopKeyStorage: "INTERNAL"
+          clientAttestationKeyStorage: "INTERNAL"
+          maxParallelCredentialRequests: 1
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]

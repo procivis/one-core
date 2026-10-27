@@ -3872,7 +3872,7 @@ async fn test_holder_prepare_authorization_dpop_key() {
         .returning(|key| Ok(key.id));
 
     let mut params = test_params("openid-credential-offer");
-    params["holderDpopKeyStorage"] = json!("INTERNAL");
+    params["holder"]["dpopKeyStorage"] = json!("INTERNAL");
     let protocol = setup_protocol(TestInputs {
         key_provider,
         key_algorithm_provider,
@@ -3906,7 +3906,7 @@ async fn test_holder_prepare_authorization_dpop_key_without_dpop_support() {
     key_repository.expect_create_key().never();
 
     let mut params = test_params("openid-credential-offer");
-    params["holderDpopKeyStorage"] = json!("INTERNAL");
+    params["holder"]["dpopKeyStorage"] = json!("INTERNAL");
     let protocol = setup_protocol(TestInputs {
         key_repository,
         params: Some(params),
@@ -7471,7 +7471,7 @@ fn dpop_offer(dpop_signing_algs: Option<&[&str]>) -> (Interaction, HolderInterac
 
 fn dpop_params() -> serde_json::Value {
     let mut params = test_params("openid-credential-offer");
-    params["holderDpopKeyStorage"] = json!("INTERNAL");
+    params["holder"]["dpopKeyStorage"] = json!("INTERNAL");
     params
 }
 
@@ -7619,7 +7619,7 @@ fn es256_key_algorithm_provider() -> MockKeyAlgorithmProvider {
 
 fn client_attestation_key_params() -> serde_json::Value {
     let mut params = dpop_params();
-    params["holderClientAttestationKeyStorage"] = json!("INTERNAL");
+    params["holder"]["clientAttestationKeyStorage"] = json!("INTERNAL");
     params
 }
 

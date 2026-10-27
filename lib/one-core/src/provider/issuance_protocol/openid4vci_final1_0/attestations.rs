@@ -284,10 +284,11 @@ impl OpenID4VCIFinal1_0 {
             None => {
                 let key_storage = self
                     .params
-                    .holder_client_attestation_key_storage
+                    .holder
+                    .client_attestation_key_storage
                     .as_ref()
                     .ok_or(IssuanceProtocolError::Failed(format!(
-                        "`holderClientAttestationKeyStorage` is not configured for `{}`",
+                        "`holder.clientAttestationKeyStorage` is not configured for `{}`",
                         self.config_id
                     )))?;
                 let algorithm =
