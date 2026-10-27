@@ -52,7 +52,7 @@ rcgen.workspace              = true
 regex.workspace              = true
 reqwest                      = { workspace = true, features = ["stream"] }
 roxmltree.workspace          = true
-rumqttc-next                 = { version = "0.27", default-features = false, features = ["use-rustls"] }
+rumqttc-next                 = { version = "0.34", default-features = false, features = ["use-rustls"] }
 rustls                       = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
 rustls-pki-types             = { version = "1.14" }
 rustls-platform-verifier     = { workspace = true }

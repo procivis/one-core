@@ -5,7 +5,8 @@ use std::time::Duration;
 
 use anyhow::Context;
 use rumqttc::{
-    AsyncClient, Event, MqttOptions, Outgoing, Packet, QoS, TlsConfiguration, Transport,
+    AsyncClient, AsyncClientBuilder, Event, MqttOptions, Outgoing, Packet, PublishOptions, QoS,
+    TlsConfiguration, Transport,
 };
 use rustls::ClientConfig;
 use rustls_platform_verifier::ConfigVerifierExt;
@@ -52,23 +53,20 @@ pub struct RumqttcClient {
 
 impl RumqttcClient {
     fn subscribe_to_broker(&self, broker_addr: &BrokerAddr) -> Result<Broker, Error> {
-        const PACKET_SIZE_LIMIT: usize = 30 * 1024 * 1024; // 30MB
+        const PACKET_SIZE_LIMIT: u32 = 30 * 1024 * 1024; // 30MB
         let id = Uuid::new_v4();
 
-        let mut mqttoptions = MqttOptions::new(
-            format!("one-core-rumqttc-async-{id}"),
-            &broker_addr.host,
-            broker_addr.port,
-        );
+        let broker = rumqttc::Broker::tcp(&broker_addr.host, broker_addr.port);
+        let mut mqttoptions = MqttOptions::new(format!("one-core-rumqttc-async-{id}"), broker);
         mqttoptions
             .set_transport(Transport::Tls(TlsConfiguration::Rustls(Arc::new(
                 ClientConfig::with_platform_verifier()
                     .context("failed to get TLS config")
                     .map_err(Error::SubscriptionError)?,
             ))))
-            .set_max_packet_size(PACKET_SIZE_LIMIT, PACKET_SIZE_LIMIT);
+            .set_max_packet_size(Some(PACKET_SIZE_LIMIT));
 
-        let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
+        let (client, mut eventloop) = AsyncClientBuilder::new(mqttoptions).capacity(10).build();
 
         let topics = Topics::default();
 
@@ -91,14 +89,17 @@ impl RumqttcClient {
                             tokio::time::sleep(Duration::from_millis(500)).await;
                             break;
                         }
-                        Event::Incoming(Packet::Disconnect) => break,
+                        Event::Incoming(Packet::Disconnect(_)) => break,
                         Event::Incoming(Packet::Publish(p)) => p,
                         _ => continue,
                     };
 
                     let topics = topics.read().await;
 
-                    let Some(subscription) = topics.get(&p.topic) else {
+                    let Ok(topic) = String::from_utf8(p.topic.to_vec()) else {
+                        continue;
+                    };
+                    let Some(subscription) = topics.get(&topic) else {
                         continue;
                     };
 
@@ -230,7 +231,11 @@ impl MqttTopic for RumqttcTopic {
     #[tracing::instrument(level = "debug", skip(self, payload), err(Debug))]
     async fn send(&self, payload: Vec<u8>) -> Result<(), Error> {
         self.client
-            .publish(&self.topic_name, QoS::AtMostOnce, false, payload)
+            .publish(
+                &self.topic_name,
+                payload,
+                PublishOptions::new(QoS::AtMostOnce),
+            )
             .await
             .context("failed to send mqtt message")
             .map_err(Error::SendingError)

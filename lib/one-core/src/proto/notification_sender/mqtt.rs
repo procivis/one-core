@@ -1,7 +1,10 @@
 use std::sync::{Arc, Mutex};
 
 use dashmap::DashMap;
-use rumqttc::{AsyncClient, Event, MqttOptions, NetworkOptions, Packet, QoS, Transport};
+use rumqttc::{
+    AsyncClient, AsyncClientBuilder, Event, MqttOptions, NetworkOptions, Packet, PublishOptions,
+    QoS, Transport,
+};
 use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError};
@@ -44,17 +47,17 @@ struct MqttConnection {
 
 impl MqttConnection {
     fn new(
-        opts: MqttOptions,
+        mut opts: MqttOptions,
         connection_timeout_secs: u64,
         key: MqttConnectionKey,
         pool: Arc<DashMap<MqttConnectionKey, Arc<Self>>>,
     ) -> Arc<Self> {
-        let pending_puback: PendingPuback = Arc::new(Mutex::new(None));
-        let (client, mut eventloop) = AsyncClient::new(opts, 16);
-
         let mut network_opts = NetworkOptions::new();
         network_opts.set_connection_timeout(connection_timeout_secs);
-        eventloop.set_network_options(network_opts);
+        opts.set_network_options(network_opts);
+
+        let pending_puback: PendingPuback = Arc::new(Mutex::new(None));
+        let (client, mut eventloop) = AsyncClientBuilder::new(opts).capacity(16).build();
 
         let pending_clone = pending_puback.clone();
         tokio::spawn(async move {
@@ -100,7 +103,7 @@ impl MqttConnection {
 
         if let Err(e) = self
             .client
-            .publish(topic, QoS::AtLeastOnce, false, payload)
+            .publish(topic, payload, PublishOptions::new(QoS::AtLeastOnce))
             .await
         {
             {
@@ -169,11 +172,13 @@ impl MqttConnectionPool {
 
 pub(super) fn build_mqtt_options(key: &MqttConnectionKey) -> MqttOptions {
     let client_id = format!("one-core-{}", Uuid::new_v4());
-    let mut opts = MqttOptions::new(client_id, &key.host, key.port);
+    let broker = rumqttc::Broker::tcp(&key.host, key.port);
+    let mut opts = MqttOptions::new(client_id, broker);
     opts.set_keep_alive(60u16);
 
     if let Some(username) = &key.username {
-        opts.set_credentials(username, key.password.as_deref().unwrap_or(""));
+        let password = key.password.as_deref().unwrap_or("").as_bytes().to_vec();
+        opts.set_credentials(username.to_owned(), password);
     }
 
     if key.use_tls {
