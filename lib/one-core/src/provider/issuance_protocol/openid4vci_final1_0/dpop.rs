@@ -38,6 +38,12 @@ struct SwiyuNonceEndpoint {
     url: String,
 }
 
+pub(super) struct DpopProof {
+    pub jwt: String,
+    /// The `nonce` claim of the proof.
+    pub nonce: Option<String>,
+}
+
 impl DpopContext {
     pub(super) fn new(
         key_id: KeyId,
@@ -105,8 +111,9 @@ impl DpopContext {
         method: Method,
         url: &Url,
         access_token: Option<&SecretString>,
-    ) -> Result<String, IssuanceProtocolError> {
+    ) -> Result<DpopProof, IssuanceProtocolError> {
         self.fetch_swiyu_nonce_if_unknown().await?;
+        let nonce = self.nonce();
 
         // the proof binds the access token it is sent with
         // https://www.rfc-editor.org/rfc/rfc9449.html#section-4.2-6.1
@@ -132,7 +139,7 @@ impl DpopContext {
                 htm: method.to_string(),
                 htu: url.to_owned(),
                 ath,
-                nonce: self.nonce(),
+                nonce: nonce.clone(),
             },
         };
 
@@ -144,10 +151,11 @@ impl DpopContext {
             payload,
         );
 
-        Ok(jwt
+        let jwt = jwt
             .tokenize(Some(&*self.auth_fn))
             .await
-            .error_while("creating DPoP proof")?)
+            .error_while("creating DPoP proof")?;
+        Ok(DpopProof { jwt, nonce })
     }
 
     /// Part of the swiyu workaround, see [`DpopContext::with_swiyu_nonce_endpoint`]. The nonce is

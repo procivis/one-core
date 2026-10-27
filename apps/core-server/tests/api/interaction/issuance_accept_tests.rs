@@ -867,8 +867,8 @@ async fn check_multi_configuration_issuance(
 
     for (index, configuration) in configurations.iter().enumerate() {
         assert_eq!(
-            configuration["notification_id"],
-            format!("notification-{index}")
+            configuration["notification_ids"],
+            json!([format!("notification-{index}")])
         );
         assert!(main_ids.contains(&configuration["credential_id"]));
         let main = context

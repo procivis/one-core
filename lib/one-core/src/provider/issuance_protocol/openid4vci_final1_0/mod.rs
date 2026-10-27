@@ -3,11 +3,14 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
+use std::future::ready;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use async_trait::async_trait;
 use attestations::requires_wia;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use futures::{StreamExt, stream};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use mapper::{
@@ -16,9 +19,10 @@ use mapper::{
     parse_credential_issuer_params,
 };
 use model::{
-    HolderBinding, HolderCredentialConfiguration, HolderInteractionData, OpenID4VCIFinal1Params,
-    OpenID4VCIIssuerInteractionDataDTO, PreparedMetadata, RequestedCredential,
-    SWISS_PROFILE_ISSUANCE_PREFIX, SWIYU_URL_SCHEMES, TokenRequestAttestationHeaders,
+    CredentialRequestResponse, HolderBinding, HolderCredentialConfiguration, HolderInteractionData,
+    OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO, PreparedMetadata,
+    RequestedCredential, SWISS_PROFILE_ISSUANCE_PREFIX, SWIYU_URL_SCHEMES,
+    TokenRequestAttestationHeaders,
 };
 use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::jwe::{Header as JweHeader, decrypt_jwe_payload};
@@ -582,7 +586,7 @@ impl OpenID4VCIFinal1_0 {
             let proof = dpop.create_proof(method, &proof_url, access_token).await?;
             let mut request = self
                 .request_builder(method, url)
-                .header(DPOP_HEADER, &proof);
+                .header(DPOP_HEADER, &proof.jwt);
             if let Some(access_token) = access_token {
                 // a DPoP bound token is sent with the DPoP authorization scheme
                 // https://www.rfc-editor.org/rfc/rfc9449.html#section-7.1
@@ -598,10 +602,12 @@ impl OpenID4VCIFinal1_0 {
                 .await
                 .error_while("sending request")?;
 
-            let nonce_is_new = dpop.record_nonce(&response);
+            dpop.record_nonce(&response);
+            // The new nonce can come from this response or from the response of a concurrent
+            // request.
             if attempt >= DPOP_REQUEST_ATTEMPTS
-                || !nonce_is_new
                 || !dpop::requires_dpop_nonce(&response)
+                || dpop.nonce() == proof.nonce
             {
                 return Ok(response);
             }
@@ -882,6 +888,36 @@ impl OpenID4VCIFinal1_0 {
         Ok(())
     }
 
+    async fn send_notifications(
+        &self,
+        interaction_data: &HolderInteractionData,
+        notifications: Vec<NotificationRequest>,
+        access_token: &SecretString,
+        dpop: Option<&DpopContext>,
+    ) {
+        let Some(notification_endpoint) = &interaction_data.notification_endpoint else {
+            return;
+        };
+        for notification in notifications {
+            if let Err(error) = self
+                .send_notification(
+                    notification,
+                    notification_endpoint.as_str(),
+                    access_token,
+                    dpop,
+                )
+                .await
+            {
+                tracing::warn!(%error, "Notification failure");
+            }
+        }
+    }
+
+    /// Requests a credentials per holder binding in `requested`, at most
+    /// `holder.maxProofsPerCredentialRequest` proofs per credential request and at most
+    /// `holder.maxParallelCredentialRequests` concurrent credential requests are sent.
+    /// As per section 11.1, partial errors (e.g., one of the Credentials could not be stored)
+    /// is treated as the overall issuance flow failing.
     async fn holder_request_credential(
         &self,
         interaction_data: &HolderInteractionData,
@@ -889,7 +925,76 @@ impl OpenID4VCIFinal1_0 {
         access_token: &SecretString,
         dpop: Option<&DpopContext>,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
-        let configuration = &requested.configuration;
+        let holder_params = &self.params.holder;
+        let proofs_per_request = holder_params
+            .max_proofs_per_credential_request
+            .map_or(usize::MAX, |limit| limit.get() as usize);
+        let parallel_requests = holder_params.max_parallel_credential_requests.get() as usize;
+
+        let mut response = SubmitIssuerResponse::default();
+
+        // If a credential request fails, we don't request the rest of the batch items
+        let failed = AtomicBool::new(false);
+        let mut credential_responses =
+            stream::iter(requested.holder_bindings.chunks(proofs_per_request))
+                .take_while(|_| ready(!failed.load(Ordering::Relaxed)))
+                .map(|holder_bindings| {
+                    self.holder_request_credentials_for_bindings(
+                        interaction_data,
+                        &requested.configuration,
+                        holder_bindings,
+                        access_token,
+                        dpop,
+                    )
+                })
+                .buffered(parallel_requests)
+                .boxed();
+
+        let mut first_error = None;
+        while let Some(credential_response) = credential_responses.next().await {
+            match credential_response {
+                Ok(credential_response) => {
+                    response.credentials.extend(credential_response.credentials);
+                    response.redirect_uri =
+                        response.redirect_uri.or(credential_response.redirect_uri);
+                    // the issuer can return the same notification id in each response
+                    if let Some(notification_id) = credential_response.notification_id
+                        && !response.notification_ids.contains(&notification_id)
+                    {
+                        response.notification_ids.push(notification_id);
+                    }
+                }
+                Err(error) => {
+                    failed.store(true, Ordering::Relaxed);
+                    first_error.get_or_insert(error);
+                }
+            }
+        }
+
+        let Some(error) = first_error else {
+            return Ok(response);
+        };
+        // mark all credentials already issued as part of this configuration as failed
+        let failures = response
+            .notification_ids
+            .into_iter()
+            .map(|notification_id| {
+                NotificationRequest::failure(notification_id, &error.to_string())
+            })
+            .collect();
+        self.send_notifications(interaction_data, failures, access_token, dpop)
+            .await;
+        Err(error)
+    }
+
+    async fn holder_request_credentials_for_bindings(
+        &self,
+        interaction_data: &HolderInteractionData,
+        configuration: &HolderCredentialConfiguration,
+        holder_bindings: &[HolderBinding],
+        access_token: &SecretString,
+        dpop: Option<&DpopContext>,
+    ) -> Result<CredentialRequestResponse, IssuanceProtocolError> {
         let nonce = self
             .holder_fetch_nonce(interaction_data.nonce_endpoint.as_ref(), dpop)
             .await?;
@@ -899,12 +1004,12 @@ impl OpenID4VCIFinal1_0 {
             .as_ref()
             .map(|ci| &ci.client_id);
 
-        let mut proofs = Vec::with_capacity(requested.holder_bindings.len());
+        let mut proofs = Vec::with_capacity(holder_bindings.len());
         for HolderBinding {
             identifier,
             key,
             wua_proof,
-        } in &requested.holder_bindings
+        } in holder_bindings
         {
             let public_key_info = self
                 .public_key_info_from_meta_and_holder_binding(configuration, identifier, key)
@@ -955,7 +1060,7 @@ impl OpenID4VCIFinal1_0 {
             .map(|c| c.credential.into())
             .collect();
 
-        Ok(SubmitIssuerResponse {
+        Ok(CredentialRequestResponse {
             credentials,
             redirect_uri: response.redirect_uri,
             notification_id: response.standard.notification_id,
@@ -1275,7 +1380,7 @@ impl OpenID4VCIFinal1_0 {
             .holder_request_credential(interaction_data, &requested, access_token, dpop)
             .await?;
 
-        let notification_id = credential_response.notification_id.to_owned();
+        let notification_ids = credential_response.notification_ids.to_owned();
 
         let RequestedCredential {
             configuration,
@@ -1296,7 +1401,7 @@ impl OpenID4VCIFinal1_0 {
             interaction_data.configuration_mut(&configuration.credential_configuration_id)
         {
             stored.credential_metadata = None;
-            stored.notification_id = notification_id.clone();
+            stored.notification_ids = notification_ids.clone();
             stored.credential_id = result
                 .as_ref()
                 .ok()
@@ -1313,30 +1418,19 @@ impl OpenID4VCIFinal1_0 {
             });
         }
 
-        if let (Some(notification_id), Some(notification_endpoint)) =
-            (notification_id, &interaction_data.notification_endpoint)
-        {
-            let notification = match &result {
+        let notifications = notification_ids
+            .into_iter()
+            .map(|notification_id| match &result {
                 Ok(_) => NotificationRequest {
                     notification_id,
                     event: NotificationEvent::CredentialAccepted,
                     event_description: None,
                 },
                 Err(err) => NotificationRequest::failure(notification_id, &err.to_string()),
-            };
-
-            if let Err(error) = self
-                .send_notification(
-                    notification,
-                    notification_endpoint.as_str(),
-                    access_token,
-                    dpop,
-                )
-                .await
-            {
-                tracing::warn!(%error, "Notification failure");
-            }
-        }
+            })
+            .collect();
+        self.send_notifications(interaction_data, notifications, access_token, dpop)
+            .await;
 
         result
     }
@@ -1601,7 +1695,7 @@ impl OpenID4VCIFinal1_0 {
             holder_bindings,
         } = requested;
 
-        let notification_id = response.notification_id.to_owned();
+        let notification_ids = response.notification_ids.to_owned();
         let refreshed = self
             .holder_process_refresh(
                 &configuration,
@@ -1618,8 +1712,8 @@ impl OpenID4VCIFinal1_0 {
             interaction_data.configuration_mut(&configuration.credential_configuration_id)
         {
             // Current issuers can rotate notification IDs on every refresh.
-            if notification_id.is_some() && stored.notification_id != notification_id {
-                stored.notification_id = notification_id.clone();
+            if !notification_ids.is_empty() && stored.notification_ids != notification_ids {
+                stored.notification_ids = notification_ids.clone();
                 interaction_data_changed = true;
             }
             // A successful legacy refresh resolves associations absent from the old interaction.
@@ -1647,24 +1741,15 @@ impl OpenID4VCIFinal1_0 {
                 .await?;
         }
 
-        if let (Err(err), Some(notification_id), Some(notification_endpoint)) = (
-            &refreshed,
-            notification_id,
-            &interaction_data.notification_endpoint,
-        ) {
-            let notification = NotificationRequest::failure(notification_id, &err.to_string());
-
-            if let Err(error) = self
-                .send_notification(
-                    notification,
-                    notification_endpoint.as_str(),
-                    access_token,
-                    dpop,
-                )
-                .await
-            {
-                tracing::warn!(%error, "Notification failure");
-            }
+        if let Err(err) = &refreshed {
+            let failures = notification_ids
+                .into_iter()
+                .map(|notification_id| {
+                    NotificationRequest::failure(notification_id, &err.to_string())
+                })
+                .collect();
+            self.send_notifications(interaction_data, failures, access_token, dpop)
+                .await;
         }
 
         refreshed
@@ -2093,7 +2178,7 @@ impl OpenID4VCIFinal1_0 {
                 proof_types_supported: credential_config.proof_types_supported.clone(),
                 credential_metadata: credential_config.credential_metadata.clone(),
                 disclosure_policy: credential_config.disclosure_policy.clone(),
-                notification_id: None,
+                notification_ids: vec![],
                 credential_id: None,
                 credential_schema_format_id: None,
             });
@@ -2818,8 +2903,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                             && interaction_data.credential_configurations.len() == 1)
                 })
             })
-            .filter_map(|configuration| {
-                configuration.notification_id.as_ref().map(|id| {
+            .flat_map(|configuration| {
+                configuration.notification_ids.iter().map(|id| {
                     (
                         configuration.credential_configuration_id.clone(),
                         id.clone(),

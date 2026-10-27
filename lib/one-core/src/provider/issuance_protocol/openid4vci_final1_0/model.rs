@@ -6,8 +6,9 @@ use one_dto_mapper::{Into, convert_inner};
 use secrecy::SecretSlice;
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialId, CredentialSchemaFormatId, KeyId};
+use serde_with::formats::PreferMany;
+use serde_with::{DurationSeconds, OneOrMany, serde_as, skip_serializing_none};
+use shared_types::{CredentialId, CredentialSchemaFormatId, KeyId, SerializedCredential};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::{
@@ -99,12 +100,10 @@ pub(crate) struct OpenID4VCIFinal1HolderParams {
     /// split into several credential requests. If not configured, one credential request
     /// contains all proofs of the batch.
     #[serde(default)]
-    #[expect(dead_code)] // unused until credential requests are split (ONE-11759)
     pub max_proofs_per_credential_request: Option<NonZeroU32>,
 
     /// Maximum number of concurrent credential requests of one batch.
     #[serde(default = "default_max_parallel_credential_requests")]
-    #[expect(dead_code)] // unused until credential requests are split (ONE-11759)
     pub max_parallel_credential_requests: NonZeroU32,
 }
 
@@ -298,6 +297,7 @@ impl HolderInteractionData {
     }
 }
 
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct HolderCredentialConfiguration {
@@ -314,9 +314,13 @@ pub(crate) struct HolderCredentialConfiguration {
     pub credential_metadata: Option<CredentialMetadata>,
     #[serde(default)]
     pub disclosure_policy: Option<DisclosurePolicy>,
-    #[serde(default)]
-    pub notification_id: Option<String>,
-    /// main credential created for this configuration
+    /// Each notification_id corresponds to one credential response
+    /// For cases where the holder retrieves the batch items in batches
+    #[serde(default, alias = "notification_id")]
+    #[serde_as(as = "OneOrMany<_, PreferMany>")]
+    // Changed to a list in ONE-11759, OneOrMany and the alias are for parsing older interaction data
+    pub notification_ids: Vec<String>,
+    /// Main credential created for this configuration
     #[serde(default)]
     pub credential_id: Option<CredentialId>,
     /// Exact format of the issued items; absent in interactions created before format routing.
@@ -686,6 +690,13 @@ impl From<HolderBindingInput> for HolderBinding {
 pub(super) struct RequestedCredential {
     pub configuration: HolderCredentialConfiguration,
     pub holder_bindings: Vec<HolderBinding>,
+}
+
+/// issuer response to one credential request
+pub(super) struct CredentialRequestResponse {
+    pub credentials: Vec<SerializedCredential>,
+    pub redirect_uri: Option<String>,
+    pub notification_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]

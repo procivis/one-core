@@ -2296,7 +2296,7 @@ fn dummy_interaction() -> HolderInteractionData {
             proof_types_supported: None,
             credential_metadata: None,
             disclosure_policy: None,
-            notification_id: None,
+            notification_ids: vec![],
             credential_id: None,
             credential_schema_format_id: None,
         }],

@@ -103,13 +103,16 @@ pub fn dummy_interaction_data(
     }
     let mut configurations = vec![configuration];
     for configuration in params.additional_configurations {
-        configurations.push(json!({
+        let mut additional = json!({
             "credential_configuration_id": configuration.credential_configuration_id,
             "format": configuration.format,
             "cryptographic_binding_methods_supported": ["jwk", "cose_key"],
-            "notification_id": configuration.notification_id,
             "credential_id": configuration.credential_id,
-        }));
+        });
+        if let Some(notification_id) = configuration.notification_id {
+            additional["notification_id"] = json!(notification_id);
+        }
+        configurations.push(additional);
     }
 
     let mut value = json!({

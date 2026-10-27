@@ -127,12 +127,13 @@ impl CredentialWithBlob {
     }
 }
 
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, Default)]
 pub(crate) struct SubmitIssuerResponse {
     pub credentials: Vec<SerializedCredential>,
     #[serde(rename = "redirectUri")]
     pub redirect_uri: Option<String>,
-    pub notification_id: Option<String>,
+    #[serde(default)]
+    pub notification_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
