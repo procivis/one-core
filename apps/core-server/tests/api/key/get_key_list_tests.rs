@@ -12,6 +12,7 @@ use crate::utils::field_match::FieldHelpers;
 async fn test_get_keys_ok() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let now = one_core::clock::now_utc();
 
     let key1 = context
         .db
@@ -20,6 +21,7 @@ async fn test_get_keys_ok() {
             &organisation,
             TestingKeyParams {
                 name: Some("name123".to_string()),
+                created_date: Some(now - Duration::seconds(2)),
                 ..Default::default()
             },
         )
@@ -32,6 +34,7 @@ async fn test_get_keys_ok() {
             &organisation,
             TestingKeyParams {
                 name: Some("name321".to_string()),
+                created_date: Some(now - Duration::seconds(1)),
                 ..Default::default()
             },
         )
