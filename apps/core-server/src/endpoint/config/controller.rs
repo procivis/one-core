@@ -11,7 +11,7 @@ use crate::router::AppState;
     permissions = [],
     get,
     path = "/api/config/v1",
-    tag = "other",
+    tag = "config",
     security(
         ("bearer" = [])
     ),

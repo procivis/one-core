@@ -163,14 +163,16 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
     let mut tags = vec![create_tag(
         "other",
         "System Information",
-        indoc::indoc! {"System information and configuration. Use these endpoints to inspect
-        your deployment's available components - credential formats, protocols,
-        key algorithms, and many more - and to retrieve other system-level
-        information."},
+        indoc::indoc! {"System information. Use these endpoints to retrieve build and health
+        information of your deployment."},
     )];
 
     if config.enable_management_endpoints {
         tags.extend(vec![
+            create_tag("config", "Configuration",
+                indoc::indoc! {"Inspect your deployment's available components, such as credential
+                formats, protocols and key algorithms."}
+            ),
             create_tag("organisation_management", "Organizations",
                 indoc::indoc! {"The organization is the fundamental unit in Procivis One.
                 All issuing, holding, and verifying actions are performed by an
