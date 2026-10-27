@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use shared_types::InteractionId;
+use one_crypto::utilities::generate_alphanumeric;
+use shared_types::{CredentialSchemaFormatId, InteractionId};
 use standardized_types::oauth2::token::TokenRequest;
 use uuid::Uuid;
 
@@ -11,7 +12,7 @@ use crate::model::interaction::Interaction;
 use crate::proto::dpop_handler::DpopParams;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    OpenID4VCDpopParams, OpenID4VCIIssuerInteractionDataDTO,
+    FormatNotification, OpenID4VCDpopParams, OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::parse_refresh_token;
 
@@ -45,6 +46,38 @@ pub(crate) async fn offered_formats(
         .filter(|format| selected.contains(&format.id))
         .cloned()
         .collect())
+}
+
+/// One notification id per offered format, allocated when issuing the token so that the
+/// credential endpoint does not need to write the interaction. Ids are kept across token refreshes.
+pub(super) fn allocate_notification_ids(
+    existing: Vec<FormatNotification>,
+    offered_formats: &[CredentialSchemaFormat],
+) -> Vec<FormatNotification> {
+    offered_formats
+        .iter()
+        .map(|format| {
+            existing
+                .iter()
+                .find(|entry| entry.format == Some(format.id))
+                .cloned()
+                .unwrap_or_else(|| FormatNotification {
+                    notification_id: generate_alphanumeric(32),
+                    format: Some(format.id),
+                })
+        })
+        .collect()
+}
+
+// interactions created before multi-format support have a single entry without format
+pub(super) fn notification_id_for_format(
+    notification_ids: &[FormatNotification],
+    format_id: CredentialSchemaFormatId,
+) -> Option<&str> {
+    notification_ids
+        .iter()
+        .find(|entry| entry.format.is_none_or(|id| id == format_id))
+        .map(|entry| entry.notification_id.as_str())
 }
 
 pub(super) fn map_dpop_params(

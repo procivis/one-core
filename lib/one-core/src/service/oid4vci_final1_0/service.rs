@@ -36,7 +36,8 @@ use super::dto::{
 };
 use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use super::mapper::{
-    interaction_data_to_dto, interaction_id_from_token_request, map_dpop_params, offered_formats,
+    allocate_notification_ids, interaction_data_to_dto, interaction_id_from_token_request,
+    map_dpop_params, notification_id_for_format, offered_formats,
 };
 use super::validator::{
     self, client_instance_key_thumbprint, extract_wallet_metadata, throw_if_access_token_invalid,
@@ -554,9 +555,27 @@ impl OID4VCIFinal1_0Service {
                 e => e.error_while("marking nonce as used").into(),
             })?;
 
+        let notification_id =
+            match notification_id_for_format(&interaction_data.notification_ids, format.id) {
+                Some(notification_id) => notification_id.to_owned(),
+                // TODO ONE-11754: remove once all access tokens issued before allocation of
+                // notification ids in token endpoint have expired
+                None => self
+                    .transaction_manager
+                    .tx(self.allocate_notification_id_tx(interaction_id, format.id))
+                    .await
+                    .error_while("allocating notification id")??,
+            };
+
         let result = self
             .transaction_manager
-            .tx(self.issue_tx(interaction_id, holder_identifiers, credential, format))
+            .tx(self.issue_tx(
+                interaction_id,
+                holder_identifiers,
+                credential,
+                format,
+                notification_id,
+            ))
             .await
             .error_while("issuing credential")?;
 
@@ -915,14 +934,13 @@ impl OID4VCIFinal1_0Service {
         mut holder_identifiers: Vec<PreparedIdentifier>,
         credential: &Credential,
         format: CredentialSchemaFormat,
+        notification_id: String,
     ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
         // Lock interaction, so that the issuance process is done only by one thread
-        let interaction = self
-            .interaction_repository
+        self.interaction_repository
             .get_interaction(&interaction_id, Some(LockType::Update))
             .await
             .error_while("getting interaction")?;
-        let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
         let issuance_protocol = self
             .protocol_provider
@@ -989,40 +1007,6 @@ impl OID4VCIFinal1_0Service {
             }
         };
 
-        // interactions created before multi-format support have a single entry without format
-        let entry = interaction_data
-            .notification_ids
-            .iter_mut()
-            .find(|entry| entry.format.is_none_or(|id| id == format.id));
-        let notification_id = match entry {
-            Some(entry) => {
-                entry.format = Some(format.id);
-                entry.notification_id.to_owned()
-            }
-            None => {
-                let notification_id = generate_alphanumeric(32);
-                interaction_data.notification_ids.push(FormatNotification {
-                    notification_id: notification_id.to_owned(),
-                    format: Some(format.id),
-                });
-                let data = serde_json::to_vec(&interaction_data)
-                    .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
-
-                self.interaction_repository
-                    .update_interaction(
-                        interaction.id,
-                        UpdateInteractionRequest {
-                            data: Some(Some(data)),
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .error_while("updating interaction")?;
-
-                notification_id
-            }
-        };
-
         Ok(OpenID4VCICredentialResponseDTO {
             redirect_uri: credential.common().redirect_uri.to_owned(),
             standard: CredentialResponse {
@@ -1032,6 +1016,49 @@ impl OID4VCIFinal1_0Service {
                 notification_id: Some(notification_id),
             },
         })
+    }
+
+    /// Notification ids are allocated when issuing the token, tokens issued before that
+    /// get the id of the requested format allocated here.
+    async fn allocate_notification_id_tx(
+        &self,
+        interaction_id: InteractionId,
+        format_id: CredentialSchemaFormatId,
+    ) -> Result<String, OID4VCIFinal1_0ServiceError> {
+        let interaction = self
+            .interaction_repository
+            .get_interaction(&interaction_id, Some(LockType::Update))
+            .await
+            .error_while("getting interaction")?;
+        let mut interaction_data = interaction_data_to_dto(&interaction)?;
+
+        // a concurrent request might have allocated it in the meantime
+        if let Some(notification_id) =
+            notification_id_for_format(&interaction_data.notification_ids, format_id)
+        {
+            return Ok(notification_id.to_owned());
+        }
+
+        let notification_id = generate_alphanumeric(32);
+        interaction_data.notification_ids.push(FormatNotification {
+            notification_id: notification_id.to_owned(),
+            format: Some(format_id),
+        });
+        let data = serde_json::to_vec(&interaction_data)
+            .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
+
+        self.interaction_repository
+            .update_interaction(
+                interaction_id,
+                UpdateInteractionRequest {
+                    data: Some(Some(data)),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating interaction")?;
+
+        Ok(notification_id)
     }
 
     async fn issue_batch_offer(
@@ -1421,8 +1448,9 @@ impl OID4VCIFinal1_0Service {
                 }
             }
 
+            let formats = offered_formats(&credential_schema, &interaction_data).await?;
             let mut offered_format_types = vec![];
-            for format in offered_formats(&credential_schema, &interaction_data).await? {
+            for format in &formats {
                 offered_format_types.push(
                     self.config
                         .format
@@ -1443,6 +1471,8 @@ impl OID4VCIFinal1_0Service {
             let mut new_interaction_data: OpenID4VCIIssuerInteractionDataDTO =
                 (&response).try_into()?;
             new_interaction_data.formats = interaction_data.formats;
+            new_interaction_data.notification_ids =
+                allocate_notification_ids(interaction_data.notification_ids, &formats);
             new_interaction_data.dpop_jkt =
                 dpop_binding.as_ref().map(|binding| binding.jkt.to_owned());
             // Only bound when enforced, so that enabling the enforcement binds ongoing issuances to

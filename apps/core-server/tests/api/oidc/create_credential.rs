@@ -39,6 +39,7 @@ use crate::fixtures::{
     ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
 };
 use crate::utils::api_clients::Client;
+use crate::utils::api_clients::ssi::TokenRequest;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -1257,7 +1258,8 @@ struct MultiFormatIssuerSetup {
     credential_id: CredentialId,
 }
 
-/// Multiformat schema, BATCH_PARENT credential, interaction offering the given formats
+/// Multiformat schema, BATCH_PARENT credential, interaction offering the given formats,
+/// access token obtained from the token endpoint
 async fn multi_format_issuer_setup(
     batch_size: Option<i32>,
     offered_formats: &[&str],
@@ -1269,6 +1271,38 @@ async fn multi_format_issuer_setup_with_expiration(
     batch_size: Option<i32>,
     offered_formats: &[&str],
     expiration: Option<Duration>,
+) -> MultiFormatIssuerSetup {
+    let mut setup =
+        multi_format_issuer_setup_inner(batch_size, offered_formats, expiration, false).await;
+
+    let resp = setup
+        .context
+        .api
+        .ssi
+        .create_token(
+            setup.credential_schema.id,
+            TokenRequest::PreAuthorizedCode {
+                code: setup.interaction_id.to_string(),
+                tx_code: None,
+            },
+        )
+        .await;
+    assert_eq!(200, resp.status());
+    let access_token = resp.json_value().await["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    setup.context.api = Client::new(setup.context.api.base_url.clone(), access_token);
+    setup
+}
+
+/// With `legacy_token`, the interaction holds an access token issued before notification ids
+/// were allocated by the token endpoint
+async fn multi_format_issuer_setup_inner(
+    batch_size: Option<i32>,
+    offered_formats: &[&str],
+    expiration: Option<Duration>,
+    legacy_token: bool,
 ) -> MultiFormatIssuerSetup {
     let setup = issuer_setup(None).await;
 
@@ -1299,8 +1333,28 @@ async fn multi_format_issuer_setup_with_expiration(
         .iter()
         .filter(|format| offered_formats.contains(&format.format.to_string().as_str()))
         .map(|format| format.id)
-        .collect();
+        .collect::<Vec<_>>();
 
+    let (data, state) = if legacy_token {
+        let data = dummy_issuer_interaction_data(
+            &setup.access_token,
+            IssuerInteractionDataParams {
+                offered_formats,
+                ..Default::default()
+            },
+        );
+        (data, CredentialStateEnum::Offered)
+    } else {
+        let data = json!({
+            "pre_authorized_code_used": false,
+            "access_token_hash": [],
+            "formats": offered_formats,
+        });
+        (
+            serde_json::to_vec(&data).unwrap(),
+            CredentialStateEnum::Pending,
+        )
+    };
     let interaction = setup
         .context
         .db
@@ -1310,13 +1364,7 @@ async fn multi_format_issuer_setup_with_expiration(
             InteractionType::Issuance,
             TestingInteractionParams {
                 id: Some(setup.interaction_id),
-                data: Some(dummy_issuer_interaction_data(
-                    &setup.access_token,
-                    IssuerInteractionDataParams {
-                        offered_formats,
-                        ..Default::default()
-                    },
-                )),
+                data: Some(data),
                 ..Default::default()
             },
         )
@@ -1328,7 +1376,7 @@ async fn multi_format_issuer_setup_with_expiration(
         .credentials
         .create(
             &credential_schema,
-            CredentialStateEnum::Offered,
+            state,
             &setup.issuer_identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
@@ -1505,6 +1553,13 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
         credential_schema,
         credential_id,
     } = multi_format_issuer_setup(None, &["JWT", "SD_JWT_VC"]).await;
+    let interaction_data_after_token = context
+        .db
+        .interactions
+        .get(&interaction_id)
+        .await
+        .unwrap()
+        .data;
 
     // WHEN
     let jwt_notification_id =
@@ -1549,7 +1604,9 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
     issued_formats.sort();
     assert_eq!(issued_formats, ["JWT", "SD_JWT_VC"]);
 
+    // notification ids are allocated by the token endpoint, the credential endpoint only reads them
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
+    assert_eq!(interaction.data, interaction_data_after_token);
     let interaction_data: serde_json::Value =
         serde_json::from_slice(&interaction.data.unwrap()).unwrap();
     let mut notification_ids: Vec<&str> = interaction_data["notification_ids"]
@@ -1568,6 +1625,28 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
     ];
     expected.sort();
     assert_eq!(notification_ids, expected);
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_multi_format_allocates_notification_id_for_legacy_token() {
+    // GIVEN
+    let MultiFormatIssuerSetup {
+        context,
+        interaction_id,
+        credential_schema,
+        ..
+    } = multi_format_issuer_setup_inner(None, &["JWT", "SD_JWT_VC"], None, true).await;
+
+    // WHEN
+    let notification_id = issue_offered_format(&context, &credential_schema, "jwt-schema-id").await;
+
+    // THEN
+    let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
+    let interaction_data: serde_json::Value =
+        serde_json::from_slice(&interaction.data.unwrap()).unwrap();
+    let notification_ids = interaction_data["notification_ids"].as_array().unwrap();
+    assert_eq!(notification_ids.len(), 1);
+    assert_eq!(notification_ids[0]["notification_id"], notification_id);
 }
 
 #[tokio::test]

@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
 use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
+use super::mapper::allocate_notification_ids;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
@@ -53,7 +54,9 @@ use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::SwissProfileHeader;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    FormatNotification, OpenID4VCIIssuerInteractionDataDTO, SwissProfileHeader,
+};
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -335,6 +338,29 @@ fn dummy_interaction(
         ecosystem: None,
         ecosystem_data: Default::default(),
     }
+}
+
+/// Adds the notification ids allocated per offered format when issuing the token
+async fn with_notification_ids(
+    mut interaction: Interaction,
+    schema: &CredentialSchema,
+) -> Interaction {
+    let mut data: serde_json::Value =
+        serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
+    data["notification_ids"] = schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .map(|format| json!({ "notification_id": notification_id(format.id), "format": format.id }))
+        .collect();
+    interaction.data = Some(data.to_string().into_bytes());
+    interaction
+}
+
+fn notification_id(format_id: CredentialSchemaFormatId) -> String {
+    format!("notification-{format_id}")
 }
 
 fn dummy_credential(
@@ -1351,9 +1377,16 @@ async fn test_create_token() {
         .once()
         .return_once(|_, _| Ok(interaction));
 
+    let format_id = schema.formats.as_ref().await.unwrap()[0].id;
     interaction_repository
         .expect_update_interaction()
         .once()
+        .withf(move |_, request| {
+            let data: OpenID4VCIIssuerInteractionDataDTO =
+                serde_json::from_slice(request.data.as_ref().unwrap().as_ref().unwrap()).unwrap();
+            // one notification id per offered format, allocated with the token
+            data.notification_ids.len() == 1 && data.notification_ids[0].format == Some(format_id)
+        })
         .return_once(|_, _| Ok(()));
 
     let service = setup_service(Mocks {
@@ -1389,6 +1422,30 @@ async fn test_create_token() {
 
     assert!(result_content.refresh_token.is_none());
     assert!(result_content.refresh_token_expires_in.is_none());
+}
+
+#[tokio::test]
+async fn test_allocate_notification_ids_keeps_ids_across_token_refresh() {
+    let schema = generic_credential_schema();
+    let formats = schema.formats.as_ref().await.unwrap().to_owned();
+
+    let allocated = allocate_notification_ids(vec![], &formats);
+    assert_eq!(allocated.len(), 1);
+    assert_eq!(allocated[0].format, Some(formats[0].id));
+
+    let refreshed = allocate_notification_ids(
+        vec![
+            allocated[0].clone(),
+            // entries without format are only resolved by the credential endpoint, not carried over
+            FormatNotification {
+                notification_id: "legacy".to_string(),
+                format: None,
+            },
+        ],
+        &formats,
+    );
+    assert_eq!(refreshed.len(), 1);
+    assert_eq!(refreshed[0].notification_id, allocated[0].notification_id);
 }
 
 #[tokio::test]
@@ -1777,7 +1834,17 @@ async fn test_create_credential_with_instance_attestation(
         .interaction_repository
         .expect_get_interaction()
         .times(if succeeds { 2 } else { 1 })
-        .returning(|id, _| Ok(dummy_interaction(Some(*id), true, None, None, None)));
+        .returning({
+            let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                .unwrap()
+                .into();
+            let interaction = with_notification_ids(
+                dummy_interaction(Some(interaction_id), true, None, None, None),
+                &schema,
+            )
+            .await;
+            move |_, _| Ok(interaction.clone())
+        });
     let mut protocol = MockIssuanceProtocol::new();
     if succeeds {
         protocol
@@ -1833,11 +1900,6 @@ async fn test_create_credential_with_instance_attestation(
         mocks
             .interaction_repository
             .expect_mark_nonces_as_used()
-            .once()
-            .returning(|_, _| Ok(()));
-        mocks
-            .interaction_repository
-            .expect_update_interaction()
             .once()
             .returning(|_, _| Ok(()));
         let mut formatter = MockCredentialFormatter::new();
@@ -1924,8 +1986,11 @@ async fn test_create_credential_with_instance_attestation(
     }
 }
 
+#[rstest::rstest]
+#[case::notification_id_allocated_with_token(true)]
+#[case::legacy_token_without_notification_id(false)]
 #[tokio::test]
-async fn test_create_credential_success() {
+async fn test_create_credential_success(#[case] notification_id_allocated: bool) {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -1958,30 +2023,37 @@ async fn test_create_credential_success() {
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
             .into();
+        let interaction = dummy_interaction(Some(interaction_id), true, None, None, None);
 
-        interaction_repository
-            .expect_get_interaction()
-            // once for the request, once inside the issuance transaction
-            .times(2)
-            .returning(move |_, _| {
-                Ok(dummy_interaction(
-                    Some(interaction_id),
-                    true,
-                    None,
-                    None,
-                    None,
-                ))
-            });
+        if notification_id_allocated {
+            let interaction = with_notification_ids(interaction, &schema).await;
+            interaction_repository
+                .expect_get_interaction()
+                // once for the request, once inside the issuance transaction
+                .times(2)
+                .returning(move |_, _| Ok(interaction.clone()));
+        } else {
+            interaction_repository
+                .expect_get_interaction()
+                // additionally once for allocating the notification id
+                .times(3)
+                .returning(move |_, _| Ok(interaction.clone()));
+
+            interaction_repository
+                .expect_update_interaction()
+                .once()
+                .withf(move |id, request| {
+                    let data: OpenID4VCIIssuerInteractionDataDTO =
+                        serde_json::from_slice(request.data.as_ref().unwrap().as_ref().unwrap())
+                            .unwrap();
+                    *id == interaction_id && data.notification_ids.len() == 1
+                })
+                .returning(|_, _| Ok(()));
+        }
 
         interaction_repository
             .expect_mark_nonces_as_used()
             .return_once(|_, _| Ok(()));
-
-        interaction_repository
-            .expect_update_interaction()
-            .once()
-            .withf(move |id, _| *id == interaction_id)
-            .returning(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -2121,6 +2193,11 @@ async fn test_create_credential_success() {
             .credential,
         "xyz",
     );
+    let notification_id_returned = result.standard.notification_id.unwrap();
+    if notification_id_allocated {
+        let format_id = schema.formats.as_ref().await.unwrap()[0].id;
+        assert_eq!(notification_id_returned, notification_id(format_id));
+    }
 }
 
 #[tokio::test]
@@ -2167,25 +2244,18 @@ async fn test_create_credential_success_sd_jwt_vc() {
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
             .into();
+        let interaction = with_notification_ids(
+            dummy_interaction(Some(interaction_id), true, None, None, None),
+            &schema,
+        )
+        .await;
         interaction_repository
             .expect_get_interaction()
             // once for the request, once inside the issuance transaction
             .times(2)
-            .returning(move |_, _| {
-                Ok(dummy_interaction(
-                    Some(interaction_id),
-                    true,
-                    None,
-                    None,
-                    None,
-                ))
-            });
+            .returning(move |_, _| Ok(interaction.clone()));
         interaction_repository
             .expect_mark_nonces_as_used()
-            .return_once(|_, _| Ok(()));
-        interaction_repository
-            .expect_update_interaction()
-            .with(eq(interaction_id), always())
             .return_once(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
@@ -2386,24 +2456,26 @@ async fn test_create_credential_success_mdoc() {
             .expect_get_interaction()
             // once for the request, once inside the issuance transaction
             .times(2)
-            .returning(|_, _| {
-                Ok(dummy_interaction(
-                    Some(
-                        Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
-                            .unwrap()
-                            .into(),
+            .returning({
+                let interaction = with_notification_ids(
+                    dummy_interaction(
+                        Some(
+                            Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                .unwrap()
+                                .into(),
+                        ),
+                        true,
+                        None,
+                        None,
+                        None,
                     ),
-                    true,
-                    None,
-                    None,
-                    None,
-                ))
+                    &schema,
+                )
+                .await;
+                move |_, _| Ok(interaction.clone())
             });
         interaction_repository
             .expect_mark_nonces_as_used()
-            .return_once(|_, _| Ok(()));
-        interaction_repository
-            .expect_update_interaction()
             .return_once(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
@@ -2976,19 +3048,16 @@ async fn test_create_credential_issuer_failed() {
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
             .into();
+        let interaction = with_notification_ids(
+            dummy_interaction(Some(interaction_id), true, None, None, None),
+            &schema,
+        )
+        .await;
         interaction_repository
             .expect_get_interaction()
             // once for the request, once inside the issuance transaction
             .times(2)
-            .returning(move |_, _| {
-                Ok(dummy_interaction(
-                    Some(interaction_id),
-                    true,
-                    None,
-                    None,
-                    None,
-                ))
-            });
+            .returning(move |_, _| Ok(interaction.clone()));
         interaction_repository
             .expect_mark_nonces_as_used()
             .return_once(|_, _| Ok(()));
