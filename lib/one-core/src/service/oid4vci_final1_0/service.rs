@@ -85,7 +85,7 @@ use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     FormatNotification, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
-    SWISS_PROFILE_ISSUANCE_VERSION, SwissProfileHeader,
+    OpenID4VCNonceParams, SWISS_PROFILE_ISSUANCE_VERSION, SwissProfileHeader,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::{
     OpenID4VCIProofHolderBinding, OpenID4VCIProofJWTFormatter, OpenID4VCIVerifiedProof,
@@ -1378,6 +1378,16 @@ impl OID4VCIFinal1_0Service {
                     credential_schema_id,
                 )
                 .await?;
+            // Consumed only after the DPoP proof was accepted: a request rejected with
+            // `use_dpop_nonce` is repeated with the same Client Attestation PoP
+            // https://www.rfc-editor.org/rfc/rfc9449.html#section-8
+            if let Some(challenge_id) = client_attestation
+                .as_ref()
+                .and_then(|attestation| attestation.challenge_id)
+            {
+                self.consume_pop_challenge(interaction_id, challenge_id, &params)
+                    .await?;
+            }
 
             let mut response = oidc_issuer_create_token(
                 &interaction_data,
@@ -1732,21 +1742,21 @@ impl OID4VCIFinal1_0Service {
         // In DPoP combined mode, the DPoP proof replaces the Client Attestation PoP and is
         // validated together with the key binding of the issued tokens
         // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-7
-        let dpop_combined_mode = match oauth_client_attestation_pop {
+        let (dpop_combined_mode, challenge_id) = match oauth_client_attestation_pop {
             Some(proof_of_key_possession_token) => {
-                self.validate_oauth_client_attestation_pop(
-                    proof_of_key_possession_token,
-                    &wallet_instance_attestation,
-                    params,
-                    credential_schema,
-                    credential,
-                    interaction_id,
-                    issuer_identifier_id,
-                )
-                .await?;
-                false
+                let challenge_id = self
+                    .validate_oauth_client_attestation_pop(
+                        proof_of_key_possession_token,
+                        &wallet_instance_attestation,
+                        params,
+                        credential_schema,
+                        credential,
+                        issuer_identifier_id,
+                    )
+                    .await?;
+                (false, challenge_id)
             }
-            None if dpop_proof_present => true,
+            None if dpop_proof_present => (true, None),
             None => {
                 return Err(WalletAttestationError::WiaMalformed(
                     "missing OAuth-Client-Attestation-PoP header".to_string(),
@@ -1799,10 +1809,11 @@ impl OID4VCIFinal1_0Service {
             },
             client_instance_jkt,
             dpop_combined_mode,
+            challenge_id,
         }))
     }
 
-    #[expect(clippy::too_many_arguments)]
+    /// Returns the id of the attestation challenge, to be consumed once the request is accepted.
     async fn validate_oauth_client_attestation_pop(
         &self,
         proof_of_key_possession_token: &str,
@@ -1810,9 +1821,8 @@ impl OID4VCIFinal1_0Service {
         params: &OpenID4VCIFinal1Params,
         credential_schema: &CredentialSchema,
         credential: &Credential,
-        interaction_id: InteractionId,
         issuer_identifier_id: Option<IdentifierId>,
-    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+    ) -> Result<Option<NonceId>, OID4VCIFinal1_0ServiceError> {
         let proof_of_key_possession =
             Jwt::<OAuthClientAttestationPopCustomClaims>::decompose_token(
                 proof_of_key_possession_token,
@@ -1847,12 +1857,8 @@ impl OID4VCIFinal1_0Service {
             wallet_instance_attestation,
             self.key_algorithm_provider.as_ref(),
         )?;
-        self.validate_pop_challenge(
-            &proof_of_key_possession.payload.custom,
-            &credential.common().protocol,
-            &interaction_id,
-        )
-        .await
+        self.validate_pop_challenge(&proof_of_key_possession.payload.custom, params)
+            .await
     }
 
     pub async fn generate_nonce(
@@ -2210,73 +2216,77 @@ impl OID4VCIFinal1_0Service {
         Ok(())
     }
 
+    /// Validates the attestation challenge without consuming it, see
+    /// [`Self::consume_pop_challenge`].
     async fn validate_pop_challenge(
         &self,
         pop_token_claims: &OAuthClientAttestationPopCustomClaims,
-        protocol_id: &str,
-        interaction_id: &InteractionId,
-    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
-        let params: OpenID4VCIFinal1Params = self
-            .config
-            .issuance_protocol
-            .get(protocol_id)
-            .error_while("getting protocol params")?;
-
-        let Some(params) = params.oauth_attestation_challenge else {
-            return Ok(());
-        };
-
-        let get_fresh_challenge = async || {
-            let params = params.to_owned();
-            generate_nonce(
-                params.expiration_seconds,
-                params.signing_key,
-                self.base_url.clone(),
-                NonceContext::OAuthAttestationChallenge,
-            )
-            .await
-            .error_while("generating fresh attestation challenge")
+        params: &OpenID4VCIFinal1Params,
+    ) -> Result<Option<NonceId>, OID4VCIFinal1_0ServiceError> {
+        let Some(challenge_params) = &params.oauth_attestation_challenge else {
+            return Ok(None);
         };
 
         let Some(challenge) = &pop_token_claims.challenge else {
             return Err(WalletAttestationError::MissingChallenge {
-                fresh_challenge: get_fresh_challenge().await?,
+                fresh_challenge: self.fresh_attestation_challenge(challenge_params).await?,
             }
             .into());
         };
 
-        let challenge_id = match validate_nonce(
-            params.leeway_seconds,
-            params.signing_key.clone(),
+        match validate_nonce(
+            challenge_params.leeway_seconds,
+            challenge_params.signing_key.clone(),
             self.base_url.as_ref(),
             challenge,
             NonceContext::OAuthAttestationChallenge,
         ) {
-            Ok(info) => info.id,
-            Err(err) => {
-                return Err(WalletAttestationError::InvalidChallenge {
-                    fresh_challenge: get_fresh_challenge().await?,
-                }
-                .error_while(format!("OAuth attestation challenge validation: {err}"))
-                .into());
+            Ok(info) => Ok(Some(info.id)),
+            Err(err) => Err(WalletAttestationError::InvalidChallenge {
+                fresh_challenge: self.fresh_attestation_challenge(challenge_params).await?,
             }
-        };
-
-        if let Err(err) = self
-            .interaction_repository
-            .mark_nonces_as_used(interaction_id, vec![challenge_id])
-            .await
-        {
-            return Err(match err {
-                DataLayerError::AlreadyExists(_) => WalletAttestationError::InvalidChallenge {
-                    fresh_challenge: get_fresh_challenge().await?,
-                }
-                .into(),
-                e => e.error_while("marking challenge as used").into(),
-            });
+            .error_while(format!("OAuth attestation challenge validation: {err}"))
+            .into()),
         }
+    }
 
-        Ok(())
+    /// Marks a validated attestation challenge as used, rejecting replays.
+    async fn consume_pop_challenge(
+        &self,
+        interaction_id: InteractionId,
+        challenge_id: NonceId,
+        params: &OpenID4VCIFinal1Params,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        let Err(err) = self
+            .interaction_repository
+            .mark_nonces_as_used(&interaction_id, vec![challenge_id])
+            .await
+        else {
+            return Ok(());
+        };
+        Err(match (err, &params.oauth_attestation_challenge) {
+            (DataLayerError::AlreadyExists(_), Some(challenge_params)) => {
+                WalletAttestationError::InvalidChallenge {
+                    fresh_challenge: self.fresh_attestation_challenge(challenge_params).await?,
+                }
+                .into()
+            }
+            (e, _) => e.error_while("marking challenge as used").into(),
+        })
+    }
+
+    async fn fresh_attestation_challenge(
+        &self,
+        params: &OpenID4VCNonceParams,
+    ) -> Result<String, OID4VCIFinal1_0ServiceError> {
+        Ok(generate_nonce(
+            params.expiration_seconds,
+            params.signing_key.to_owned(),
+            self.base_url.clone(),
+            NonceContext::OAuthAttestationChallenge,
+        )
+        .await
+        .error_while("generating fresh attestation challenge")?)
     }
 
     pub async fn generate_dpop_nonce(&self, protocol: ProtocolSelection) -> Option<DpopNonce> {
@@ -2349,4 +2359,6 @@ struct ValidatedClientAttestation {
     client_instance_jkt: String,
     /// The DPoP proof serves as the Client Attestation PoP
     dpop_combined_mode: bool,
+    /// Attestation challenge of the Client Attestation PoP, not yet consumed
+    challenge_id: Option<NonceId>,
 }
