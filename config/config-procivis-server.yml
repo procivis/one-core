@@ -59,20 +59,6 @@ keyStorage:
         redirectUrl: ""
         certificate: ""
         privateKey: ""
-  DVV:
-    type: CSC
-    display: "keyStorage.dvv"
-    enabled: false
-    params:
-      private:
-        auth: OAUTH2_CLIENT
-        cscBaseUrl: ""
-        signHashBaseUrl: "https://qsealqa.certificate.fi:8500/signer-server/QA-DVV"
-        tokenUrl: "https://auth-qa.securenet.fi/realms/QES-QA/protocol/openid-connect/token"
-        clientId: ""
-        signerClientId: ""
-        certificate: ""
-        privateKey: ""
 keySecurityLevel:
   HIGH:
     params:
