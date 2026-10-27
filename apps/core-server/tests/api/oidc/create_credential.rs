@@ -1628,6 +1628,37 @@ async fn test_post_issuer_credential_multi_format_issues_one_batch_item_per_form
 }
 
 #[tokio::test]
+async fn test_post_issuer_credential_multi_format_issues_formats_concurrently() {
+    // GIVEN
+    let MultiFormatIssuerSetup {
+        context,
+        credential_schema,
+        credential_id,
+        ..
+    } = multi_format_issuer_setup(None, &["JWT", "SD_JWT_VC"]).await;
+
+    // WHEN
+    let (jwt_notification_id, sd_jwt_vc_notification_id) = futures::join!(
+        issue_offered_format(&context, &credential_schema, "jwt-schema-id"),
+        issue_offered_format(&context, &credential_schema, "sd-jwt-vc-schema-id"),
+    );
+
+    // THEN
+    assert_ne!(jwt_notification_id, sd_jwt_vc_notification_id);
+    let credential = context.db.credentials.get(&credential_id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
+    let batch_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential_id).condition())
+        .await;
+    assert_eq!(batch_items.len(), 2);
+    for item in &batch_items {
+        assert_eq!(item.common().state, CredentialStateEnum::Accepted);
+    }
+}
+
+#[tokio::test]
 async fn test_post_issuer_credential_multi_format_allocates_notification_id_for_legacy_token() {
     // GIVEN
     let MultiFormatIssuerSetup {

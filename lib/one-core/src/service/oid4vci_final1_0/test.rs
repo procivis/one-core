@@ -1830,10 +1830,18 @@ async fn test_create_credential_with_instance_attestation(
             let credential = credential.clone();
             move |_| Ok(vec![credential])
         });
+    if succeeds && credential_type == CredentialType::Single {
+        mocks
+            .credential_repository
+            .expect_lock_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .returning(|_| Ok(CredentialStateEnum::Offered));
+    }
     mocks
         .interaction_repository
         .expect_get_interaction()
-        .times(if succeeds { 2 } else { 1 })
+        .once()
         .returning({
             let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
                 .unwrap()
@@ -2020,6 +2028,12 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
             .once()
             .return_once(move |_| Ok(vec![clone]));
 
+        credential_repository
+            .expect_lock_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .returning(|_| Ok(CredentialStateEnum::Offered));
+
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
             .into();
@@ -2029,14 +2043,13 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
             let interaction = with_notification_ids(interaction, &schema).await;
             interaction_repository
                 .expect_get_interaction()
-                // once for the request, once inside the issuance transaction
-                .times(2)
+                .once()
                 .returning(move |_, _| Ok(interaction.clone()));
         } else {
             interaction_repository
                 .expect_get_interaction()
-                // additionally once for allocating the notification id
-                .times(3)
+                // once for the request, once for allocating the notification id
+                .times(2)
                 .returning(move |_, _| Ok(interaction.clone()));
 
             interaction_repository
@@ -2241,6 +2254,12 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .once()
             .return_once(move |_| Ok(vec![clone]));
 
+        credential_repository
+            .expect_lock_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .returning(|_| Ok(CredentialStateEnum::Offered));
+
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
             .into();
@@ -2251,8 +2270,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         .await;
         interaction_repository
             .expect_get_interaction()
-            // once for the request, once inside the issuance transaction
-            .times(2)
+            .once()
             .returning(move |_, _| Ok(interaction.clone()));
         interaction_repository
             .expect_mark_nonces_as_used()
@@ -2454,8 +2472,7 @@ async fn test_create_credential_success_mdoc() {
 
         interaction_repository
             .expect_get_interaction()
-            // once for the request, once inside the issuance transaction
-            .times(2)
+            .once()
             .returning({
                 let interaction = with_notification_ids(
                     dummy_interaction(
@@ -3045,6 +3062,12 @@ async fn test_create_credential_issuer_failed() {
             .once()
             .return_once(move |_| Ok(vec![clone]));
 
+        credential_repository
+            .expect_lock_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .returning(|_| Ok(CredentialStateEnum::Offered));
+
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
             .into();
@@ -3055,8 +3078,7 @@ async fn test_create_credential_issuer_failed() {
         .await;
         interaction_repository
             .expect_get_interaction()
-            // once for the request, once inside the issuance transaction
-            .times(2)
+            .once()
             .returning(move |_, _| Ok(interaction.clone()));
         interaction_repository
             .expect_mark_nonces_as_used()

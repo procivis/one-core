@@ -569,13 +569,7 @@ impl OID4VCIFinal1_0Service {
 
         let result = self
             .transaction_manager
-            .tx(self.issue_tx(
-                interaction_id,
-                holder_identifiers,
-                credential,
-                format,
-                notification_id,
-            ))
+            .tx(self.issue_tx(holder_identifiers, credential, format, notification_id))
             .await
             .error_while("issuing credential")?;
 
@@ -930,17 +924,19 @@ impl OID4VCIFinal1_0Service {
     #[tracing::instrument(level = "debug", skip_all, err(level = "info"))]
     async fn issue_tx(
         &self,
-        interaction_id: InteractionId,
         mut holder_identifiers: Vec<PreparedIdentifier>,
         credential: &Credential,
         format: CredentialSchemaFormat,
         notification_id: String,
     ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
-        // Lock interaction, so that the issuance process is done only by one thread
-        self.interaction_repository
-            .get_interaction(&interaction_id, Some(LockType::Update))
-            .await
-            .error_while("getting interaction")?;
+        // Lock a single credential, so that it is issued only by one thread.
+        // Batch parents are not locked, different formats of one offer are issued in parallel.
+        if let Credential::IssuerSingle { common, .. } = credential {
+            self.credential_repository
+                .lock_credential(&common.id)
+                .await
+                .error_while("locking credential")?;
+        }
 
         let issuance_protocol = self
             .protocol_provider

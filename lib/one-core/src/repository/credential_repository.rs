@@ -5,7 +5,8 @@ use shared_types::{CredentialId, InteractionId};
 
 use super::error::DataLayerError;
 use crate::model::credential::{
-    Credential, CredentialListQuery, GetCredentialList, UpdateCredentialRequest,
+    Credential, CredentialListQuery, CredentialStateEnum, GetCredentialList,
+    UpdateCredentialRequest,
 };
 use crate::model::relation::AsyncModelLoader;
 
@@ -29,6 +30,12 @@ pub trait CredentialRepository: Send + Sync {
     ) -> Result<(), DataLayerError>;
 
     async fn get_credential(&self, id: &CredentialId) -> Result<Credential, DataLayerError>;
+
+    /// Locks the credential row until the end of the transaction and returns its current state
+    async fn lock_credential(
+        &self,
+        id: &CredentialId,
+    ) -> Result<CredentialStateEnum, DataLayerError>;
 
     async fn get_credentials_by_interaction_id(
         &self,
