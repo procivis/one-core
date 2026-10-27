@@ -168,6 +168,52 @@ You can start a separate instance of a service that will play wallet role. This 
 makers runwallet
 ```
 
+### Run modes
+
+`core-server` can start in one of four modes, chosen by command-line
+flags. Flags go after `--` when using `cargo run`; the compiled binary
+and the Docker image (entrypoint `/app/core-server`) take the same flags
+directly.
+
+- Server and migrations (default) - migrates the database, then starts
+  the server.
+
+```shell
+cargo run -p core-server -- \
+  --config config/config-base.yml
+```
+
+- Server only - starts the server without migrations. The database
+  must already be migrated.
+
+```shell
+cargo run -p core-server -- \
+  --config config/config-base.yml \
+  --skip-migration
+```
+
+- Task - runs one task, prints its result as JSON to stdout and exits.
+  On failure, it prints the error to stderr and exits with code 1. Task
+  names are the keys of the `task` section of the config, for example
+  `LIFECYCLE_CHECK`. Migrations run first unless `--skip-migration` is set.
+
+```shell
+cargo run -p core-server -- \
+  --config config/config-base.yml \
+  --skip-migration \
+  --task HOLDER_CHECK_CREDENTIAL_STATUS \
+  --task-params '{"forceRefresh": true}'
+```
+
+- Migrations only - migrates the database and exits. Cannot be combined
+  with `--skip-migration` or `--task`.
+
+```shell
+cargo run -p core-server -- \
+  --config config/config-base.yml \
+  --only-migration
+```
+
 ### Live Reload
 
 Using `cargo-watch`, the code can be automatically recompiled when changes are made.
