@@ -46,7 +46,8 @@ impl SignatureService {
 
         let issuer_id = issuer.id;
 
-        // Note: signer providers must check the permissions internally for signing
+        // Sign permissions are enforced by the `PermissionChecked` wrapper
+        // around each signer.
         let result = signer
             .sign(
                 Issuer::Identifier {

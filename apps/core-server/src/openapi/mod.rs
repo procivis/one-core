@@ -255,7 +255,10 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             create_tag("instance", "Instances (Holder)",
                 "For wallet and verifier instances, register with the provider and check status."
             ),
-            create_tag("signature", "Signatures", "Create and revoke signatures."),
+            create_tag("signature", "Signatures",
+                indoc::indoc! {"Create, revoke, and check the status of signatures from configured
+                signers. See [Signatures](https://docs.procivis.ch/signatures)"}
+            ),
             create_tag("qes", "Qualified Electronic Signature (QES)", "Document signing."),
             create_tag("jsonld", "JSON-LD", "Retrieve cached JSON-LD context documents."),
             create_tag("task", "Tasks",

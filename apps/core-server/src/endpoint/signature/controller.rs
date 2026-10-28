@@ -25,8 +25,14 @@ use crate::router::AppState;
     ),
     summary = "Create a signature",
     description = indoc::formatdoc! {"
-    Creates a signature. Choose a configured `signer` object and
-    structure `data` accordingly.
+    Signs a request with the specified signer and returns the result: an
+    X.509 certificate chain, an Access Certificate, or a Registration
+    Certificate. The structure of `data` depends on the signer; see
+    [Signatures](https://docs.procivis.ch/signatures) for each signer's
+    request data.
+
+    The required permission depends on the signer. Store the returned `id`
+    to revoke the signature or check its status later.
 "},
 )]
 pub(crate) async fn create_signature(
@@ -45,7 +51,7 @@ pub(crate) async fn create_signature(
     post,
     path = "/api/signature/v1/{id}/revoke",
     params(
-        ("id" = Uuid, Path, description = "Signature id")
+        ("id" = Uuid, Path, description = "Signature ID, as returned when the signature was created.")
     ),
     tag = "signature",
     security(
@@ -53,7 +59,11 @@ pub(crate) async fn create_signature(
     ),
     summary = "Revoke a signature",
     description = indoc::formatdoc! {"
-    Revokes a previously-created signature.
+    Revokes a signature created with this API. Fails if the signer that
+    created it has no revocation method.
+
+    The required permission depends on the signer that created the
+    signature.
 "},
 )]
 pub(crate) async fn revoke_signature(
@@ -73,9 +83,11 @@ pub(crate) async fn revoke_signature(
     security(
         ("bearer" = [])
     ),
-    summary = "Retrieve revocation information of specified signatures",
+    summary = "Check signature status",
     description = indoc::formatdoc! {"
-    Returns revocation information about the specified signatures.
+    Returns the current state of each specified signature, along with the
+    name of the signer that created it. Signature IDs that are not found
+    are omitted from the response.
 "},
 )]
 pub(crate) async fn signature_revocation_check(

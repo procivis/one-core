@@ -35,30 +35,67 @@ use crate::provider::signer::x509_utils::{
     prepare_issuer_alternative_name_extension, prepare_params_and_ca_issuer,
 };
 
+/// Configuration of an `ACCESS_CERTIFICATE` signer, read from the
+/// signer's `params`. The Core base URL is used for the Authority
+/// Information Access extension of issued certificates.
 #[serde_as]
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    /// exposed publicly via `GET /api/config/v1`
+    /// Maximum validity period of certificates issued by this
+    /// signer. Also applied when a request sets no `validityEnd`.
+    /// Exposed publicly via `GET /api/config/v1` when set in
+    /// `params.public`.
     #[serde_as(as = "DurationSeconds<i64>")]
     pub max_validity_duration_seconds: Duration,
+    /// Revocation method for issued certificates. Must reference
+    /// an enabled revocation method of type `CRL`.
     pub revocation_method: Option<RevocationMethodId>,
 }
 
+/// Request data for an `ACCESS_CERTIFICATE` signer, deserialized
+/// from the `data` field of a signature request. Unknown fields
+/// are rejected.
+///
+/// The certificate's content comes from these fields and the fixed
+/// access certificate profile (ETSI TS 119 475). Only the public
+/// key is taken from the CSR; its subject and requested extensions
+/// are ignored.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RequestData {
+    /// The relying party's CSR in PEM format. Its signature is verified as
+    /// proof of possession of the private key.
     csr: String,
+    /// The relying party's identifier as listed in the national register.
+    /// Set in the subject's `organizationIdentifier` for a legal person,
+    /// or its `serialNumber` for a natural person.
     organization_identifier: String,
+    /// Country code, set in the subject's `C`.
     country_name: String,
+    /// Email address, added as a subject alternative name.
     rfc822_name: Option<String>,
+    /// Telephone number, added as a subject alternative name (`otherName`).
     other_name_phone_nr: Option<String>,
+    /// URI of the relying party, added as a subject alternative name.
     san_uri: String,
+    /// Organization name, set in the subject's `O`. Required for a legal
+    /// person; not allowed for a natural person.
     organization_name: Option<String>,
+    /// Common name, set in the subject's `CN`.
     common_name: Option<String>,
+    /// Given name, set in the subject's `givenName`. Required for a natural
+    /// person; not allowed for a legal person.
     given_name: Option<String>,
+    /// Family name, set in the subject's `surname`. Required for a natural
+    /// person; not allowed for a legal person.
     family_name: Option<String>,
+    /// Certificate policy: `LEGAL_PERSON` or `NATURAL_PERSON`. Determines
+    /// which name fields are required and the policy set in the
+    /// certificate policies extension.
     policy: CertificatePolicy,
+    /// URL of the relying party's entry in the national register, added
+    /// to the subject.
     national_registry_url: String,
 }
 

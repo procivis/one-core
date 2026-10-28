@@ -17,10 +17,9 @@ use uuid::Uuid;
 #[into(CreateSignatureRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateSignatureRequestRestDTO {
-    /// Identifier ID of the signing entity. Must be a CA identifier for
-    /// X.509 and Access Certificates, or a Certificate identifier for
-    /// Registration Certificates. Ensure the identifier is registered
-    /// on the appropriate trust lists.
+    /// Identifier that signs. Must be a certificate authority identifier
+    /// for X.509 and Access Certificates, or a certificate identifier for
+    /// Registration Certificates.
     pub issuer: IdentifierId,
     /// Specific key to use from the issuer identifier. Omit for
     /// automatic selection.
@@ -28,12 +27,13 @@ pub(crate) struct CreateSignatureRequestRestDTO {
     /// Specific certificate to use from the issuer identifier. Omit
     /// for automatic selection.
     pub issuer_certificate: Option<CertificateId>,
-    /// Type of signature to create. This must reference a configured
-    /// `signer` object.
+    /// Name of a configured `signer` instance. Determines the structure
+    /// of `data`.
     #[modify_schema(field = signer)]
     pub signer: String,
-    /// Signer-specific request data. Structure varies based on signer
-    /// value.
+    /// Signer-specific request data. See
+    /// [Signatures](https://docs.procivis.ch/signatures) for the structure
+    /// each signer expects.
     #[schema(value_type = Object)]
     pub data: serde_json::Value,
     /// Pass nothing to start validity now or choose a datetime
@@ -51,9 +51,10 @@ pub(crate) struct CreateSignatureRequestRestDTO {
 #[from(CreateSignatureResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateSignatureResponseRestDTO {
-    /// ID used to revoke the signature.
+    /// Signature ID. Use it to revoke the signature or check its status.
     pub id: Uuid,
-    /// Signer-specific signature representation.
+    /// The signed output: a PEM certificate chain for X.509 and Access
+    /// Certificates, or a signed JWT for Registration Certificates.
     pub result: String,
 }
 
@@ -61,9 +62,11 @@ pub(crate) struct CreateSignatureResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SignatureRevocationCheckRequestRestDTO {
+    /// IDs of the signatures to check.
     pub signature_ids: Vec<Uuid>,
 }
 
+/// Map of signature IDs to their status.
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SignatureRevocationCheckResponseRestDTO {
@@ -75,7 +78,9 @@ pub(crate) struct SignatureRevocationCheckResponseRestDTO {
 #[from(SignatureStatusInfo)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SignatureStatusInfoRestDTO {
+    /// Current state of the signature.
     pub state: SignatureStateRestEnum,
+    /// Name of the signer that created the signature.
     pub r#type: SignerId,
 }
 

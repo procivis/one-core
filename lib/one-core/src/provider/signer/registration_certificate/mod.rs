@@ -36,17 +36,28 @@ use crate::provider::signer::registration_certificate::model::{
 use crate::provider::signer::validity::{SignatureValidity, calculate_signature_validity};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 
+/// Configuration of a `REGISTRATION_CERTIFICATE` signer, read
+/// from the signer's `params`.
 #[serde_as]
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub payload: PayloadParams,
-    /// exposed publicly via `GET /api/config/v1`
+    /// Maximum validity period of Registration Certificates issued
+    /// by this signer. Also applied when a request sets no `validityEnd`.
+    /// Cannot exceed 365 days (ETSI TS 119 475 GEN-5.2.4-08), or
+    /// initialization fails.
+    /// Exposed publicly via `GET /api/config/v1` when set in
+    /// `params.public`.
     #[serde_as(as = "DurationSeconds<i64>")]
     pub max_validity_duration_seconds: Duration,
+    /// Revocation method for issued Registration Certificates. Must
+    /// reference an enabled revocation method of type `TOKENSTATUSLIST`,
+    /// or initialization fails.
     pub revocation_method: RevocationMethodId,
 }
 
+/// `payload` settings of a `REGISTRATION_CERTIFICATE` signer.
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PayloadParams {
