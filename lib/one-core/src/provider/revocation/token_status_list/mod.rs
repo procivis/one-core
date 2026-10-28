@@ -1070,16 +1070,11 @@ async fn format_status_list_credential(
     let auth_fn =
         key_provider.get_signature_provider(key, key_id, key_algorithm_provider.clone())?;
 
-    let algorithm = key
-        .key_algorithm_type()
-        .error_while("getting key algorithm type")?;
-
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
             selection,
             encoded_list,
-            algorithm,
             auth_fn,
             purpose.into(),
             RevocationType::TokenStatusList,

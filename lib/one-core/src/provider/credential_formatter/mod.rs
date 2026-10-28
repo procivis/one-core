@@ -9,7 +9,7 @@ use shared_types::{
 };
 use time::Duration;
 
-use crate::config::core_config::{KeyAlgorithmType, RevocationType};
+use crate::config::core_config::RevocationType;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::provider::Provider;
@@ -43,7 +43,6 @@ pub struct MetadataClaimSchema {
 }
 
 /// Format credentials for sharing and parse credentials which have been shared.
-#[expect(clippy::too_many_arguments)]
 #[provider_mock]
 #[async_trait]
 pub trait CredentialFormatter: Provider + Send + Sync {
@@ -55,12 +54,11 @@ pub trait CredentialFormatter: Provider + Send + Sync {
     ) -> Result<SerializedCredential, error::FormatterError>;
 
     /// Formats Status List credential
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer: SelectedKey,
         encoded_list: String,
-        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,

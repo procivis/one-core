@@ -172,12 +172,11 @@ impl CredentialFormatter for JsonLdBbsplus {
         Ok(serde_json::to_string(&vcdm)?.into())
     }
 
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer: SelectedKey,
         encoded_list: String,
-        _algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,

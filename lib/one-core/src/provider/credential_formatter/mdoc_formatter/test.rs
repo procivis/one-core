@@ -1236,6 +1236,9 @@ async fn test_format_status_list() {
         .expect_sign()
         .returning(|_| Ok("signature".as_bytes().to_vec()));
     auth_fn.expect_get_key_id().returning(|| None);
+    auth_fn
+        .expect_get_key_algorithm()
+        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
 
     let chain = r#"-----BEGIN CERTIFICATE-----
 MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw
@@ -1273,7 +1276,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     key: Box::new(dummy_key()),
                 },
                 "eNo76fITAAPfAgc".to_string(),
-                KeyAlgorithmType::Ecdsa,
                 Box::new(auth_fn),
                 StatusPurpose::Revocation,
                 RevocationType::TokenStatusList,

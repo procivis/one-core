@@ -107,25 +107,20 @@ impl CredentialFormatter for JsonLdClassic {
             cs.id = holder_did;
         }
 
-        let key_algorithm = auth_fn
-            .get_key_algorithm()
-            .error_while("getting key algorithm")?;
-
         if !self.params.embed_layout_properties {
             vcdm.remove_layout_properties();
         }
 
-        let vcdm = self.add_proof(vcdm, key_algorithm, auth_fn).await?;
+        let vcdm = self.add_proof(vcdm, auth_fn).await?;
 
         Ok(serde_json::to_string(&vcdm)?.into())
     }
 
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer: SelectedKey,
         encoded_list: String,
-        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
@@ -159,7 +154,7 @@ impl CredentialFormatter for JsonLdClassic {
             .add_type("BitstringStatusListCredential".to_string())
             .with_valid_from(crate::clock::now_utc());
 
-        let credential = self.add_proof(credential, algorithm, auth_fn).await?;
+        let credential = self.add_proof(credential, auth_fn).await?;
 
         Ok(serde_json::to_string(&credential)?.into_bytes())
     }
@@ -519,9 +514,12 @@ impl JsonLdClassic {
     async fn add_proof(
         &self,
         mut vcdm: VcdmCredential,
-        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
     ) -> Result<VcdmCredential, FormatterError> {
+        let algorithm = auth_fn
+            .get_key_algorithm()
+            .error_while("getting key algorithm")?;
+
         let cryptosuite = match algorithm {
             KeyAlgorithmType::Eddsa => "eddsa-rdfc-2022",
             KeyAlgorithmType::Ecdsa => "ecdsa-rdfc-2019",

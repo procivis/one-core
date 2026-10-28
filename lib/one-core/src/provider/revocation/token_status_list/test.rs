@@ -64,12 +64,12 @@ async fn test_format_status_list_with_deleted_issuer_certificate(
     formatter
         .expect_format_status_list()
         .once()
-        .withf(move |_, selected, _, _, _, _, _| {
+        .withf(move |_, selected, _, _, _, _| {
             selected
                 .certificate()
                 .is_some_and(|certificate| certificate.id == certificate_id)
         })
-        .returning(|_, _, _, _, _, _, _| Ok(b"status-list".to_vec()));
+        .returning(|_, _, _, _, _, _| Ok(b"status-list".to_vec()));
     let key_algorithm_provider: Arc<dyn KeyAlgorithmProvider> =
         Arc::new(MockKeyAlgorithmProvider::new());
 

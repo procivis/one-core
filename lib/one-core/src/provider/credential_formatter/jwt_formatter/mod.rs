@@ -156,21 +156,16 @@ impl CredentialFormatter for JWTFormatter {
             .into())
     }
 
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer: SelectedKey,
         encoded_list: String,
-        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
     ) -> Result<Vec<u8>, FormatterError> {
-        let key_algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_type(algorithm)?;
-
-        let jose_alg = key_algorithm.issuance_jose_alg_id();
+        let jose_alg = auth_fn.jose_alg().error_while("getting JOSE algorithm")?;
 
         let status_list = match status_list_type {
             RevocationType::BitstringStatusList => {

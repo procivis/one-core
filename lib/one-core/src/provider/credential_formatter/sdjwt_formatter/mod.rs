@@ -137,12 +137,11 @@ impl CredentialFormatter for SDJWTFormatter {
         .await
     }
 
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         _revocation_list_url: String,
         _issuer: SelectedKey,
         _encoded_list: String,
-        _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,

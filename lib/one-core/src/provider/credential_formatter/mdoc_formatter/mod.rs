@@ -298,12 +298,11 @@ impl CredentialFormatter for MdocFormatter {
         encode_cbor_base64url(issuer_signed).map(Into::into)
     }
 
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer: SelectedKey,
         encoded_list: String,
-        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
@@ -324,6 +323,10 @@ impl CredentialFormatter for MdocFormatter {
                 "Unsupported issuer identifier".to_string(),
             ));
         };
+
+        let algorithm = auth_fn
+            .get_key_algorithm()
+            .error_while("getting key algorithm")?;
 
         let list = Base64UrlSafeNoPadding::decode_to_vec(encoded_list, None)?;
 

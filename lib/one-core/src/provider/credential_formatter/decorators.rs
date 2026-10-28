@@ -12,7 +12,7 @@ use super::model::{
     FormatterCapabilities, ParsedCredential, TokenVerifier,
 };
 use super::{CredentialFormatter, MetadataClaimSchema};
-use crate::config::core_config::{KeyAlgorithmType, RevocationType};
+use crate::config::core_config::RevocationType;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
@@ -40,12 +40,11 @@ impl<T: Provider + CredentialFormatter + Display + ?Sized> CredentialFormatter
         self.disabled_error()
     }
 
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         _revocation_list_url: String,
         _issuer: SelectedKey,
         _encoded_list: String,
-        _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
         _status_list_type: RevocationType,
@@ -176,12 +175,11 @@ impl CredentialFormatter for CapabilityChecked {
         self.0.format_credential(credential_data, auth_fn).await
     }
 
-    async fn format_status_list<'a>(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer: SelectedKey,
         encoded_list: String,
-        algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
         status_list_type: RevocationType,
@@ -191,7 +189,6 @@ impl CredentialFormatter for CapabilityChecked {
                 revocation_list_url,
                 issuer,
                 encoded_list,
-                algorithm,
                 auth_fn,
                 status_purpose,
                 status_list_type,
