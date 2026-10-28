@@ -690,8 +690,8 @@ const TEST_TDW_DID: &str = "did:tdw:QmdSU7F2rF7YnRRJLpQeYbxtEnwHWReNRSGCJ4Y5cGxr
 async fn test_create_signature_swiyu_proof_of_possession_success() {
     let (context, identifier, key) = setup_did_identifier(None, "TDW", TEST_TDW_DID).await;
 
-    let exp =
-        one_core::clock::now_utc().replace_millisecond(0).unwrap() + time::Duration::minutes(2);
+    let before = one_core::clock::now_utc().replace_millisecond(0).unwrap();
+    let exp = before + time::Duration::minutes(2);
 
     let resp = context
         .api
@@ -721,10 +721,13 @@ async fn test_create_signature_swiyu_proof_of_possession_success() {
         decomposed.header.key_id.as_deref(),
         Some(format!("{TEST_TDW_DID}#key-{}", key.id).as_str())
     );
+    assert_eq!(decomposed.payload.issuer.as_deref(), Some(TEST_TDW_DID));
+    let iat = decomposed.payload.issued_at.unwrap();
+    assert!(iat >= before && iat <= one_core::clock::now_utc());
     assert_eq!(decomposed.payload.expires_at.unwrap(), exp);
     assert_eq!(decomposed.payload.custom.nonce, "Your Nonce");
 
-    // only `exp` and `nonce` are part of the payload
+    // only `iss`, `iat`, `exp` and `nonce` are part of the payload
     let raw_payload = token.split('.').nth(1).unwrap();
     let raw_payload: serde_json::Value =
         serde_json::from_slice(&Base64UrlSafeNoPadding::decode_to_vec(raw_payload, None).unwrap())
@@ -736,7 +739,15 @@ async fn test_create_signature_swiyu_proof_of_possession_success() {
         .cloned()
         .collect::<Vec<_>>();
     claims.sort();
-    assert_eq!(claims, vec!["exp".to_string(), "nonce".to_string()]);
+    assert_eq!(
+        claims,
+        vec![
+            "exp".to_string(),
+            "iat".to_string(),
+            "iss".to_string(),
+            "nonce".to_string()
+        ]
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
