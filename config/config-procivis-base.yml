@@ -439,6 +439,7 @@ datatype:
         accept:
           - image/jpeg
           - image/png
+          - image/jp2
         fileSize: 4194304
         supportedInputMode: FILE_UPLOAD
         showAs: IMAGE
@@ -458,9 +459,6 @@ datatype:
         showAs: IMAGE
         supportedInputMode: FILE_UPLOAD
         encodeAsMdlPortrait: true
-      private:
-        holder:
-          valueExtraction: ENABLED
   SWIYU_PICTURE:
     display:
       en: "Picture (SWIYU)"
