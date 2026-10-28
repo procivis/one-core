@@ -47,6 +47,7 @@ use crate::entity::{
     proof_input_schema, proof_schema, revocation_list, revocation_list_entry, trust_collection,
     trust_list_subscription, used_nonce,
 };
+use crate::managed_instance::mapper::authentication_key_hash;
 use crate::{DataLayer, db_conn};
 
 #[cfg(test)]
@@ -825,6 +826,7 @@ pub async fn insert_wallet_instance_to_database(
 ) -> ManagedInstanceId {
     let id: ManagedInstanceId = Uuid::new_v4().into();
     let now = get_dummy_date();
+    let jwk = random_jwk_string();
 
     managed_instance::ActiveModel {
         id: Set(id),
@@ -836,7 +838,8 @@ pub async fn insert_wallet_instance_to_database(
         status: Set(instance::InstanceStatus::Active),
         provider: Set("Test Provider Name".to_string()),
         // Generate unique public key to avoid constraint violations
-        authentication_key_jwk: Set(Some(random_jwk_string())),
+        authentication_key_hash: Set(Some(authentication_key_hash(&jwk))),
+        authentication_key_jwk: Set(Some(jwk)),
         nonce: Set(None),
         user_nonce: Set(None),
         user_sub: Set(None),

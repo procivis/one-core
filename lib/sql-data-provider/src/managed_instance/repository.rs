@@ -10,7 +10,7 @@ use sea_orm::{EntityTrait, QueryOrder, Set, Unchanged};
 use shared_types::ManagedInstanceId;
 
 use super::ManagedInstanceProvider;
-use super::mapper::managed_instance_from_model;
+use super::mapper::{authentication_key_hash, managed_instance_from_model};
 use crate::common::list_query_with_custom_model;
 use crate::entity::managed_instance;
 use crate::list_query_generic::SelectWithListQuery;
@@ -102,6 +102,10 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
             last_issuance: request
                 .last_issuance
                 .map(|last_issuance| Set(last_issuance.into()))
+                .unwrap_or_default(),
+            authentication_key_hash: authentication_key_jwk
+                .as_deref()
+                .map(|key| Set(Some(authentication_key_hash(key))))
                 .unwrap_or_default(),
             authentication_key_jwk: authentication_key_jwk
                 .map(|key| Set(Some(key)))

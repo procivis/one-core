@@ -24,11 +24,12 @@ async fn test_db_schema_managed_instance() {
             "verifier_csr",
             "verifier_signature_ids",
             "version",
+            "authentication_key_hash",
         ])
         .index(
             "index-ManagedInstance-AuthenticationKey-Organisation-Role-Unique",
             true,
-            &["authentication_key_jwk", "organisation_id", "role"],
+            &["authentication_key_hash", "organisation_id", "role"],
         );
     managed_instance
         .column("id")
@@ -91,6 +92,10 @@ async fn test_db_schema_managed_instance() {
     managed_instance
         .column("authentication_key_jwk")
         .r#type(ColumnType::Text)
+        .nullable(true);
+    managed_instance
+        .column("authentication_key_hash")
+        .r#type(ColumnType::String(Some(64)))
         .nullable(true);
     managed_instance
         .column("role")

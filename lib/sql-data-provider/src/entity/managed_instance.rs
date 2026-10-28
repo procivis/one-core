@@ -20,6 +20,8 @@ pub struct Model {
     pub status: InstanceStatus,
     pub provider: String,
     pub authentication_key_jwk: Option<String>,
+    /// SHA-256 of `authentication_key_jwk`, the column of the unique index
+    pub authentication_key_hash: Option<String>,
     pub nonce: Option<String>,
     pub user_nonce: Option<String>,
     pub user_sub: Option<String>,

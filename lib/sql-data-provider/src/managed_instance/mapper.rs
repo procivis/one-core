@@ -15,6 +15,7 @@ use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ColumnRef, Query};
 use sea_orm::{ColumnTrait, Condition};
+use sha2::{Digest, Sha256};
 use shared_types::RevocationListEntryId;
 
 use crate::entity::managed_instance::VerifierSignatures;
@@ -88,6 +89,9 @@ impl TryFrom<ManagedInstance> for managed_instance::ActiveModel {
             os: Set(wallet_unit.os.into()),
             status: Set(wallet_unit.status.into()),
             provider: Set(wallet_unit.provider),
+            authentication_key_hash: Set(authentication_key_jwk
+                .as_deref()
+                .map(authentication_key_hash)),
             authentication_key_jwk: Set(authentication_key_jwk),
             nonce: Set(wallet_unit.nonce),
             user_nonce: Set(wallet_unit.user_nonce),
@@ -99,6 +103,10 @@ impl TryFrom<ManagedInstance> for managed_instance::ActiveModel {
             version: Set(wallet_unit.version),
         })
     }
+}
+
+pub(crate) fn authentication_key_hash(jwk: &str) -> String {
+    hex::encode(Sha256::digest(jwk))
 }
 
 impl IntoSortingColumn for SortableManagedInstanceColumn {
