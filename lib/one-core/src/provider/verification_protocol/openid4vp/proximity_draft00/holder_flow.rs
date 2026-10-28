@@ -94,7 +94,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
         Jwt::decompose_token(&authz_request_token).error_while("parsing request JWT")?;
 
     let (client_id, client_id_scheme) =
-        decode_client_id_with_scheme(&request_token.payload.custom.client_id, false)?;
+        decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
     let verifier_details = match client_id_scheme {
         ClientIdPrefix::DecentralizedIdentifier => {
             let did_value = DidValue::from_did_url(&client_id).map_err(|_| {

@@ -109,10 +109,9 @@ impl VerifierIdentifier {
             Self::Did(did) => encode_client_id_with_scheme(
                 did.to_string(),
                 ClientIdPrefix::DecentralizedIdentifier,
-                false,
             ),
             Self::Certificate { x509_hash, .. } => {
-                encode_client_id_with_scheme(x509_hash.to_owned(), ClientIdPrefix::X509Hash, false)
+                encode_client_id_with_scheme(x509_hash.to_owned(), ClientIdPrefix::X509Hash)
             }
         }
     }

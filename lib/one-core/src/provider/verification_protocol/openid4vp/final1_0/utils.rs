@@ -33,10 +33,8 @@ impl OpenID4VPFinal1_0 {
         &self,
         request_token: DecomposedJwt<AuthorizationRequest>,
     ) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
-        let (client_id_domain, _) = decode_client_id_with_scheme(
-            &request_token.payload.custom.client_id,
-            self.params.use_legacy_did_client_id_scheme,
-        )?;
+        let (client_id_domain, _) =
+            decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
         let certificate_details = validate_x509_san_dns_token(
             &request_token,
@@ -71,10 +69,7 @@ impl OpenID4VPFinal1_0 {
         &self,
         request_token: DecomposedJwt<AuthorizationRequest>,
     ) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
-        let (client_id, _) = decode_client_id_with_scheme(
-            &request_token.payload.custom.client_id,
-            self.params.use_legacy_did_client_id_scheme,
-        )?;
+        let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
         let certificate = validate_x509_hash_request_token(
             &request_token,
@@ -90,10 +85,7 @@ impl OpenID4VPFinal1_0 {
         &self,
         request_token: DecomposedJwt<AuthorizationRequest>,
     ) -> Result<(AuthorizationRequest, DidValue), VerificationProtocolError> {
-        let (client_id, _) = decode_client_id_with_scheme(
-            &request_token.payload.custom.client_id,
-            self.params.use_legacy_did_client_id_scheme,
-        )?;
+        let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
         let verifier_did = validate_did_request_token(
             &request_token,
@@ -194,7 +186,6 @@ impl OpenID4VPFinal1_0 {
                 client_id: encode_client_id_with_scheme(
                     client_id_without_prefix,
                     ClientIdPrefix::VerifierAttestation,
-                    self.params.use_legacy_did_client_id_scheme,
                 ),
                 ..request_token.payload.custom
             },
@@ -229,10 +220,8 @@ impl OpenID4VPFinal1_0 {
             tracing::warn!("`aud` claim missing in request JWT payload");
         }
 
-        let (_, client_id_scheme) = decode_client_id_with_scheme(
-            &request_token.payload.custom.client_id,
-            self.params.use_legacy_did_client_id_scheme,
-        )?;
+        let (_, client_id_scheme) =
+            decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
         self.validate_supported_client_id_scheme(client_id_scheme)?;
 
@@ -299,10 +288,7 @@ impl OpenID4VPFinal1_0 {
         &self,
         query_params: AuthorizationRequestQueryParams,
     ) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
-        let (_, client_id_scheme) = decode_client_id_with_scheme(
-            &query_params.client_id,
-            self.params.use_legacy_did_client_id_scheme,
-        )?;
+        let (_, client_id_scheme) = decode_client_id_with_scheme(&query_params.client_id)?;
 
         self.validate_supported_client_id_scheme(client_id_scheme)?;
 

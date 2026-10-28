@@ -25,10 +25,6 @@ impl OID4VPFinal1_0SwiyuService {
         let payload = decomposed.payload.custom.as_object_mut().ok_or_else(|| {
             OID4VPFinal1_0ServiceError::MappingError("expected payload to be an object".to_string())
         })?;
-        payload.insert(
-            "client_id_scheme".to_string(),
-            Value::String("did".to_string()),
-        );
         remove_required_flag_from_claims(payload);
 
         let adjusted_request = format_authorization_request_client_id_scheme_did(

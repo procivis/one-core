@@ -350,7 +350,6 @@ impl OpenID4VPFinal1_0 {
                         format_presentation_context(
                             interaction_data,
                             presentation_format,
-                            self.params.use_legacy_did_client_id_scheme,
                             credential_presentation.holder_did,
                             aggregated_tx_data,
                             encryption_info.as_ref(),
@@ -444,10 +443,8 @@ impl OpenID4VPFinal1_0 {
                     )));
                 }
 
-                let (client_id_without_prefix, client_id_scheme) = decode_client_id_with_scheme(
-                    &jwt.payload.custom.client_id,
-                    self.params.use_legacy_did_client_id_scheme,
-                )?;
+                let (client_id_without_prefix, client_id_scheme) =
+                    decode_client_id_with_scheme(&jwt.payload.custom.client_id)?;
 
                 self.validate_supported_client_id_scheme(client_id_scheme)?;
 
@@ -1051,11 +1048,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             )
             .await?,
             vec![],
-            encode_client_id_with_scheme(
-                client_id_without_prefix.clone(),
-                client_id_scheme,
-                self.params.use_legacy_did_client_id_scheme,
-            ),
+            encode_client_id_with_scheme(client_id_without_prefix.clone(), client_id_scheme),
             response_uri.clone(),
             &interaction_id,
             client_metadata,
@@ -1138,7 +1131,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 fn format_presentation_context(
     interaction_data: &OpenID4VPHolderInteractionData,
     presentation_format: FormatType,
-    use_legacy_did_client_id_scheme: bool,
     holder_did: Option<Did>,
     transaction_data: Option<ProcessedTransactionData>,
     encryption_info: Option<&EncryptionInfo>,
@@ -1160,7 +1152,6 @@ fn format_presentation_context(
                     &encode_client_id_with_scheme(
                         http_data.client_id.clone(),
                         http_data.client_id_scheme,
-                        use_legacy_did_client_id_scheme,
                     ),
                     http_data.response_uri.as_str(),
                     &verifier_nonce,
@@ -1181,7 +1172,6 @@ fn format_presentation_context(
             TransportSpecificData::Http(http_data) => encode_client_id_with_scheme(
                 http_data.client_id.clone(),
                 http_data.client_id_scheme,
-                use_legacy_did_client_id_scheme,
             ),
             TransportSpecificData::DcApiUnsigned { origin }
             | TransportSpecificData::DcApiSigned { origin } => {

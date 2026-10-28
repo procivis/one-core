@@ -160,8 +160,8 @@ impl OID4VPFinal1_0Service {
                     .error_while("formatting authorization request")?
             }
             ClientIdPrefix::VerifierAttestation => {
-                let (client_id_without_prefix, _) = decode_client_id_with_scheme(&client_id, false)
-                    .error_while("decoding clientId")?;
+                let (client_id_without_prefix, _) =
+                    decode_client_id_with_scheme(&client_id).error_while("decoding clientId")?;
 
                 format_authorization_request_client_id_scheme_verifier_attestation(
                     &proof,

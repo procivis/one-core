@@ -145,10 +145,10 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         verifier:
-                            supportedClientIdSchemes: [ verifier_attestation, redirect_uri, did ]
+                            supportedClientIdSchemes: [ verifier_attestation, redirect_uri, decentralized_identifier ]
                         holder:
                             requiresEncryptedResponse: false
-                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
+                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, decentralized_identifier ]
                         redirectUri:
                             enabled: true
                             allowedSchemes: [ https ]

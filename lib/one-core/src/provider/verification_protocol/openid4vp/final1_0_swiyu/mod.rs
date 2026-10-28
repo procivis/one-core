@@ -75,7 +75,6 @@ pub(crate) fn swiyu_to_final_params(mut params: Value) -> Result<Value, serde_js
 
     let additional_params = json!({
         "useRequestUri": true,
-        "useLegacyDidClientIdScheme": true,
         "urlScheme": "swiyu-verify",
         "swiyuMode": true,
         "predefinedVpFormatsSupported": {

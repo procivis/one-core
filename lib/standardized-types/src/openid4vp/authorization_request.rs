@@ -102,8 +102,6 @@ pub enum VerifierInfoAttestationFormat {
 pub enum ClientIdPrefix {
     RedirectUri,
     VerifierAttestation,
-    /// Named `did` in versions of the specification prior to 1.0.
-    #[serde(alias = "did")]
     DecentralizedIdentifier,
     X509SanDns,
     X509Hash,
@@ -124,11 +122,8 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_client_id_prefix_accepts_legacy_did() {
-        assert_eq!(
-            ClientIdPrefix::DecentralizedIdentifier,
-            serde_json::from_value(serde_json::json!("did")).unwrap()
-        );
+    fn test_client_id_prefix_rejects_legacy_did() {
+        assert!(serde_json::from_value::<ClientIdPrefix>(serde_json::json!("did")).is_err());
         assert_eq!(
             ClientIdPrefix::DecentralizedIdentifier,
             serde_json::from_value(serde_json::json!("decentralized_identifier")).unwrap()

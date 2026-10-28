@@ -14,8 +14,6 @@ pub(crate) struct Params {
     #[serde(default)]
     pub allow_insecure_http_transport: bool,
     #[serde(default)]
-    pub use_legacy_did_client_id_scheme: bool,
-    #[serde(default)]
     pub use_request_uri: bool,
 
     #[serde(default = "default_presentation_url_scheme")]
