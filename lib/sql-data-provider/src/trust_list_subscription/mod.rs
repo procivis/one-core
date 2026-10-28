@@ -4,7 +4,7 @@ use one_core::repository::trust_collection_repository::TrustCollectionRepository
 
 use crate::transaction_context::TransactionManagerImpl;
 
-mod mapper;
+pub mod mapper;
 mod repository;
 #[cfg(test)]
 mod test;

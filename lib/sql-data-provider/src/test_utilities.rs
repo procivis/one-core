@@ -48,6 +48,7 @@ use crate::entity::{
     trust_list_subscription, used_nonce,
 };
 use crate::managed_instance::mapper::authentication_key_hash;
+use crate::trust_list_subscription::mapper::reference_hash;
 use crate::{DataLayer, db_conn};
 
 #[cfg(test)]
@@ -912,6 +913,9 @@ pub async fn insert_trust_list_subscription_to_database(
         last_modified: Set(get_dummy_date()),
         deactivated_at: NotSet,
         r#type: Set("LoTE".into()),
+        reference_hash: Set(reference_hash(&format!(
+            "https://example.com/trust-list/{id}"
+        ))),
         reference: Set(format!("https://example.com/trust-list/{id}")),
         role: NotSet,
         state: Set(trust_list_subscription::TrustListSubscriptionState::Active),

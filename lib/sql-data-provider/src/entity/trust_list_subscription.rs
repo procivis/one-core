@@ -17,6 +17,8 @@ pub struct Model {
     #[sea_orm(column_name = "type")]
     pub r#type: TrustListSubscriberId,
     pub reference: String,
+    /// SHA-256 of `reference`, the column of the unique index
+    pub reference_hash: String,
     pub role: Option<TrustRoleEnum>,
     pub state: TrustListSubscriptionState,
 

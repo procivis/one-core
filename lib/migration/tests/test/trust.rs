@@ -273,6 +273,7 @@ async fn test_db_schema_trust_subscription() {
     if schema.backend() == DbBackend::MySql {
         columns.push("deactivated_at_materialized");
     }
+    columns.push("reference_hash");
 
     let mut index_columns1 = vec!["name", "trust_collection_id"];
     if schema.backend() == DbBackend::MySql {
@@ -281,7 +282,7 @@ async fn test_db_schema_trust_subscription() {
         index_columns1.push("deactivated_at")
     }
 
-    let mut index_columns2 = vec!["reference", "trust_collection_id"];
+    let mut index_columns2 = vec!["reference_hash", "trust_collection_id"];
     if schema.backend() == DbBackend::MySql {
         index_columns2.push("deactivated_at_materialized")
     } else {
@@ -329,6 +330,11 @@ async fn test_db_schema_trust_subscription() {
     trust_entry
         .column("reference")
         .r#type(ColumnType::Text)
+        .nullable(false)
+        .default(None);
+    trust_entry
+        .column("reference_hash")
+        .r#type(ColumnType::String(Some(64)))
         .nullable(false)
         .default(None);
     trust_entry

@@ -10,6 +10,7 @@ use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::ColumnTrait;
 use sea_orm::sea_query::{ColumnRef, IntoCondition};
+use sha2::{Digest, Sha256};
 
 use crate::entity::trust_list_publication::TrustRoleEnum;
 use crate::entity::trust_list_subscription;
@@ -40,6 +41,10 @@ pub(crate) fn trust_list_subscription_from_model(
     }
 }
 
+pub(crate) fn reference_hash(reference: &str) -> String {
+    hex::encode(Sha256::digest(reference))
+}
+
 impl From<TrustListSubscription> for trust_list_subscription::ActiveModel {
     fn from(value: TrustListSubscription) -> Self {
         Self {
@@ -49,6 +54,7 @@ impl From<TrustListSubscription> for trust_list_subscription::ActiveModel {
             name: Set(value.name),
             deactivated_at: Set(value.deactivated_at),
             r#type: Set(value.r#type),
+            reference_hash: Set(reference_hash(&value.reference)),
             reference: Set(value.reference),
             role: Set(value.role.map(Into::into)),
             state: Set(value.state.into()),
