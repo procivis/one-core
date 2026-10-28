@@ -121,9 +121,16 @@ impl HttpClient for ReqwestClient {
             Method::Patch => self.client.patch(url),
         };
 
-        if let Some(headers) = headers {
-            builder = builder.headers(to_header_map(headers)?);
+        let mut header_map = to_header_map(headers.unwrap_or_default())?;
+        // hyper sends no `Content-Length` for a request without body, some servers then wait
+        // for content until they time out. Set it for methods that define request content.
+        // Spec: <https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-5>
+        if body.is_none() && !matches!(method, Method::Get) {
+            header_map
+                .entry(CONTENT_LENGTH)
+                .or_insert(HeaderValue::from_static("0"));
         }
+        builder = builder.headers(header_map);
         if let Some(body) = body {
             builder = builder.body(body);
         }

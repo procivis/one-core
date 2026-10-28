@@ -127,9 +127,7 @@ pub enum Error {
 
 impl Error {
     fn log_error(self, location: &std::panic::Location, request: &Request) -> Self {
-        let debug_message = format!("\n{} {} - {self}", request.method, request.url);
-        tracing::info!(%debug_message, %location);
-
+        tracing::info!(%location, "{} {} - {self}", request.method, request.url);
         self
     }
 }
@@ -202,20 +200,15 @@ impl Response {
 
     #[track_caller]
     fn log_success(self) -> Self {
-        let debug_message = format!("\n{} {} - HTTP", self.request.method, self.request.url);
-
         let location = std::panic::Location::caller();
-        tracing::debug!(%debug_message, %location);
+        tracing::debug!(%location, "{} {} - HTTP", self.request.method, self.request.url);
         log_request_details(location, &self.request);
 
-        let trace_response = format!(
-            "\nResponse\nStatus: {}\nHeaders:\n{}\nBody:\n{}\n",
+        tracing::trace!(%location,
+            "Response\nStatus: {}\nHeaders:\n{}\nBody:\n{}\n",
             self.status,
             format_headers(&self.headers),
-            format_body(&Some(&self.body))
-        );
-        tracing::trace!(%trace_response, %location);
-
+            format_body(&Some(&self.body)));
         self
     }
 }
@@ -333,6 +326,8 @@ impl RequestBuilder {
         let location = std::panic::Location::caller();
         let as_request = self.as_request();
 
+        tracing::debug!(%location,"{} {} - sending", self.method, self.url);
+
         let headers = if self.headers.is_empty() {
             None
         } else {
@@ -379,21 +374,15 @@ fn format_headers(headers: &Headers) -> String {
 fn format_body(body: &Option<&Vec<u8>>) -> String {
     match body {
         None => "<None>".to_string(),
-        Some(value) => match String::from_utf8((*value).clone()) {
-            Ok(string) => string,
-            Err(_) => format!("{value:?}"),
-        },
+        Some(value) => String::from_utf8((*value).clone()).unwrap_or_else(|_| format!("{value:?}")),
     }
 }
 
 fn log_request_details(location: &std::panic::Location, request: &Request) {
-    let trace_request = format!(
-        "\nRequest\nHeaders:\n{}\nBody:\n{}\n",
+    tracing::trace!(%location,
+        "Request\nHeaders:\n{}\nBody:\n{}\n",
         format_headers(&request.headers),
-        format_body(&request.body.as_ref())
-    );
-
-    tracing::trace!(%trace_request, %location);
+        format_body(&request.body.as_ref()));
 }
 
 #[cfg(test)]

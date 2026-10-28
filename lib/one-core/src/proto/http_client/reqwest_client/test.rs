@@ -3,7 +3,7 @@ use std::time::Duration;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use wiremock::http::Method;
-use wiremock::matchers::{method, path};
+use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::ReqwestClient;
@@ -253,6 +253,31 @@ async fn test_client_param_timeout_and_max_response_size() {
 
     let response = benevolent_client
         .get(&mock_server.uri())
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status, StatusCode(200));
+}
+
+#[tokio::test]
+async fn test_client_sends_zero_content_length_for_post_without_body() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .and(header("content-length", "0"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let client = ReqwestClient::new(HttpClientSecurityConfig {
+        insecure_http_transport_allowed: true,
+        ..Default::default()
+    })
+    .unwrap();
+
+    let response = client
+        .post(&format!("{}/nonce", mock_server.uri()))
         .send()
         .await
         .unwrap();
