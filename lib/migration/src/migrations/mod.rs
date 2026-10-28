@@ -74,3 +74,4 @@ pub mod m20261027_130000_did_hash;
 pub mod m20261027_140000_managed_instance_key_hash;
 pub mod m20261027_150000_remote_entity_cache_key_hash;
 pub mod m20261027_160000_trust_list_subscription_reference_hash;
+pub mod m20261027_170000_trust_list_publication_name_length;

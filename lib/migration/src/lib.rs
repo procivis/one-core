@@ -368,6 +368,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 migrations::m20261027_160000_trust_list_subscription_reference_hash::Migration,
             ),
+            Box::new(migrations::m20261027_170000_trust_list_publication_name_length::Migration),
         ]
     }
 }

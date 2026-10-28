@@ -7,7 +7,7 @@ use similar_asserts::assert_eq;
 /// MariaDB builds a unique index over a column longer than its key limit as `USING HASH`, and
 /// concurrent inserts then deadlock or skip the uniqueness check.
 #[tokio::test]
-async fn test_hash_unique_indexes_only_on_the_known_tables() {
+async fn test_no_hash_unique_indexes() {
     let Ok(url) = std::env::var("ONE_app__databaseUrl") else {
         return;
     };
@@ -32,9 +32,5 @@ async fn test_hash_unique_indexes_only_on_the_known_tables() {
         .map(|row| row.try_get_by_index(0).unwrap())
         .collect();
 
-    // once ONE-11761 is done, list should be empty
-    assert_eq!(
-        hash_indexes,
-        ["trust_list_publication.index-TrustPublication-Name-Org-DeactivatedAt-Unique"]
-    );
+    assert_eq!(hash_indexes, Vec::<String>::new());
 }

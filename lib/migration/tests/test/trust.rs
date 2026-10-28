@@ -59,7 +59,7 @@ async fn test_db_schema_trust_list_publication() {
         .default(None);
     trust_list_publication
         .column("name")
-        .r#type(ColumnType::Text)
+        .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
     trust_list_publication
