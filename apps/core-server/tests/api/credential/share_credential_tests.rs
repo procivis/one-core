@@ -1,10 +1,13 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
+use one_core::model::interaction::InteractionType;
+use serde_json::json;
 use similar_asserts::assert_eq;
 
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::interactions::TestingInteractionParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -41,6 +44,63 @@ async fn test_share_credential_success() {
 
     assert!(resp.get("transactionCode").is_none());
 
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(CredentialStateEnum::Pending, credential.common().state);
+}
+
+#[tokio::test]
+async fn test_share_credential_replaces_interaction_with_used_nonces() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(
+                    serde_json::to_vec(&json!({
+                        "pre_authorized_code_used": true,
+                        "access_token_hash": [],
+                    }))
+                    .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .interactions
+        .mark_nonce_as_used(&interaction.id)
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::InteractionExpired,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.credentials.share(&credential.common().id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    assert!(context.db.interactions.get(interaction.id).await.is_none());
     let credential = context.db.credentials.get(&credential.common().id).await;
     assert_eq!(CredentialStateEnum::Pending, credential.common().state);
 }
