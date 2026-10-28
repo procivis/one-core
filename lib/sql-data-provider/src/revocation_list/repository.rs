@@ -336,23 +336,6 @@ impl RevocationListRepository for RevocationListProvider {
         Ok(())
     }
 
-    async fn get_entry_by_id(
-        &self,
-        entry_id: RevocationListEntryId,
-    ) -> Result<RevocationListEntry, DataLayerError> {
-        let mut entries = self
-            .get_filtered_entries(
-                revocation_list_entry::Column::Id
-                    .eq(entry_id)
-                    .into_condition(),
-            )
-            .await?;
-        entries.pop().ok_or_else(|| DataLayerError::EntityNotFound {
-            kind: EntityKind::RevocationListEntry,
-            id: entry_id.into(),
-        })
-    }
-
     async fn get_entries(
         &self,
         list_id: RevocationListId,

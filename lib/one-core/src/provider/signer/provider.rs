@@ -21,6 +21,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::error::{DataLayerError, EntityKind};
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::ServiceError;
 
@@ -46,11 +47,19 @@ impl SignerProvider for SignerProviderImpl {
         &self,
         id: Uuid,
     ) -> Result<(SignerId, Arc<dyn Signer>), NestedError> {
-        let entry = self
-            .revocation_list_repository
-            .get_entry_by_id(id.into())
-            .await
-            .error_while("getting revocation list entry")?;
+        let entry = async {
+            self.revocation_list_repository
+                .get_entries_by_id(vec![id.into()])
+                .await?
+                .into_iter()
+                .next()
+                .ok_or_else(|| DataLayerError::EntityNotFound {
+                    kind: EntityKind::RevocationListEntry,
+                    id,
+                })
+        }
+        .await
+        .error_while("getting revocation list entry")?;
 
         match entry.entity_info {
             RevocationListEntityInfo::Signature(name, _) => {

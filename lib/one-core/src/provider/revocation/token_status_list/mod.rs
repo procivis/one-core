@@ -283,34 +283,12 @@ impl RevocationMethod for TokenStatusList {
             .await
             .error_while("updating revocation list entry")?;
 
-        let current_entries = self
-            .revocation_list_repository
-            .get_entries(current_list.id)
-            .await
-            .error_while("getting revocation list entries")?;
-
-        let encoded_list =
-            generate_token_from_entries(current_entries, self.required_bits()?).await?;
-
-        let formatted_list = format_status_list_credential(
-            &current_list.id,
+        self.publish_list(
+            current_list.id,
             &issuer_identifier,
             issuer_certificate.as_ref(),
-            encoded_list,
-            &*self.key_provider,
-            &self.key_algorithm_provider,
-            &self.core_base_url,
-            &*self.get_formatter_for_issuance()?,
-            self.purpose()?,
         )
-        .await?;
-
-        self.revocation_list_repository
-            .update_formatted_list(&current_list.id, formatted_list)
-            .await
-            .error_while("updating revocation list")?;
-
-        Ok(())
+        .await
     }
 
     async fn check_credential_revocation_status(
@@ -476,36 +454,16 @@ impl RevocationMethod for TokenStatusList {
                             .error_while("updating revocation list entry")?;
                     }
 
-                    let entries = self
-                        .revocation_list_repository
-                        .get_entries(list.id)
-                        .await
-                        .error_while("getting revocation list entries")?;
-
-                    let encoded_list =
-                        generate_token_from_entries(entries, self.required_bits()?).await?;
-
                     let issuer_certificate = match list.issuer_certificate.as_ref() {
                         None => None,
                         Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
                     };
-                    let formatted_list = format_status_list_credential(
-                        &list.id,
+                    self.publish_list(
+                        list.id,
                         list.issuer_identifier.as_ref().await?.as_ref(),
                         issuer_certificate.as_ref(),
-                        encoded_list,
-                        &*self.key_provider,
-                        &self.key_algorithm_provider,
-                        &self.core_base_url,
-                        &*self.get_formatter_for_issuance()?,
-                        self.purpose()?,
                     )
                     .await?;
-
-                    self.revocation_list_repository
-                        .update_formatted_list(&list.id, formatted_list)
-                        .await
-                        .error_while("updating revocation list")?;
                 }
                 Ok::<_, RevocationError>(())
             }
@@ -554,38 +512,17 @@ impl RevocationMethod for TokenStatusList {
                     .get_revocation_list_by_entry_id(signature_id)
                     .await
                     .error_while("getting revocation list")?;
-                let current_entries = self
-                    .revocation_list_repository
-                    .get_entries(current_list.id)
-                    .await
-                    .error_while("getting revocation list entries")?;
-
-                let encoded_list =
-                    generate_token_from_entries(current_entries, self.required_bits()?).await?;
 
                 let issuer_certificate = match current_list.issuer_certificate.as_ref() {
                     None => None,
                     Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
                 };
-                let formatted_list = format_status_list_credential(
-                    &current_list.id,
+                self.publish_list(
+                    current_list.id,
                     current_list.issuer_identifier.as_ref().await?.as_ref(),
                     issuer_certificate.as_ref(),
-                    encoded_list,
-                    &*self.key_provider,
-                    &self.key_algorithm_provider,
-                    &self.core_base_url,
-                    &*self.get_formatter_for_issuance()?,
-                    self.purpose()?,
                 )
-                .await?;
-
-                self.revocation_list_repository
-                    .update_formatted_list(&current_list.id, formatted_list)
-                    .await
-                    .error_while("updating revocation list")?;
-
-                Ok::<_, RevocationError>(())
+                .await
             }
             .boxed())
             .await
@@ -805,6 +742,41 @@ impl TokenStatusList {
             .error_while("creating revocation list entry")?;
 
         Ok((revocation_list_id, entry_id))
+    }
+
+    async fn publish_list(
+        &self,
+        list_id: RevocationListId,
+        issuer_identifier: &Identifier,
+        issuer_certificate: Option<&Certificate>,
+    ) -> Result<(), RevocationError> {
+        let entries = self
+            .revocation_list_repository
+            .get_entries(list_id)
+            .await
+            .error_while("getting revocation list entries")?;
+
+        let encoded_list = generate_token_from_entries(entries, self.required_bits()?).await?;
+
+        let formatted_list = format_status_list_credential(
+            &list_id,
+            issuer_identifier,
+            issuer_certificate,
+            encoded_list,
+            &*self.key_provider,
+            &self.key_algorithm_provider,
+            &self.core_base_url,
+            &*self.get_formatter_for_issuance()?,
+            self.purpose()?,
+        )
+        .await?;
+
+        self.revocation_list_repository
+            .update_formatted_list(&list_id, formatted_list)
+            .await
+            .error_while("updating revocation list")?;
+
+        Ok(())
     }
 
     fn create_credential_status(

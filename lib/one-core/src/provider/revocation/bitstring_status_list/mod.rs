@@ -206,32 +206,8 @@ impl RevocationMethod for BitstringStatusList {
             .await
             .error_while("updating revocation list entry")?;
 
-        let current_entries = self
-            .revocation_list_repository
-            .get_entries(current_list.id)
+        self.publish_list(current_list.id, &issuer_identifier, purpose)
             .await
-            .error_while("getting revocation list entries")?;
-
-        let encoded_list = generate_bitstring_from_entries(current_entries, purpose).await?;
-
-        let formatted_list = format_status_list_credential(
-            &current_list.id,
-            &issuer_identifier,
-            encoded_list,
-            purpose,
-            &*self.key_provider,
-            &self.key_algorithm_provider,
-            &self.core_base_url,
-            &*self.get_formatter_for_issuance(&issuer_identifier).await?,
-        )
-        .await?;
-
-        self.revocation_list_repository
-            .update_formatted_list(&current_list.id, formatted_list)
-            .await
-            .error_while("updating revocation list")?;
-
-        Ok(())
     }
 
     async fn check_credential_revocation_status(
@@ -670,6 +646,40 @@ impl BitstringStatusList {
             .error_while("creating revocation list entry")?;
 
         Ok(revocation_list_id)
+    }
+
+    async fn publish_list(
+        &self,
+        list_id: RevocationListId,
+        issuer_identifier: &Identifier,
+        purpose: RevocationListPurpose,
+    ) -> Result<(), RevocationError> {
+        let entries = self
+            .revocation_list_repository
+            .get_entries(list_id)
+            .await
+            .error_while("getting revocation list entries")?;
+
+        let encoded_list = generate_bitstring_from_entries(entries, purpose).await?;
+
+        let formatted_list = format_status_list_credential(
+            &list_id,
+            issuer_identifier,
+            encoded_list,
+            purpose,
+            &*self.key_provider,
+            &self.key_algorithm_provider,
+            &self.core_base_url,
+            &*self.get_formatter_for_issuance(issuer_identifier).await?,
+        )
+        .await?;
+
+        self.revocation_list_repository
+            .update_formatted_list(&list_id, formatted_list)
+            .await
+            .error_while("updating revocation list")?;
+
+        Ok(())
     }
 }
 

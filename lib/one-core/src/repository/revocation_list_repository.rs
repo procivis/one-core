@@ -64,11 +64,6 @@ pub trait RevocationListRepository: Send + Sync {
         request: UpdateRevocationListEntryRequest,
     ) -> Result<(), DataLayerError>;
 
-    async fn get_entry_by_id(
-        &self,
-        id: RevocationListEntryId,
-    ) -> Result<RevocationListEntry, DataLayerError>;
-
     async fn get_entries(
         &self,
         list_id: RevocationListId,
