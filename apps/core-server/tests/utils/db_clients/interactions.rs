@@ -55,6 +55,13 @@ impl InteractionsDB {
         interaction
     }
 
+    pub async fn mark_nonce_as_used(&self, interaction_id: &InteractionId) {
+        self.repository
+            .mark_nonces_as_used(interaction_id, vec![Uuid::new_v4().into()])
+            .await
+            .unwrap();
+    }
+
     pub async fn get(&self, id: impl Into<InteractionId>) -> Option<Interaction> {
         match self.repository.get_interaction(&id.into(), None).await {
             Ok(interaction) => Some(interaction),

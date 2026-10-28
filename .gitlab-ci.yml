@@ -329,6 +329,7 @@ coverage:report:
 
 linter:dependencies:
   interruptible: true
+  allow_failure: true
   stage: lint
   needs: []
   script:

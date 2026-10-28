@@ -100,6 +100,11 @@ impl InteractionRepository for InteractionProvider {
     }
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError> {
+        used_nonce::Entity::delete_many()
+            .filter(used_nonce::Column::InteractionId.eq(*id))
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
         interaction::Entity::delete_by_id(*id)
             .exec(&self.db)
             .await

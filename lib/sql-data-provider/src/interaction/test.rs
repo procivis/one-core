@@ -240,6 +240,9 @@ async fn test_update_interaction() {
 #[tokio::test]
 async fn test_delete_interaction() {
     let setup = setup_with_interaction().await;
+    insert_used_nonce(&setup.db, Uuid::new_v4().into(), setup.interaction_id)
+        .await
+        .unwrap();
 
     let result = setup
         .provider
