@@ -18,6 +18,7 @@ use crate::mapper::x509::SigningKeyAdapter;
 use crate::model::certificate::Certificate;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
+use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
@@ -173,13 +174,11 @@ async fn handle_x509_revocation(
         .add_signature(provider_config_name, identifier, Some(certificate))
         .await
         .error_while("Adding signature to revocation list")?;
-    let distribution_point =
-        revocation_info
-            .credential_status
-            .id
-            .ok_or(SignerError::MappingError(
-                "Missing status id on revocation_info".to_string(),
-            ))?;
+    let CredentialStatus::CRL(distribution_point) = revocation_info.credential_status else {
+        return Err(SignerError::MappingError(
+            "Missing status id on revocation_info".to_string(),
+        ));
+    };
     params.crl_distribution_points.push(CrlDistributionPoint {
         uris: vec![distribution_point.to_string()],
     });

@@ -92,7 +92,7 @@ async fn create_mdoc_holder_credential(
             credential: UnsignedCredential::Mdoc(MdocCredential {
                 doctype: MDOC_DOCTYPE.to_string(),
                 valid_until: None,
-                credential_status: vec![],
+                credential_status: None,
                 claims: IssuedClaims::from([(
                     MDOC_NAMESPACE.to_string(),
                     IssuedClaimValue::Object(IssuedClaims::from([(

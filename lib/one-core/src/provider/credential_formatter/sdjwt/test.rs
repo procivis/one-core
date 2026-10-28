@@ -10,17 +10,17 @@ use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
 
+use super::disclosures::{
+    DisclosureArray, compute_object_disclosures, parse_disclosure, select_disclosures,
+};
+use super::model::Disclosure;
+use super::prepare_sd_presentation;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialPresentation, CredentialStatus, Issuer, MockSignatureProvider,
-    UnsignedCredential,
+    CredentialData, CredentialPresentation, Issuer, MockSignatureProvider, UnsignedCredential,
+    W3CCredentialStatus,
 };
-use crate::provider::credential_formatter::sdjwt::disclosures::{
-    DisclosureArray, compute_object_disclosures, parse_disclosure, select_disclosures,
-};
-use crate::provider::credential_formatter::sdjwt::model::Disclosure;
-use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSchema, VcdmCredentialSubject,
 };
@@ -642,7 +642,7 @@ fn test_select_disclosures_returns_empty_when_disclosed_key_not_found_in_disclos
     assert!(disclosures.is_empty());
 }
 
-pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
+pub fn get_credential_data(status: W3CCredentialStatus, core_base_url: &str) -> CredentialData {
     let issuance_date = crate::clock::now_utc();
     let valid_for = time::Duration::days(365 * 2);
 

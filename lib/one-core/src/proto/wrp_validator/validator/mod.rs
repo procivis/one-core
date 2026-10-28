@@ -35,6 +35,7 @@ use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialStatus, IdentifierDetails, PublicKeySource, VerificationFn,
     X5References,
 };
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatusList;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::model::RevocationState;
@@ -475,8 +476,6 @@ impl WRPValidatorImpl {
         status: &Status,
         issuer_pem_chain: &str,
     ) -> Result<(), WRPValidatorError> {
-        const TOKENSTATUSLIST_ENTRY_TYPE: &str = "TokenStatusListEntry";
-
         let ParsedCertificate {
             attributes,
             subject_common_name,
@@ -495,24 +494,21 @@ impl WRPValidatorImpl {
             .clone()
             .unwrap_or_else(|| attributes.subject.clone());
 
+        let status: SdJwtVcStatusList =
+            serde_json::from_value(serde_json::to_value(status.status_list.to_owned())?)?;
+        let status = CredentialStatus::TokenStatusList(status.into());
+
         let (revocation_provider, _) = self
             .revocation_method_provider
-            .get_revocation_method_by_status_type(TOKENSTATUSLIST_ENTRY_TYPE)
-            .ok_or(
-                MissingProviderError::RevocationMethodByCredentialStatusType(
-                    TOKENSTATUSLIST_ENTRY_TYPE.to_string(),
-                ),
-            )
+            .get_revocation_method_by_status(&status)
+            .ok_or_else(|| {
+                MissingProviderError::RevocationMethodByCredentialStatusType(format!("{status:?}"))
+            })
             .error_while("getting revocation provider")?;
 
         let revocation_status = revocation_provider
             .check_credential_revocation_status(
-                &CredentialStatus {
-                    id: None,
-                    r#type: TOKENSTATUSLIST_ENTRY_TYPE.to_string(),
-                    status_purpose: None,
-                    additional_fields: status.status_list.to_owned(),
-                },
+                &status,
                 &IdentifierDetails::Certificate(CertificateDetails {
                     chain: issuer_pem_chain.to_owned(),
                     fingerprint: attributes.fingerprint,

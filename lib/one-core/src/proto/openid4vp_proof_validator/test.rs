@@ -29,7 +29,7 @@ use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorP
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, DetailCredential, IdentifierDetails,
+    CredentialStatus, DetailCredential, IdentifierDetails, W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -254,7 +254,7 @@ fn setup_mocks(
     if let Some(revocation_method) = revocation_method {
         mocks
             .revocation_method_provider
-            .expect_get_revocation_method_by_status_type()
+            .expect_get_revocation_method_by_status()
             .once()
             .return_once(|_| Some((Arc::new(revocation_method), "mock".into())));
     }
@@ -431,12 +431,12 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
             ("required_key".to_string(), json!("required_key_value")),
         ]))
         .unwrap(),
-        status: vec![CredentialStatus {
+        status: Some(CredentialStatus::W3C(vec![W3CCredentialStatus {
             id: Some("did:status:test".parse().unwrap()),
             r#type: "".to_string(),
             status_purpose: None,
             additional_fields: Default::default(),
-        }],
+        }])),
     };
 
     let extracted_presentation = ExtractedPresentation {
@@ -863,7 +863,7 @@ async fn multiformat_test_data(transaction_data: bool) -> TestData {
         .unwrap()
         .as_mut()
         .unwrap();
-    credential.status.clear();
+    credential.status = None;
     credential.claims.insert(
         "alternative_required_key".to_string(),
         json!("alternative value").try_into().unwrap(),

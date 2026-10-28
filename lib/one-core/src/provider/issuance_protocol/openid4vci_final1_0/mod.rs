@@ -3136,15 +3136,15 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             None => None,
         };
 
-        let credential_status = match revocation_method.as_deref() {
-            Some(method) => method
-                .add_issued_credential(&credential)
-                .await
-                .error_while("adding issued credential")?
-                .into_iter()
-                .map(|revocation_info| revocation_info.credential_status)
-                .collect(),
-            None => vec![],
+        let credential_status = match revocation_method.as_ref() {
+            Some(method) => Some(
+                method
+                    .add_issued_credential(&credential)
+                    .await
+                    .error_while("adding issued credential")?
+                    .credential_status,
+            ),
+            None => None,
         };
 
         let issuer = credential.issuer()?;

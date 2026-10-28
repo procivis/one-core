@@ -12,7 +12,9 @@ use super::error::FormatterError;
 use super::model::CredentialClaim;
 use crate::model::credential_schema::LayoutProperties;
 use crate::provider::credential_formatter::MetadataClaimSchema;
-use crate::provider::credential_formatter::model::{CredentialStatus, Description, Issuer, Name};
+use crate::provider::credential_formatter::model::{
+    Description, Issuer, Name, W3CCredentialStatus,
+};
 
 #[skip_serializing_none]
 #[serde_as]
@@ -53,7 +55,7 @@ pub struct VcdmCredential {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[serde_as(as = "OneOrMany<_>")]
-    pub credential_status: Vec<CredentialStatus>,
+    pub credential_status: Vec<W3CCredentialStatus>,
 
     pub proof: Option<VcdmProof>,
 
@@ -402,7 +404,7 @@ pub struct JwtVcdmCredential {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[serde_as(as = "OneOrMany<_>")]
-    pub(super) credential_status: Vec<CredentialStatus>,
+    pub(super) credential_status: Vec<W3CCredentialStatus>,
 
     proof: Option<VcdmProof>,
 

@@ -12,6 +12,7 @@ use shared_types::{
     CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId,
     SerializedCredential, SignerId,
 };
+use util::w3c_status_check;
 use uuid::Uuid;
 
 use self::model::StatusPurpose;
@@ -36,7 +37,9 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, IdentifierDetails, W3CCredentialStatus,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -131,20 +134,26 @@ impl BitstringStatusList {
 
 #[async_trait::async_trait]
 impl RevocationMethod for BitstringStatusList {
-    fn get_status_type(&self) -> String {
-        CREDENTIAL_STATUS_TYPE.to_string()
+    fn can_check_status(&self, credential_status: &CredentialStatus) -> bool {
+        let CredentialStatus::W3C(status) = credential_status else {
+            return false;
+        };
+
+        status
+            .iter()
+            .all(|status| status.r#type == CREDENTIAL_STATUS_TYPE)
     }
 
     async fn add_issued_credential(
         &self,
         credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
         let issuer = credential.issuer()?.data;
         let issuer_identifier = issuer.identifier.as_ref().await?;
 
         let credential_schema = credential.common().schema.as_ref().await?;
 
-        let mut revocation_infos = vec![
+        let mut statuses = vec![
             self.create_credential_entry(
                 credential.common().id,
                 &issuer_identifier,
@@ -154,7 +163,7 @@ impl RevocationMethod for BitstringStatusList {
         ];
 
         if credential_schema.allow_suspension {
-            revocation_infos.push(
+            statuses.push(
                 self.create_credential_entry(
                     credential.common().id,
                     &issuer_identifier,
@@ -164,7 +173,10 @@ impl RevocationMethod for BitstringStatusList {
             );
         }
 
-        Ok(revocation_infos)
+        Ok(CredentialRevocationInfo {
+            credential_status: CredentialStatus::W3C(statuses),
+            serial: None,
+        })
     }
 
     async fn mark_credential_as(
@@ -217,87 +229,16 @@ impl RevocationMethod for BitstringStatusList {
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
-        if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
-            return Err(RevocationError::ValidationError(format!(
-                "Invalid credential status type: {}",
-                credential_status.r#type
-            )));
-        }
-
-        let list_url = credential_status
-            .additional_fields
-            .get("statusListCredential")
-            .and_then(|url| url.as_str())
-            .ok_or(RevocationError::ValidationError(
-                "Missing status list url".to_string(),
-            ))?;
-
-        let list_index = credential_status
-            .additional_fields
-            .get("statusListIndex")
-            .and_then(|index| index.as_str())
-            .ok_or(RevocationError::ValidationError(
-                "Missing status list index".to_string(),
-            ))?;
-        let list_index: usize = list_index
-            .parse()
-            .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
-
-        let (content, media_type) = &self
-            .caching_loader
-            .get(list_url, self.resolver.clone(), force_refresh)
-            .await
-            .error_while("getting bitstring status list")?;
-
-        let response: StatusListCacheEntry = serde_json::from_slice(content)?;
-        let response_content: SerializedCredential = String::from_utf8(response.content)?.into();
-
-        let is_bbs =
-            if let Ok(vcdm) = serde_json::from_str::<VcdmCredential>(response_content.as_ref()) {
-                vcdm.proof
-                    .is_some_and(|proof| proof.cryptosuite == "bbs-2023")
-            } else {
-                false
-            };
-
-        let content_type = match (media_type, &response.content_type) {
-            (Some(media_type), _) => media_type,
-            (None, Some(content_type)) => content_type,
-            _ => {
-                return Err(RevocationError::ValidationError(
-                    "Missing content type".to_string(),
-                ));
-            }
+        let CredentialStatus::W3C(status) = credential_status else {
+            return Err(RevocationError::ValidationError(
+                "Invalid credential status type".to_string(),
+            ));
         };
 
-        let key_verification = Box::new(KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-            certificate_validator: self.certificate_validator.clone(),
-        });
-
-        let status_credential = self
-            .get_formatter_for_parsing(content_type, is_bbs)?
-            .extract_credentials(&response_content, None, key_verification)
-            .await
-            .error_while("parsing status list")?;
-
-        let encoded_list = status_credential
-            .claims
-            .get("encodedList")
-            .and_then(|value| value.value.as_str())
-            .ok_or(RevocationError::ValidationError(
-                "Missing encodedList in status credential".to_string(),
-            ))?;
-
-        if util::extract_bitstring_index(encoded_list.to_owned(), list_index)
-            .error_while("extracting bitstring index")?
-        {
-            status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
-        } else {
-            Ok(RevocationState::Valid)
-        }
+        w3c_status_check(status, |status_entry| async move {
+            self.check_status(status_entry, force_refresh).await
+        })
+        .await
     }
 
     async fn add_issued_attestation(
@@ -440,9 +381,9 @@ impl BitstringStatusList {
         revocation_list_id: &RevocationListId,
         index_on_status_list: usize,
         purpose: StatusPurpose,
-    ) -> Result<CredentialStatus, RevocationError> {
+    ) -> Result<W3CCredentialStatus, RevocationError> {
         let revocation_list_url = get_revocation_list_url(revocation_list_id, &self.core_base_url)?;
-        Ok(CredentialStatus {
+        Ok(W3CCredentialStatus {
             id: Some(
                 uuid::Uuid::new_v4()
                     .urn()
@@ -472,7 +413,7 @@ impl BitstringStatusList {
         credential_id: CredentialId,
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
+    ) -> Result<W3CCredentialStatus, RevocationError> {
         let mut list_id = None;
         let mut index: Option<usize> = None;
         let tx_ok = self
@@ -541,10 +482,7 @@ impl BitstringStatusList {
             self.add_credential_to_list(list_id, credential_id).await?
         };
 
-        Ok(CredentialRevocationInfo {
-            credential_status: self.create_credential_status(&list_id, index, purpose.into())?,
-            serial: None,
-        })
+        self.create_credential_status(&list_id, index, purpose.into())
     }
 
     async fn add_credential_to_list(
@@ -680,6 +618,94 @@ impl BitstringStatusList {
             .error_while("updating revocation list")?;
 
         Ok(())
+    }
+
+    async fn check_status(
+        &self,
+        credential_status: &W3CCredentialStatus,
+        force_refresh: bool,
+    ) -> Result<RevocationState, RevocationError> {
+        if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
+            return Err(RevocationError::ValidationError(format!(
+                "Invalid credential status type: {}",
+                credential_status.r#type
+            )));
+        }
+
+        let list_url = credential_status
+            .additional_fields
+            .get("statusListCredential")
+            .and_then(|url| url.as_str())
+            .ok_or(RevocationError::ValidationError(
+                "Missing status list url".to_string(),
+            ))?;
+
+        let list_index = credential_status
+            .additional_fields
+            .get("statusListIndex")
+            .and_then(|index| index.as_str())
+            .ok_or(RevocationError::ValidationError(
+                "Missing status list index".to_string(),
+            ))?;
+        let list_index: usize = list_index
+            .parse()
+            .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
+
+        let (content, media_type) = &self
+            .caching_loader
+            .get(list_url, self.resolver.clone(), force_refresh)
+            .await
+            .error_while("getting bitstring status list")?;
+
+        let response: StatusListCacheEntry = serde_json::from_slice(content)?;
+        let response_content: SerializedCredential = String::from_utf8(response.content)?.into();
+
+        let is_bbs =
+            if let Ok(vcdm) = serde_json::from_str::<VcdmCredential>(response_content.as_ref()) {
+                vcdm.proof
+                    .is_some_and(|proof| proof.cryptosuite == "bbs-2023")
+            } else {
+                false
+            };
+
+        let content_type = match (media_type, &response.content_type) {
+            (Some(media_type), _) => media_type,
+            (None, Some(content_type)) => content_type,
+            _ => {
+                return Err(RevocationError::ValidationError(
+                    "Missing content type".to_string(),
+                ));
+            }
+        };
+
+        let key_verification = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        });
+
+        let status_credential = self
+            .get_formatter_for_parsing(content_type, is_bbs)?
+            .extract_credentials(&response_content, None, key_verification)
+            .await
+            .error_while("parsing status list")?;
+
+        let encoded_list = status_credential
+            .claims
+            .get("encodedList")
+            .and_then(|value| value.value.as_str())
+            .ok_or(RevocationError::ValidationError(
+                "Missing encodedList in status credential".to_string(),
+            ))?;
+
+        if util::extract_bitstring_index(encoded_list.to_owned(), list_index)
+            .error_while("extracting bitstring index")?
+        {
+            status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
+        } else {
+            Ok(RevocationState::Valid)
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use assert2::let_assert;
 use serde_json::json;
 use time::Duration;
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use crate::model::revocation_list::{RevocationList, StatusListCredentialFormat};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -27,10 +29,11 @@ use crate::service::test_utilities::{
 async fn test_check_revocation_status_as_issuer_suspension_allowed() {
     let status = revocation_status(true).await;
 
+    let_assert!(CredentialStatus::W3C(statuses) = status.credential_status);
     assert!(
-        status
+        statuses
             .iter()
-            .any(|s| s.credential_status.status_purpose.as_deref() == Some("suspension"))
+            .any(|s| s.status_purpose.as_deref() == Some("suspension"))
     );
 }
 
@@ -38,14 +41,15 @@ async fn test_check_revocation_status_as_issuer_suspension_allowed() {
 async fn test_check_revocation_status_as_issuer_suspension_forbidden() {
     let status = revocation_status(false).await;
 
+    let_assert!(CredentialStatus::W3C(statuses) = status.credential_status);
     assert!(
-        !status
+        !statuses
             .iter()
-            .any(|s| s.credential_status.status_purpose.as_deref() == Some("suspension"))
+            .any(|s| s.status_purpose.as_deref() == Some("suspension"))
     );
 }
 
-async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
+async fn revocation_status(suspension: bool) -> CredentialRevocationInfo {
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
     let did_method_provider = MockDidMethodProvider::default();
     let key_provider = MockKeyProvider::default();

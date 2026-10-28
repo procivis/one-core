@@ -34,7 +34,7 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, DetailCredential, IdentifierDetails,
+    CredentialStatus, DetailCredential, IdentifierDetails, W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -93,7 +93,7 @@ async fn test_check_revocation_non_revocable() {
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: Default::default(),
-                status: vec![],
+                status: None,
             })
         });
 
@@ -220,12 +220,12 @@ async fn test_check_revocation_updates_state(
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: Default::default(),
-                status: vec![CredentialStatus {
+                status: Some(CredentialStatus::W3C(vec![W3CCredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
-                }],
+                }])),
             })
         });
 
@@ -325,12 +325,12 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: Default::default(),
-                status: vec![CredentialStatus {
+                status: Some(CredentialStatus::W3C(vec![W3CCredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
-                }],
+                }])),
             })
         });
 
@@ -640,12 +640,12 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: Default::default(),
-                status: vec![CredentialStatus {
+                status: Some(CredentialStatus::W3C(vec![W3CCredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
-                }],
+                }])),
             })
         });
 
@@ -831,12 +831,12 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_w
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: Default::default(),
-                status: vec![CredentialStatus {
+                status: Some(CredentialStatus::W3C(vec![W3CCredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
-                }],
+                }])),
             })
         });
 
@@ -1013,12 +1013,12 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: Default::default(),
-                status: vec![CredentialStatus {
+                status: Some(CredentialStatus::W3C(vec![W3CCredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
-                }],
+                }])),
             })
         });
 
@@ -1191,12 +1191,12 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
                 issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
                 subject: None,
                 claims: Default::default(),
-                status: vec![CredentialStatus {
+                status: Some(CredentialStatus::W3C(vec![W3CCredentialStatus {
                     id: Some("did:status:test".parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
-                }],
+                }])),
             })
         });
 
@@ -1451,9 +1451,6 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -1518,9 +1515,6 @@ async fn test_revoke_credential_success_with_suspended_credential(
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -1655,9 +1649,6 @@ async fn test_suspend_credential_success(
             }),
         )
         .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -1743,9 +1734,6 @@ async fn test_reactivate_credential_success(
         .once()
         .with(always(), eq(RevocationState::Valid))
         .return_once(|_, _| Ok(()));
-    revocation_method
-        .expect_get_status_type()
-        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()

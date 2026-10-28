@@ -25,7 +25,7 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialStatus, Features, IdentifierDetails, Issuer,
-    MockTokenVerifier, PublicKeySource, UnsignedCredential,
+    MockTokenVerifier, PublicKeySource, UnsignedCredential, W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::vcdm::{
     ContextType, CredentialSchemaMetadata, VcdmCredential, VcdmCredentialSchema,
@@ -40,7 +40,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 
-fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
+fn get_credential_data(status: W3CCredentialStatus, core_base_url: &str) -> CredentialData {
     let issuance_date = datetime!(2024-01-01 0:00 UTC);
     let valid_for = time::Duration::days(365 * 2);
 
@@ -99,7 +99,10 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
     }
 }
 
-fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str) -> CredentialData {
+fn get_credential_data_with_array(
+    status: W3CCredentialStatus,
+    core_base_url: &str,
+) -> CredentialData {
     let schema_context: ContextType = format!("{core_base_url}/ssi/context/v1/CredentialSchemaId")
         .parse::<Url>()
         .unwrap()
@@ -171,7 +174,7 @@ async fn test_format_credential() {
     };
 
     let mut credential_data = get_credential_data(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
@@ -271,7 +274,7 @@ async fn test_format_credential_with_layout_properties() {
     };
 
     let mut credential_data = get_credential_data(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
@@ -371,7 +374,7 @@ async fn test_format_credential_nested_array() {
     };
 
     let credential_data = get_credential_data_with_array(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
@@ -506,9 +509,10 @@ async fn test_extract_credentials() {
         Some(OffsetDateTime::from_unix_timestamp(1699354228).unwrap())
     );
 
-    assert_eq!(1, credentials.status.len());
+    let_assert!(Some(CredentialStatus::W3C(status)) = credentials.status);
+    assert_eq!(1, status.len());
 
-    let first_credential_status = credentials.status.first().unwrap();
+    let first_credential_status = status.first().unwrap();
     assert_eq!(
         first_credential_status.id,
         Some("https://procivis.ch/status/id".parse().unwrap())
@@ -611,9 +615,10 @@ async fn test_extract_credentials_nested_array() {
         Some(IdentifierDetails::Did("did:holder:test".parse().unwrap())),
     );
 
-    assert_eq!(1, credentials.status.len());
+    let_assert!(Some(CredentialStatus::W3C(status)) = credentials.status);
+    assert_eq!(1, status.len());
 
-    let first_credential_status = credentials.status.first().unwrap();
+    let first_credential_status = status.first().unwrap();
     assert_eq!(
         first_credential_status.id,
         Some("https://procivis.ch/status/id".parse().unwrap())

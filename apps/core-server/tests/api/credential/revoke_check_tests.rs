@@ -2435,7 +2435,7 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
         credential: UnsignedCredential::Mdoc(MdocCredential {
             doctype: "schema".to_string(),
             valid_until: None,
-            credential_status: vec![],
+            credential_status: None,
             claims: IssuedClaims::new(),
         }),
         holder_identifier: Some(Identifier {

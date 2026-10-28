@@ -4,7 +4,7 @@ use shared_types::DidValue;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, DetailCredential, IdentifierDetails,
+    CredentialClaim, CredentialClaimValue, CredentialStatus, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 
@@ -38,6 +38,12 @@ pub(super) fn convert_to_detail_credential(
         .and_then(|id| DidValue::from_did_url(id).ok())
         .map(IdentifierDetails::Did);
 
+    let status = if vcdm.credential_status.is_empty() {
+        None
+    } else {
+        Some(CredentialStatus::W3C(vcdm.credential_status))
+    };
+
     Ok(DetailCredential {
         issuance_date: vcdm.proof.and_then(|proof| proof.created),
         valid_from: vcdm.valid_from.or(vcdm.issuance_date),
@@ -47,7 +53,7 @@ pub(super) fn convert_to_detail_credential(
         issuer: IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
         subject,
         claims,
-        status: vcdm.credential_status,
+        status,
     })
 }
 

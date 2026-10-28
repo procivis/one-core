@@ -7,7 +7,9 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
 
-use crate::provider::credential_formatter::model::{CredentialStatus, Description, Issuer, Name};
+use crate::provider::credential_formatter::model::{
+    Description, Issuer, Name, W3CCredentialStatus,
+};
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmCredentialSchema};
 // The main credential
 #[skip_serializing_none]
@@ -42,7 +44,7 @@ pub struct LdCredential {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[serde_as(as = "OneOrMany<_>")]
-    pub credential_status: Vec<CredentialStatus>,
+    pub credential_status: Vec<W3CCredentialStatus>,
 
     pub proof: Option<LdProof>,
 

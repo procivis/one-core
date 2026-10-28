@@ -560,9 +560,7 @@ impl CredentialValidityManagerImpl {
             .extract_holder_credential(&holder, credential_schema)
             .await?;
 
-        let credential_status = if !detail_credential.status.is_empty() {
-            detail_credential.status
-        } else {
+        let Some(credential_status) = detail_credential.status else {
             // no credential status -> credential is irrevocable
             return Ok(CredentialValidityCheckResult {
                 credential_id: common.id,
@@ -592,37 +590,25 @@ impl CredentialValidityManagerImpl {
         let credential_data_by_role =
             Some(CredentialDataByRole::Holder(Box::new(credential.clone())));
 
-        let mut worst_revocation_state = RevocationState::Valid;
-        for status in credential_status {
-            match revocation_method
-                .check_credential_revocation_status(
-                    &status,
-                    &issuer,
-                    credential_data_by_role.to_owned(),
-                    force_refresh,
-                )
-                .await
-            {
-                Err(error) => {
-                    return Ok(CredentialValidityCheckResult {
-                        credential_id: common.id,
-                        status: current_state,
-                        success: false,
-                        reason: Some(error.to_string()),
-                    });
-                }
-                Ok(RevocationState::Valid) => {}
-                Ok(state @ RevocationState::Revoked) => {
-                    worst_revocation_state = state;
-                    break;
-                }
-                Ok(state @ RevocationState::Suspended { .. }) => {
-                    worst_revocation_state = state;
-                }
-            };
-        }
-
-        let detected_state = worst_revocation_state.into();
+        let detected_state = match revocation_method
+            .check_credential_revocation_status(
+                &credential_status,
+                &issuer,
+                credential_data_by_role.to_owned(),
+                force_refresh,
+            )
+            .await
+        {
+            Err(error) => {
+                return Ok(CredentialValidityCheckResult {
+                    credential_id: common.id,
+                    status: current_state,
+                    success: false,
+                    reason: Some(error.to_string()),
+                });
+            }
+            Ok(state) => state.into(),
+        };
 
         // update local credential state if change detected
         if current_state != detected_state {

@@ -81,7 +81,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
                 issuer: issuer_details.clone(),
                 subject: Some(holder_details.clone()),
                 claims: Default::default(),
-                status: vec![],
+                status: None,
             },
             credential_schema_id: credential_schema.id,
             claims: vec![ValidatedProofClaim {

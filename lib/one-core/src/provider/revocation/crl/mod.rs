@@ -88,14 +88,14 @@ impl CRLRevocation {
 
 #[async_trait::async_trait]
 impl RevocationMethod for CRLRevocation {
-    fn get_status_type(&self) -> String {
-        "CRL".to_string()
+    fn can_check_status(&self, credential_status: &CredentialStatus) -> bool {
+        matches!(credential_status, CredentialStatus::CRL(_))
     }
 
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "CRL: credential revocation not supported".to_string(),
         ))
@@ -237,12 +237,7 @@ impl RevocationMethod for CRLRevocation {
         Ok((
             entry_id,
             CredentialRevocationInfo {
-                credential_status: CredentialStatus {
-                    id: Some(crl_url),
-                    r#type: "CRL".to_string(),
-                    status_purpose: None,
-                    additional_fields: Default::default(),
-                },
+                credential_status: CredentialStatus::CRL(crl_url),
                 serial: Some(serial),
             },
         ))

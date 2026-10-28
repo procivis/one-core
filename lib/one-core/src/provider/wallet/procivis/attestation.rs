@@ -19,7 +19,7 @@ use crate::model::managed_instance_attestation::{
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
-use crate::provider::credential_formatter::model::AuthenticationFn;
+use crate::provider::credential_formatter::model::{AuthenticationFn, CredentialStatus};
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::wallet::dto::CreatedAttestation;
@@ -91,12 +91,10 @@ impl ProcivisWalletProvider {
 
         let status = revocation_info
             .and_then(|info| {
-                let obj: serde_json::Value = info
-                    .credential_status
-                    .additional_fields
-                    .into_iter()
-                    .collect();
-                serde_json::from_value(obj).ok()
+                let CredentialStatus::TokenStatusList(status) = info.credential_status else {
+                    return None;
+                };
+                Some(status.into())
             })
             .map(|status_list| SdJwtVcStatus {
                 status_list,
@@ -206,12 +204,10 @@ impl ProcivisWalletProvider {
 
         let status = revocation_info
             .and_then(|info| {
-                let obj: serde_json::Value = info
-                    .credential_status
-                    .additional_fields
-                    .into_iter()
-                    .collect();
-                serde_json::from_value(obj).ok()
+                let CredentialStatus::TokenStatusList(status) = info.credential_status else {
+                    return None;
+                };
+                Some(status.into())
             })
             .map(|status_list| SdJwtVcStatus {
                 status_list,

@@ -211,7 +211,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
         credential: UnsignedCredential::Mdoc(MdocCredential {
             doctype: "credential-schema-id".to_string(),
             valid_until: None,
-            credential_status: vec![],
+            credential_status: None,
             claims,
         }),
         holder_identifier: Some(holder_identifier),
@@ -479,7 +479,7 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
         credential: UnsignedCredential::Mdoc(MdocCredential {
             doctype: "credential-schema-id".to_string(),
             valid_until: Some(real_valid_until),
-            credential_status: vec![],
+            credential_status: None,
             claims,
         }),
         holder_identifier: Some(holder_identifier),
@@ -637,7 +637,7 @@ async fn test_unverified_credential_extraction() {
         credential: UnsignedCredential::Mdoc(MdocCredential {
             doctype: "doctype".to_string(),
             valid_until: None,
-            credential_status: vec![],
+            credential_status: None,
             claims,
         }),
         holder_identifier: Some(holder_identifier),

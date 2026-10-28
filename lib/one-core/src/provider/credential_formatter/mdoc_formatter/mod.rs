@@ -16,6 +16,7 @@ use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use futures::future::BoxFuture;
 use indexmap::{IndexMap, IndexSet};
 use one_crypto::utilities::generate_random_bytes;
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
@@ -34,9 +35,9 @@ use uuid::Uuid;
 use self::util::{
     Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
     EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject, Namespace, Namespaces,
-    ValidityInfo, ValueDigests, build_algorithm_header_value, create_status,
-    extract_algorithm_from_header, extract_certificate_from_x5chain_header, parse_status,
-    try_extract_holder_public_key, try_extract_mobile_security_object,
+    ValidityInfo, ValueDigests, build_algorithm_header_value, extract_algorithm_from_header,
+    extract_certificate_from_x5chain_header, try_extract_holder_public_key,
+    try_extract_mobile_security_object,
 };
 use super::error::FormatterError;
 use super::json_claims::prepare_identifier;
@@ -44,9 +45,9 @@ use super::mapper::first_certificate;
 use super::mdoc_formatter::util::StatusListEncoded;
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
-    CredentialPresentation, CredentialStatus, DetailCredential, Features, FormatterCapabilities,
-    IdentifierDetails, IssuedClaimValue, IssuedClaims, PublicKeySource, SelectiveDisclosure,
-    TokenVerifier, VerificationFn,
+    CredentialPresentation, DetailCredential, Features, FormatterCapabilities, IdentifierDetails,
+    IssuedClaimValue, IssuedClaims, PublicKeySource, SelectiveDisclosure, TokenVerifier,
+    VerificationFn,
 };
 use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{
@@ -68,7 +69,7 @@ use crate::proto::certificate_validator::{CertificateValidationOptions, Certific
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
-use crate::provider::credential_formatter::model::ParsedCredential;
+use crate::provider::credential_formatter::model::{ParsedCredential, TokenStatus};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -146,7 +147,7 @@ impl MdocFormatter {
 pub struct MdocCredential {
     pub doctype: String,
     pub valid_until: Option<OffsetDateTime>,
-    pub credential_status: Vec<CredentialStatus>,
+    pub credential_status: Option<TokenStatus>,
     pub claims: IssuedClaims,
 }
 
@@ -241,7 +242,7 @@ impl CredentialFormatter for MdocFormatter {
             device_key_info,
             doc_type: doctype,
             validity_info,
-            status: create_status(credential_status)?,
+            status: convert_inner(credential_status),
         };
         let mso = EmbeddedCbor::<MobileSecurityObject>::new(mso)?.into_bytes();
 
@@ -767,7 +768,7 @@ async fn extract_credentials_internal(
         issuer: IdentifierDetails::Certificate(issuer_cert),
         subject: Some(IdentifierDetails::Key(holder_jwk)),
         claims,
-        status: parse_status(mso.status),
+        status: try_convert_inner(mso.status)?,
     })
 }
 

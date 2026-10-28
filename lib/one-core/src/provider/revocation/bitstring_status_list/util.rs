@@ -5,6 +5,9 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::provider::credential_formatter::model::W3CCredentialStatus;
+use crate::provider::revocation::error::RevocationError;
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::utils::{gzip_compress, gzip_decompress};
 
 #[derive(Debug, Error)]
@@ -84,6 +87,54 @@ pub(super) fn generate_bitstring(input: Vec<(usize, bool)>) -> Result<String, Bi
 fn calculate_bitstring_size(input_size: usize) -> usize {
     const MINIMUM_INPUT_SIZE: usize = 131072;
     std::cmp::max(input_size, MINIMUM_INPUT_SIZE)
+}
+
+/// Resolve the worst status from W3C statuses
+pub(crate) async fn w3c_status_check<'a, F, Fut>(
+    status: &'a [W3CCredentialStatus],
+    check: F,
+) -> Result<RevocationState, RevocationError>
+where
+    F: Fn(&'a W3CCredentialStatus) -> Fut,
+    Fut: std::future::Future<Output = Result<RevocationState, RevocationError>> + Send,
+{
+    let mut worst_revocation_state = RevocationState::Valid;
+    for status_entry in status {
+        let status = check(status_entry).await?;
+        match status {
+            RevocationState::Valid => {}
+            RevocationState::Revoked => return Ok(RevocationState::Revoked),
+            state @ RevocationState::Suspended { suspend_end_date } => {
+                match (worst_revocation_state, suspend_end_date) {
+                    (RevocationState::Revoked, _) => {}
+                    (RevocationState::Valid, _) => {
+                        worst_revocation_state = state;
+                    }
+                    (RevocationState::Suspended { .. }, None) => {
+                        worst_revocation_state = state;
+                    }
+                    (
+                        RevocationState::Suspended {
+                            suspend_end_date: None,
+                        },
+                        _,
+                    ) => {}
+                    (
+                        RevocationState::Suspended {
+                            suspend_end_date: Some(previous_suspend_end_date),
+                        },
+                        Some(new_suspend_end_date),
+                    ) => {
+                        if previous_suspend_end_date < new_suspend_end_date {
+                            worst_revocation_state = state;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(worst_revocation_state)
 }
 
 #[cfg(test)]

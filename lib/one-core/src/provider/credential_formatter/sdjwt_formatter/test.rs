@@ -12,7 +12,7 @@ use time::macros::datetime;
 use url::Url;
 use uuid::Uuid;
 
-use super::SDJWTFormatter;
+use super::{Params, SDJWTFormatter, VcClaim};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::did::Did;
@@ -20,17 +20,16 @@ use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::provider::credential_formatter::CredentialFormatter;
-#[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialStatus, Features,
     IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource, UnsignedCredential,
+    W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     DisclosureArray, DisclosureArrayElement,
 };
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
-use crate::provider::credential_formatter::sdjwt_formatter::{Params, VcClaim};
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSchema, VcdmCredentialSubject,
 };
@@ -69,7 +68,7 @@ impl DisclosureArrayElement {
 #[tokio::test]
 async fn test_format_credential() {
     let mut credential_data = get_credential_data(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
@@ -228,7 +227,7 @@ async fn test_format_credential_with_array() {
     let leeway_seconds = Duration::seconds(45);
 
     let credential_data = get_credential_data_with_array(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
@@ -357,7 +356,7 @@ async fn test_format_credential_with_array_sd() {
     let leeway_seconds = Duration::seconds(45);
 
     let credential_data = get_credential_data_with_array(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
@@ -554,8 +553,9 @@ async fn test_extract_credentials() {
         Some(IdentifierDetails::Did("did:holder:test".parse().unwrap()))
     );
 
-    assert_eq!(1, credentials.status.len());
-    let first_credential_status = credentials.status.first().unwrap();
+    let_assert!(Some(CredentialStatus::W3C(status)) = credentials.status);
+    assert_eq!(1, status.len());
+    let first_credential_status = status.first().unwrap();
     assert!(
         first_credential_status
             .id
@@ -870,7 +870,10 @@ fn test_get_capabilities() {
     );
 }
 
-fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str) -> CredentialData {
+fn get_credential_data_with_array(
+    status: W3CCredentialStatus,
+    core_base_url: &str,
+) -> CredentialData {
     let issuance_date = datetime!(2025-01-01 00:00 UTC);
     let valid_for = time::Duration::days(365 * 2);
 
@@ -1297,7 +1300,7 @@ async fn test_format_credential_sets_x5c_and_x5u_headers() {
     let cert_id = Uuid::new_v4();
 
     let mut credential_data = get_credential_data(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
@@ -1363,7 +1366,7 @@ async fn test_format_credential_sets_x5c_and_x5u_headers() {
 #[tokio::test]
 async fn test_format_credential_without_certificate_has_no_x5_headers() {
     let credential_data = get_credential_data(
-        CredentialStatus {
+        W3CCredentialStatus {
             id: Some("did:status:id".parse().unwrap()),
             r#type: "TYPE".to_string(),
             status_purpose: None,

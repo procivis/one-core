@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use ciborium::Value;
 use ciborium::tag::Required;
 use coset::iana::EnumI64;
@@ -24,7 +22,7 @@ use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::common::resolve_x5u;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CertificateDetails, CredentialStatus, X5References,
+    CertificateDetails, CredentialStatus, TokenStatus, X5References,
 };
 
 const EMBEDDED_CBOR_TAG: u64 = 24;
@@ -573,70 +571,27 @@ pub(crate) fn try_extract_holder_public_key(
     })
 }
 
-pub(super) fn create_status(
-    credential_status: Vec<CredentialStatus>,
-) -> Result<Option<Status>, FormatterError> {
-    use crate::provider::revocation::token_status_list::{INDEX_KEY, URI_KEY};
-
-    let Some(status) = credential_status.first() else {
-        return Ok(None);
-    };
-
-    let uri = status
-        .additional_fields
-        .get(URI_KEY)
-        .and_then(|url| url.as_str())
-        .ok_or(FormatterError::CouldNotFormat(
-            "Missing status list url".to_string(),
-        ))?
-        .to_string();
-
-    let list_index = status
-        .additional_fields
-        .get(INDEX_KEY)
-        .and_then(|index| index.as_str())
-        .ok_or(FormatterError::CouldNotFormat(
-            "Missing status list index".to_string(),
-        ))?;
-    let index = list_index
-        .parse()
-        .map_err(|_| FormatterError::CouldNotFormat("Invalid list index".to_string()))?;
-
-    Ok(Some(Status::StatusList(StatusList {
-        uri,
-        index,
-        certificate: None,
-    })))
+impl From<TokenStatus> for Status {
+    fn from(status: TokenStatus) -> Self {
+        Self::StatusList(StatusList {
+            uri: status.uri.to_string(),
+            index: status.index,
+            certificate: None,
+        })
+    }
 }
 
-pub(super) fn parse_status(status: Option<Status>) -> Vec<CredentialStatus> {
-    use crate::provider::revocation::token_status_list::{CERTIFICATE_KEY, INDEX_KEY, URI_KEY};
-
-    match status {
-        None => vec![],
-        Some(Status::StatusList(value)) => {
-            let mut additional_fields = HashMap::from([
-                (URI_KEY.to_string(), serde_json::Value::String(value.uri)),
-                (
-                    INDEX_KEY.to_string(),
-                    serde_json::Value::String(value.index.to_string()),
-                ),
-            ]);
-
-            if let Some(certificate) = value.certificate {
-                additional_fields.insert(
-                    CERTIFICATE_KEY.to_string(),
-                    serde_json::Value::String(der_chain_into_pem_chain(vec![certificate.0])),
-                );
-            }
-
-            vec![CredentialStatus {
-                id: None,
-                r#type: "TokenStatusListEntry".to_string(),
-                status_purpose: Some("revocation".to_string()),
-                additional_fields,
-            }]
-        }
+impl TryFrom<Status> for CredentialStatus {
+    type Error = FormatterError;
+    fn try_from(status: Status) -> Result<Self, Self::Error> {
+        let Status::StatusList(status) = status;
+        Ok(Self::TokenStatusList(TokenStatus {
+            index: status.index,
+            uri: status.uri.parse()?,
+            certificate: status
+                .certificate
+                .map(|certificate| der_chain_into_pem_chain(vec![certificate.0])),
+        }))
     }
 }
 

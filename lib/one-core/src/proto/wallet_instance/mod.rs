@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -21,9 +20,7 @@ use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::proto::wallet_provider_client::dto::IssueWalletAttestationResponse;
-use crate::provider::credential_formatter::model::{
-    CertificateDetails, CredentialStatus, IdentifierDetails,
-};
+use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -218,10 +215,6 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         attestation: &str,
         r#type: AttestationType,
     ) -> Result<AttestationCheckResult, Error> {
-        const TOKENSTATUSLIST_ENTRY_TYPE: &str = "TokenStatusListEntry";
-        const URI_KEY: &str = "uri";
-        const INDEX_KEY: &str = "idx";
-
         // for backward compatibility with old issued WUAs
         let mut deprecated_status = None;
         let (header, attestation_status, jwt_expiration) = match r#type {
@@ -309,37 +302,17 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             }
         };
 
+        let status = status.into();
         let (revocation_provider, _) = self
             .revocation_method_provider
-            .get_revocation_method_by_status_type(TOKENSTATUSLIST_ENTRY_TYPE)
-            .ok_or(
-                MissingProviderError::RevocationMethodByCredentialStatusType(
-                    TOKENSTATUSLIST_ENTRY_TYPE.to_string(),
-                ),
-            )
+            .get_revocation_method_by_status(&status)
+            .ok_or_else(|| {
+                MissingProviderError::RevocationMethodByCredentialStatusType(format!("{status:?}"))
+            })
             .error_while("getting revocation provider")?;
 
         let revocation_status = revocation_provider
-            .check_credential_revocation_status(
-                &CredentialStatus {
-                    id: None,
-                    r#type: TOKENSTATUSLIST_ENTRY_TYPE.to_string(),
-                    status_purpose: None,
-                    additional_fields: HashMap::from([
-                        (
-                            URI_KEY.to_string(),
-                            status.status_list.uri.clone().to_string().into(),
-                        ),
-                        (
-                            INDEX_KEY.to_string(),
-                            status.status_list.index.to_string().into(),
-                        ),
-                    ]),
-                },
-                &issuer_identifier,
-                None,
-                false,
-            )
+            .check_credential_revocation_status(&status, &issuer_identifier, None, false)
             .await
             .error_while("checking credential status")?;
 

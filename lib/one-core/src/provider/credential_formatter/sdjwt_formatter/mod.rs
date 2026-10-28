@@ -19,16 +19,18 @@ use uuid::Uuid;
 
 use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
+use super::mapper::{default_2_years, first_certificate, to_format_with_mappings};
 use super::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, TokenVerifier, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialStatus, DetailCredential,
+    Features, FormatterCapabilities, IdentifierDetails, ParsedCredential, SelectiveDisclosure,
+    TokenVerifier, VerificationFn,
 };
 use super::sdjwt::disclosures::{
     SELECTIVE_DISCLOSURE_ARRAY_MARKER, SELECTIVE_DISCLOSURE_MARKER, parse_token,
 };
 use super::sdjwt::mapper::vc_from_credential;
-use super::sdjwt::model::*;
-use super::sdjwt::{format_credential, model, parse_holder_identifier, prepare_sd_presentation};
+use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs, VcClaim};
+use super::sdjwt::{format_credential, parse_holder_identifier, prepare_sd_presentation};
 use super::vcdm::{VcdmCredential, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{
@@ -42,10 +44,6 @@ use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::jwt_metadata_claims;
-use crate::provider::credential_formatter::mapper::{
-    default_2_years, first_certificate, to_format_with_mappings,
-};
-use crate::provider::credential_formatter::model::ParsedCredential;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -164,7 +162,7 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        let model::DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
+        let DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
         let jwt: Jwt<VcClaim> = Jwt::build_from_token(jwt, None, None)
             .await
             .error_while("creating SD-JWT token")?;
@@ -533,6 +531,13 @@ pub(crate) async fn extract_credentials_internal(
         }
     };
 
+    let credential_status = jwt.payload.custom.vc.credential_status;
+    let status = if credential_status.is_empty() {
+        None
+    } else {
+        Some(CredentialStatus::W3C(credential_status))
+    };
+
     Ok(DetailCredential {
         issuance_date: jwt.payload.issued_at,
         valid_from: jwt.payload.issued_at,
@@ -542,7 +547,7 @@ pub(crate) async fn extract_credentials_internal(
         issuer,
         subject,
         claims,
-        status: jwt.payload.custom.vc.credential_status,
+        status,
     })
 }
 

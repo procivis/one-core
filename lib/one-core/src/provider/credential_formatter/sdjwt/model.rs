@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use maplit::hashmap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_with::{OneOrMany, serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 use time::OffsetDateTime;
 use url::Url;
 
@@ -13,35 +13,9 @@ use crate::model::identifier::Identifier;
 use crate::proto::jwt::WithMetadata;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, CredentialStatus, Issuer, SettableClaims,
+    CredentialClaim, CredentialClaimValue, SettableClaims,
 };
-use crate::provider::credential_formatter::vcdm::{
-    ContextType, JwtVcdmCredential, VcdmCredentialSchema,
-};
-
-#[skip_serializing_none]
-#[serde_as]
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VCContent {
-    #[serde(rename = "@context")]
-    pub context: Vec<ContextType>,
-    pub id: Option<String>,
-    pub r#type: Vec<String>,
-    pub credential_subject: SDCredentialSubject,
-    #[serde(default)]
-    #[serde_as(as = "OneOrMany<_>")]
-    pub credential_status: Vec<CredentialStatus>,
-    pub credential_schema: Option<VcdmCredentialSchema>,
-    #[serde(default)]
-    pub issuer: Option<Issuer>,
-    #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default)]
-    pub valid_from: Option<OffsetDateTime>,
-    #[serde(with = "time::serde::rfc3339::option")]
-    #[serde(default)]
-    pub valid_until: Option<OffsetDateTime>,
-}
+use crate::provider::credential_formatter::vcdm::JwtVcdmCredential;
 
 #[skip_serializing_none]
 #[derive(Debug, Default, Serialize, Deserialize)]

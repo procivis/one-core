@@ -131,7 +131,7 @@ pub(crate) async fn first_certificate(
 pub(crate) async fn unsigned_credential(
     credential: &Credential,
     core_base_url: &str,
-    credential_status: Vec<CredentialStatus>,
+    credential_status: Option<CredentialStatus>,
     credential_schema: &CredentialSchema,
     credential_schema_format: &CredentialSchemaFormat,
     config: &CoreConfig,
@@ -143,18 +143,31 @@ pub(crate) async fn unsigned_credential(
     let claims = credential_claims(credential, credential_schema_format, &config.datatype).await?;
     let ecosystem_schema_id = credential_schema_format.ecosystem_schema_id.clone();
 
+    let extract_token_status = || {
+        Ok(if let Some(credential_status) = &credential_status {
+            let CredentialStatus::TokenStatusList(credential_status) = credential_status else {
+                return Err(FormatterError::CouldNotFormat(
+                    "Invalid status type".to_string(),
+                ));
+            };
+            Some(credential_status.to_owned())
+        } else {
+            None
+        })
+    };
+
     match format_type {
         FormatType::Mdoc => Ok(UnsignedCredential::Mdoc(MdocCredential {
             doctype: ecosystem_schema_id,
             valid_until: credential.common().expires_at,
-            credential_status,
+            credential_status: extract_token_status()?,
             claims,
         })),
         FormatType::SdJwtVc => Ok(UnsignedCredential::SdJwtVc(SdJwtVcCredential {
             vct: ecosystem_schema_id,
             issuer: issuer_url_for_credential(credential, core_base_url).await?,
             valid_until: credential.common().expires_at,
-            credential_status,
+            credential_status: extract_token_status()?,
             claims,
         })),
         FormatType::Jwt
@@ -197,7 +210,14 @@ pub(crate) async fn unsigned_credential(
                         .parse()?,
                 );
             }
-            vcdm.credential_status = credential_status;
+            if let Some(credential_status) = credential_status {
+                let CredentialStatus::W3C(credential_status) = credential_status else {
+                    return Err(FormatterError::CouldNotFormat(
+                        "Invalid status type".to_string(),
+                    ));
+                };
+                vcdm.credential_status = credential_status;
+            }
             vcdm.valid_until = credential.common().expires_at;
             Ok(UnsignedCredential::Vcdm(vcdm))
         }

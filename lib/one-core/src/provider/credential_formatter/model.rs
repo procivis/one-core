@@ -134,7 +134,7 @@ pub struct DetailCredential {
     pub issuer: IdentifierDetails,
     pub subject: Option<IdentifierDetails>,
     pub claims: HashMap<String, CredentialClaim>,
-    pub status: Vec<CredentialStatus>,
+    pub status: Option<CredentialStatus>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -338,15 +338,30 @@ impl UnsignedCredential {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum CredentialStatus {
+    W3C(Vec<W3CCredentialStatus>),
+    TokenStatusList(TokenStatus),
+    CRL(Url),
+}
+
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialStatus {
+pub struct W3CCredentialStatus {
     pub id: Option<Url>,
     pub r#type: String,
     pub status_purpose: Option<String>,
     #[serde(flatten)]
     pub additional_fields: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TokenStatus {
+    pub index: usize,
+    pub uri: Url,
+    /// PEM CA certificate for validating
+    pub certificate: Option<String>,
 }
 
 #[derive(Debug, Default, Clone)]

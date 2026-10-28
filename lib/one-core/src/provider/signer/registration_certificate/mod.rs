@@ -21,6 +21,8 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::proto::jwt::JwtPublicKeyInfo;
+use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatusList;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -109,12 +111,13 @@ impl RegistrationCertificate {
             )
             .await
             .error_while("Adding signature to revocation list")?;
-        Ok((
-            Uuid::from(id),
-            Status {
-                status_list: revocation_info.credential_status.additional_fields,
-            },
-        ))
+
+        let CredentialStatus::TokenStatusList(status) = revocation_info.credential_status else {
+            return Err(SignerError::MappingError("Invalid status type".to_string()));
+        };
+        let status_list: SdJwtVcStatusList = status.into();
+        let status_list = serde_json::from_value(serde_json::to_value(status_list)?)?;
+        Ok((Uuid::from(id), Status { status_list }))
     }
 }
 

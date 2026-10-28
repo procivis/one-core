@@ -48,6 +48,8 @@ pub(crate) enum WRPValidatorError {
     URLParsing(#[from] url::ParseError),
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] FromUtf8Error),
+    #[error("JSON serialization error: `{0}`")]
+    JsonError(#[from] serde_json::Error),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -69,7 +71,7 @@ impl ErrorCodeMixin for WRPValidatorError {
             | Self::InvalidRegistryUrl(_)
             | Self::InvalidSigningMethod(_)
             | Self::RegistrationCertificateMissmatch { .. } => ErrorCode::BR_0224,
-            Self::URLParsing(_) | Self::FromUtf8Error(_) => ErrorCode::BR_0047,
+            Self::URLParsing(_) | Self::FromUtf8Error(_) | Self::JsonError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }
     }

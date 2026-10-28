@@ -18,6 +18,7 @@ use crate::error::{ContextWithErrorCode, NestedError};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::transaction_manager::TransactionManager;
+use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -38,9 +39,9 @@ pub trait RevocationMethodProvider: Send + Sync {
         revocation_method_id: &RevocationMethodId,
     ) -> Result<Arc<dyn RevocationMethod>, NestedError>;
 
-    fn get_revocation_method_by_status_type(
+    fn get_revocation_method_by_status(
         &self,
-        credential_status_type: &str,
+        credential_status: &CredentialStatus,
     ) -> Option<(Arc<dyn RevocationMethod>, RevocationMethodId)>;
 }
 
@@ -54,13 +55,13 @@ impl RevocationMethodProvider
         self.provider(revocation_method_id)
     }
 
-    fn get_revocation_method_by_status_type(
+    fn get_revocation_method_by_status(
         &self,
-        credential_status_type: &str,
+        credential_status: &CredentialStatus,
     ) -> Option<(Arc<dyn RevocationMethod>, RevocationMethodId)> {
         let result = self
             .iter()
-            .find(|(_id, method)| method.get_status_type() == credential_status_type)?;
+            .find(|(_id, method)| method.can_check_status(credential_status))?;
 
         Some((result.1.to_owned(), result.0.to_owned()))
     }

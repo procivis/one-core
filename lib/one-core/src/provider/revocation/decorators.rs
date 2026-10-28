@@ -28,14 +28,14 @@ impl WithDisabledDecorator for dyn RevocationMethod {
 
 #[async_trait::async_trait]
 impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for DisabledProvider<T> {
-    fn get_status_type(&self) -> String {
-        self.inner().get_status_type()
+    fn can_check_status(&self, credential_status: &CredentialStatus) -> bool {
+        self.inner().can_check_status(credential_status)
     }
 
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.disabled_error()
     }
 
@@ -152,14 +152,14 @@ impl CapabilityChecked {
 
 #[async_trait::async_trait]
 impl RevocationMethod for CapabilityChecked {
-    fn get_status_type(&self) -> String {
-        self.0.get_status_type()
+    fn can_check_status(&self, credential_status: &CredentialStatus) -> bool {
+        self.0.can_check_status(credential_status)
     }
 
     async fn add_issued_credential(
         &self,
         credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.0.add_issued_credential(credential).await
     }
 

@@ -10,7 +10,7 @@ use url::Url;
 use crate::proto::jwt::WithMetadata;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, CredentialStatus, IssuedClaims, SettableClaims,
+    CredentialClaim, CredentialClaimValue, IssuedClaims, SettableClaims, TokenStatus,
 };
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub struct SdJwtVcCredential {
     pub vct: String,
     pub issuer: Url,
     pub valid_until: Option<OffsetDateTime>,
-    pub credential_status: Vec<CredentialStatus>,
+    pub credential_status: Option<TokenStatus>,
     pub claims: IssuedClaims,
 }
 

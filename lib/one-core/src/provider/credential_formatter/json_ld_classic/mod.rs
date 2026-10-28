@@ -18,10 +18,11 @@ use uuid::Uuid;
 
 use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
+use super::mapper::{default_2_years, first_certificate, to_format_with_mappings};
 use super::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, Issuer, PublicKeySource, TokenVerifier,
-    VerificationFn,
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialStatus, DetailCredential,
+    Features, FormatterCapabilities, IdentifierDetails, Issuer, ParsedCredential, PublicKeySource,
+    TokenVerifier, VerificationFn,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -36,10 +37,6 @@ use crate::model::identifier::IdentifierData;
 use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
-use crate::provider::credential_formatter::mapper::{
-    default_2_years, first_certificate, to_format_with_mappings,
-};
-use crate::provider::credential_formatter::model::ParsedCredential;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -495,6 +492,12 @@ impl JsonLdClassic {
         let mut claims = HashMap::from_iter(credential_subject.claims);
         claims.extend(metadata_claims);
 
+        let status = if vcdm.credential_status.is_empty() {
+            None
+        } else {
+            Some(CredentialStatus::W3C(vcdm.credential_status))
+        };
+
         Ok(DetailCredential {
             issuance_date: vcdm.proof.and_then(|proof| proof.created),
             valid_from: vcdm.valid_from.or(vcdm.issuance_date),
@@ -507,7 +510,7 @@ impl JsonLdClassic {
                 .and_then(|id| DidValue::from_did_url(id).ok())
                 .map(IdentifierDetails::Did),
             claims,
-            status: vcdm.credential_status,
+            status,
         })
     }
 

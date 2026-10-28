@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
@@ -55,10 +56,9 @@ use crate::provider::credential_formatter::mdoc_formatter::util::{
     StatusListEncoded, extract_certificate_from_x5chain_header,
 };
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, IdentifierDetails, TokenVerifier,
+    CredentialStatus, IdentifierDetails, TokenStatus, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -84,11 +84,6 @@ pub mod util;
 
 #[cfg(test)]
 mod test;
-
-pub(crate) const URI_KEY: &str = "uri";
-pub(crate) const INDEX_KEY: &str = "idx";
-pub(crate) const CERTIFICATE_KEY: &str = "certificate";
-const CREDENTIAL_STATUS_TYPE: &str = "TokenStatusListEntry";
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Clone)]
@@ -202,14 +197,14 @@ impl TokenStatusList {
 
 #[async_trait::async_trait]
 impl RevocationMethod for TokenStatusList {
-    fn get_status_type(&self) -> String {
-        CREDENTIAL_STATUS_TYPE.to_string()
+    fn can_check_status(&self, credential_status: &CredentialStatus) -> bool {
+        matches!(credential_status, CredentialStatus::TokenStatusList(_))
     }
 
     async fn add_issued_credential(
         &self,
         credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
         let issuer = credential.issuer()?.data;
         let issuer_identifier = issuer.identifier.as_ref().await?;
 
@@ -226,7 +221,7 @@ impl RevocationMethod for TokenStatusList {
             None
         };
 
-        let entry = self
+        let (_, entry) = self
             .create_entry(
                 RevocationListEntityId::Credential(credential.common().id),
                 &issuer_identifier,
@@ -234,7 +229,7 @@ impl RevocationMethod for TokenStatusList {
             )
             .await?;
 
-        Ok(vec![entry.1])
+        Ok(entry)
     }
 
     async fn mark_credential_as(
@@ -298,52 +293,26 @@ impl RevocationMethod for TokenStatusList {
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
-        if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
-            return Err(RevocationError::ValidationError(format!(
-                "Invalid credential status type: {}",
-                credential_status.r#type
-            )));
-        }
-
-        let list_url = credential_status
-            .additional_fields
-            .get(URI_KEY)
-            .and_then(|url| url.as_str())
-            .ok_or(RevocationError::ValidationError(
-                "Missing status list url".to_string(),
-            ))?;
-
-        let list_index = credential_status
-            .additional_fields
-            .get(INDEX_KEY)
-            .and_then(|index| index.as_str())
-            .ok_or(RevocationError::ValidationError(
-                "Missing status list index".to_string(),
-            ))?;
-        let list_index: usize = list_index
-            .parse()
-            .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
+        let CredentialStatus::TokenStatusList(status) = credential_status else {
+            return Err(RevocationError::ValidationError(
+                "Invalid credential status type".to_string(),
+            ));
+        };
 
         let (content, _) = &self
             .caching_loader
-            .get(list_url, self.resolver.clone(), force_refresh)
+            .get(status.uri.as_str(), self.resolver.clone(), force_refresh)
             .await
             .error_while("getting token status list")?;
 
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
 
         let status_list = if response.content_type == "application/statuslist+cwt" {
-            let ca_certificate = credential_status
-                .additional_fields
-                .get(CERTIFICATE_KEY)
-                .and_then(|index| index.as_str())
-                .map(ToString::to_string);
-
             self.extract_info_from_list_credential_cwt(
                 response.content,
                 issuer_details,
-                ca_certificate,
-                list_url,
+                status.certificate.clone(),
+                status.uri.as_str(),
             )
             .await?
         } else {
@@ -352,7 +321,7 @@ impl RevocationMethod for TokenStatusList {
                 .await?
         };
 
-        Ok(util::extract_state_from_token(&status_list, list_index)
+        Ok(util::extract_state_from_token(&status_list, status.index)
             .error_while("extracting token status")?)
     }
 
@@ -784,27 +753,13 @@ impl TokenStatusList {
         revocation_list_id: &RevocationListId,
         index_on_status_list: usize,
     ) -> Result<CredentialStatus, RevocationError> {
-        let revocation_list_url = get_revocation_list_url(revocation_list_id, &self.core_base_url)?;
-        Ok(CredentialStatus {
-            id: Some(
-                uuid::Uuid::new_v4()
-                    .urn()
-                    .to_string()
-                    .parse()
-                    .map_err(|e| {
-                        RevocationError::ValidationError(format!("Failed to parse URL: `{e}`"))
-                    })?,
-            ),
-            r#type: CREDENTIAL_STATUS_TYPE.to_string(),
-            status_purpose: Some("revocation".to_string()),
-            additional_fields: HashMap::from([
-                (URI_KEY.to_string(), revocation_list_url.into()),
-                (
-                    INDEX_KEY.to_string(),
-                    index_on_status_list.to_string().into(),
-                ),
-            ]),
-        })
+        let url = get_revocation_list_url(revocation_list_id, &self.core_base_url)?;
+        let uri = Url::parse(&url).map_err(|e| RevocationError::MappingError(e.to_string()))?;
+        Ok(CredentialStatus::TokenStatusList(TokenStatus {
+            index: index_on_status_list,
+            uri,
+            certificate: None,
+        }))
     }
 
     fn purpose(&self) -> Result<RevocationListPurpose, RevocationError> {
@@ -986,31 +941,6 @@ impl TokenStatusList {
             bits: status_list.bits as _,
             value: Base64UrlSafeNoPadding::encode_to_string(status_list.list.0)?,
         })
-    }
-}
-
-pub(crate) fn credential_status_from_sdjwt_status(
-    sd_jwt_status: &Option<SdJwtVcStatus>,
-) -> Vec<CredentialStatus> {
-    match sd_jwt_status {
-        None => vec![],
-        Some(value) => {
-            vec![CredentialStatus {
-                id: None,
-                r#type: CREDENTIAL_STATUS_TYPE.to_string(),
-                status_purpose: Some("revocation".to_string()),
-                additional_fields: HashMap::from([
-                    (
-                        URI_KEY.to_string(),
-                        serde_json::Value::String(value.status_list.uri.to_string()),
-                    ),
-                    (
-                        INDEX_KEY.to_string(),
-                        serde_json::Value::String(value.status_list.index.to_string()),
-                    ),
-                ]),
-            }]
-        }
     }
 }
 

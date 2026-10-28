@@ -6,7 +6,9 @@ use super::model::VcClaim;
 use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, DetailCredential, IdentifierDetails,
+};
 use crate::provider::did_method::error::DidMethodError;
 
 impl TryFrom<Jwt<VcClaim>> for DetailCredential {
@@ -50,6 +52,14 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
 
         let mut claims = HashMap::from_iter(credential_subject.claims);
         claims.extend(metadata_claims);
+
+        let credential_status = jwt.payload.custom.vc.credential_status;
+        let status = if credential_status.is_empty() {
+            None
+        } else {
+            Some(CredentialStatus::W3C(credential_status))
+        };
+
         Ok(Self {
             issuance_date: jwt.payload.issued_at,
             valid_from: jwt.payload.issued_at,
@@ -59,7 +69,7 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             issuer: IdentifierDetails::Did(did),
             subject,
             claims,
-            status: jwt.payload.custom.vc.credential_status,
+            status,
         })
     }
 }

@@ -44,7 +44,7 @@ use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialPresentation,
     CredentialStatus, IdentifierDetails, IssuedClaimValue, IssuedClaims, MockSignatureProvider,
-    MockTokenVerifier, PublicKeySource, UnsignedCredential, issued_claims,
+    MockTokenVerifier, PublicKeySource, TokenStatus, UnsignedCredential, issued_claims,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::{SdJwtVc, SdJwtVcCredential};
@@ -76,12 +76,11 @@ use crate::util::test_utilities::assert_time_diff_less_than;
 #[tokio::test]
 async fn test_format_credential() {
     let credential_data = get_credential_data(
-        CredentialStatus {
-            id: Some("did:status:id".parse().unwrap()),
-            r#type: "TYPE".to_string(),
-            status_purpose: Some("PURPOSE".to_string()),
-            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
-        },
+        Some(TokenStatus {
+            index: 0,
+            uri: "http://status.test".parse().unwrap(),
+            certificate: None,
+        }),
         None,
         IssuedClaims::new(),
     );
@@ -222,12 +221,11 @@ async fn test_format_credential_swiyu() {
     let leeway = Duration::seconds(45);
 
     let credential_data = get_credential_data(
-        CredentialStatus {
-            id: Some("did:status:id".parse().unwrap()),
-            r#type: "TYPE".to_string(),
-            status_purpose: Some("PURPOSE".to_string()),
-            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
-        },
+        Some(TokenStatus {
+            index: 0,
+            uri: "http://status.test".parse().unwrap(),
+            certificate: None,
+        }),
         Some(crate::clock::now_utc() + Duration::days(365 * 2)),
         IssuedClaims::from([(
             "portrait".to_string(),
@@ -588,12 +586,9 @@ async fn test_extract_credentials_certificate_validity(
             credential.claims["given_name"].value,
             CredentialClaimValue::String("Max".to_string())
         );
-        assert_eq!(credential.status.len(), 1);
-        assert_eq!(
-            credential.status[0].additional_fields["uri"],
-            json!("https://issuer.example.com/status")
-        );
-        assert_eq!(credential.status[0].additional_fields["idx"], json!("42"));
+        let_assert!(Some(CredentialStatus::TokenStatusList(status)) = credential.status);
+        assert_eq!(status.uri.as_str(), "https://issuer.example.com/status");
+        assert_eq!(status.index, 42);
     }
 }
 
@@ -1212,7 +1207,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
             vct: "credential-schema-id".to_string(),
             issuer: issuer_did.to_string().parse().unwrap(),
             valid_until: Some(now + Duration::seconds(10)),
-            credential_status: vec![],
+            credential_status: None,
             claims,
         }),
         holder_identifier: Some(holder_identifier),
@@ -1393,7 +1388,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
             vct: "credential-schema-id".to_string(),
             issuer: issuer_did.to_string().parse().unwrap(),
             valid_until: Some(now + Duration::seconds(10)),
-            credential_status: vec![],
+            credential_status: None,
             claims,
         }),
         holder_identifier: Some(holder_identifier),
@@ -2228,7 +2223,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
 }
 
 fn get_credential_data(
-    status: CredentialStatus,
+    credential_status: Option<TokenStatus>,
     valid_until: Option<OffsetDateTime>,
     additional_claims: IssuedClaims,
 ) -> CredentialData {
@@ -2242,7 +2237,7 @@ fn get_credential_data(
             vct: "http://schema.test/id".to_string(),
             issuer: "did:issuer:test".parse().unwrap(),
             valid_until,
-            credential_status: vec![status],
+            credential_status,
             claims,
         }),
         holder_identifier: Some(Identifier {

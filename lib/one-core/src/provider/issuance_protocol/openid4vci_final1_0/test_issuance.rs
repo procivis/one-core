@@ -35,7 +35,9 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, MockSignatureProvider, W3CCredentialStatus,
+};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::IssuanceProtocol;
@@ -149,15 +151,15 @@ async fn test_issuer_submit_succeeds() {
         .expect_add_issued_credential()
         .once()
         .return_once(|_| {
-            Ok(vec![CredentialRevocationInfo {
-                credential_status: CredentialStatus {
+            Ok(CredentialRevocationInfo {
+                credential_status: CredentialStatus::W3C(vec![W3CCredentialStatus {
                     id: Some(Uuid::new_v4().urn().to_string().parse().unwrap()),
                     r#type: "type".to_string(),
                     status_purpose: Some("type".to_string()),
                     additional_fields: HashMap::new(),
-                },
+                }]),
                 serial: None,
-            }])
+            })
         });
 
     let mut formatter = MockCredentialFormatter::new();

@@ -380,7 +380,7 @@ mod tests {
             issuer: IdentifierDetails::Did("did:issuer:123".parse().unwrap()),
             subject: None,
             claims: Default::default(),
-            status: vec![],
+            status: None,
         };
         update(&mut credential);
         credential

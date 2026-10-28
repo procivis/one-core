@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use proc_macros::Provider;
-use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
+use shared_types::{
+    DidValue, RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId,
+};
 
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
@@ -14,12 +16,16 @@ use crate::model::managed_instance_attestation::{
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
-use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, IdentifierDetails, W3CCredentialStatus,
+};
 use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::RevocationMethod;
-use crate::provider::revocation::bitstring_status_list::util::extract_bitstring_index;
+use crate::provider::revocation::bitstring_status_list::util::{
+    extract_bitstring_index, w3c_status_check,
+};
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
@@ -40,14 +46,20 @@ const CREDENTIAL_STATUS_TYPE: &str = "StatusList2021Entry";
 
 #[async_trait::async_trait]
 impl RevocationMethod for StatusList2021 {
-    fn get_status_type(&self) -> String {
-        CREDENTIAL_STATUS_TYPE.to_string()
+    fn can_check_status(&self, credential_status: &CredentialStatus) -> bool {
+        let CredentialStatus::W3C(status) = credential_status else {
+            return false;
+        };
+
+        status
+            .iter()
+            .all(|status| status.r#type == CREDENTIAL_STATUS_TYPE)
     }
 
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "StatusList2021".to_string(),
         ))
@@ -76,63 +88,16 @@ impl RevocationMethod for StatusList2021 {
             ));
         };
 
-        if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
-            return Err(RevocationError::ValidationError(format!(
-                "Invalid credential status type: {}",
-                credential_status.r#type
-            )));
-        }
+        let CredentialStatus::W3C(status) = credential_status else {
+            return Err(RevocationError::ValidationError(
+                "Invalid credential status type".to_string(),
+            ));
+        };
 
-        let list_url = credential_status
-            .additional_fields
-            .get("statusListCredential")
-            .and_then(|v| v.as_str())
-            .ok_or(RevocationError::ValidationError(
-                "Missing status list url".to_string(),
-            ))?;
-
-        let list_index = credential_status
-            .additional_fields
-            .get("statusListIndex")
-            .and_then(|v| v.as_str())
-            .ok_or(RevocationError::ValidationError(
-                "Missing status list index".to_string(),
-            ))?;
-        let list_index: usize = list_index
-            .parse()
-            .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
-
-        let response = self
-            .client
-            .get(list_url)
-            .send()
-            .await
-            .error_while("downloading StatusList2021")?
-            .error_for_status()
-            .error_while("downloading StatusList2021")?;
-
-        let token = String::from_utf8(response.body)
-            .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
-
-        let key_verification = Box::new(KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-            certificate_validator: self.certificate_validator.clone(),
-        });
-
-        let encoded_list =
-            StatusList2021JWTFormatter::parse_status_list(&token, issuer_did, key_verification)
-                .await
-                .error_while("parsing status list")?;
-
-        if extract_bitstring_index(encoded_list, list_index)
-            .error_while("extracting bitstring index")?
-        {
-            status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
-        } else {
-            Ok(RevocationState::Valid)
-        }
+        w3c_status_check(status, |status_entry| async move {
+            self.check_status(status_entry, issuer_did).await
+        })
+        .await
     }
 
     async fn add_issued_attestation(
@@ -200,5 +165,71 @@ impl RevocationMethod for StatusList2021 {
 
     fn config_name(&self) -> &RevocationMethodId {
         &self.config_name
+    }
+}
+
+impl StatusList2021 {
+    async fn check_status(
+        &self,
+        credential_status: &W3CCredentialStatus,
+        issuer_did: &DidValue,
+    ) -> Result<RevocationState, RevocationError> {
+        if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
+            return Err(RevocationError::ValidationError(format!(
+                "Invalid credential status type: {}",
+                credential_status.r#type
+            )));
+        }
+
+        let list_url = credential_status
+            .additional_fields
+            .get("statusListCredential")
+            .and_then(|v| v.as_str())
+            .ok_or(RevocationError::ValidationError(
+                "Missing status list url".to_string(),
+            ))?;
+
+        let list_index = credential_status
+            .additional_fields
+            .get("statusListIndex")
+            .and_then(|v| v.as_str())
+            .ok_or(RevocationError::ValidationError(
+                "Missing status list index".to_string(),
+            ))?;
+        let list_index: usize = list_index
+            .parse()
+            .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
+
+        let response = self
+            .client
+            .get(list_url)
+            .send()
+            .await
+            .error_while("downloading StatusList2021")?
+            .error_for_status()
+            .error_while("downloading StatusList2021")?;
+
+        let token = String::from_utf8(response.body)
+            .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
+
+        let key_verification = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        });
+
+        let encoded_list =
+            StatusList2021JWTFormatter::parse_status_list(&token, issuer_did, key_verification)
+                .await
+                .error_while("parsing status list")?;
+
+        if extract_bitstring_index(encoded_list, list_index)
+            .error_while("extracting bitstring index")?
+        {
+            status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
+        } else {
+            Ok(RevocationState::Valid)
+        }
     }
 }

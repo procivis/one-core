@@ -1,6 +1,7 @@
 use std::ops::Add;
 use std::sync::{Arc, Mutex};
 
+use assert2::let_assert;
 use mockall::predicate::{always, eq};
 use rstest::rstest;
 use serde_json::json;
@@ -19,6 +20,7 @@ use crate::model::revocation_list::{
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
@@ -125,8 +127,9 @@ async fn test_add_signature_new_list() {
     let formatted_list = formatted_list.lock().unwrap().take().unwrap();
 
     assert_eq!(info.serial, Some(serial));
+    let_assert!(CredentialStatus::CRL(crl_url) = info.credential_status);
     assert_eq!(
-        info.credential_status.id.unwrap().to_string(),
+        crl_url.to_string(),
         format!("http://base.url/ssi/revocation/v1/crl/{list_id}")
     );
 

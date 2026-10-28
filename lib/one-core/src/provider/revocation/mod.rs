@@ -30,8 +30,8 @@ mod utils;
 #[provider_mock]
 #[async_trait::async_trait]
 pub trait RevocationMethod: Provider + Send + Sync {
-    /// Returns the revocation method as a string for the `credentialStatus` field of the VC.
-    fn get_status_type(&self) -> String;
+    /// For selecting a matching revocation method
+    fn can_check_status(&self, credential_status: &CredentialStatus) -> bool;
 
     /// Creates the `credentialStatus` field of the VC.
     ///
@@ -39,7 +39,7 @@ pub trait RevocationMethod: Provider + Send + Sync {
     async fn add_issued_credential(
         &self,
         credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError>;
+    ) -> Result<CredentialRevocationInfo, RevocationError>;
 
     /// Change a credential's status to valid, revoked, or suspended.
     ///

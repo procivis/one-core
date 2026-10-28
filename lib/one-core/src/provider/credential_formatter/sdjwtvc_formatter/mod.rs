@@ -13,6 +13,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use model::{SdJwtVc, SdJwtVcCredential, SdJwtVcStatus};
 use one_crypto::get_hasher;
+use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
 use sdjwt::format_credential;
 use serde::Deserialize;
@@ -31,14 +32,15 @@ use super::mapper::{default_2_years, first_certificate, to_format_with_mappings}
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialStatus, DetailCredential, Features, FormatterCapabilities,
-    IdentifierDetails, IssuedClaimValue, ParsedCredential, SelectiveDisclosure, TokenVerifier,
-    VerificationFn,
+    IdentifierDetails, IssuedClaimValue, ParsedCredential, SelectiveDisclosure, TokenStatus,
+    TokenVerifier, VerificationFn,
 };
 use super::sdjwt::disclosures::{
     SELECTIVE_DISCLOSURE_ARRAY_MARKER, SELECTIVE_DISCLOSURE_MARKER, parse_token,
 };
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
 use super::sdjwt::{parse_holder_identifier, prepare_sd_presentation};
+use super::sdjwtvc_formatter::model::SdJwtVcStatusList;
 use super::{CredentialFormatter, MetadataClaimSchema, sdjwt};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
@@ -59,7 +61,6 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
 use crate::util::key_selection::SelectedKey;
 
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
@@ -273,7 +274,13 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .and_then(|item| item.integrity);
 
         let payload_from_digests = |digests: Vec<String>| {
-            sdjwt_vc_from_credential(credential_status, digests, HASH_ALG, vct, vct_integrity)
+            Ok(sdjwt_vc_from_credential(
+                credential_status,
+                digests,
+                HASH_ALG,
+                vct,
+                vct_integrity,
+            ))
         };
         format_credential(
             claims,
@@ -591,8 +598,33 @@ impl SDJWTVCFormatter {
             issuer,
             subject,
             claims,
-            status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
+            status: convert_inner(jwt.payload.custom.status),
         })
+    }
+}
+
+impl From<SdJwtVcStatus> for CredentialStatus {
+    fn from(value: SdJwtVcStatus) -> Self {
+        Self::TokenStatusList(value.status_list.into())
+    }
+}
+
+impl From<SdJwtVcStatusList> for TokenStatus {
+    fn from(value: SdJwtVcStatusList) -> Self {
+        Self {
+            index: value.index,
+            uri: value.uri,
+            certificate: None,
+        }
+    }
+}
+
+impl From<TokenStatus> for SdJwtVcStatusList {
+    fn from(value: TokenStatus) -> Self {
+        Self {
+            index: value.index,
+            uri: value.uri,
+        }
     }
 }
 
@@ -665,32 +697,23 @@ fn post_process_claim_value(value: &mut CredentialClaimValue, process: &impl Fn(
 }
 
 fn sdjwt_vc_from_credential(
-    credential_status: Vec<CredentialStatus>,
+    status: Option<TokenStatus>,
     mut hashed_claims: Vec<String>,
     algorithm: HashAlgorithm,
     vc_type: String,
     vct_integrity: Option<String>,
-) -> Result<SdJwtVc, FormatterError> {
+) -> SdJwtVc {
     hashed_claims.sort_unstable();
 
-    let status = credential_status.first().and_then(|status| {
-        let obj: Value = status
-            .additional_fields
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-        serde_json::from_value(obj).ok()
-    });
-
-    Ok(SdJwtVc {
+    SdJwtVc {
         digests: hashed_claims,
         hash_alg: Some(algorithm.to_string()),
         status: status.map(|status| SdJwtVcStatus {
-            status_list: status,
+            status_list: status.into(),
             custom_claims: Default::default(),
         }),
         public_claims: Default::default(),
         vc_type,
         vct_integrity,
-    })
+    }
 }

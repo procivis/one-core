@@ -447,13 +447,15 @@ impl OpenId4VpProofValidatorProto {
 
         validate_credential_validity(&credential, formatter.get_leeway())?;
 
-        for credential_status in credential.status.iter() {
+        if let Some(credential_status) = &credential.status {
             let (revocation_method, _) = self
                 .revocation_method_provider
-                .get_revocation_method_by_status_type(&credential_status.r#type)
-                .ok_or(OpenID4VCError::MissingRevocationProviderForType(
-                    credential_status.r#type.clone(),
-                ))?;
+                .get_revocation_method_by_status(credential_status)
+                .ok_or_else(|| {
+                    OpenID4VCError::MissingRevocationProviderForType(format!(
+                        "{credential_status:?}"
+                    ))
+                })?;
 
             match revocation_method
                 .check_credential_revocation_status(
