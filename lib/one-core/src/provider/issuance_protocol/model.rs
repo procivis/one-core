@@ -126,6 +126,15 @@ impl CredentialWithBlob {
     }
 }
 
+/// Result of an issuer issuing a credential; persisting both is up to the caller.
+#[derive(Clone, Debug)]
+pub(crate) struct IssuedCredential {
+    /// The issued credential: accepted, bound to the holder identifier and the issued format.
+    /// The `credential_blob_id` is left as it was.
+    pub credential: Credential,
+    pub serialized_credential: SerializedCredential,
+}
+
 #[derive(Clone, Deserialize, Debug, Default)]
 pub(crate) struct SubmitIssuerResponse {
     pub credentials: Vec<SerializedCredential>,

@@ -34,8 +34,8 @@ use service::{
     credential_configuration_supported, get_protocol_base_url,
 };
 use shared_types::{
-    BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
-    IdentifierId, InteractionId, KeyId, SerializedCredential,
+    CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId,
+    InteractionId, KeyId, SerializedCredential,
 };
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
@@ -65,13 +65,12 @@ use self::dpop::DpopContext;
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::{OpenIDIssuanceError, TxCodeError};
 use super::mapper::{
-    autogenerate_holder_binding, generate_transaction_code, get_issued_credential_update,
-    interaction_from_handle_invitation,
+    autogenerate_holder_binding, generate_transaction_code, interaction_from_handle_invitation,
 };
 use super::model::{
     AuthorizationDpopKey, ContinueIssuanceResponseDTO, InvitationResponseEnum,
-    IssuanceAcceptResponse, IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse,
-    SubmitIssuerResponse,
+    IssuanceAcceptResponse, IssuanceAcceptResult, IssuanceRefreshResponse, IssuedCredential,
+    ShareResponse, SubmitIssuerResponse,
 };
 use super::{
     HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, deserialize_interaction_data,
@@ -83,7 +82,7 @@ use crate::config::core_config::{
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
-use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
+use crate::model::blob::BlobType;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialStateEnum, CredentialType,
 };
@@ -114,9 +113,11 @@ use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::{first_certificate, unsigned_credential};
-use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::credential_formatter::model::{CredentialData, VerificationFn};
+use crate::provider::credential_formatter::model::{
+    CredentialData, CredentialStatus, VerificationFn,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::{CredentialFormatter, mdoc_formatter};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::key_algorithm::ecdsa::ecdsa_public_key_as_jwk;
@@ -369,23 +370,16 @@ impl OpenID4VCIFinal1_0 {
         })
     }
 
-    async fn validate_credential_issuable(
+    fn validate_credential_issuable(
         &self,
-        credential_id: &CredentialId,
-        latest_state: &CredentialStateEnum,
+        credential: &Credential,
         format: &CredentialFormat,
         format_type: FormatType,
         supports_batch_issuance: bool,
     ) -> Result<(), IssuanceProtocolError> {
-        match (latest_state, format_type) {
+        match (&credential.common().state, format_type) {
             (CredentialStateEnum::Accepted, FormatType::Mdoc) if !supports_batch_issuance => {
                 // mdoc MSO refresh -> rate-limiting by mso_minimum_refresh_time
-                let credential = self
-                    .credential_repository
-                    .get_credential(credential_id)
-                    .await
-                    .error_while("getting credential")?;
-
                 let can_be_updated_at =
                     credential.common().last_modified + self.mso_minimum_refresh_time(format)?;
 
@@ -427,6 +421,60 @@ impl OpenID4VCIFinal1_0 {
             .get::<mdoc_formatter::Params, _>(format)
             .map(|p| p.mso_minimum_refresh_seconds)
             .error_while("getting format params")?)
+    }
+
+    /// Signs `credential` in the given format with the issuer key, bound to the holder
+    #[expect(clippy::too_many_arguments)]
+    async fn sign_credential(
+        &self,
+        credential: &Credential,
+        credential_schema: &CredentialSchema,
+        format: &CredentialSchemaFormat,
+        formatter: &dyn CredentialFormatter,
+        credential_status: Option<CredentialStatus>,
+        holder_identifier: Identifier,
+        holder_key_id: String,
+    ) -> Result<SerializedCredential, IssuanceProtocolError> {
+        let issuer = credential.issuer()?;
+        let key = issuer.data.signing_key.as_ref().await?;
+        let issuer_identifier = issuer.data.identifier.as_ref().await?;
+
+        let auth_fn = self.key_provider.get_signature_provider(
+            &key,
+            self.jwk_key_id_from_identifier(&issuer_identifier, &key)
+                .await?,
+            self.key_algorithm_provider.clone(),
+        )?;
+
+        let core_base_url = self.base_url.as_ref().ok_or(IssuanceProtocolError::Failed(
+            "Missing core_base_url for credential issuance".to_string(),
+        ))?;
+        let issuer_certificate = match &issuer.data.certificate {
+            Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
+            None => first_certificate(&issuer_identifier)
+                .await
+                .error_while("getting issuer certificate")?,
+        };
+        let credential_data = CredentialData {
+            credential: unsigned_credential(
+                credential,
+                core_base_url,
+                credential_status,
+                credential_schema,
+                format,
+                &self.config,
+            )
+            .await
+            .error_while("creating credential")?,
+            holder_identifier: Some(holder_identifier),
+            holder_key_id: Some(holder_key_id),
+            issuer_certificate,
+        };
+
+        Ok(formatter
+            .format_credential(credential_data, auth_fn)
+            .await
+            .error_while("formatting credential")?)
     }
 
     async fn jwk_key_id_from_identifier(
@@ -1346,40 +1394,6 @@ impl OpenID4VCIFinal1_0 {
             .public_key_as_jwk()
             .error_while("getting JWK")?;
         Ok(PublicKeyInfo::Jwk(jwk))
-    }
-
-    async fn upsert_credential_blob(
-        &self,
-        credential: &Credential,
-        token: &SerializedCredential,
-    ) -> Result<BlobId, IssuanceProtocolError> {
-        let db_blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)?;
-
-        let credential_blob_id = match credential.issuer_credential()?.data.credential_blob_id {
-            None => {
-                let blob = Blob::new(token.as_ref(), BlobType::Credential);
-                db_blob_storage
-                    .create(blob.clone())
-                    .await
-                    .error_while("creating blob")?;
-                blob.id
-            }
-            Some(blob_id) => {
-                db_blob_storage
-                    .update(
-                        &blob_id,
-                        UpdateBlobRequest {
-                            value: Some(token.as_ref().into()),
-                        },
-                    )
-                    .await
-                    .error_while("updating blob")?;
-                blob_id
-            }
-        };
-        Ok(credential_blob_id)
     }
 
     async fn prepare_requested_credentials(
@@ -3086,22 +3100,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
     async fn issuer_issue_credential(
         &self,
-        credential_id: &CredentialId,
+        mut credential: Credential,
         format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<SerializedCredential, IssuanceProtocolError> {
-        let mut credential = self
-            .credential_repository
-            .get_credential(credential_id)
-            .await
-            .error_while("getting credential")?;
-
-        let issuer = credential.issuer_credential_mut()?;
-        issuer.data.holder_identifier = Some(holder_identifier.clone().into());
-
-        let credential_schema = issuer.common.schema.as_ref().await?.to_owned();
-        let credential_state = issuer.common.state;
+    ) -> Result<IssuedCredential, IssuanceProtocolError> {
+        let credential_schema = credential.common().schema.as_ref().await?.to_owned();
 
         let formats = credential_schema.formats.as_ref().await?;
         let format = formats
@@ -3111,6 +3115,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 "credential_schema format missing".to_string(),
             ))?;
 
+        let issuer = credential.issuer_credential_mut()?;
+        issuer.data.holder_identifier = Some(holder_identifier.clone().into());
+        issuer.data.format = format.to_owned().into();
+
         let credential_format_type = self
             .config
             .format
@@ -3119,13 +3127,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .r#type;
 
         self.validate_credential_issuable(
-            credential_id,
-            &credential_state,
+            &credential,
             &format.format,
             credential_format_type,
             credential_schema.batch_size.is_some(),
-        )
-        .await?;
+        )?;
 
         let formatter = self
             .formatter_provider
@@ -3146,59 +3152,24 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             ),
             None => None,
         };
+        credential.common_mut().state = CredentialStateEnum::Accepted;
 
-        let issuer = credential.issuer()?;
-        let key = issuer.data.signing_key.as_ref().await?;
-        let issuer_identifier = issuer.data.identifier.as_ref().await?;
-
-        let auth_fn = self.key_provider.get_signature_provider(
-            &key,
-            self.jwk_key_id_from_identifier(&issuer_identifier, &key)
-                .await?,
-            self.key_algorithm_provider.clone(),
-        )?;
-
-        let core_base_url = self.base_url.as_ref().ok_or(IssuanceProtocolError::Failed(
-            "Missing core_base_url for credential issuance".to_string(),
-        ))?;
-        let holder_identifier_id = holder_identifier.id;
-        let issuer_certificate = match &issuer.data.certificate {
-            Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
-            None => first_certificate(&issuer_identifier)
-                .await
-                .error_while("getting issuer certificate")?,
-        };
-        let credential_data = CredentialData {
-            credential: unsigned_credential(
+        let serialized_credential = self
+            .sign_credential(
                 &credential,
-                core_base_url,
-                credential_status,
                 &credential_schema,
                 format,
-                &self.config,
+                formatter.as_ref(),
+                credential_status,
+                holder_identifier,
+                holder_key_id,
             )
-            .await
-            .error_while("creating credential")?,
-            holder_identifier: Some(holder_identifier),
-            holder_key_id: Some(holder_key_id),
-            issuer_certificate,
-        };
+            .await?;
 
-        let token = formatter
-            .format_credential(credential_data, auth_fn)
-            .await
-            .error_while("formatting credential")?;
-
-        let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
-        self.credential_repository
-            .update_credential(
-                *credential_id,
-                get_issued_credential_update(credential_blob_id, holder_identifier_id),
-            )
-            .await
-            .error_while("updating credential")?;
-
-        Ok(token)
+        Ok(IssuedCredential {
+            credential,
+            serialized_credential,
+        })
     }
 
     async fn holder_prepare_authorization_dpop_key(

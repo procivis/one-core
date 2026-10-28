@@ -37,7 +37,7 @@ use super::dto::{
 use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use super::mapper::{
     allocate_notification_ids, interaction_data_to_dto, interaction_id_from_token_request,
-    map_dpop_params, notification_id_for_format, offered_formats,
+    issued_credential_update, map_dpop_params, notification_id_for_format, offered_formats,
 };
 use super::validator::{
     self, client_instance_key_thumbprint, extract_wallet_metadata, throw_if_access_token_invalid,
@@ -55,11 +55,11 @@ use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
     get_issuance_param_token_expires_in,
 };
-use crate::model::blob::{Blob, BlobType};
-use crate::model::common::LockType;
+use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
+use crate::model::common::{LockType, SortDirection};
 use crate::model::credential::{
     Credential, CredentialCommon, CredentialFilterValue, CredentialStateEnum, CredentialType,
-    IssuerCredentialData, UpdateCredentialRequest,
+    IssuerCredentialData, SortableCredentialColumn, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -68,7 +68,7 @@ use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListQuery;
+use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::relation::Related;
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::dpop_handler::{
@@ -83,6 +83,7 @@ use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::model::{ProtocolArtifact, WalletAttestationArtifact};
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::model::IssuedCredential;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     FormatNotification, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCNonceParams, SWISS_PROFILE_ISSUANCE_VERSION, SwissProfileHeader,
@@ -974,10 +975,16 @@ impl OID4VCIFinal1_0Service {
                 let holder = holder_identifiers
                     .pop()
                     .ok_or(OpenID4VCIError::InvalidOrMissingProof)?;
+                // reloaded after locking, a concurrent request might have issued it in the meantime
+                let credential = self
+                    .credential_repository
+                    .get_credential(&common.id)
+                    .await
+                    .error_while("getting credential")?;
                 vec![
                     self.issue_single_credential(
                         holder,
-                        common.id,
+                        credential,
                         format.id,
                         issuance_protocol.as_ref(),
                         now,
@@ -1073,15 +1080,14 @@ impl OID4VCIFinal1_0Service {
         for holder_identifier in holder_identifiers {
             let mut item = template.clone();
             item.common_mut().id = Uuid::new_v4().into();
-            let item_id = self
-                .credential_repository
-                .create_credential(item)
+            self.credential_repository
+                .create_credential(item.clone())
                 .await
                 .error_while("creating batch item copy")?;
             credentials.push(
                 self.issue_single_credential(
                     holder_identifier,
-                    item_id,
+                    item,
                     format.id,
                     issuance_protocol,
                     now,
@@ -1109,16 +1115,16 @@ impl OID4VCIFinal1_0Service {
     async fn issue_single_credential(
         &self,
         holder_identifier: PreparedIdentifier,
-        credential_id: CredentialId,
+        credential: Credential,
         format_id: CredentialSchemaFormatId,
         issuance_protocol: &dyn IssuanceProtocol,
         issuance_date: OffsetDateTime,
     ) -> Result<CredentialResponseEntry, OID4VCIFinal1_0ServiceError> {
-        let wua_blob_id = if let Some(attestation) = holder_identifier.key_attestation {
-            let blob_storage = self
-                .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)?;
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
 
+        let wua_blob_id = if let Some(attestation) = holder_identifier.key_attestation {
             let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO { attestation })
                 .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
             let wua_blob = Blob::new(wua_dto, BlobType::WalletUnitAttestation);
@@ -1131,10 +1137,12 @@ impl OID4VCIFinal1_0Service {
             None
         };
 
-        let holder_identifier_id = holder_identifier.identifier.id;
-        let issued_credential = issuance_protocol
+        let IssuedCredential {
+            credential,
+            serialized_credential,
+        } = issuance_protocol
             .issuer_issue_credential(
-                &credential_id,
+                credential,
                 format_id,
                 holder_identifier.identifier,
                 holder_identifier.key_id,
@@ -1142,31 +1150,54 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("issuing credential")?;
 
+        let credential_blob_id = match credential.issuer_credential()?.data.credential_blob_id {
+            None => {
+                let blob = Blob::new(serialized_credential.as_ref(), BlobType::Credential);
+                blob_storage
+                    .create(blob.clone())
+                    .await
+                    .error_while("creating credential blob")?;
+                blob.id
+            }
+            Some(blob_id) => {
+                blob_storage
+                    .update(
+                        &blob_id,
+                        UpdateBlobRequest {
+                            value: Some(serialized_credential.as_ref().into()),
+                        },
+                    )
+                    .await
+                    .error_while("updating credential blob")?;
+                blob_id
+            }
+        };
+
         self.credential_repository
             .update_credential(
-                credential_id,
-                UpdateCredentialRequest {
-                    issuance_date: Some(issuance_date),
-                    holder_identifier_id: Some(holder_identifier_id),
-                    wallet_key_attestation_blob_id: wua_blob_id,
-                    format: Some(format_id),
-                    ..Default::default()
-                },
+                credential.common().id,
+                issued_credential_update(
+                    &credential,
+                    credential_blob_id,
+                    issuance_date,
+                    wua_blob_id,
+                )?,
             )
             .await
             .error_while("updating credential")?;
 
         Ok(CredentialResponseEntry {
-            credential: issued_credential.into(),
+            credential: serialized_credential.into(),
         })
     }
 
-    async fn format_already_issued(
+    /// The most recently created batch item of the format, `None` if the format was never issued
+    async fn latest_batch_item(
         &self,
         parent_credential_id: CredentialId,
         format_id: CredentialSchemaFormatId,
-    ) -> Result<bool, OID4VCIFinal1_0ServiceError> {
-        Ok(!self
+    ) -> Result<Option<Credential>, OID4VCIFinal1_0ServiceError> {
+        Ok(self
             .credential_repository
             .get_credential_list(ListQuery {
                 include_count: false,
@@ -1175,12 +1206,21 @@ impl OID4VCIFinal1_0Service {
                         & CredentialFilterValue::FormatIds(vec![format_id])
                         & CredentialFilterValue::Deleted(false),
                 ),
+                sorting: Some(ListSorting {
+                    column: SortableCredentialColumn::CreatedDate,
+                    direction: Some(SortDirection::Descending),
+                }),
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
                 ..Default::default()
             })
             .await
             .error_while("listing batch items")?
             .values
-            .is_empty())
+            .into_iter()
+            .next())
     }
 
     async fn get_batch_items(
@@ -1945,13 +1985,12 @@ impl OID4VCIFinal1_0Service {
         // the issuance protocol decides by the item state (`validate_credential_issuable`):
         // Offered -> initial issuance, Accepted -> refresh (MSO refresh for mdoc, new batch with batch size, otherwise BR_0483)
         // the parent is Accepted once any format was issued, so the first item of a format starts as Offered
-        let state = if self
-            .format_already_issued(parent_credential_id, format.id)
-            .await?
-        {
-            parent_credential.common().state
-        } else {
-            CredentialStateEnum::Offered
+        let latest_item = self
+            .latest_batch_item(parent_credential_id, format.id)
+            .await?;
+        let state = match latest_item {
+            Some(_) => parent_credential.common().state,
+            None => CredentialStateEnum::Offered,
         };
 
         let Credential::IssuerBatchParent {
@@ -1966,7 +2005,11 @@ impl OID4VCIFinal1_0Service {
         };
         common.id = Uuid::new_v4().into();
         common.created_date = now;
-        // Keep the parent's last_modified for the protocol's refresh rate limiting.
+        // the protocol rate-limits refreshes by last_modified: measured from the previous
+        // issuance of the format, the parent is only updated by the first issuance
+        if let Some(latest_item) = latest_item {
+            common.last_modified = latest_item.common().last_modified;
+        }
         common.issuance_date = Some(now);
         common.interaction = None;
         common.expires_at = expires_at;

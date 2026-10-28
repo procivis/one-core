@@ -4,7 +4,7 @@ use std::sync::{Arc, LazyLock};
 use assert2::let_assert;
 use mockall::predicate::eq;
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialId, RevocationMethodId};
+use shared_types::{CredentialFormat, RevocationMethodId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -31,7 +31,6 @@ use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wallet_instance::MockHolderWalletUnitProto;
-use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -63,7 +62,6 @@ use crate::service::test_utilities::{
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
-    let credential_id: CredentialId = Uuid::new_v4().into();
     let key_storage_type = "storage type";
     let key_type = "EDDSA";
 
@@ -116,7 +114,6 @@ async fn test_issuer_submit_succeeds() {
         crate::service::test_utilities::issuer_credential(updated_credential)
     };
 
-    let credential_copy = credential.clone();
     let updated_schema = crate::model::credential_schema::CredentialSchema {
         organisation: dummy_organisation(None).into(),
         ..credential
@@ -127,24 +124,8 @@ async fn test_issuer_submit_succeeds() {
             .unwrap()
             .to_owned()
     };
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credential()
-        .withf(move |_credential_id| {
-            assert_eq!(_credential_id, &credential_id);
-            true
-        })
-        .once()
-        .return_once(move |_| {
-            let mut credential = credential_copy;
-            credential.common_mut().schema = updated_schema.into();
-            Ok(credential)
-        });
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .return_once(|_, _| Ok(()));
+    let mut credential = credential;
+    credential.common_mut().schema = updated_schema.into();
 
     let mut revocation_method = MockRevocationMethod::new();
     revocation_method
@@ -192,20 +173,10 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut blob_storage = MockBlobStorage::new();
-    blob_storage.expect_create().once().return_once(|_| Ok(()));
-
-    let blob_storage = Arc::new(blob_storage);
-    let mut blob_storage_provider = MockBlobStorageProvider::new();
-    blob_storage_provider
-        .expect_get_blob_storage()
-        .once()
-        .returning(move |_| Ok(blob_storage.clone()));
-
     let provider = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
-        Arc::new(credential_repository),
+        Arc::new(MockCredentialRepository::new()),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
@@ -216,7 +187,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockKeySecurityLevelProvider::new()),
-        Arc::new(blob_storage_provider),
+        Arc::new(MockBlobStorageProvider::new()),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
         json!({
@@ -259,16 +230,28 @@ async fn test_issuer_submit_succeeds() {
         .first()
         .unwrap()
         .id;
-    let result = provider
+    let holder_identifier = dummy_identifier();
+    let issued = provider
         .issuer_issue_credential(
-            &credential_id,
+            credential,
             format_id,
-            dummy_identifier(),
+            holder_identifier.clone(),
             format!("{}#0", dummy_did().did),
         )
-        .await;
+        .await
+        .unwrap();
 
-    assert!(result.is_ok());
+    assert_eq!(issued.serialized_credential, "token".into());
+    assert_eq!(
+        issued.credential.common().state,
+        CredentialStateEnum::Accepted
+    );
+    let issuer_data = issued.credential.issuer_credential().unwrap().data;
+    assert_eq!(issuer_data.format.id(), format_id);
+    assert_eq!(
+        issuer_data.holder_identifier.as_ref().map(|h| h.id()),
+        Some(holder_identifier.id)
+    );
 }
 
 async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
@@ -353,12 +336,7 @@ async fn generic_credential_with_format(state: CredentialStateEnum, format: &str
 
 #[tokio::test]
 async fn test_issue_credential_for_mdoc_succeeds() {
-    let credential_id: CredentialId = Uuid::new_v4().into();
-
-    let mut credential_repository = MockCredentialRepository::new();
-
     let credential = generic_mdoc_credential(CredentialStateEnum::Offered).await;
-    let credential_copy = credential.clone();
     let updated_schema = CredentialSchema {
         organisation: dummy_organisation(None).into(),
         ..credential
@@ -369,23 +347,8 @@ async fn test_issue_credential_for_mdoc_succeeds() {
             .unwrap()
             .to_owned()
     };
-    credential_repository
-        .expect_get_credential()
-        .withf(move |_credential_id| {
-            assert_eq!(_credential_id, &credential_id);
-            true
-        })
-        .once()
-        .return_once(move |_| {
-            let mut credential = credential_copy;
-            credential.common_mut().schema = updated_schema.into();
-            Ok(credential)
-        });
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .return_once(|_, _| Ok(()));
+    let mut credential = credential;
+    credential.common_mut().schema = updated_schema.into();
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -407,20 +370,10 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut blob_storage = MockBlobStorage::new();
-    blob_storage.expect_create().once().return_once(|_| Ok(()));
-
-    let blob_storage = Arc::new(blob_storage);
-    let mut blob_storage_provider = MockBlobStorageProvider::new();
-    blob_storage_provider
-        .expect_get_blob_storage()
-        .once()
-        .returning(move |_| Ok(blob_storage.clone()));
-
     let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
-        Arc::new(credential_repository),
+        Arc::new(MockCredentialRepository::new()),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
@@ -431,7 +384,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockKeySecurityLevelProvider::new()),
-        Arc::new(blob_storage_provider),
+        Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
         json!({
@@ -474,20 +427,24 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         .first()
         .unwrap()
         .id;
-    service
+    let issued = service
         .issuer_issue_credential(
-            &credential_id,
+            credential,
             format_id,
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
         .await
         .unwrap();
+    assert_eq!(issued.serialized_credential, "token".into());
+    assert_eq!(
+        issued.credential.common().state,
+        CredentialStateEnum::Accepted
+    );
 }
 
 #[tokio::test]
 async fn test_issue_credential_for_existing_mdoc_succeeds() {
-    let credential_id: CredentialId = Uuid::new_v4().into();
     let format = CredentialFormat::from("MDOC");
 
     let old_last_modified = crate::clock::now_utc() - Duration::days(5);
@@ -496,7 +453,6 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         updated_credential.common_mut().last_modified = old_last_modified;
         updated_credential
     };
-    let credential_copy = credential.clone();
     let updated_schema = CredentialSchema {
         organisation: dummy_organisation(None).into(),
         ..credential
@@ -507,24 +463,8 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
             .unwrap()
             .to_owned()
     };
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credential()
-        .withf(move |_credential_id| {
-            assert_eq!(_credential_id, &credential_id);
-            true
-        })
-        .times(2)
-        .returning(move |_| {
-            let mut credential = credential_copy.clone();
-            credential.common_mut().schema = updated_schema.clone().into();
-            Ok(credential)
-        });
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .return_once(|_, _| Ok(()));
+    let mut credential = credential;
+    credential.common_mut().schema = updated_schema.into();
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -569,20 +509,10 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         },
     );
 
-    let mut blob_storage = MockBlobStorage::new();
-    blob_storage.expect_create().once().return_once(|_| Ok(()));
-
-    let blob_storage = Arc::new(blob_storage);
-    let mut blob_storage_provider = MockBlobStorageProvider::new();
-    blob_storage_provider
-        .expect_get_blob_storage()
-        .once()
-        .returning(move |_| Ok(blob_storage.clone()));
-
     let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
-        Arc::new(credential_repository),
+        Arc::new(MockCredentialRepository::new()),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
@@ -593,7 +523,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockKeySecurityLevelProvider::new()),
-        Arc::new(blob_storage_provider),
+        Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
         json!({
@@ -636,33 +566,25 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         .first()
         .unwrap()
         .id;
-    service
+    let issued = service
         .issuer_issue_credential(
-            &credential_id,
+            credential,
             format_id,
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
         .await
         .unwrap();
+    assert_eq!(issued.serialized_credential, "token".into());
+    assert_eq!(
+        issued.credential.common().state,
+        CredentialStateEnum::Accepted
+    );
 }
 
 #[tokio::test]
 async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_future_fails() {
-    let credential_id: CredentialId = Uuid::new_v4().into();
-
     let credential = generic_mdoc_credential(CredentialStateEnum::Accepted).await;
-
-    let credential_copy = credential.clone();
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credential()
-        .withf(move |_credential_id| {
-            assert_eq!(_credential_id, &credential_id);
-            true
-        })
-        .times(2)
-        .returning(move |_| Ok(credential_copy.clone()));
 
     let mut config = dummy_config();
     config.format.insert(
@@ -689,7 +611,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
-        Arc::new(credential_repository),
+        Arc::new(MockCredentialRepository::new()),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
@@ -746,7 +668,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     assert!(matches!(
         service
             .issuer_issue_credential(
-                &credential_id,
+                credential,
                 format_id,
                 dummy_identifier(),
                 format!("{}#0", dummy_did().did)
@@ -758,20 +680,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
 
 #[tokio::test]
 async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
-    let credential_id: CredentialId = Uuid::new_v4().into();
-
     let credential = generic_credential_with_format(CredentialStateEnum::Accepted, "JWT").await;
-
-    let credential_copy = credential.clone();
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credential()
-        .withf(move |_credential_id| {
-            assert_eq!(_credential_id, &credential_id);
-            true
-        })
-        .once()
-        .returning(move |_| Ok(credential_copy.clone()));
 
     let mut config = dummy_config();
     config.format.insert(
@@ -790,7 +699,7 @@ async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
     let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
-        Arc::new(credential_repository),
+        Arc::new(MockCredentialRepository::new()),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
@@ -849,7 +758,7 @@ async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
             unsupported_format
         )) = service
             .issuer_issue_credential(
-                &credential_id,
+                credential,
                 format_id,
                 dummy_identifier(),
                 format!("{}#0", dummy_did().did)

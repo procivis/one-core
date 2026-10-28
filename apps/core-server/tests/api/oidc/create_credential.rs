@@ -1790,12 +1790,23 @@ async fn test_post_issuer_credential_multi_format_refresh_issues_new_batch_for_b
     assert_eq!(4, batch_items.len());
 }
 
-#[tokio::test]
-async fn test_post_issuer_credential_mdoc() {
+struct MdocIssuerSetup {
+    context: TestContext,
+    credential_schema: CredentialSchema,
+    credential_id: CredentialId,
+    certificate_fingerprint: String,
+}
+
+/// MDOC schema with a certificate issuer, an offered credential of the given type,
+/// access token already obtained
+async fn mdoc_issuer_setup(
+    credential_type: CredentialType,
+    additional_config: Option<String>,
+) -> MdocIssuerSetup {
     let interaction_id = Uuid::new_v4().into();
     let access_token = format!("{interaction_id}.test");
 
-    let context = TestContext::new_with_token(&access_token, None).await;
+    let context = TestContext::new_with_token(&access_token, additional_config).await;
 
     let organisation = context.db.organisations.create().await;
 
@@ -1896,8 +1907,21 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         )
         .await;
 
-    let interaction_data =
-        dummy_issuer_interaction_data(&access_token, IssuerInteractionDataParams::default());
+    let offered_formats = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .map(|format| format.id)
+        .collect();
+    let interaction_data = dummy_issuer_interaction_data(
+        &access_token,
+        IssuerInteractionDataParams {
+            offered_formats,
+            ..Default::default()
+        },
+    );
     let interaction = context
         .db
         .interactions
@@ -1912,7 +1936,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         )
         .await;
 
-    context
+    let credential = context
         .db
         .credentials
         .create(
@@ -1923,6 +1947,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),
+                r#type: Some(credential_type),
                 claims_data: Some(vec![
                     ClaimData {
                         schema_id: root_claim_id.into(),
@@ -1954,16 +1979,21 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         )
         .await;
 
-    let value = context
-        .api
-        .ssi
-        .generate_nonce("OPENID4VCI_FINAL1")
-        .await
-        .json_value()
-        .await;
-    let nonce = value["c_nonce"].as_str().unwrap();
-    let jwt = proof_jwt(true, Some(nonce)).await;
-    let resp = context
+    MdocIssuerSetup {
+        context,
+        credential_schema,
+        credential_id: credential.common().id,
+        certificate_fingerprint: fingerprint,
+    }
+}
+
+/// Requests issuance of the MDOC format with a fresh proof
+async fn issue_mdoc(
+    context: &TestContext,
+    credential_schema: &CredentialSchema,
+) -> crate::utils::api_clients::Response {
+    let jwt = fresh_proof_jwt(context).await;
+    context
         .api
         .ssi
         .issuer_create_credential(
@@ -1971,7 +2001,19 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             &credential_schema.schema_id().await.unwrap(),
             &jwt,
         )
-        .await;
+        .await
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_mdoc() {
+    let MdocIssuerSetup {
+        context,
+        credential_schema,
+        certificate_fingerprint: fingerprint,
+        ..
+    } = mdoc_issuer_setup(CredentialType::Single, None).await;
+
+    let resp = issue_mdoc(&context, &credential_schema).await;
 
     assert_eq!(200, resp.status());
 
@@ -1986,6 +2028,81 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let sha256_bytes = SHA256.hash(&headers.x5c_der).unwrap();
     assert_eq!(sha256_bytes, headers.x5t_thumbprint);
     assert_eq!(hex::decode(&fingerprint).unwrap(), headers.x5t_thumbprint);
+}
+
+/// Moves `last_modified` of the batch parent and its items into the past,
+/// as if no change happened since then
+async fn backdate_last_modified(context: &TestContext, parent_id: CredentialId, by: Duration) {
+    use sea_orm::sea_query::{Alias, Expr, Query};
+    use sea_orm::{ConnectionTrait, ExprTrait};
+
+    context
+        .db
+        .db_conn
+        .execute(
+            Query::update()
+                .table(Alias::new("credential"))
+                .value(Alias::new("last_modified"), one_core::clock::now_utc() - by)
+                .and_where(
+                    Expr::col(Alias::new("id"))
+                        .eq(parent_id.to_string())
+                        .or(Expr::col(Alias::new("parent_id")).eq(parent_id.to_string())),
+                ),
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_mdoc_refresh_is_rate_limited() {
+    // GIVEN
+    let MdocIssuerSetup {
+        context,
+        credential_schema,
+        credential_id,
+        ..
+    } = mdoc_issuer_setup(
+        CredentialType::BatchParent,
+        Some(
+            indoc::indoc! {"
+            format:
+                MDOC:
+                    params:
+                        public:
+                            msoMinimumRefreshSeconds: 300
+            "}
+            .to_string(),
+        ),
+    )
+    .await;
+    let batch_items = async || {
+        context
+            .db
+            .credentials
+            .list(CredentialFilterValue::ParentCredential(credential_id).condition())
+            .await
+            .len()
+    };
+
+    // initial issuance
+    assert_eq!(200, issue_mdoc(&context, &credential_schema).await.status());
+    assert_eq!(1, batch_items().await);
+
+    // refresh right after issuance is too soon
+    assert_eq!(400, issue_mdoc(&context, &credential_schema).await.status());
+    assert_eq!(1, batch_items().await);
+
+    // refresh once the minimum refresh time passed
+    backdate_last_modified(&context, credential_id, Duration::minutes(10)).await;
+    assert_eq!(200, issue_mdoc(&context, &credential_schema).await.status());
+    assert_eq!(2, batch_items().await);
+
+    // WHEN refreshing right after the previous refresh
+    let resp = issue_mdoc(&context, &credential_schema).await;
+
+    // THEN
+    assert_eq!(400, resp.status());
+    assert_eq!(2, batch_items().await);
 }
 
 #[tokio::test]

@@ -2,12 +2,12 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use assert2::let_assert;
-use mockall::predicate::{always, eq};
+use mockall::predicate::eq;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialSchemaFormatId, DidId, InteractionId};
+use shared_types::{BlobId, CredentialFormat, CredentialSchemaFormatId, DidId, InteractionId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::oauth2::TokenType;
@@ -19,8 +19,9 @@ use uuid::Uuid;
 use super::OID4VCIFinal1_0Service;
 use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use super::mapper::allocate_notification_ids;
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::config::core_config::{BlobStorageType, CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::model::blob::BlobType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialCommon, CredentialRole, CredentialStateEnum, CredentialType,
@@ -43,6 +44,7 @@ use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRe
 use crate::proto::session_provider::{MockSessionProvider, NoSessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wallet_instance::MockHolderWalletUnitProto;
+use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -53,6 +55,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
+use crate::provider::issuance_protocol::model::IssuedCredential;
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     FormatNotification, OpenID4VCIIssuerInteractionDataDTO, SwissProfileHeader,
@@ -410,6 +413,55 @@ fn dummy_credential(
         crate::service::test_utilities::issuer_credential(credential)
     } else {
         credential
+    }
+}
+
+/// The issued credential is stored in the existing DB blob, or a new one if there is none
+fn expect_credential_blob_stored(
+    blob_storage_provider: &mut MockBlobStorageProvider,
+    existing_blob_id: Option<BlobId>,
+) {
+    let mut storage = MockBlobStorage::new();
+    match existing_blob_id {
+        Some(blob_id) => {
+            storage
+                .expect_update()
+                .once()
+                .withf(move |id, request| {
+                    *id == blob_id && request.value.as_deref() == Some(b"xyz".as_slice())
+                })
+                .returning(|_, _| Ok(()));
+        }
+        None => {
+            storage
+                .expect_create()
+                .once()
+                .withf(|blob| blob.r#type == BlobType::Credential && blob.value == b"xyz")
+                .returning(|_| Ok(()));
+        }
+    }
+    let storage = Arc::new(storage);
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .with(eq(BlobStorageType::Db))
+        .returning(move |_| Ok(storage.clone()));
+}
+
+/// What the issuance protocol returns: the credential accepted and bound to the holder
+fn issued_credential(
+    mut credential: Credential,
+    holder_identifier: Identifier,
+    serialized_credential: &str,
+) -> IssuedCredential {
+    credential.common_mut().state = CredentialStateEnum::Accepted;
+    credential
+        .issuer_credential_mut()
+        .unwrap()
+        .data
+        .holder_identifier = Some(holder_identifier.into());
+    IssuedCredential {
+        credential,
+        serialized_credential: serialized_credential.into(),
     }
 }
 
@@ -1706,11 +1758,9 @@ async fn test_create_credential_with_instance_attestation(
     #[case] has_wia: bool,
     #[case] matching_issuer: bool,
 ) {
-    use crate::config::core_config::BlobStorageType;
-    use crate::model::blob::{Blob, BlobType};
+    use crate::model::blob::Blob;
     use crate::proto::jwt::model::JWTPayload;
     use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
-    use crate::provider::blob_storage::MockBlobStorage;
     use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
     use crate::service::credential::dto::WalletInstanceAttestationDTO;
     use crate::util;
@@ -1858,7 +1908,9 @@ async fn test_create_credential_with_instance_attestation(
         protocol
             .expect_issuer_issue_credential()
             .once()
-            .returning(|_, _, _, _| Ok("issued-credential".into()));
+            .returning(|credential, _, holder, _| {
+                Ok(issued_credential(credential, holder, "issued-credential"))
+            });
     }
     let protocol = Arc::new(protocol);
     mocks
@@ -1885,7 +1937,21 @@ async fn test_create_credential_with_instance_attestation(
             .with(eq(wia_blob_id))
             .return_once(move |_| Ok(Some(wia_blob)));
         if succeeds {
-            storage.expect_create().once().returning(|_| Ok(()));
+            storage
+                .expect_create()
+                .once()
+                .withf(|blob| blob.r#type == BlobType::WalletUnitAttestation)
+                .returning(|_| Ok(()));
+            // the single credential already has a blob, a batch item gets a new one
+            if credential_type == CredentialType::Single {
+                storage.expect_update().once().returning(|_, _| Ok(()));
+            } else {
+                storage
+                    .expect_create()
+                    .once()
+                    .withf(|blob| blob.r#type == BlobType::Credential)
+                    .returning(|_| Ok(()));
+            }
         }
         let storage = Arc::new(storage);
         mocks
@@ -1927,11 +1993,13 @@ async fn test_create_credential_with_instance_attestation(
                 1
             })
             .returning(|_, _| Ok(()));
+        // single: reloaded after locking, batch: parent loaded to prepare the batch item
+        mocks
+            .credential_repository
+            .expect_get_credential()
+            .once()
+            .return_once(move |_| Ok(credential));
         if credential_type == CredentialType::BatchParent {
-            mocks
-                .credential_repository
-                .expect_get_credential()
-                .return_once(move |_| Ok(credential));
             mocks
                 .credential_repository
                 .expect_get_credential_list()
@@ -2014,6 +2082,15 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
         CredentialType::Single,
     );
     let holder_did_id: DidId = Uuid::new_v4().into();
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    expect_credential_blob_stored(
+        &mut blob_storage_provider,
+        credential
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id,
+    );
     {
         let clone = schema.clone();
         repository
@@ -2033,6 +2110,14 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
             .once()
             .with(eq(credential.common().id))
             .returning(|_| Ok(CredentialStateEnum::Offered));
+        credential_repository
+            .expect_get_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .return_once({
+                let clone = credential.clone();
+                move |_| Ok(clone)
+            });
 
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
@@ -2072,7 +2157,9 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _, _| Ok("xyz".into()));
+            .return_once(|credential, _, holder, _| {
+                Ok(issued_credential(credential, holder, "xyz"))
+            });
         // once for the response encryption validation, once for the actual issuance
         let issuance_protocol = Arc::new(issuance_protocol);
         exchange_provider
@@ -2085,7 +2172,10 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
             .once()
             .withf(move |id, request| {
                 *id == credential.common().id
+                    && request.state == Some(CredentialStateEnum::Accepted)
                     && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
+                    && request.credential_blob_id.is_some()
+                    && request.issuance_date.is_some()
             })
             .returning(move |_, _| Ok(()));
     }
@@ -2168,6 +2258,7 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
         .return_once(move |_| Ok(Arc::new(formatter)));
 
     let service = setup_service(Mocks {
+        blob_storage_provider,
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
@@ -2240,6 +2331,15 @@ async fn test_create_credential_success_sd_jwt_vc() {
         CredentialType::Single,
     );
     let holder_did_id: DidId = Uuid::new_v4().into();
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    expect_credential_blob_stored(
+        &mut blob_storage_provider,
+        credential
+            .issuer_credential()
+            .unwrap()
+            .data
+            .credential_blob_id,
+    );
     {
         let clone = schema.clone();
         repository
@@ -2259,6 +2359,14 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .once()
             .with(eq(credential.common().id))
             .returning(|_| Ok(CredentialStateEnum::Offered));
+        credential_repository
+            .expect_get_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .return_once({
+                let clone = credential.clone();
+                move |_| Ok(clone)
+            });
 
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
@@ -2280,7 +2388,9 @@ async fn test_create_credential_success_sd_jwt_vc() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _, _| Ok("xyz".into()));
+            .return_once(|credential, _, holder, _| {
+                Ok(issued_credential(credential, holder, "xyz"))
+            });
         // once for the response encryption validation, once for the actual issuance
         let issuance_protocol = Arc::new(issuance_protocol);
         exchange_provider
@@ -2293,7 +2403,10 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .once()
             .withf(move |id, request| {
                 *id == credential.common().id
+                    && request.state == Some(CredentialStateEnum::Accepted)
                     && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
+                    && request.credential_blob_id.is_some()
+                    && request.issuance_date.is_some()
             })
             .returning(move |_, _| Ok(()));
     }
@@ -2376,6 +2489,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         .return_once(move |_| Ok(Arc::new(formatter)));
 
     let service = setup_service(Mocks {
+        blob_storage_provider,
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
@@ -2499,7 +2613,9 @@ async fn test_create_credential_success_mdoc() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _, _| Ok("xyz".into()));
+            .return_once(|credential, _, holder, _| {
+                Ok(issued_credential(credential, holder, "xyz"))
+            });
         // once for the response encryption validation, once for the actual issuance
         let issuance_protocol = Arc::new(issuance_protocol);
         exchange_provider
@@ -2510,8 +2626,12 @@ async fn test_create_credential_success_mdoc() {
         credential_repository
             .expect_update_credential()
             .once()
-            .with(eq(credential.common().id), always())
-            .withf(|_, request| request.state == Some(CredentialStateEnum::Accepted))
+            .withf({
+                let parent_id = credential.common().id;
+                move |id, request| {
+                    *id == parent_id && request.state == Some(CredentialStateEnum::Accepted)
+                }
+            })
             .returning(|_, _| Ok(()));
 
         // no batch items issued yet
@@ -2526,7 +2646,7 @@ async fn test_create_credential_success_mdoc() {
                 })
             });
 
-        let batch_item_credential_id = Uuid::new_v4().into();
+        let parent_id = credential.common().id;
         credential_repository
             .expect_create_credential()
             .once()
@@ -2537,17 +2657,21 @@ async fn test_create_credential_success_mdoc() {
                 ) && request.common().state == CredentialStateEnum::Offered
                     && request.common().expires_at.is_some()
             })
-            .returning(move |_| Ok(batch_item_credential_id));
+            .returning(|request| Ok(request.common().id));
         credential_repository
             .expect_update_credential()
             .once()
-            .with(eq(batch_item_credential_id), always())
-            .withf(move |_, request| {
-                request.holder_identifier_id == Some(holder_identifier_id)
+            .withf(move |id, request| {
+                *id != parent_id
+                    && request.state == Some(CredentialStateEnum::Accepted)
+                    && request.holder_identifier_id == Some(holder_identifier_id)
                     && request.format == Some(format_id)
+                    && request.credential_blob_id.is_some()
             })
             .returning(|_, _| Ok(()));
     }
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    expect_credential_blob_stored(&mut blob_storage_provider, None);
 
     let key_algorithm = mock_key_algorithm();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -2627,6 +2751,7 @@ async fn test_create_credential_success_mdoc() {
         .return_once(move |_| Ok(Arc::new(formatter)));
 
     let service = setup_service(Mocks {
+        blob_storage_provider,
         credential_schema_repository,
         credential_repository,
         interaction_repository,
@@ -3067,6 +3192,14 @@ async fn test_create_credential_issuer_failed() {
             .once()
             .with(eq(credential.common().id))
             .returning(|_| Ok(CredentialStateEnum::Offered));
+        credential_repository
+            .expect_get_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .return_once({
+                let clone = credential.clone();
+                move |_| Ok(clone)
+            });
 
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
@@ -3190,7 +3323,14 @@ async fn test_create_credential_issuer_failed() {
         .with(eq(CredentialFormat::from("JWT")))
         .return_once(move |_| Ok(Arc::new(formatter)));
 
+    // nothing is stored when issuing fails
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .returning(|_| Ok(Arc::new(MockBlobStorage::new())));
+
     let service = setup_service(Mocks {
+        blob_storage_provider,
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,

@@ -1,11 +1,13 @@
 use std::str::FromStr;
 
 use one_crypto::utilities::generate_alphanumeric;
-use shared_types::{CredentialSchemaFormatId, InteractionId};
+use shared_types::{BlobId, CredentialSchemaFormatId, InteractionId};
 use standardized_types::oauth2::token::TokenRequest;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::error::OID4VCIFinal1_0ServiceError;
+use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::interaction::Interaction;
@@ -111,4 +113,23 @@ pub(super) fn interaction_id_from_token_request(
             parse_refresh_token(refresh_token).map_err(Into::into)
         }
     }
+}
+
+/// Update persisting a credential issued by the issuance protocol.
+pub(super) fn issued_credential_update(
+    credential: &Credential,
+    credential_blob_id: BlobId,
+    issuance_date: OffsetDateTime,
+    wallet_key_attestation_blob_id: Option<BlobId>,
+) -> Result<UpdateCredentialRequest, OID4VCIFinal1_0ServiceError> {
+    let issuer = credential.issuer_credential()?;
+    Ok(UpdateCredentialRequest {
+        state: Some(issuer.common.state),
+        issuance_date: Some(issuance_date),
+        holder_identifier_id: issuer.data.holder_identifier.as_ref().map(|h| h.id()),
+        format: Some(issuer.data.format.id()),
+        credential_blob_id: Some(credential_blob_id),
+        wallet_key_attestation_blob_id,
+        ..Default::default()
+    })
 }

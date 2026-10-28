@@ -2,14 +2,13 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use one_crypto::utilities::{generate_alphanumeric, generate_numeric};
-use shared_types::{BlobId, DidMethodId, IdentifierId, OrganisationId};
+use shared_types::{DidMethodId, OrganisationId};
 use standardized_types::openid4vci::{ProofTypeSupported, TxCodeInputMode};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::{CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
@@ -29,18 +28,6 @@ use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
-
-pub(super) fn get_issued_credential_update(
-    credential_blob_id: BlobId,
-    holder_identifier_id: IdentifierId,
-) -> UpdateCredentialRequest {
-    UpdateCredentialRequest {
-        state: Some(CredentialStateEnum::Accepted),
-        holder_identifier_id: Some(holder_identifier_id),
-        credential_blob_id: Some(credential_blob_id),
-        ..Default::default()
-    }
-}
 
 pub(crate) fn interaction_from_handle_invitation(
     data: Option<Vec<u8>>,

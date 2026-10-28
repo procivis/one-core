@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use shared_types::{
     CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, KeyId,
-    SerializedCredential,
 };
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
@@ -14,7 +13,7 @@ use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::IssuanceProtocolError;
 use super::model::{
     AuthorizationDpopKey, ContinueIssuanceResponseDTO, InvitationResponseEnum,
-    IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse,
+    IssuanceAcceptResult, IssuanceRefreshResponse, IssuedCredential, ShareResponse,
 };
 use super::{HolderBindingInput, IssuanceProtocol};
 use crate::model::credential::Credential;
@@ -109,11 +108,11 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
 
     async fn issuer_issue_credential(
         &self,
-        _credential_id: &CredentialId,
+        _credential: Credential,
         _format_id: CredentialSchemaFormatId,
         _holder_identifier: Identifier,
         _holder_key_id: String,
-    ) -> Result<SerializedCredential, IssuanceProtocolError> {
+    ) -> Result<IssuedCredential, IssuanceProtocolError> {
         self.disabled_error()
     }
 
@@ -250,13 +249,13 @@ impl IssuanceProtocol for CapabilityChecked {
 
     async fn issuer_issue_credential(
         &self,
-        credential_id: &CredentialId,
+        credential: Credential,
         format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<SerializedCredential, IssuanceProtocolError> {
+    ) -> Result<IssuedCredential, IssuanceProtocolError> {
         self.0
-            .issuer_issue_credential(credential_id, format_id, holder_identifier, holder_key_id)
+            .issuer_issue_credential(credential, format_id, holder_identifier, holder_key_id)
             .await
     }
 

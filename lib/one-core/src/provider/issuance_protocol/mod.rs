@@ -8,7 +8,6 @@ use serde::Serialize;
 use serde::de::Deserialize;
 use shared_types::{
     CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, KeyId,
-    SerializedCredential,
 };
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
@@ -32,7 +31,7 @@ pub mod openid4vci_final1_0;
 pub(crate) mod provider;
 use model::{
     AuthorizationDpopKey, ContinueIssuanceResponseDTO, IssuanceAcceptResponse,
-    IssuanceAcceptResult, IssuanceRefreshResponse, ShareResponse,
+    IssuanceAcceptResult, IssuanceRefreshResponse, IssuedCredential, ShareResponse,
 };
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
@@ -130,14 +129,14 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
         credential: &Credential,
     ) -> Result<ShareResponse, IssuanceProtocolError>;
 
-    /// Creates a newly issued credential
+    /// Issues `credential` in the given format.
     async fn issuer_issue_credential(
         &self,
-        credential_id: &CredentialId,
+        credential: Credential,
         format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<SerializedCredential, IssuanceProtocolError>;
+    ) -> Result<IssuedCredential, IssuanceProtocolError>;
 
     async fn issuer_metadata(
         &self,
