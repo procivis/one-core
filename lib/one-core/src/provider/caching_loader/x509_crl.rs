@@ -62,15 +62,11 @@ impl Resolver for X509CrlResolver {
         key: &str,
         _last_modified: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let content = self
-            .client
-            .get(key)
-            .send()
+        let content = async { self.client.get(key).send().await?.error_for_status() }
             .await
-            .error_while("downloading CRL")?
-            .error_for_status()
-            .error_while("downloading CRL")?
+            .error_while(format!("downloading CRL: `{key}`"))?
             .body;
+
         let (_, crl) = x509_parser::parse_x509_crl(&content)
             .map_err(|e| ResolverError::InvalidResponse(e.to_string()))?;
         let expiry_date = crl.next_update().map(|time| time.to_datetime());
