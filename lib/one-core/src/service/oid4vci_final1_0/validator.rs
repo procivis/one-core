@@ -1,6 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use shared_types::CredentialFormat;
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::openid4vci::{
@@ -9,11 +10,15 @@ use standardized_types::openid4vci::{
 use time::Duration;
 
 use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
+use crate::clock::now_utc;
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
+use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
+use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
@@ -46,6 +51,54 @@ pub(crate) async fn validate_credential_request_format(
     Ok(format
         .cloned()
         .ok_or(OpenID4VCIError::UnsupportedCredentialType)?)
+}
+
+/// Decides by the credential state whether it can be (re-)issued in the given format:
+/// Offered -> initial issuance, Accepted -> refresh (MSO refresh for mdoc, new batch with batch size)
+pub(crate) fn validate_credential_issuable(
+    credential: &Credential,
+    format: &CredentialFormat,
+    format_type: FormatType,
+    supports_batch_issuance: bool,
+    config: &CoreConfig,
+) -> Result<(), OID4VCIFinal1_0ServiceError> {
+    let state = &credential.common().state;
+    match (state, format_type) {
+        (CredentialStateEnum::Accepted, FormatType::Mdoc) if !supports_batch_issuance => {
+            // mdoc MSO refresh -> rate-limiting by mso_minimum_refresh_time
+            let mso_minimum_refresh_time = config
+                .format
+                .get::<mdoc_formatter::Params, _>(format)
+                .map(|p| p.mso_minimum_refresh_seconds)
+                .error_while("getting format params")?;
+            let can_be_updated_at = credential.common().last_modified + mso_minimum_refresh_time;
+
+            if can_be_updated_at > now_utc() {
+                return Err(OID4VCIFinal1_0ServiceError::RefreshTooSoon);
+            }
+        }
+        (CredentialStateEnum::Suspended { .. }, FormatType::Mdoc) => {
+            return Err(OID4VCIFinal1_0ServiceError::CredentialSuspended);
+        }
+        (CredentialStateEnum::Offered, _) => {
+            // initial issuance -> OK
+        }
+        (CredentialStateEnum::Accepted, _) if supports_batch_issuance => {
+            // batch re-issuance -> OK
+        }
+        (CredentialStateEnum::Accepted, _) => {
+            return Err(OID4VCIFinal1_0ServiceError::FormatRefreshNotSupported(
+                format.to_owned(),
+            ));
+        }
+        _ => {
+            return Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+                state.to_owned(),
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 fn is_access_token_valid(

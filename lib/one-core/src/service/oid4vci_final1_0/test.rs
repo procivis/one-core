@@ -13,13 +13,17 @@ use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::*;
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
 use super::error::{OID4VCIFinal1_0ServiceError, WalletAttestationError};
 use super::mapper::allocate_notification_ids;
-use crate::config::core_config::{BlobStorageType, CoreConfig, KeyAlgorithmType};
+use super::validator::validate_credential_issuable;
+use crate::clock::now_utc;
+use crate::config::core_config::{
+    BlobStorageType, CoreConfig, Fields, FormatType, KeyAlgorithmType, Params,
+};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::blob::BlobType;
 use crate::model::claim_schema::ClaimSchema;
@@ -87,7 +91,7 @@ use crate::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0MetadataResponseTypeEnum,
 };
 use crate::service::oid4vci_final1_0::resolver::MockIssuerMetadataFetcher;
-use crate::service::test_utilities::{CredentialBuilder, *};
+use crate::service::test_utilities::{self, CredentialBuilder, *};
 
 #[derive(Default)]
 struct Mocks {
@@ -3969,6 +3973,142 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
         result,
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
             WalletAttestationError::WiaMalformed(_)
+        ))
+    ));
+}
+
+fn issuable_check_config() -> CoreConfig {
+    let mut config = CoreConfig::default();
+    config.format.insert(
+        "MDOC".into(),
+        Fields {
+            r#type: FormatType::Mdoc,
+            display: "display".into(),
+            order: None,
+            priority: None,
+            enabled: true,
+            capabilities: None,
+            params: Some(Params {
+                public: Some(json!({
+                    "msoExpectedUpdateInSeconds": Duration::days(3).whole_seconds(),
+                    "msoMinimumRefreshSeconds": Duration::days(3).whole_seconds(),
+                    "expirationSeconds": 10,
+                    "leewaySeconds": 5,
+                })),
+                private: None,
+            }),
+        },
+    );
+    config
+}
+
+fn credential_in_state(state: CredentialStateEnum, last_modified: OffsetDateTime) -> Credential {
+    let mut credential = test_utilities::dummy_credential();
+    credential.common_mut().state = state;
+    credential.common_mut().last_modified = last_modified;
+    credential
+}
+
+#[rstest::rstest]
+#[case::initial_issuance(CredentialStateEnum::Offered, FormatType::Jwt, false)]
+#[case::initial_mdoc_issuance(CredentialStateEnum::Offered, FormatType::Mdoc, false)]
+#[case::batch_reissuance(CredentialStateEnum::Accepted, FormatType::Jwt, true)]
+#[case::mdoc_batch_reissuance(CredentialStateEnum::Accepted, FormatType::Mdoc, true)]
+#[case::mdoc_refresh_after_minimum_refresh_time(
+    CredentialStateEnum::Accepted,
+    FormatType::Mdoc,
+    false
+)]
+fn test_validate_credential_issuable_ok(
+    #[case] state: CredentialStateEnum,
+    #[case] format_type: FormatType,
+    #[case] supports_batch_issuance: bool,
+) {
+    let credential = credential_in_state(state, now_utc() - Duration::days(4));
+
+    validate_credential_issuable(
+        &credential,
+        &"MDOC".into(),
+        format_type,
+        supports_batch_issuance,
+        &issuable_check_config(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_validate_credential_issuable_mdoc_refresh_too_soon() {
+    let credential = credential_in_state(CredentialStateEnum::Accepted, now_utc());
+
+    assert!(matches!(
+        validate_credential_issuable(
+            &credential,
+            &"MDOC".into(),
+            FormatType::Mdoc,
+            false,
+            &issuable_check_config(),
+        ),
+        Err(OID4VCIFinal1_0ServiceError::RefreshTooSoon)
+    ));
+}
+
+#[test]
+fn test_validate_credential_issuable_suspended_mdoc() {
+    let credential = credential_in_state(
+        CredentialStateEnum::Suspended {
+            suspend_end_date: None,
+        },
+        now_utc() - Duration::days(4),
+    );
+
+    assert!(matches!(
+        validate_credential_issuable(
+            &credential,
+            &"MDOC".into(),
+            FormatType::Mdoc,
+            false,
+            &issuable_check_config(),
+        ),
+        Err(OID4VCIFinal1_0ServiceError::CredentialSuspended)
+    ));
+}
+
+#[test]
+fn test_validate_credential_issuable_accepted_non_mdoc_without_batch() {
+    let credential = credential_in_state(CredentialStateEnum::Accepted, now_utc());
+
+    let_assert!(
+        Err(OID4VCIFinal1_0ServiceError::FormatRefreshNotSupported(
+            format
+        )) = validate_credential_issuable(
+            &credential,
+            &"JWT".into(),
+            FormatType::Jwt,
+            false,
+            &issuable_check_config(),
+        )
+    );
+    assert_eq!(format, "JWT".into());
+    assert_eq!(
+        OID4VCIFinal1_0ServiceError::FormatRefreshNotSupported(format).error_code(),
+        ErrorCode::BR_0483
+    );
+}
+
+#[test]
+fn test_validate_credential_issuable_invalid_state() {
+    let credential = credential_in_state(CredentialStateEnum::Pending, now_utc());
+
+    assert!(matches!(
+        validate_credential_issuable(
+            &credential,
+            &"JWT".into(),
+            FormatType::Jwt,
+            false,
+            &issuable_check_config(),
+        ),
+        Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
+            CredentialStateEnum::Pending
         ))
     ));
 }

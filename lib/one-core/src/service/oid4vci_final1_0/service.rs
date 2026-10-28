@@ -41,9 +41,9 @@ use super::mapper::{
 };
 use super::validator::{
     self, client_instance_key_thumbprint, extract_wallet_metadata, throw_if_access_token_invalid,
-    validate_credential_request_format, validate_pop_audience, validate_pop_issuer,
-    validate_response_encryption, validate_timestamps, verify_ka_wia_issuers_match,
-    verify_pop_signature, verify_wia_signature,
+    validate_credential_issuable, validate_credential_request_format, validate_pop_audience,
+    validate_pop_issuer, validate_response_encryption, validate_timestamps,
+    verify_ka_wia_issuers_match, verify_pop_signature, verify_wia_signature,
 };
 use crate::clock::now_utc;
 use crate::config::ConfigValidationError;
@@ -981,6 +981,16 @@ impl OID4VCIFinal1_0Service {
                     .get_credential(&common.id)
                     .await
                     .error_while("getting credential")?;
+                // Must be validated on the reloaded credential, after the lock: checked earlier
+                // (e.g. next to `validate_credential_state` in `create_credential`) two parallel
+                // requests could both see the stale `Offered` state and both issue the credential.
+                validate_credential_issuable(
+                    &credential,
+                    &format.format,
+                    format_type,
+                    is_batch,
+                    &self.config,
+                )?;
                 vec![
                     self.issue_single_credential(
                         holder,
@@ -993,11 +1003,24 @@ impl OID4VCIFinal1_0Service {
                 ]
             }
             Credential::IssuerBatchParent { common, .. } => {
+                // All items of the batch are copies of the same template, so it is validated
+                // once, before any item is created. The template state is derived from the
+                // latest issued item of the format (see `prepare_batch_item`).
+                let template = self
+                    .prepare_batch_item(common.id, batch_item_expires_at, &format)
+                    .await?;
+                validate_credential_issuable(
+                    &template,
+                    &format.format,
+                    format_type,
+                    is_batch,
+                    &self.config,
+                )?;
                 self.issue_batch_offer(
                     common,
+                    template,
                     holder_identifiers,
-                    &format,
-                    batch_item_expires_at,
+                    format.id,
                     issuance_protocol.as_ref(),
                     now,
                 )
@@ -1067,15 +1090,12 @@ impl OID4VCIFinal1_0Service {
     async fn issue_batch_offer(
         &self,
         parent: &CredentialCommon,
+        template: Credential,
         holder_identifiers: Vec<PreparedIdentifier>,
-        format: &CredentialSchemaFormat,
-        expires_at: Option<OffsetDateTime>,
+        format_id: CredentialSchemaFormatId,
         issuance_protocol: &dyn IssuanceProtocol,
         now: OffsetDateTime,
     ) -> Result<Vec<CredentialResponseEntry>, OID4VCIFinal1_0ServiceError> {
-        let template = self
-            .prepare_batch_item(parent.id, expires_at, format)
-            .await?;
         let mut credentials = Vec::with_capacity(holder_identifiers.len());
         for holder_identifier in holder_identifiers {
             let mut item = template.clone();
@@ -1088,7 +1108,7 @@ impl OID4VCIFinal1_0Service {
                 self.issue_single_credential(
                     holder_identifier,
                     item,
-                    format.id,
+                    format_id,
                     issuance_protocol,
                     now,
                 )
@@ -1982,7 +2002,7 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("loading credential")?;
 
-        // the issuance protocol decides by the item state (`validate_credential_issuable`):
+        // `validate_credential_issuable` decides by the item state:
         // Offered -> initial issuance, Accepted -> refresh (MSO refresh for mdoc, new batch with batch size, otherwise BR_0483)
         // the parent is Accepted once any format was issued, so the first item of a format starts as Offered
         let latest_item = self
@@ -2005,8 +2025,9 @@ impl OID4VCIFinal1_0Service {
         };
         common.id = Uuid::new_v4().into();
         common.created_date = now;
-        // the protocol rate-limits refreshes by last_modified: measured from the previous
-        // issuance of the format, the parent is only updated by the first issuance
+        // mdoc refreshes are rate-limited by last_modified: measured from the previous
+        // issuance of the format, the parent is only updated by the first issuance.
+        // The copied value is temporary: the update after issuing the item bumps last_modified to now
         if let Some(latest_item) = latest_item {
             common.last_modified = latest_item.common().last_modified;
         }

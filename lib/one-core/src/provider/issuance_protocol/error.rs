@@ -1,7 +1,7 @@
 use std::string::FromUtf8Error;
 
 use one_crypto::encryption::EncryptionError;
-use shared_types::{CredentialFormat, CredentialSchemaId};
+use shared_types::CredentialSchemaId;
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
@@ -25,10 +25,6 @@ pub enum IssuanceProtocolError {
     KeyMismatch,
     #[error("Credential signature verification failed: `{0}`")]
     CredentialVerificationFailed(anyhow::Error),
-    #[error("Credential is suspended")]
-    Suspended,
-    #[error("Credential refresh is not yet possible")]
-    RefreshTooSoon,
     #[error("Issuance not allowed by trust ecosystem")]
     DisallowedCredentialConfiguration,
     #[error("Credential schema `{0}` not found")]
@@ -39,8 +35,6 @@ pub enum IssuanceProtocolError {
     RefreshNotPossible,
     #[error("Credential refresh not supported")]
     RefreshNotSupported,
-    #[error("Refresh not supported for already issued credential format `{0}`")]
-    FormatRefreshNotSupported(CredentialFormat),
     #[error("Rejection not supported")]
     RejectionNotSupported,
     #[error("Requirements for key not supported")]
@@ -85,11 +79,10 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::WalletInstanceRequired => ErrorCode::BR_0525,
             Self::RejectionNotSupported => ErrorCode::BR_0237,
             Self::DisallowedCredentialConfiguration => ErrorCode::BR_0490,
-            Self::Suspended | Self::RefreshTooSoon | Self::RefreshNotPossible => ErrorCode::BR_0238,
+            Self::RefreshNotPossible => ErrorCode::BR_0238,
             Self::FromUtf8Error(_) | Self::TrustInformationError(_) => ErrorCode::BR_0047,
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,
             Self::RefreshNotSupported => ErrorCode::BR_0452,
-            Self::FormatRefreshNotSupported(_) => ErrorCode::BR_0483,
             Self::Nested(nested) => nested.error_code(),
         }
     }

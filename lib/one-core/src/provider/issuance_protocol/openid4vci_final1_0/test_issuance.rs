@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
-use assert2::let_assert;
 use mockall::predicate::eq;
 use serde_json::json;
 use shared_types::{CredentialFormat, RevocationMethodId};
@@ -40,7 +39,6 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::IssuanceProtocol;
-use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -580,192 +578,6 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         issued.credential.common().state,
         CredentialStateEnum::Accepted
     );
-}
-
-#[tokio::test]
-async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_future_fails() {
-    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted).await;
-
-    let mut config = dummy_config();
-    config.format.insert(
-        "MDOC".into(),
-        Fields {
-            r#type: FormatType::Mdoc,
-            display: "display".into(),
-            order: None,
-            priority: None,
-            enabled: true,
-            capabilities: None,
-            params: Some(Params {
-                public: Some(json!({
-                    "msoExpectedUpdateInSeconds": Duration::days(3).whole_seconds(),
-                    "msoMinimumRefreshSeconds": Duration::days(3).whole_seconds(),
-                    "expirationSeconds": 10,
-                    "leewaySeconds": 5,
-                })),
-                private: None,
-            }),
-        },
-    );
-
-    let service = OpenID4VCIFinal1_0::new(
-        Arc::new(MockHttpClient::new()),
-        Arc::new(MockOpenIDMetadataFetcher::new()),
-        Arc::new(MockCredentialRepository::new()),
-        Arc::new(MockKeyRepository::new()),
-        Arc::new(MockIdentifierCreator::new()),
-        Arc::new(MockCredentialSchemaImporter::new()),
-        Arc::new(MockCredentialSchemaRepository::new()),
-        Arc::new(MockCredentialFormatterProvider::new()),
-        Arc::new(MockRevocationMethodProvider::new()),
-        Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(MockKeyProvider::new()),
-        Arc::new(MockKeySecurityLevelProvider::new()),
-        Arc::new(MockBlobStorageProvider::new()),
-        Some("base_url".to_string()),
-        Arc::new(config),
-        json!({
-            "preAuthorizedCodeExpiresInSeconds": 10,
-            "tokenExpiresInSeconds": 10,
-            "refreshExpiresInSeconds": 1000,
-            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
-            "redirectUri": {
-                "enabled": true,
-                "allowedSchemes": ["https"]
-            },
-            "urlScheme": "openid-credential-offer",
-            "oauthAttestationLeewaySeconds": 60,
-            "keyAttestationLeewaySeconds": 60,
-        }),
-        "OPENID4VCI_FINAL1".to_string(),
-        Arc::new(MockHolderWalletUnitProto::new()),
-        Arc::new(MockInstanceRepository::new()),
-        Arc::new(MockCertificateValidator::new()),
-        Arc::new(MockHistoryRepository::new()),
-        Arc::new(NoSessionProvider),
-        Arc::new(MockInteractionRepository::new()),
-        Arc::new(MockIdentifierRepository::new()),
-        Arc::new(MockDidRepository::new()),
-        Arc::new(MockWalletAttestationRepository::new()),
-        Arc::new(NoTransactionManager),
-    )
-    .unwrap();
-
-    let format_id = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .formats
-        .as_ref()
-        .await
-        .unwrap()
-        .first()
-        .unwrap()
-        .id;
-    assert!(matches!(
-        service
-            .issuer_issue_credential(
-                credential,
-                format_id,
-                dummy_identifier(),
-                format!("{}#0", dummy_did().did)
-            )
-            .await,
-        Err(IssuanceProtocolError::RefreshTooSoon),
-    ));
-}
-
-#[tokio::test]
-async fn test_issue_credential_for_accepted_non_mdoc_without_batch_fails() {
-    let credential = generic_credential_with_format(CredentialStateEnum::Accepted, "JWT").await;
-
-    let mut config = dummy_config();
-    config.format.insert(
-        "JWT".into(),
-        Fields {
-            r#type: FormatType::Jwt,
-            display: "display".into(),
-            order: None,
-            priority: None,
-            enabled: true,
-            capabilities: None,
-            params: None,
-        },
-    );
-
-    let service = OpenID4VCIFinal1_0::new(
-        Arc::new(MockHttpClient::new()),
-        Arc::new(MockOpenIDMetadataFetcher::new()),
-        Arc::new(MockCredentialRepository::new()),
-        Arc::new(MockKeyRepository::new()),
-        Arc::new(MockIdentifierCreator::new()),
-        Arc::new(MockCredentialSchemaImporter::new()),
-        Arc::new(MockCredentialSchemaRepository::new()),
-        Arc::new(MockCredentialFormatterProvider::new()),
-        Arc::new(MockRevocationMethodProvider::new()),
-        Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(MockKeyProvider::new()),
-        Arc::new(MockKeySecurityLevelProvider::new()),
-        Arc::new(MockBlobStorageProvider::new()),
-        Some("base_url".to_string()),
-        Arc::new(config),
-        json!({
-            "preAuthorizedCodeExpiresInSeconds": 10,
-            "tokenExpiresInSeconds": 10,
-            "refreshExpiresInSeconds": 1000,
-            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
-            "redirectUri": {
-                "enabled": true,
-                "allowedSchemes": ["https"]
-            },
-            "urlScheme": "openid-credential-offer",
-            "oauthAttestationLeewaySeconds": 60,
-            "keyAttestationLeewaySeconds": 60,
-        }),
-        "OPENID4VCI_FINAL1".to_string(),
-        Arc::new(MockHolderWalletUnitProto::new()),
-        Arc::new(MockInstanceRepository::new()),
-        Arc::new(MockCertificateValidator::new()),
-        Arc::new(MockHistoryRepository::new()),
-        Arc::new(NoSessionProvider),
-        Arc::new(MockInteractionRepository::new()),
-        Arc::new(MockIdentifierRepository::new()),
-        Arc::new(MockDidRepository::new()),
-        Arc::new(MockWalletAttestationRepository::new()),
-        Arc::new(NoTransactionManager),
-    )
-    .unwrap();
-
-    let format_id = credential
-        .common()
-        .schema
-        .as_ref()
-        .await
-        .unwrap()
-        .formats
-        .as_ref()
-        .await
-        .unwrap()
-        .first()
-        .unwrap()
-        .id;
-    let_assert!(
-        Err(IssuanceProtocolError::FormatRefreshNotSupported(
-            unsupported_format
-        )) = service
-            .issuer_issue_credential(
-                credential,
-                format_id,
-                dummy_identifier(),
-                format!("{}#0", dummy_did().did)
-            )
-            .await
-    );
-    assert_eq!(unsupported_format, "JWT".into());
 }
 
 fn dummy_config() -> CoreConfig {

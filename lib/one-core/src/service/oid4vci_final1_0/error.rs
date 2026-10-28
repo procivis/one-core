@@ -1,6 +1,6 @@
 use std::string::FromUtf8Error;
 
-use shared_types::{CredentialId, IdentifierId, InteractionId};
+use shared_types::{CredentialFormat, CredentialId, IdentifierId, InteractionId};
 use standardized_types::openid4vci::KeyStorageSecurityLevel;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError};
@@ -76,6 +76,12 @@ pub enum OID4VCIFinal1_0ServiceError {
     },
     #[error("Invalid credential state: `{0}`")]
     InvalidCredentialState(CredentialStateEnum),
+    #[error("Credential is suspended")]
+    CredentialSuspended,
+    #[error("Credential refresh is not yet possible")]
+    RefreshTooSoon,
+    #[error("Refresh not supported for already issued credential format `{0}`")]
+    FormatRefreshNotSupported(CredentialFormat),
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] FromUtf8Error),
 
@@ -106,6 +112,8 @@ impl ErrorCodeMixin for OID4VCIFinal1_0ServiceError {
             Self::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
             Self::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
             Self::InvalidCredentialState(_) => ErrorCode::BR_0002,
+            Self::CredentialSuspended | Self::RefreshTooSoon => ErrorCode::BR_0238,
+            Self::FormatRefreshNotSupported(_) => ErrorCode::BR_0483,
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::FromUtf8Error(_) | Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCIError(_) => ErrorCode::BR_0048,

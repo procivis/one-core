@@ -34,8 +34,8 @@ use service::{
     credential_configuration_supported, get_protocol_base_url,
 };
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId,
-    InteractionId, KeyId, SerializedCredential,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId, InteractionId, KeyId,
+    SerializedCredential,
 };
 use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
@@ -57,7 +57,7 @@ use standardized_types::openid4vci::{
     ResponseEncryption,
 };
 use standardized_types::openid4vp::dcql::CredentialQueryId;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -112,12 +112,12 @@ use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::mapper::{first_certificate, unsigned_credential};
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialStatus, VerificationFn,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{CredentialFormatter, mdoc_formatter};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::key_algorithm::ecdsa::ecdsa_public_key_as_jwk;
@@ -368,59 +368,6 @@ impl OpenID4VCIFinal1_0 {
             wallet_attestation_repository,
             tx_manager,
         })
-    }
-
-    fn validate_credential_issuable(
-        &self,
-        credential: &Credential,
-        format: &CredentialFormat,
-        format_type: FormatType,
-        supports_batch_issuance: bool,
-    ) -> Result<(), IssuanceProtocolError> {
-        match (&credential.common().state, format_type) {
-            (CredentialStateEnum::Accepted, FormatType::Mdoc) if !supports_batch_issuance => {
-                // mdoc MSO refresh -> rate-limiting by mso_minimum_refresh_time
-                let can_be_updated_at =
-                    credential.common().last_modified + self.mso_minimum_refresh_time(format)?;
-
-                if can_be_updated_at > now_utc() {
-                    return Err(IssuanceProtocolError::RefreshTooSoon);
-                }
-            }
-            (CredentialStateEnum::Suspended { .. }, FormatType::Mdoc) => {
-                return Err(IssuanceProtocolError::Suspended);
-            }
-            (CredentialStateEnum::Offered, _) => {
-                // initial issuance -> OK
-            }
-            (CredentialStateEnum::Accepted, _) if supports_batch_issuance => {
-                // batch re-issuance -> OK
-            }
-            (CredentialStateEnum::Accepted, _) => {
-                return Err(IssuanceProtocolError::FormatRefreshNotSupported(
-                    format.to_owned(),
-                ));
-            }
-            _ => {
-                return Err(IssuanceProtocolError::InvalidRequest(
-                    "invalid state".to_string(),
-                ));
-            }
-        }
-
-        Ok(())
-    }
-
-    fn mso_minimum_refresh_time(
-        &self,
-        format: &CredentialFormat,
-    ) -> Result<Duration, IssuanceProtocolError> {
-        Ok(self
-            .config
-            .format
-            .get::<mdoc_formatter::Params, _>(format)
-            .map(|p| p.mso_minimum_refresh_seconds)
-            .error_while("getting format params")?)
     }
 
     /// Signs `credential` in the given format with the issuer key, bound to the holder
@@ -3118,20 +3065,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let issuer = credential.issuer_credential_mut()?;
         issuer.data.holder_identifier = Some(holder_identifier.clone().into());
         issuer.data.format = format.to_owned().into();
-
-        let credential_format_type = self
-            .config
-            .format
-            .get_fields(&format.format)
-            .error_while("getting format config")?
-            .r#type;
-
-        self.validate_credential_issuable(
-            &credential,
-            &format.format,
-            credential_format_type,
-            credential_schema.batch_size.is_some(),
-        )?;
 
         let formatter = self
             .formatter_provider
