@@ -9,6 +9,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::RemoteEntityCacheProvider;
+use super::mapper::key_hash;
 use crate::entity::remote_entity_cache;
 use crate::test_utilities::{get_dummy_date, setup_test_data_layer_and_connection};
 use crate::transaction_context::TransactionManagerImpl;
@@ -75,6 +76,7 @@ async fn insert_json_ld_context(
         created_date: Set(get_dummy_date()),
         last_modified: Set(last_used),
         expiration_date: Set(expiration_date),
+        key_hash: Set(key_hash(url)),
         key: Set(url.to_string()),
         value: Set(context.to_owned()),
         last_used: Set(last_used),

@@ -11,6 +11,7 @@ use shared_types::RemoteEntityCacheEntryId;
 use crate::entity::remote_entity_cache;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
+use crate::remote_entity_cache::mapper::key_hash;
 
 #[autometrics]
 #[async_trait]
@@ -127,7 +128,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         key: &str,
     ) -> Result<Option<RemoteEntityCacheEntry>, DataLayerError> {
         let context = remote_entity_cache::Entity::find()
-            .filter(remote_entity_cache::Column::Key.eq(key))
+            .filter(remote_entity_cache::Column::KeyHash.eq(key_hash(key)))
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

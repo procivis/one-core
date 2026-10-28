@@ -16,8 +16,9 @@ async fn test_db_schema_remote_entity_cache() {
             "expiration_date",
             "last_used",
             "type",
+            "key_hash",
         ])
-        .index("index-RemoteEntityCache-Key-Unique", true, &["key"])
+        .index("index-RemoteEntityCache-Key-Unique", true, &["key_hash"])
         .index(
             "index-RemoteEntityCache-Type-ExpirationDate",
             false,
@@ -47,6 +48,11 @@ async fn test_db_schema_remote_entity_cache() {
     remote_entity_cache
         .column("key")
         .r#type(ColumnType::String(Some(4096)))
+        .nullable(false)
+        .default(None);
+    remote_entity_cache
+        .column("key_hash")
+        .r#type(ColumnType::String(Some(64)))
         .nullable(false)
         .default(None);
     remote_entity_cache

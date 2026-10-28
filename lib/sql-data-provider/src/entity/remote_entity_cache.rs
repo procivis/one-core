@@ -15,6 +15,8 @@ pub struct Model {
     pub last_used: OffsetDateTime,
 
     pub key: String,
+    /// SHA-256 of `key`, the column of the unique index
+    pub key_hash: String,
     #[sea_orm(column_type = "Blob")]
     pub value: Vec<u8>,
 

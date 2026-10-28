@@ -36,7 +36,6 @@ async fn test_hash_unique_indexes_only_on_the_known_tables() {
     assert_eq!(
         hash_indexes,
         [
-            "remote_entity_cache.index-RemoteEntityCache-Key-Unique",
             "trust_list_publication.index-TrustPublication-Name-Org-DeactivatedAt-Unique",
             "trust_list_subscription.index-TrustListSubscription-Reference-Col-DeactivatedAt-Unique",
         ]

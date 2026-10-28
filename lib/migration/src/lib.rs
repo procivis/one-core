@@ -364,6 +364,7 @@ impl MigratorTrait for Migrator {
             ),
             Box::new(migrations::m20261027_130000_did_hash::Migration),
             Box::new(migrations::m20261027_140000_managed_instance_key_hash::Migration),
+            Box::new(migrations::m20261027_150000_remote_entity_cache_key_hash::Migration),
         ]
     }
 }
