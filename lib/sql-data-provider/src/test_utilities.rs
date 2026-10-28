@@ -28,6 +28,7 @@ use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::did::mapper::did_hash;
 use crate::entity::blob::BlobType;
 use crate::entity::credential::{CredentialRole, CredentialType};
 use crate::entity::credential_schema::KeyStorageSecurity;
@@ -573,6 +574,7 @@ pub async fn insert_did(
 
     let did = did::ActiveModel {
         id: Set(did_id),
+        did_hash: Set(did_hash(&did)),
         did: Set(did),
         created_date: Set(now),
         last_modified: Set(now),

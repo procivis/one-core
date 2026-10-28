@@ -20,6 +20,7 @@ use time::macros::datetime;
 use uuid::Uuid;
 
 use super::DidProvider;
+use super::mapper::did_hash;
 use crate::entity::{did, key_did};
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
@@ -800,6 +801,7 @@ async fn test_get_did_list_sorting() {
 
     let older_a_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
+        did_hash: Set(did_hash(&"did:did1:1".parse().unwrap())),
         did: Set("did:did1:1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
         last_modified: Set(get_dummy_date()),
@@ -817,6 +819,7 @@ async fn test_get_did_list_sorting() {
 
     let newer_b_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
+        did_hash: Set(did_hash(&"did:did2:2".parse().unwrap())),
         did: Set("did:did2:2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),
         last_modified: Set(get_dummy_date()),
@@ -988,6 +991,7 @@ async fn test_get_did_list_complex_filter_condition() {
 
     let older_a_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
+        did_hash: Set(did_hash(&"did:did1:1".parse().unwrap())),
         did: Set("did:did1:1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
         last_modified: Set(get_dummy_date()),
@@ -1005,6 +1009,7 @@ async fn test_get_did_list_complex_filter_condition() {
 
     let newer_b_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
+        did_hash: Set(did_hash(&"did:did2:2".parse().unwrap())),
         did: Set("did:did2:2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),
         last_modified: Set(get_dummy_date()),

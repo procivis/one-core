@@ -13,7 +13,8 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, QueryFilter, Set,
 };
 use shared_types::{
-    CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
+    CertificateId, CredentialId, CredentialSchemaId, DidId, DidValue, IdentifierId, KeyId,
+    OrganisationId,
 };
 use similar_asserts::assert_eq;
 use tempfile::NamedTempFile;
@@ -21,6 +22,7 @@ use uuid::Uuid;
 
 use super::BackupProvider;
 use crate::db_conn;
+use crate::did::mapper::did_hash;
 use crate::entity::certificate::{self, CertificateState};
 use crate::entity::credential::{self, CredentialRole, CredentialState, CredentialType};
 use crate::entity::credential_schema::{self, KeyStorageSecurity};
@@ -175,9 +177,11 @@ async fn insert_did_to_database(
     deleted: bool,
     key_id: Uuid,
 ) -> DidId {
+    let did: DidValue = format!("did:example:{}", Uuid::new_v4()).parse().unwrap();
     let did_id = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        did: Set(format!("did:example:{}", Uuid::new_v4()).parse().unwrap()),
+        did_hash: Set(did_hash(&did)),
+        did: Set(did),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(Uuid::new_v4().to_string()),

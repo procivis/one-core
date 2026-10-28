@@ -9,11 +9,13 @@ version                = "0.1.0"
 
 [dependencies]
 ct-codecs.workspace   = true
+hex.workspace         = true
 sea-orm               = { workspace = true, features = ["with-json", "with-time", "with-uuid"] }
 sea-orm-migration     = { version = "2", default-features = false, features = ["runtime-tokio", "sqlx-sqlite"] }
 serde.workspace       = true
 serde_json.workspace  = true
 serde_with.workspace  = true
+sha2.workspace        = true
 shared-types          = { workspace = true, features = ["sea-orm"] }
 strum.workspace       = true
 time.workspace        = true

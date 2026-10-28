@@ -3772,6 +3772,7 @@ name = "migration"
 version = "0.1.0"
 dependencies = [
  "ct-codecs",
+ "hex",
  "migration",
  "regex",
  "sea-orm",
@@ -3780,6 +3781,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "sha2 0.11.0",
  "shared-types",
  "similar-asserts",
  "strum 0.27.2",
@@ -6360,6 +6362,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "sha2 0.11.0",
  "shared-types",
  "similar-asserts",
  "standardized-types",

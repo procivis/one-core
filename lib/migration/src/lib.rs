@@ -362,6 +362,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 migrations::m20261027_120000_add_credential_credential_schema_id_index::Migration,
             ),
+            Box::new(migrations::m20261027_130000_did_hash::Migration),
         ]
     }
 }

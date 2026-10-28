@@ -11,6 +11,7 @@ async fn test_db_schema_did() {
         "created_date",
         "last_modified",
         "did",
+        "did_hash",
         "name",
         "type",
         "method",
@@ -30,7 +31,7 @@ async fn test_db_schema_did() {
         index_columns1.push("deleted_at")
     }
 
-    let mut index_columns2 = vec!["did", "organisation_id"];
+    let mut index_columns2 = vec!["did_hash", "organisation_id"];
     if schema.backend() == DbBackend::MySql {
         index_columns2.push("deleted_at_materialized");
     } else {
@@ -67,6 +68,10 @@ async fn test_db_schema_did() {
         .default(None);
     did.column("did")
         .r#type(ColumnType::String(Some(4000)))
+        .nullable(false)
+        .default(None);
+    did.column("did_hash")
+        .r#type(ColumnType::String(Some(64)))
         .nullable(false)
         .default(None);
     did.column("name")

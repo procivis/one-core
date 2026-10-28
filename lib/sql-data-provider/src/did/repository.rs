@@ -8,7 +8,7 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Se
 use shared_types::{DidId, DidValue, OrganisationId};
 
 use super::DidProvider;
-use super::mapper::did_from_model;
+use super::mapper::{did_from_model, did_hash};
 use crate::common::list_query_with_custom_model;
 use crate::entity::{did, key_did};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
@@ -46,7 +46,7 @@ impl DidRepository for DidProvider {
         organisation: Option<Option<OrganisationId>>,
     ) -> Result<Option<Did>, DataLayerError> {
         let mut query = did::Entity::find()
-            .filter(did::Column::Did.eq(value))
+            .filter(did::Column::DidHash.eq(did_hash(value)))
             .filter(did::Column::DeletedAt.is_null());
 
         if let Some(organisation_filter) = organisation {

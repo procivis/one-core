@@ -70,3 +70,4 @@ pub mod m20261022_120000_interaction_client_attestation_key;
 pub mod m20261026_120000_add_claim_schema_credential_schema_id_index;
 pub mod m20261026_120000_credential_schema_wua_monitor_credential_lifetime;
 pub mod m20261027_120000_add_credential_credential_schema_id_index;
+pub mod m20261027_130000_did_hash;

@@ -11,7 +11,8 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{ColumnRef, IntoCondition};
 use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, RelationTrait};
-use shared_types::{DidId, KeyId};
+use sha2::{Digest, Sha256};
+use shared_types::{DidId, DidValue, KeyId};
 
 use crate::entity::{did, key, key_did};
 use crate::list_query_generic::{
@@ -97,11 +98,17 @@ impl IntoJoinRelations for DidFilterValue {
     }
 }
 
+/// SHA-256 of the DID, the column of the unique index
+pub(crate) fn did_hash(did: &DidValue) -> String {
+    hex::encode(Sha256::digest(did.to_string()))
+}
+
 impl From<Did> for did::ActiveModel {
     fn from(value: Did) -> Self {
         Self {
             id: Set(value.id),
-            did: Set(value.did.to_owned()),
+            did_hash: Set(did_hash(&value.did)),
+            did: Set(value.did),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             name: Set(value.name),

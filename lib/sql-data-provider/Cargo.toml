@@ -29,6 +29,7 @@ sea-orm                      = { workspace = true, features = ["sqlx-sqlite", "r
 serde.workspace              = true
 serde_json.workspace         = true
 serde_with.workspace         = true
+sha2.workspace               = true
 shared-types.workspace       = true
 similar-asserts              = { workspace = true, optional = true }
 standardized-types.workspace = true

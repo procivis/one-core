@@ -10,8 +10,9 @@ use time::OffsetDateTime;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: DidId,
-    #[sea_orm(unique)]
     pub did: DidValue,
+    /// SHA-256 of `did`, the column of the unique index
+    pub did_hash: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
