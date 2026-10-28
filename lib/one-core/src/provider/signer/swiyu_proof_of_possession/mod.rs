@@ -47,7 +47,7 @@ pub struct ProofOfPossessionClaims {
 
 pub type ProofOfPossession = Jwt<ProofOfPossessionClaims>;
 
-/// Signs a proof of possession JWT (`exp` + `nonce`) using the assertion method key of a
+/// Signs a proof of possession JWT (`iss` + `iat` + `exp` + `nonce`) using the assertion method key of a
 /// `did:tdw` or `did:webvh` identifier.
 #[derive(Provider)]
 pub(crate) struct SwiyuProofOfPossessionSigner {
@@ -129,6 +129,7 @@ impl Signer for SwiyuProofOfPossessionSigner {
             return Err(SignerError::UnsupportedDidMethod(did_type, identifier.id));
         }
 
+        let issuer = did.did.to_string();
         let key_id = did.verification_method_id(&key);
         let key_algorithm = self
             .key_algorithm_provider
@@ -146,6 +147,8 @@ impl Signer for SwiyuProofOfPossessionSigner {
             Some(key_id),
             None,
             JWTPayload {
+                issuer: Some(issuer),
+                issued_at: Some(crate::clock::now_utc()),
                 expires_at: Some(end),
                 custom: ProofOfPossessionClaims { nonce },
                 ..Default::default()
