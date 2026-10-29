@@ -1,5 +1,5 @@
 //! Token Status List implementation.
-//! https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-03
+//! https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -21,6 +21,13 @@ use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
 use self::util::calculate_preferred_token_size;
+use super::RevocationMethod;
+use super::error::RevocationError;
+use super::model::{
+    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
+    RevocationState,
+};
+use super::status_list::StatusListSizeParams;
 use crate::config::core_config::{FormatType, RevocationType};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
@@ -64,12 +71,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::mso_mdoc::try_verify_cose_sign1;
 use crate::provider::provider_directory::InitializationError;
-use crate::provider::revocation::RevocationMethod;
-use crate::provider::revocation::error::RevocationError;
-use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
-    RevocationState,
-};
 use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::managed_instance_repository::ManagedInstanceRepository;
@@ -96,6 +97,12 @@ struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_1_minute")]
     leeway_seconds: Duration,
+
+    #[serde(flatten)]
+    pub size: StatusListSizeParams<
+        // no explicit values defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21#name-status-list-size
+        1,
+    >,
 }
 
 fn default_format() -> StatusListCredentialFormat {

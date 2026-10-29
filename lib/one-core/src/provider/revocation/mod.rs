@@ -23,6 +23,7 @@ pub mod error;
 pub mod mapper;
 pub mod model;
 pub mod provider;
+mod status_list;
 pub mod status_list_2021;
 pub mod token_status_list;
 mod utils;

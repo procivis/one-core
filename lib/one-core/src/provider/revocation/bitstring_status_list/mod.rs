@@ -17,6 +17,14 @@ use uuid::Uuid;
 
 use self::model::StatusPurpose;
 use self::resolver::StatusListCachingLoader;
+use super::RevocationMethod;
+use super::error::RevocationError;
+use super::model::{
+    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
+    RevocationState,
+};
+use super::status_list::StatusListSizeParams;
+use super::utils::status_purpose_to_revocation_state;
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::Certificate;
@@ -46,13 +54,6 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::provider_directory::InitializationError;
-use crate::provider::revocation::RevocationMethod;
-use crate::provider::revocation::error::RevocationError;
-use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
-    RevocationState,
-};
-use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 use crate::repository::error::DataLayerError;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
@@ -71,6 +72,12 @@ const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
 struct Params {
     #[serde(default = "default_format")]
     pub format: StatusListCredentialFormat,
+
+    #[serde(flatten)]
+    pub size: StatusListSizeParams<
+        // https://www.w3.org/TR/vc-bitstring-status-list/#revocation-bitstring-length
+        131072,
+    >,
 }
 
 fn default_format() -> StatusListCredentialFormat {

@@ -247,6 +247,8 @@ revocation:
     params:
       public:
         format: "JWT"
+        capacity: 131072
+        blockSize: 128
   TOKENSTATUSLIST:
     display: "revocation.tokenList"
     order: 5
@@ -255,6 +257,8 @@ revocation:
     params:
       public:
         format: "JWT"
+        capacity: 131072
+        blockSize: 128
   CRL:
     display: "revocation.crl"
     order: 6
@@ -271,6 +275,8 @@ revocation:
       public:
         format: "CWT"
         operations: ["REVOKE"]
+        capacity: 131072
+        blockSize: 128
 did:
   KEY:
     display: "did.key"
