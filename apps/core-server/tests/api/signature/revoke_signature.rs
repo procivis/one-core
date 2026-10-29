@@ -38,7 +38,7 @@ async fn test_revoke_wrprc_success() {
         let list = context
             .db
             .revocation_lists
-            .get_revocation_by_issuer_identifier_id(
+            .get_latest_list_by_issuer(
                 identifier.id,
                 RevocationListPurpose::Revocation,
                 &"TOKENSTATUSLIST".into(),

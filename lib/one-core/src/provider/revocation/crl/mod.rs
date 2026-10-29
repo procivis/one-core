@@ -173,7 +173,7 @@ impl RevocationMethod for CRLRevocation {
             .tx(async {
                 let current_list = self
                     .revocation_list_repository
-                    .get_revocation_by_issuer_identifier_id(
+                    .get_latest_list_by_issuer(
                         issuer.id,
                         Some(certificate.id),
                         RevocationListPurpose::Revocation,
@@ -201,7 +201,7 @@ impl RevocationMethod for CRLRevocation {
                 // this means the transaction failed, and a new list was created in parallel
                 // fetch the newly created list instead
                 self.revocation_list_repository
-                    .get_revocation_by_issuer_identifier_id(
+                    .get_latest_list_by_issuer(
                         issuer.id,
                         Some(certificate.id),
                         RevocationListPurpose::Revocation,
@@ -319,6 +319,7 @@ impl CRLRevocation {
                 purpose: RevocationListPurpose::Revocation,
                 issuer_identifier: issuer.to_owned().into(),
                 issuer_certificate: Some(certificate.to_owned().into()),
+                sequence_number: 0,
             })
             .await
             .error_while("creating revocation list")?)

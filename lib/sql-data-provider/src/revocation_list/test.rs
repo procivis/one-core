@@ -140,6 +140,7 @@ async fn test_create_revocation_list() {
             purpose: RevocationListPurpose::Revocation,
             issuer_identifier: setup.identifier.into(),
             issuer_certificate: None,
+            sequence_number: 0,
         })
         .await
         .unwrap();
@@ -159,12 +160,12 @@ async fn test_get_revocation_list() {
 }
 
 #[tokio::test]
-async fn test_get_revocation_by_issuer_identifier_id() {
+async fn test_get_latest_list_by_issuer() {
     let setup = setup_with_list().await;
 
     let result = setup
         .provider
-        .get_revocation_by_issuer_identifier_id(
+        .get_latest_list_by_issuer(
             setup.identifier.id,
             None,
             RevocationListPurpose::Revocation,
@@ -174,6 +175,48 @@ async fn test_get_revocation_by_issuer_identifier_id() {
         .unwrap()
         .unwrap();
     assert_eq!(setup.list_id, result.id);
+}
+
+#[tokio::test]
+async fn test_get_latest_list_by_issuer_picks_highest_sequence_number() {
+    let setup = setup().await;
+
+    let new_list = |sequence_number| RevocationList {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        formatted_list: vec![],
+        format: StatusListCredentialFormat::Jwt,
+        r#type: "BITSTRINGSTATUSLIST".into(),
+        purpose: RevocationListPurpose::Revocation,
+        issuer_identifier: setup.identifier.clone().into(),
+        issuer_certificate: None,
+        sequence_number,
+    };
+
+    setup
+        .provider
+        .create_revocation_list(new_list(0))
+        .await
+        .unwrap();
+    let latest_list_id = setup
+        .provider
+        .create_revocation_list(new_list(1))
+        .await
+        .unwrap();
+
+    let result = setup
+        .provider
+        .get_latest_list_by_issuer(
+            setup.identifier.id,
+            None,
+            RevocationListPurpose::Revocation,
+            &"BITSTRINGSTATUSLIST".into(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(latest_list_id, result.id);
 }
 
 #[tokio::test]

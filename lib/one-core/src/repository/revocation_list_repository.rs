@@ -30,7 +30,7 @@ pub trait RevocationListRepository: Send + Sync {
         entry_id: RevocationListEntryId,
     ) -> Result<RevocationList, DataLayerError>;
 
-    async fn get_revocation_by_issuer_identifier_id(
+    async fn get_latest_list_by_issuer(
         &self,
         issuer_identifier_id: IdentifierId,
         issuer_certificate_id: Option<CertificateId>,

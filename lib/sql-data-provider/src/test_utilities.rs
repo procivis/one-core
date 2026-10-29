@@ -758,6 +758,7 @@ pub async fn insert_revocation_list(
         r#type: Set(r#type),
         issuer_identifier_id: Set(issuer_identifier_id),
         issuer_certificate_id: Set(issuer_certificate_id),
+        sequence_number: Set(0),
     }
     .insert(database)
     .await?;

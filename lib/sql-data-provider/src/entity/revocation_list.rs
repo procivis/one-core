@@ -15,6 +15,7 @@ pub struct Model {
     pub purpose: RevocationListPurpose,
     pub format: RevocationListFormat,
     pub r#type: RevocationMethodId,
+    pub sequence_number: i32,
 
     pub issuer_identifier_id: IdentifierId,
     pub issuer_certificate_id: Option<CertificateId>,

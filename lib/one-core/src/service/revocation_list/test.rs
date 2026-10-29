@@ -44,6 +44,7 @@ async fn test_get_revocation_list() {
             format: StatusListCredentialFormat::Jwt,
             r#type: "BITSTRINGSTATUSLIST".into(),
             issuer_certificate: None,
+            sequence_number: 0,
         };
 
         revocation_list_repository

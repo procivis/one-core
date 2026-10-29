@@ -48,6 +48,7 @@ impl RevocationListProvider {
             ),
             format: revocation_list.format.into(),
             r#type: revocation_list.r#type,
+            sequence_number: revocation_list.sequence_number as _,
         }
     }
 }
@@ -69,6 +70,7 @@ impl RevocationListRepository for RevocationListProvider {
             format: Set(request.format.into()),
             r#type: Set(request.r#type),
             issuer_certificate_id: Set(request.issuer_certificate.map(|c| c.id())),
+            sequence_number: Set(request.sequence_number as _),
         })
         .exec_without_returning(&self.db)
         .await
@@ -108,7 +110,7 @@ impl RevocationListRepository for RevocationListProvider {
         self.get_revocation_list(&entry.revocation_list_id).await
     }
 
-    async fn get_revocation_by_issuer_identifier_id(
+    async fn get_latest_list_by_issuer(
         &self,
         issuer_identifier_id: IdentifierId,
         issuer_certificate_id: Option<CertificateId>,
@@ -129,6 +131,7 @@ impl RevocationListRepository for RevocationListProvider {
                         revocation_list::Column::IssuerCertificateId.is_null()
                     }),
             )
+            .order_by_desc(revocation_list::Column::SequenceNumber)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;

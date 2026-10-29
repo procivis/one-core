@@ -202,7 +202,7 @@ impl RevocationMethod for BitstringStatusList {
 
         let current_list = self
             .revocation_list_repository
-            .get_revocation_by_issuer_identifier_id(
+            .get_latest_list_by_issuer(
                 issuer_identifier.id,
                 issuer.certificate.as_ref().map(|c| c.id()),
                 purpose,
@@ -430,7 +430,7 @@ impl BitstringStatusList {
                 async {
                     let current_list = self
                         .revocation_list_repository
-                        .get_revocation_by_issuer_identifier_id(
+                        .get_latest_list_by_issuer(
                             issuer_identifier.id,
                             None,
                             purpose,
@@ -470,12 +470,7 @@ impl BitstringStatusList {
             // this means the transaction failed, and a new list was created in parallel
             // fetch the newly created list instead
             self.revocation_list_repository
-                .get_revocation_by_issuer_identifier_id(
-                    issuer_identifier.id,
-                    None,
-                    purpose,
-                    &self.config_id,
-                )
+                .get_latest_list_by_issuer(issuer_identifier.id, None, purpose, &self.config_id)
                 .await
                 .error_while("getting revocation list")?
                 .ok_or(RevocationError::MappingError(
@@ -578,6 +573,7 @@ impl BitstringStatusList {
                 purpose,
                 issuer_identifier: issuer_identifier.to_owned().into(),
                 issuer_certificate: None,
+                sequence_number: 0,
             })
             .await
             .error_while("creating revocation list")?;

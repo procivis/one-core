@@ -262,7 +262,7 @@ impl RevocationMethod for TokenStatusList {
 
         let current_list = self
             .revocation_list_repository
-            .get_revocation_by_issuer_identifier_id(
+            .get_latest_list_by_issuer(
                 issuer_identifier.id,
                 issuer_certificate.as_ref().map(|c| c.id),
                 self.purpose()?,
@@ -557,7 +557,7 @@ impl TokenStatusList {
             .tx(async {
                 let current_list = self
                     .revocation_list_repository
-                    .get_revocation_by_issuer_identifier_id(
+                    .get_latest_list_by_issuer(
                         issuer_identifier.id,
                         issuer_certificate.map(|c| c.id),
                         purpose,
@@ -593,7 +593,7 @@ impl TokenStatusList {
                 // fetch the newly created list instead
                 (
                     self.revocation_list_repository
-                        .get_revocation_by_issuer_identifier_id(
+                        .get_latest_list_by_issuer(
                             issuer_identifier.id,
                             issuer_certificate.map(|c| c.id),
                             purpose,
@@ -710,6 +710,7 @@ impl TokenStatusList {
                 purpose: self.purpose()?,
                 issuer_identifier: issuer_identifier.to_owned().into(),
                 issuer_certificate: convert_inner(issuer_certificate.cloned()),
+                sequence_number: 0,
             })
             .await
             .error_while("creating revocation list")?;

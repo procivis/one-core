@@ -26,6 +26,9 @@ pub struct RevocationList {
     pub r#type: RevocationMethodId,
     pub purpose: RevocationListPurpose,
 
+    /// Distinction between multiple lists of the same issuer
+    pub sequence_number: usize,
+
     // Relations:
     pub issuer_identifier: Related<Identifier>,
     pub issuer_certificate: Option<Related<Certificate>>,

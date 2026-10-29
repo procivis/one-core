@@ -70,7 +70,7 @@ async fn revocation_status(suspension: bool) -> CredentialRevocationInfo {
     };
     let mut revocation_list_repository = MockRevocationListRepository::new();
     revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
+        .expect_get_latest_list_by_issuer()
         .returning({
             let issuer_identifier = issuer_identifier.clone();
             move |_, _, purpose, r#type| {
@@ -84,6 +84,7 @@ async fn revocation_status(suspension: bool) -> CredentialRevocationInfo {
                     purpose,
                     issuer_identifier: issuer_identifier.clone().into(),
                     issuer_certificate: None,
+                    sequence_number: 0,
                 }))
             }
         });

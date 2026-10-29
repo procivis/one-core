@@ -40,7 +40,7 @@ async fn test_add_signature_new_list() {
 
     let mut revocation_list_repository = MockRevocationListRepository::new();
     revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
+        .expect_get_latest_list_by_issuer()
         .once()
         .with(
             eq(issuer.id),
@@ -180,6 +180,7 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
                 purpose: RevocationListPurpose::Revocation,
                 issuer_identifier: dummy_identifier().into(),
                 issuer_certificate: Some(certificate.into()),
+                sequence_number: 0,
             })
         });
 
@@ -304,6 +305,7 @@ async fn test_get_updated_list_no_update() {
                     purpose: RevocationListPurpose::Revocation,
                     issuer_identifier: dummy_identifier().into(),
                     issuer_certificate: Some(certificate.into()),
+                    sequence_number: 0,
                 })
             }
         });
@@ -349,6 +351,7 @@ async fn test_get_updated_list_with_update() {
                     purpose: RevocationListPurpose::Revocation,
                     issuer_identifier: dummy_identifier().into(),
                     issuer_certificate: Some(certificate.into()),
+                    sequence_number: 0,
                 })
             }
         });

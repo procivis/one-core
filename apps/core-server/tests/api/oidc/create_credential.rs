@@ -792,7 +792,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
     let list = context
         .db
         .revocation_lists
-        .get_revocation_by_issuer_identifier_id(
+        .get_latest_list_by_issuer(
             issuer_identifier.id,
             RevocationListPurpose::Revocation,
             &"BITSTRINGSTATUSLIST".into(),
@@ -895,7 +895,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
     let list = context
         .db
         .revocation_lists
-        .get_revocation_by_issuer_identifier_id(
+        .get_latest_list_by_issuer(
             issuer_identifier.id,
             RevocationListPurpose::RevocationAndSuspension,
             &"TOKENSTATUSLIST".into(),
@@ -935,7 +935,7 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         context
             .db
             .revocation_lists
-            .get_revocation_by_issuer_identifier_id(
+            .get_latest_list_by_issuer(
                 issuer_identifier_id,
                 RevocationListPurpose::Revocation,
                 &"BITSTRINGSTATUSLIST".into(),
@@ -950,7 +950,7 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         context
             .db
             .revocation_lists
-            .get_revocation_by_issuer_identifier_id(
+            .get_latest_list_by_issuer(
                 issuer_identifier_id,
                 RevocationListPurpose::Suspension,
                 &"BITSTRINGSTATUSLIST".into(),
@@ -965,7 +965,7 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         context
             .db
             .revocation_lists
-            .get_revocation_by_issuer_identifier_id(
+            .get_latest_list_by_issuer(
                 issuer_identifier_id,
                 RevocationListPurpose::Revocation,
                 &"TOKENSTATUSLIST".into(),

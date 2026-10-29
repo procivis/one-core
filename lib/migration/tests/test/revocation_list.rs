@@ -16,6 +16,7 @@ async fn test_db_schema_revocation_list() {
         "type",
         "issuer_identifier_id",
         "issuer_certificate_id",
+        "sequence_number",
     ];
     if schema.backend() == DbBackend::MySql {
         columns.extend(["issuer_certificate_id_materialized"]);
@@ -27,10 +28,10 @@ async fn test_db_schema_revocation_list() {
     } else {
         index_columns.push("issuer_certificate_id")
     }
-    index_columns.extend(["purpose", "type"]);
+    index_columns.extend(["purpose", "type", "sequence_number"]);
 
     let revocation_list = schema.table("revocation_list").columns(&columns).index(
-        "index-IssuerIdentifierId-IssuerCertificateId-Purpose-Type-Unique",
+        "index-RevocationList-Issuer-Purpose-Type-SequenceNumber-Unique",
         true,
         &index_columns,
     );
@@ -93,6 +94,11 @@ async fn test_db_schema_revocation_list() {
             "certificate",
             "id",
         );
+    revocation_list
+        .column("sequence_number")
+        .r#type(ColumnType::Integer)
+        .nullable(false)
+        .default(None);
 }
 
 #[tokio::test]

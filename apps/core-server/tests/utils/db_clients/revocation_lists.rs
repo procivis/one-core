@@ -54,6 +54,7 @@ impl RevocationListsDB {
             format: params.format.unwrap_or(StatusListCredentialFormat::Jwt),
             r#type: params.r#type.unwrap_or("BITSTRINGSTATUSLIST".into()),
             issuer_certificate: convert_inner(params.issuer_certificate),
+            sequence_number: 0,
         };
 
         self.repository
@@ -64,19 +65,14 @@ impl RevocationListsDB {
         revocation_list
     }
 
-    pub async fn get_revocation_by_issuer_identifier_id(
+    pub async fn get_latest_list_by_issuer(
         &self,
         issuer_identifier_id: IdentifierId,
         purpose: RevocationListPurpose,
         status_list_type: &RevocationMethodId,
     ) -> Option<RevocationList> {
         self.repository
-            .get_revocation_by_issuer_identifier_id(
-                issuer_identifier_id,
-                None,
-                purpose,
-                status_list_type,
-            )
+            .get_latest_list_by_issuer(issuer_identifier_id, None, purpose, status_list_type)
             .await
             .unwrap()
     }
