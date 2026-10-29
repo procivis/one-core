@@ -5,10 +5,12 @@ use one_core::model::common::LockType;
 use one_core::model::relation::Related;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListPurpose, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    RevocationListEntryFilter, RevocationListPurpose, UpdateRevocationListEntryId,
+    UpdateRevocationListEntryRequest,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
+use one_dto_mapper::try_convert_inner;
 use sea_orm::sea_query::IntoCondition;
 use sea_orm::{
     ActiveEnum, ColumnTrait, Condition, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder,
@@ -202,7 +204,7 @@ impl RevocationListRepository for RevocationListProvider {
         index_on_status_list: Option<usize>,
     ) -> Result<RevocationListEntryId, DataLayerError> {
         let credential_id = if let RevocationListEntityId::Credential(credential_id) = &entity_id {
-            Some(credential_id.to_owned())
+            credential_id.to_owned()
         } else {
             None
         };
@@ -300,14 +302,20 @@ impl RevocationListRepository for RevocationListProvider {
             Some(state) => Set(state.into()),
         };
 
+        let credential_id = match &request.credential_id {
+            None => NotSet,
+            Some(credential_id) => Set(Some(*credential_id)),
+        };
+
         let model = revocation_list_entry::ActiveModel {
             id: NotSet,
             last_modified: Set(one_core::clock::now_utc()),
             state,
+            credential_id,
             ..Default::default()
         };
 
-        let model = match id {
+        let mut model = match id {
             UpdateRevocationListEntryId::Credential(credential_id) => {
                 revocation_list_entry::Entity::update_many()
                     .set(model)
@@ -319,16 +327,17 @@ impl RevocationListRepository for RevocationListProvider {
             UpdateRevocationListEntryId::Index(revocation_list_id, index) => {
                 revocation_list_entry::Entity::update_many()
                     .set(model)
-                    .filter(
-                        Condition::all()
-                            .add(
-                                revocation_list_entry::Column::RevocationListId
-                                    .eq(revocation_list_id),
-                            )
-                            .add(revocation_list_entry::Column::Index.eq(index as i32)),
-                    )
+                    .filter(revocation_list_entry::Column::RevocationListId.eq(revocation_list_id))
+                    .filter(revocation_list_entry::Column::Index.eq(index as i32))
             }
         };
+
+        if request.credential_id.is_some() {
+            model = model.filter(
+                revocation_list_entry::Column::Type.eq(RevocationListEntryType::Credential),
+            );
+        }
+
         model
             .exec(&self.db)
             .await
@@ -339,13 +348,26 @@ impl RevocationListRepository for RevocationListProvider {
     async fn get_entries(
         &self,
         list_id: RevocationListId,
+        filter: RevocationListEntryFilter,
     ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
-        self.get_filtered_entries(
-            revocation_list_entry::Column::RevocationListId
-                .eq(list_id.to_string())
-                .into_condition(),
-        )
-        .await
+        let mut condition = Condition::all()
+            .add(revocation_list_entry::Column::RevocationListId.eq(list_id.to_string()));
+
+        if let Some(index_from) = filter.index_from {
+            condition = condition.add(revocation_list_entry::Column::Index.gte(index_from as i32));
+        }
+        if let Some(index_to) = filter.index_to {
+            condition = condition.add(revocation_list_entry::Column::Index.lt(index_to as i32));
+        }
+
+        if let Some(states) = filter.states {
+            condition = condition.add(
+                revocation_list_entry::Column::State
+                    .is_in(states.into_iter().map(RevocationListEntryState::from)),
+            );
+        }
+
+        self.get_filtered_entries(condition).await
     }
 
     async fn get_entries_by_id(
@@ -377,12 +399,9 @@ impl RevocationListProvider {
             .into_iter()
             .map(|entry| {
                 let entity_info = match entry.r#type {
-                    RevocationListEntryType::Credential => match entry.credential_id {
-                        Some(value) => Ok(RevocationListEntityInfo::Credential(value)),
-                        None => Err(DataLayerError::MappingError(anyhow!(
-                            "Credential revocation list entry is missing credential_id"
-                        ))),
-                    },
+                    RevocationListEntryType::Credential => {
+                        Ok(RevocationListEntityInfo::Credential(entry.credential_id))
+                    }
                     RevocationListEntryType::KeyAttestation => {
                         Ok(RevocationListEntityInfo::KeyAttestation)
                     }
@@ -390,14 +409,10 @@ impl RevocationListProvider {
                         Ok(RevocationListEntityInfo::WalletInstanceAttestation)
                     }
                     RevocationListEntryType::Signature => match entry.signature_type {
-                        Some(value) => {
-                            let serial = if let Some(serial) = entry.serial {
-                                Some(serial.try_into()?)
-                            } else {
-                                None
-                            };
-                            Ok(RevocationListEntityInfo::Signature(value.into(), serial))
-                        }
+                        Some(signature_type) => Ok(RevocationListEntityInfo::Signature(
+                            signature_type.into(),
+                            try_convert_inner(entry.serial)?,
+                        )),
                         None => Err(DataLayerError::MappingError(anyhow!(
                             "Signature revocation list entry is missing signature_type"
                         ))),

@@ -1,3 +1,5 @@
+use std::ops::{Bound, RangeBounds};
+
 use proc_macros::Model;
 use serde::{Deserialize, Serialize};
 use shared_types::{
@@ -65,7 +67,9 @@ pub enum RevocationListEntryState {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityId {
-    Credential(CredentialId),
+    /// Set to `None` for reserving a slot on the list, without linking it to a credential yet.
+    /// Later use `UpdateRevocationListEntryRequest.credential_id` to set the ID via `UpdateRevocationListEntryId.Id`
+    Credential(Option<CredentialId>),
     Signature(SignerId, Option<CertificateSerial>),
     KeyAttestation(ManagedInstanceAttestationId),
     WalletInstanceAttestation(ManagedInstanceAttestationId),
@@ -73,7 +77,7 @@ pub enum RevocationListEntityId {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityInfo {
-    Credential(CredentialId),
+    Credential(Option<CredentialId>),
     Signature(SignerId, Option<CertificateSerial>),
     KeyAttestation,
     WalletInstanceAttestation,
@@ -89,4 +93,35 @@ pub enum UpdateRevocationListEntryId {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateRevocationListEntryRequest {
     pub state: Option<RevocationListEntryState>,
+    /// set id on a previously reserved credential entry
+    pub credential_id: Option<CredentialId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct RevocationListEntryFilter {
+    /// inclusive
+    pub index_from: Option<usize>,
+    /// exclusive (to avoid panic on empty range 0..0)
+    pub index_to: Option<usize>,
+    pub states: Option<Vec<RevocationListEntryState>>,
+}
+
+impl RevocationListEntryFilter {
+    pub fn from_index_range(range: impl RangeBounds<usize>) -> Self {
+        let index_from = match range.start_bound() {
+            Bound::Included(&from) => Some(from),
+            Bound::Excluded(&from) => Some(from + 1),
+            Bound::Unbounded => None,
+        };
+        let index_to = match range.end_bound() {
+            Bound::Included(&to) => Some(to + 1),
+            Bound::Excluded(&to) => Some(to),
+            Bound::Unbounded => None,
+        };
+        Self {
+            index_from,
+            index_to,
+            ..Default::default()
+        }
+    }
 }

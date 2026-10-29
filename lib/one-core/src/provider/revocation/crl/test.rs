@@ -16,8 +16,8 @@ use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
-    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    RevocationListEntryFilter, RevocationListEntryState, RevocationListPurpose,
+    StatusListCredentialFormat, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::model::CredentialStatus;
@@ -162,6 +162,7 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
             eq(UpdateRevocationListEntryId::Id(signature_id)),
             eq(UpdateRevocationListEntryRequest {
                 state: Some(RevocationListEntryState::Revoked),
+                ..Default::default()
             }),
         )
         .returning(|_, _| Ok(()));
@@ -186,10 +187,16 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
     let revocation_time = crate::clock::now_utc().replace_millisecond(0).unwrap();
     revocation_list_repository
         .expect_get_entries()
-        .with(eq(list_id))
+        .with(
+            eq(list_id),
+            eq(RevocationListEntryFilter {
+                states: Some(vec![RevocationListEntryState::Revoked]),
+                ..Default::default()
+            }),
+        )
         .return_once({
             let serial = serial.clone();
-            move |_| {
+            move |_, _| {
                 Ok(vec![RevocationListEntry {
                     id: signature_id,
                     created_date: revocation_time,
@@ -348,8 +355,14 @@ async fn test_get_updated_list_with_update() {
 
     revocation_list_repository
         .expect_get_entries()
-        .with(eq(list_id))
-        .return_once(|_| Ok(vec![]));
+        .with(
+            eq(list_id),
+            eq(RevocationListEntryFilter {
+                states: Some(vec![RevocationListEntryState::Revoked]),
+                ..Default::default()
+            }),
+        )
+        .return_once(|_, _| Ok(vec![]));
 
     revocation_list_repository
         .expect_update_formatted_list()

@@ -8,8 +8,8 @@ use super::error::DataLayerError;
 use crate::model::common::LockType;
 use crate::model::relation::AsyncModelLoader;
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
-    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilter,
+    RevocationListPurpose, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -67,6 +67,7 @@ pub trait RevocationListRepository: Send + Sync {
     async fn get_entries(
         &self,
         list_id: RevocationListId,
+        filter: RevocationListEntryFilter,
     ) -> Result<Vec<RevocationListEntry>, DataLayerError>;
 
     async fn get_entries_by_id(

@@ -67,14 +67,12 @@ pub(crate) fn extract_bitstring_index(
         .ok_or(BitstringError::IndexOutOfBounds { index })
 }
 
-pub(super) fn generate_bitstring(input: Vec<(usize, bool)>) -> Result<String, BitstringError> {
-    let size = calculate_bitstring_size(input.len());
+pub(super) fn generate_bitstring(revoked_indices: Vec<usize>) -> Result<String, BitstringError> {
+    let size = calculate_bitstring_size(revoked_indices.iter().max().cloned());
     let mut bits = BitVec::from_elem(size, false);
-    input.into_iter().for_each(|(index, state)| {
-        if state {
-            bits.set(index, true)
-        }
-    });
+    revoked_indices
+        .into_iter()
+        .for_each(|index| bits.set(index, true));
 
     let bytes = bits.to_bytes();
     let compressed = gzip_compress(bytes).map_err(BitstringError::Compression)?;
@@ -84,9 +82,9 @@ pub(super) fn generate_bitstring(input: Vec<(usize, bool)>) -> Result<String, Bi
         .map(|s| format!("{MULTIBASE_PREFIX}{s}"))
 }
 
-fn calculate_bitstring_size(input_size: usize) -> usize {
+fn calculate_bitstring_size(max_index: Option<usize>) -> usize {
     const MINIMUM_INPUT_SIZE: usize = 131072;
-    std::cmp::max(input_size, MINIMUM_INPUT_SIZE)
+    std::cmp::max(max_index.unwrap_or(0) + 1, MINIMUM_INPUT_SIZE)
 }
 
 /// Resolve the worst status from W3C statuses
@@ -167,7 +165,7 @@ mod test {
             BITSTRING_NO_REVOCATIONS_NEW
         );
         assert_eq!(
-            generate_bitstring(vec![(0, false), (1, true), (2, false), (3, false)]).unwrap(),
+            generate_bitstring(vec![1]).unwrap(),
             BITSTRING_ONE_REVOCATION_NEW
         );
     }

@@ -36,9 +36,9 @@ use crate::model::managed_instance_attestation::{
     ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryState,
-    RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
-    UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilter,
+    RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -220,6 +220,7 @@ impl RevocationMethod for BitstringStatusList {
                 UpdateRevocationListEntryId::Credential(credential.common().id),
                 UpdateRevocationListEntryRequest {
                     state: Some(new_state.into()),
+                    ..Default::default()
                 },
             )
             .await
@@ -511,7 +512,7 @@ impl BitstringStatusList {
                         .revocation_list_repository
                         .create_entry(
                             list_id,
-                            RevocationListEntityId::Credential(credential_id),
+                            RevocationListEntityId::Credential(Some(credential_id)),
                             Some(index),
                         )
                         .await
@@ -584,7 +585,7 @@ impl BitstringStatusList {
         self.revocation_list_repository
             .create_entry(
                 revocation_list_id,
-                RevocationListEntityId::Credential(credential_id),
+                RevocationListEntityId::Credential(Some(credential_id)),
                 Some(0),
             )
             .await
@@ -599,13 +600,27 @@ impl BitstringStatusList {
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
     ) -> Result<(), RevocationError> {
+        let states = match purpose {
+            RevocationListPurpose::Revocation => vec![RevocationListEntryState::Revoked],
+            RevocationListPurpose::Suspension => vec![RevocationListEntryState::Suspended],
+            RevocationListPurpose::RevocationAndSuspension => vec![
+                RevocationListEntryState::Revoked,
+                RevocationListEntryState::Suspended,
+            ],
+        };
         let entries = self
             .revocation_list_repository
-            .get_entries(list_id)
+            .get_entries(
+                list_id,
+                RevocationListEntryFilter {
+                    states: Some(states),
+                    ..Default::default()
+                },
+            )
             .await
             .error_while("getting revocation list entries")?;
 
-        let encoded_list = generate_bitstring_from_entries(entries, purpose).await?;
+        let encoded_list = generate_bitstring_from_entries(entries).await?;
 
         let formatted_list = format_status_list_credential(
             &list_id,
@@ -774,19 +789,15 @@ pub(crate) async fn format_status_list_credential(
 
 async fn generate_bitstring_from_entries(
     entries: Vec<RevocationListEntry>,
-    purpose: RevocationListPurpose,
 ) -> Result<String, RevocationError> {
     let states = entries
         .into_iter()
         .map(|entry| {
-            Ok((
-                entry.index.ok_or(RevocationError::MappingError(
-                    "revocation list entry index missing".to_string(),
-                ))?,
-                get_revocation_entry_state(entry.state, purpose),
+            entry.index.ok_or(RevocationError::MappingError(
+                "revocation list entry index missing".to_string(),
             ))
         })
-        .collect::<Result<Vec<_>, RevocationError>>()?;
+        .collect::<Result<_, _>>()?;
 
     Ok(util::generate_bitstring(states).error_while("generating bitstring")?)
 }
@@ -802,18 +813,4 @@ fn get_revocation_list_url(
         ))?,
         revocation_list_id
     ))
-}
-
-fn get_revocation_entry_state(
-    entry_status: RevocationListEntryState,
-    purpose: RevocationListPurpose,
-) -> bool {
-    match purpose {
-        RevocationListPurpose::Revocation => entry_status == RevocationListEntryState::Revoked,
-        RevocationListPurpose::Suspension => entry_status == RevocationListEntryState::Suspended,
-        RevocationListPurpose::RevocationAndSuspension => matches!(
-            entry_status,
-            RevocationListEntryState::Revoked | RevocationListEntryState::Suspended
-        ),
-    }
 }

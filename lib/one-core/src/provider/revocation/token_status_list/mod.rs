@@ -41,9 +41,9 @@ use crate::model::managed_instance_attestation::{
 };
 use crate::model::relation::Related;
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryState,
-    RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
-    UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilter,
+    RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::{
@@ -230,7 +230,7 @@ impl RevocationMethod for TokenStatusList {
 
         let (_, entry) = self
             .create_entry(
-                RevocationListEntityId::Credential(credential.common().id),
+                RevocationListEntityId::Credential(Some(credential.common().id)),
                 &issuer_identifier,
                 issuer_certificate.as_ref(),
             )
@@ -280,6 +280,7 @@ impl RevocationMethod for TokenStatusList {
                 UpdateRevocationListEntryId::Credential(credential.common().id),
                 UpdateRevocationListEntryRequest {
                     state: Some(new_state.into()),
+                    ..Default::default()
                 },
             )
             .await
@@ -424,6 +425,7 @@ impl RevocationMethod for TokenStatusList {
                                 UpdateRevocationListEntryId::Index(list.id, index),
                                 UpdateRevocationListEntryRequest {
                                     state: Some(new_state.into()),
+                                    ..Default::default()
                                 },
                             )
                             .await
@@ -478,6 +480,7 @@ impl RevocationMethod for TokenStatusList {
                         UpdateRevocationListEntryId::Id(signature_id),
                         UpdateRevocationListEntryRequest {
                             state: Some(RevocationListEntryState::Revoked),
+                            ..Default::default()
                         },
                     )
                     .await
@@ -726,9 +729,24 @@ impl TokenStatusList {
         issuer_identifier: &Identifier,
         issuer_certificate: Option<&Certificate>,
     ) -> Result<(), RevocationError> {
+        let states = match self.purpose()? {
+            RevocationListPurpose::Revocation => vec![RevocationListEntryState::Revoked],
+            RevocationListPurpose::Suspension => vec![RevocationListEntryState::Suspended],
+            RevocationListPurpose::RevocationAndSuspension => vec![
+                RevocationListEntryState::Revoked,
+                RevocationListEntryState::Suspended,
+            ],
+        };
+
         let entries = self
             .revocation_list_repository
-            .get_entries(list_id)
+            .get_entries(
+                list_id,
+                RevocationListEntryFilter {
+                    states: Some(states),
+                    ..Default::default()
+                },
+            )
             .await
             .error_while("getting revocation list entries")?;
 
@@ -1038,7 +1056,8 @@ async fn generate_token_from_entries(
         })
         .collect::<Result<Vec<_>, RevocationError>>()?;
 
-    let preferred_token_size = calculate_preferred_token_size(index_states.len(), bits);
+    let preferred_token_size =
+        calculate_preferred_token_size(index_states.iter().map(|(index, _)| *index).max(), bits);
     Ok(
         util::generate_token(index_states, bits, preferred_token_size)
             .error_while("generating token status list")?,

@@ -28,6 +28,8 @@ pub(super) enum TokenError {
     IndexOutOfBounds { index: usize },
     #[error("Suspension requires at least two bits")]
     SuspensionRequiresAtLeastTwoBits,
+    #[error("Invalid entry size: {0}")]
+    InvalidEntrySize(usize),
 }
 
 impl ErrorCodeMixin for TokenError {
@@ -41,45 +43,43 @@ pub(super) fn extract_state_from_token(
     index: usize,
 ) -> Result<RevocationState, TokenError> {
     let entry_size = status_list.bits;
+    if ![1, 2, 4, 8].contains(&entry_size) {
+        return Err(TokenError::InvalidEntrySize(entry_size));
+    }
+    let entry_bit_index = index * entry_size;
 
     let compressed = Base64UrlSafeNoPadding::decode_to_vec(&status_list.value, Some(&[b'='; 4]))
         .map_err(TokenError::Base64Decoding)?;
 
     let decoder = ZlibDecoder::new(&compressed[..]);
-    let bytes: Vec<u8> = BufReader::new(decoder)
+    let target_byte = BufReader::new(decoder)
         .bytes()
-        .collect::<Result<_, std::io::Error>>()
-        .map_err(|err| {
-            if err.kind() == std::io::ErrorKind::UnexpectedEof {
-                TokenError::IndexOutOfBounds { index }
-            } else {
-                TokenError::Decompression(err)
-            }
-        })?;
+        .nth(entry_bit_index / 8)
+        .ok_or(TokenError::IndexOutOfBounds { index })?
+        .map_err(TokenError::Decompression)?;
+    let bits = BitVec::from_bytes(&[target_byte]);
+    let revocation_bit_index = 7 - (entry_bit_index % 8);
 
-    let bits = BitVec::from_bytes(&bytes);
-
-    let most_significant_bit_index = get_most_significant_bit_index(index, entry_size);
-
-    let suspended = if entry_size > 1 {
-        let suspension_bit_index = most_significant_bit_index + entry_size - 2;
-        bits.get(suspension_bit_index)
-            .ok_or(TokenError::IndexOutOfBounds { index })?
-    } else {
-        false
-    };
-    let revocation_bit_index = most_significant_bit_index + entry_size - 1;
     let revoked = bits
         .get(revocation_bit_index)
         .ok_or(TokenError::IndexOutOfBounds { index })?;
-
-    match (revoked, suspended) {
-        (true, _) => Ok(RevocationState::Revoked),
-        (false, true) => Ok(RevocationState::Suspended {
-            suspend_end_date: None,
-        }),
-        (_, _) => Ok(RevocationState::Valid),
+    if revoked {
+        return Ok(RevocationState::Revoked);
     }
+
+    if entry_size > 1 {
+        let suspension_bit_index = revocation_bit_index - 1;
+        let suspended = bits
+            .get(suspension_bit_index)
+            .ok_or(TokenError::IndexOutOfBounds { index })?;
+        if suspended {
+            return Ok(RevocationState::Suspended {
+                suspend_end_date: None,
+            });
+        }
+    }
+
+    Ok(RevocationState::Valid)
 }
 
 pub(super) fn generate_token(
@@ -116,9 +116,9 @@ pub(super) fn generate_token(
     Base64UrlSafeNoPadding::encode_to_string(compressed).map_err(TokenError::Base64Encoding)
 }
 
-pub(super) fn calculate_preferred_token_size(input_size: usize, bits: usize) -> usize {
+pub(super) fn calculate_preferred_token_size(maximum_index: Option<usize>, bits: usize) -> usize {
     const MINIMUM_INPUT_SIZE: usize = 131072;
-    std::cmp::max(input_size * bits, MINIMUM_INPUT_SIZE * bits)
+    std::cmp::max(maximum_index.unwrap_or(0) + 1, MINIMUM_INPUT_SIZE) * bits
 }
 
 pub(super) fn get_most_significant_bit_index(index: usize, bit_size: usize) -> usize {

@@ -1,3 +1,4 @@
+use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 use std::vec;
 
@@ -6,7 +7,8 @@ use one_core::model::did::{Did, DidType};
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
+    RevocationListEntryFilter, RevocationListEntryState, RevocationListPurpose,
+    StatusListCredentialFormat, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::error::DataLayerError;
@@ -241,7 +243,7 @@ async fn test_create_credential_entry_success() {
         .provider
         .create_entry(
             setup.list_id,
-            RevocationListEntityId::Credential(credential_id),
+            RevocationListEntityId::Credential(Some(credential_id)),
             Some(0),
         )
         .await
@@ -258,7 +260,7 @@ async fn test_create_credential_entry_fail_without_index() {
         .provider
         .create_entry(
             setup.list_id,
-            RevocationListEntityId::Credential(credential_id),
+            RevocationListEntityId::Credential(Some(credential_id)),
             None,
         )
         .await;
@@ -267,6 +269,56 @@ async fn test_create_credential_entry_fail_without_index() {
         result,
         Err(DataLayerError::IncorrectParameters(_))
     ));
+}
+
+#[tokio::test]
+async fn test_create_credential_entry_without_credential_id() {
+    let setup = setup_with_list().await;
+
+    let entry_id = setup
+        .provider
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Credential(None),
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+    let entries = setup
+        .provider
+        .get_entries_by_id(vec![entry_id])
+        .await
+        .unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(
+        entries[0].entity_info,
+        RevocationListEntityInfo::Credential(None)
+    );
+
+    let credential_id = create_dummy_credential(&setup.db, setup.identifier).await;
+    setup
+        .provider
+        .update_entry(
+            UpdateRevocationListEntryId::Id(entry_id),
+            UpdateRevocationListEntryRequest {
+                credential_id: Some(credential_id),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let entries = setup
+        .provider
+        .get_entries_by_id(vec![entry_id])
+        .await
+        .unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(
+        entries[0].entity_info,
+        RevocationListEntityInfo::Credential(Some(credential_id))
+    );
 }
 
 #[tokio::test]
@@ -328,7 +380,11 @@ async fn test_create_certificate_entry_fail_with_both_serial_and_index() {
 async fn test_get_entries_empty_list() {
     let setup = setup_with_list().await;
 
-    let results = setup.provider.get_entries(setup.list_id).await.unwrap();
+    let results = setup
+        .provider
+        .get_entries(setup.list_id, Default::default())
+        .await
+        .unwrap();
     assert_eq!(results.len(), 0);
 }
 
@@ -345,7 +401,12 @@ async fn test_get_entries_non_empty() {
         .await
         .unwrap();
 
-    let results = setup.provider.get_entries(setup.list_id).await.unwrap();
+    // without filter
+    let results = setup
+        .provider
+        .get_entries(setup.list_id, Default::default())
+        .await
+        .unwrap();
     assert_eq!(results.len(), 2);
     assert_eq!(
         results[0],
@@ -364,11 +425,60 @@ async fn test_get_entries_non_empty() {
             id: entry_2_id,
             created_date: results[1].created_date,
             last_modified: results[1].last_modified,
-            entity_info: RevocationListEntityInfo::Credential(credential_id),
+            entity_info: RevocationListEntityInfo::Credential(Some(credential_id)),
             index: Some(2),
             state: RevocationListEntryState::Active,
         }
     );
+
+    // with index range filter
+    fn b(r: impl RangeBounds<usize>) -> (Bound<usize>, Bound<usize>) {
+        (r.start_bound().cloned(), r.end_bound().cloned())
+    }
+    for (range, expected_result_count) in [
+        (b(1..2), 1),
+        (b(1..=2), 2),
+        (b(..2), 1),
+        (b(1..), 2),
+        (b(..), 2),
+    ] {
+        let results = setup
+            .provider
+            .get_entries(
+                setup.list_id,
+                RevocationListEntryFilter::from_index_range(range),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            results.len(),
+            expected_result_count,
+            "with range: {range:?}"
+        );
+    }
+
+    // filter by state
+    for (state, expected_result_count) in [
+        (RevocationListEntryState::Active, 2),
+        (RevocationListEntryState::Revoked, 0),
+    ] {
+        let results = setup
+            .provider
+            .get_entries(
+                setup.list_id,
+                RevocationListEntryFilter {
+                    states: Some(vec![state]),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            results.len(),
+            expected_result_count,
+            "with state: {state:?}"
+        );
+    }
 }
 
 async fn create_dummy_credential(

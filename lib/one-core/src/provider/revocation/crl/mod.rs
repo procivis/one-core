@@ -23,9 +23,9 @@ use crate::model::managed_instance_attestation::{
     ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntryState,
-    RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
-    UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntryFilter,
+    RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::transaction_manager::TransactionManager;
@@ -252,6 +252,7 @@ impl RevocationMethod for CRLRevocation {
                 UpdateRevocationListEntryId::Id(signature_id),
                 UpdateRevocationListEntryRequest {
                     state: Some(RevocationListEntryState::Revoked),
+                    ..Default::default()
                 },
             )
             .await
@@ -333,14 +334,18 @@ impl CRLRevocation {
 
         let revoked_certificates = self
             .revocation_list_repository
-            .get_entries(list.id)
+            .get_entries(
+                list.id,
+                RevocationListEntryFilter {
+                    states: Some(vec![RevocationListEntryState::Revoked]),
+                    ..Default::default()
+                },
+            )
             .await
             .error_while("getting revocation list entries")?
             .into_iter()
             .filter_map(|entry| {
-                if entry.state == RevocationListEntryState::Revoked
-                    && let RevocationListEntityInfo::Signature(_, Some(serial)) = entry.entity_info
-                {
+                if let RevocationListEntityInfo::Signature(_, Some(serial)) = entry.entity_info {
                     Some((serial, entry.last_modified))
                 } else {
                     None

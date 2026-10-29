@@ -89,7 +89,7 @@ impl RevocationListsDB {
     ) {
         self.create_entry(
             list_id,
-            RevocationListEntityId::Credential(credential_id),
+            RevocationListEntityId::Credential(Some(credential_id)),
             Some(index_on_status_list),
         )
         .await;
@@ -116,13 +116,19 @@ impl RevocationListsDB {
         self.repository
             .update_entry(
                 UpdateRevocationListEntryId::Index(list_id, index_on_status_list),
-                UpdateRevocationListEntryRequest { state },
+                UpdateRevocationListEntryRequest {
+                    state,
+                    ..Default::default()
+                },
             )
             .await
             .unwrap();
     }
 
     pub async fn get_entries(&self, list_id: RevocationListId) -> Vec<RevocationListEntry> {
-        self.repository.get_entries(list_id).await.unwrap()
+        self.repository
+            .get_entries(list_id, Default::default())
+            .await
+            .unwrap()
     }
 }
