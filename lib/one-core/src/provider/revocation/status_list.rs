@@ -24,6 +24,14 @@ pub(super) struct StatusListSizeParams<const MINIMUM_CAPACITY: usize> {
     /// |   131072 |        128 |      74 % |
     /// |   131072 |        256 |      82 % |
     /// |   131072 |        512 |      88 % |
+    /// |  1048576 |         16 |      27 % |
+    /// |  1048576 |         32 |      43 % |
+    /// |  1048576 |         64 |      58 % |
+    /// |  1048576 |        128 |      70 % |
+    /// |  1048576 |        256 |      79 % |
+    /// |  1048576 |        512 |      86 % |
+    ///
+    /// so, when growing `capacity`, it makes sense to grow `block_size` as well
     pub block_size: usize,
 }
 
