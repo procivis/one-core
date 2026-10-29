@@ -3,7 +3,9 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use one_crypto::utilities::{generate_alphanumeric, generate_numeric};
 use shared_types::{DidMethodId, OrganisationId};
-use standardized_types::openid4vci::{ProofTypeSupported, TxCodeInputMode};
+use standardized_types::openid4vci::{
+    KeyAttestationsRequired, ProofTypeSupported, TxCodeInputMode,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -244,14 +246,12 @@ fn pick_key_configuration(
         .as_ref()
         .and_then(|proof_types| proof_types.get("jwt"));
 
-    let issuer_accepted_key_storage_security_levels = issuer_proof_config
-        .and_then(|proof_type| {
-            proof_type
-                .key_attestations_required
-                .as_ref()
-                .map(|kar| &kar.key_storage)
-        })
-        .and_then(|levels| (!levels.is_empty()).then_some(levels));
+    let issuer_accepted_key_storage_security_levels = issuer_proof_config.and_then(|proof_type| {
+        proof_type
+            .key_attestations_required
+            .as_ref()
+            .and_then(KeyAttestationsRequired::key_storage_levels)
+    });
 
     let issuer_accepted_algorithms = issuer_proof_config.map(|proof_type| {
         proof_type

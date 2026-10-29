@@ -85,10 +85,17 @@ pub(crate) fn issuer_display_to_identifier_translations(
             .as_deref()
             .unwrap_or(default_language)
             .to_owned();
-        names.insert(lang.clone(), entry.name.clone());
+        if let Some(name) = &entry.name {
+            names.insert(lang.clone(), name.clone());
+        }
         if let Some(alt_text) = entry.logo.as_ref().and_then(|logo| logo.alt_text.clone()) {
             logo_alt_texts.insert(lang, alt_text);
         }
+    }
+
+    // translations without a name cannot be stored
+    if names.is_empty() {
+        return None;
     }
 
     Some(IdentifierTranslations {
@@ -110,7 +117,7 @@ mod tests {
 
     fn display(name: &str, locale: Option<&str>, alt_text: Option<&str>) -> IssuerDisplay {
         IssuerDisplay {
-            name: name.to_owned(),
+            name: Some(name.to_owned()),
             locale: locale.map(ToOwned::to_owned),
             logo: alt_text.map(|alt| Image {
                 uri: "https://logo".to_owned(),

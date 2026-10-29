@@ -1,5 +1,5 @@
 use proc_macros::Provider;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 use super::KeySecurityLevel;
 use super::dto::{KeySecurityLevelCapabilities, Params};
@@ -13,7 +13,7 @@ pub struct Moderate {
 impl KeySecurityLevel for Moderate {
     fn get_capabilities(&self) -> KeySecurityLevelCapabilities {
         KeySecurityLevelCapabilities {
-            openid_security_level: vec![KeyStorageSecurityLevel::Moderate],
+            openid_security_level: vec![SecurityLevel::Moderate],
         }
     }
     fn get_priority(&self) -> u64 {

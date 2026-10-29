@@ -1,7 +1,7 @@
 use std::string::FromUtf8Error;
 
 use shared_types::{CredentialFormat, CredentialId, IdentifierId, InteractionId};
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError};
 use crate::model::credential::{CredentialStateEnum, CredentialType};
@@ -20,7 +20,7 @@ pub enum WalletAttestationError {
     #[error("Wallet Instance Attestation and Key Attestation issuers do not match")]
     WiaKaIssuerMismatch,
     #[error("Key storage security level `{0:?}` is not attested by the key attestation")]
-    KeyStorageSecurityLevelMismatch(KeyStorageSecurityLevel),
+    KeyStorageSecurityLevelMismatch(SecurityLevel),
     #[error("Missing OAuth attestation challenge")]
     MissingChallenge { fresh_challenge: String },
     #[error("Invalid OAuth attestation challenge")]

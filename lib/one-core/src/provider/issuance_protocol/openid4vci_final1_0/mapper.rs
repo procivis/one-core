@@ -7,8 +7,8 @@ use secrecy::ExposeSecret;
 use serde::de::Error;
 use standardized_types::oauth2::token::TokenResponse;
 use standardized_types::openid4vci::{
-    CredentialConfiguration, CredentialDisplay, KeyAttestationsRequired, KeyStorageSecurityLevel,
-    ProofTypeSupported,
+    CredentialConfiguration, CredentialDisplay, KeyAttestationsRequired, ProofTypeSupported,
+    SecurityLevel,
 };
 use time::OffsetDateTime;
 
@@ -146,7 +146,7 @@ pub(crate) fn map_proof_types_supported<R: From<[(String, ProofTypeSupported); 1
         wallet_attestation
             .key_storage_security_level
             .map(|level| KeyAttestationsRequired {
-                key_storage: vec![level.into()],
+                key_storage: vec![SecurityLevel::from(level).into()],
                 user_authentication: vec![],
                 preferred_key_storage_status_period: wallet_attestation
                     .preferred_key_storage_attestation_lifetime
@@ -271,7 +271,7 @@ pub(crate) fn convert_metadata_to_layout_properties(
 
 pub(crate) fn configuration_to_accepted_key_storage_security(
     configuration: &HolderCredentialConfiguration,
-) -> Option<Vec<KeyStorageSecurityLevel>> {
+) -> Option<Vec<SecurityLevel>> {
     configuration
         .proof_types_supported
         .as_ref()
@@ -280,21 +280,18 @@ pub(crate) fn configuration_to_accepted_key_storage_security(
                 proof_type
                     .key_attestations_required
                     .as_ref()
-                    .map(|kar| kar.key_storage.clone())
                     // An empty `key_attestations_required` means that a key attestation is needed
                     // without additional constraints, so each level is accepted.
                     // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.11.2.5.2.2.1
-                    .map(|levels| {
-                        if levels.is_empty() {
+                    .map(|kar| {
+                        kar.key_storage_levels().unwrap_or_else(|| {
                             vec![
-                                KeyStorageSecurityLevel::High,
-                                KeyStorageSecurityLevel::Moderate,
-                                KeyStorageSecurityLevel::EnhancedBasic,
-                                KeyStorageSecurityLevel::Basic,
+                                SecurityLevel::High,
+                                SecurityLevel::Moderate,
+                                SecurityLevel::EnhancedBasic,
+                                SecurityLevel::Basic,
                             ]
-                        } else {
-                            levels
-                        }
+                        })
                     })
             })
         })
@@ -345,8 +342,7 @@ pub(super) fn credential_config_to_holder_signing_algs_and_key_storage_security(
     let key_storage_security = proof_type
         .key_attestations_required
         .as_ref()
-        .map(|key_attestations| key_attestations.key_storage.clone())
-        .and_then(|levels| (!levels.is_empty()).then_some(levels));
+        .and_then(KeyAttestationsRequired::key_storage_levels);
     (algs, convert_inner_of_inner(key_storage_security))
 }
 

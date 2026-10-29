@@ -1,37 +1,37 @@
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 use crate::config::core_config::KeySecurityLevelType;
 use crate::model::credential_schema::KeyStorageSecurity;
 
-impl From<KeyStorageSecurityLevel> for KeySecurityLevelType {
-    fn from(value: KeyStorageSecurityLevel) -> Self {
+impl From<SecurityLevel> for KeySecurityLevelType {
+    fn from(value: SecurityLevel) -> Self {
         match value {
-            KeyStorageSecurityLevel::High => KeySecurityLevelType::High,
-            KeyStorageSecurityLevel::Moderate => KeySecurityLevelType::Moderate,
-            KeyStorageSecurityLevel::EnhancedBasic => KeySecurityLevelType::EnhancedBasic,
-            KeyStorageSecurityLevel::Basic => KeySecurityLevelType::Basic,
+            SecurityLevel::High => KeySecurityLevelType::High,
+            SecurityLevel::Moderate => KeySecurityLevelType::Moderate,
+            SecurityLevel::EnhancedBasic => KeySecurityLevelType::EnhancedBasic,
+            SecurityLevel::Basic => KeySecurityLevelType::Basic,
         }
     }
 }
 
-impl From<KeyStorageSecurityLevel> for KeyStorageSecurity {
-    fn from(value: KeyStorageSecurityLevel) -> Self {
+impl From<SecurityLevel> for KeyStorageSecurity {
+    fn from(value: SecurityLevel) -> Self {
         match value {
-            KeyStorageSecurityLevel::High => KeyStorageSecurity::High,
-            KeyStorageSecurityLevel::Moderate => KeyStorageSecurity::Moderate,
-            KeyStorageSecurityLevel::EnhancedBasic => KeyStorageSecurity::EnhancedBasic,
-            KeyStorageSecurityLevel::Basic => KeyStorageSecurity::Basic,
+            SecurityLevel::High => KeyStorageSecurity::High,
+            SecurityLevel::Moderate => KeyStorageSecurity::Moderate,
+            SecurityLevel::EnhancedBasic => KeyStorageSecurity::EnhancedBasic,
+            SecurityLevel::Basic => KeyStorageSecurity::Basic,
         }
     }
 }
 
-impl From<KeyStorageSecurity> for KeyStorageSecurityLevel {
+impl From<KeyStorageSecurity> for SecurityLevel {
     fn from(value: KeyStorageSecurity) -> Self {
         match value {
-            KeyStorageSecurity::High => KeyStorageSecurityLevel::High,
-            KeyStorageSecurity::Moderate => KeyStorageSecurityLevel::Moderate,
-            KeyStorageSecurity::EnhancedBasic => KeyStorageSecurityLevel::EnhancedBasic,
-            KeyStorageSecurity::Basic => KeyStorageSecurityLevel::Basic,
+            KeyStorageSecurity::High => SecurityLevel::High,
+            KeyStorageSecurity::Moderate => SecurityLevel::Moderate,
+            KeyStorageSecurity::EnhancedBasic => SecurityLevel::EnhancedBasic,
+            KeyStorageSecurity::Basic => SecurityLevel::Basic,
         }
     }
 }

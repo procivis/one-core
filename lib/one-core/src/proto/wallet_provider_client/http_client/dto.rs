@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::ManagedInstanceId;
 use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 use crate::model::instance::InstanceRole;
 use crate::model::managed_instance::ManagedInstanceOs;
@@ -73,7 +73,7 @@ pub struct IssueWiaRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct IssueWuaRequestRestDTO {
     pub proof: String,
-    pub security_level: KeyStorageSecurityLevel,
+    pub security_level: SecurityLevel,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]

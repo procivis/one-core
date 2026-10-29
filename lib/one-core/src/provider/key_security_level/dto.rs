@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 #[derive(Clone, Serialize)]
 pub struct KeySecurityLevelCapabilities {
     #[serde(rename = "OPENID_SECURITY_LEVEL")]
-    pub openid_security_level: Vec<KeyStorageSecurityLevel>,
+    pub openid_security_level: Vec<SecurityLevel>,
 }
 
 #[derive(Clone, Default, Deserialize)]

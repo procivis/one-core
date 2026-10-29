@@ -107,7 +107,7 @@ impl OAuthClient {
         issuer_url: Url,
     ) -> Result<AuthorizationServerMetadata, OAuthClientError> {
         let metadata = self.fetch_metadata(issuer_url.clone()).await?;
-        if metadata.issuer != issuer_url {
+        if metadata.issuer_url().ok().as_ref() != Some(&issuer_url) {
             return Err(OAuthClientError::IssuerMismatch);
         }
         Ok(metadata)

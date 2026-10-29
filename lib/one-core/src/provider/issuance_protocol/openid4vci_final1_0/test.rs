@@ -25,7 +25,7 @@ use standardized_types::openid4vci::{
     ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialIssuerMetadata, CredentialMetadata,
     CredentialRequest, CredentialRequestEncryption, CredentialRequestIdentifier,
     CredentialResponseEncryption, Grants, Image, IssuerDisplay, KeyAttestationsRequired,
-    KeyStorageSecurityLevel, PreAuthorizedCodeGrant, ProofTypeSupported, Proofs,
+    PreAuthorizedCodeGrant, ProofTypeSupported, Proofs, SecurityLevel,
 };
 use time::Duration;
 use url::Url;
@@ -4260,7 +4260,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         ProofTypeSupported {
             proof_signing_alg_values_supported: vec!["ES256".to_string()],
             key_attestations_required: Some(KeyAttestationsRequired {
-                key_storage: vec![KeyStorageSecurityLevel::Basic],
+                key_storage: vec![SecurityLevel::Basic.into()],
                 user_authentication: vec![],
                 preferred_key_storage_status_period: None,
             }),
@@ -4350,7 +4350,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
             security
                 .expect_get_capabilities()
                 .returning(|| KeySecurityLevelCapabilities {
-                    openid_security_level: vec![KeyStorageSecurityLevel::Basic],
+                    openid_security_level: vec![SecurityLevel::Basic],
                 });
             Ok(Arc::new(security))
         });
@@ -4428,7 +4428,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         ProofTypeSupported {
             proof_signing_alg_values_supported: vec!["ES256".to_string()],
             key_attestations_required: Some(KeyAttestationsRequired {
-                key_storage: vec![KeyStorageSecurityLevel::Basic],
+                key_storage: vec![SecurityLevel::Basic.into()],
                 user_authentication: vec![],
                 preferred_key_storage_status_period: None,
             }),
@@ -4647,7 +4647,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
             security
                 .expect_get_capabilities()
                 .returning(|| KeySecurityLevelCapabilities {
-                    openid_security_level: vec![KeyStorageSecurityLevel::Basic],
+                    openid_security_level: vec![SecurityLevel::Basic],
                 });
             Ok(Arc::new(security))
         });
@@ -6636,7 +6636,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
             security
                 .expect_get_capabilities()
                 .returning(|| KeySecurityLevelCapabilities {
-                    openid_security_level: vec![KeyStorageSecurityLevel::Basic],
+                    openid_security_level: vec![SecurityLevel::Basic],
                 });
             Ok(Arc::new(security))
         });
@@ -6673,7 +6673,7 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
                 request,
                 IssueWalletAttestationRequest::Wua(WUARequestParams { attested_keys })
                     if attested_keys.len() == 1
-                        && attested_keys[0].1 == KeyStorageSecurityLevel::Basic
+                        && attested_keys[0].1 == SecurityLevel::Basic
             )
         })
         .returning(|_, _| {
@@ -6744,9 +6744,9 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
         }],
     };
     let mut requested_credentials = vec![
-        requested("a", Some(vec![KeyStorageSecurityLevel::Basic])),
+        requested("a", Some(vec![SecurityLevel::Basic.into()])),
         requested("b", None),
-        requested("c", Some(vec![KeyStorageSecurityLevel::Basic])),
+        requested("c", Some(vec![SecurityLevel::Basic.into()])),
         requested("d", Some(vec![])),
     ];
     let interaction_data = HolderInteractionData {
@@ -6887,7 +6887,7 @@ fn falls_back_to_default_language_when_no_name_translations() {
     assert_eq!(
         result,
         vec![IssuerDisplay {
-            name: "Plain name".to_string(),
+            name: Some("Plain name".to_string()),
             locale: Some("en".to_string()),
             logo: Some(Image {
                 uri: "data:image/png;base64,AAAA".to_string(),
@@ -6912,7 +6912,7 @@ fn one_entry_per_name_language_with_logo_and_matching_alt_text() {
         result,
         vec![
             IssuerDisplay {
-                name: "Deutscher Name".to_string(),
+                name: Some("Deutscher Name".to_string()),
                 locale: Some("de".to_string()),
                 logo: Some(Image {
                     uri: "https://logo".to_string(),
@@ -6920,7 +6920,7 @@ fn one_entry_per_name_language_with_logo_and_matching_alt_text() {
                 }),
             },
             IssuerDisplay {
-                name: "English name".to_string(),
+                name: Some("English name".to_string()),
                 locale: Some("en".to_string()),
                 logo: Some(Image {
                     uri: "https://logo".to_string(),

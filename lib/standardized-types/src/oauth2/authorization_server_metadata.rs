@@ -5,7 +5,7 @@
 //! Also covers the corresponding OpenID Connect Discovery provider metadata:
 //! <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use url::Url;
 
 use super::attestation_based_client_auth::ClientAttestationPopMethod;
@@ -15,7 +15,13 @@ use super::dynamic_client_registration::TokenEndpointAuthMethod;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct AuthorizationServerMetadata {
-    pub issuer: Url,
+    /// Authorization server's issuer identifier, kept verbatim: it must be compared and used
+    /// (e.g. as audience) exactly as published, which a parsed [`Url`] does not guarantee
+    /// (`https://as.example.com` would turn into `https://as.example.com/`).
+    ///
+    /// Spec: <https://datatracker.ietf.org/doc/html/rfc8414#section-3.3>
+    #[serde(deserialize_with = "deserialize_url_string")]
+    pub issuer: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization_endpoint: Option<Url>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -66,6 +72,19 @@ pub struct AuthorizationServerMetadata {
     pub signed_metadata: Option<String>,
 }
 
+impl AuthorizationServerMetadata {
+    pub fn issuer_url(&self) -> Result<Url, url::ParseError> {
+        self.issuer.parse()
+    }
+}
+
+/// a string that must be a valid URL
+fn deserialize_url_string<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let value = String::deserialize(deserializer)?;
+    Url::parse(&value).map_err(serde::de::Error::custom)?;
+    Ok(value)
+}
+
 /// PKCE code challenge method.
 ///
 /// [IANA registry](https://www.iana.org/assignments/oauth-parameters/oauth-parameters.xhtml#pkce-code-challenge-method)
@@ -78,4 +97,30 @@ pub enum CodeChallengeMethod {
     Plain,
     #[serde(rename = "S256")]
     S256,
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_issuer_is_kept_verbatim() {
+        let json = serde_json::json!({ "issuer": "https://as.example.com" });
+        let metadata: AuthorizationServerMetadata = serde_json::from_value(json.clone()).unwrap();
+
+        assert_eq!("https://as.example.com", metadata.issuer);
+        assert_eq!(json, serde_json::to_value(&metadata).unwrap());
+    }
+
+    #[test]
+    fn test_issuer_must_be_url() {
+        assert!(
+            serde_json::from_value::<AuthorizationServerMetadata>(
+                serde_json::json!({ "issuer": "not a url" })
+            )
+            .is_err()
+        );
+    }
 }

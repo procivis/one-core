@@ -7,7 +7,7 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
 use similar_asserts::assert_eq;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 use time::Duration;
 use uuid::Uuid;
 
@@ -63,8 +63,8 @@ async fn test_issue_wallet_attestations_success() {
             &auth_key_pop,
             vec![wia_pop],
             vec![
-                (wua_pop1, KeyStorageSecurityLevel::Moderate),
-                (wua_pop2, KeyStorageSecurityLevel::Basic),
+                (wua_pop1, SecurityLevel::Moderate),
+                (wua_pop2, SecurityLevel::Basic),
             ],
         )
         .await;
@@ -255,7 +255,7 @@ async fn test_issue_wua_only_success() {
             wallet_unit.id,
             &auth_key_pop,
             vec![],
-            vec![(wua_pop1, KeyStorageSecurityLevel::Moderate)],
+            vec![(wua_pop1, SecurityLevel::Moderate)],
         )
         .await;
 

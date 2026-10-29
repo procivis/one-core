@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
 
@@ -44,7 +44,7 @@ pub(crate) struct WIARequestParams<'a> {
 #[derive(Debug)]
 pub(crate) struct WUARequestParams<'a> {
     /// keys to attest, each with the security level of its storage
-    pub attested_keys: Vec<(&'a Key, KeyStorageSecurityLevel)>,
+    pub attested_keys: Vec<(&'a Key, SecurityLevel)>,
 }
 
 #[derive(Debug)]

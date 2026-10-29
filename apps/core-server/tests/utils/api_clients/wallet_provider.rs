@@ -1,7 +1,7 @@
 use serde_json::json;
 use shared_types::ManagedInstanceId;
 use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 use crate::utils::api_clients::{HttpClient, Response};
 
@@ -95,7 +95,7 @@ impl WalletProviderApi {
         wallet_unit_id: ManagedInstanceId,
         bearer: &str,
         wia_proofs: Vec<String>,
-        wua_proofs: Vec<(String, KeyStorageSecurityLevel)>,
+        wua_proofs: Vec<(String, SecurityLevel)>,
     ) -> Response {
         let mut properties = serde_json::Map::new();
         if !wia_proofs.is_empty() {

@@ -3,15 +3,22 @@
 use secrecy::SecretString;
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Serialize, Serializer};
-use serde_with::skip_serializing_none;
+use serde_with::{VecSkipError, serde_as, skip_serializing_none};
 use sha2::{Digest, Sha256};
 use strum::Display;
 
 use crate::mapper::secret_string;
 
+#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Jwks {
+    /// "Implementations SHOULD ignore JWKs within a JWK Set that use "kty" (key type) values that
+    /// are not understood by them, that are missing required members, or for which values are out
+    /// of the supported ranges."
+    ///
+    /// Spec: <https://datatracker.ietf.org/doc/html/rfc7517#section-5>
+    #[serde_as(as = "VecSkipError<_>")]
     pub keys: Vec<PublicJwk>,
 }
 
@@ -249,5 +256,26 @@ impl From<String> for JwkUse {
             "enc" => Self::Encryption,
             _ => Self::Unknown(value),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_jwks_ignores_unknown_key_types() {
+        let jwks: Jwks = serde_json::from_value(serde_json::json!({
+            "keys": [
+                { "kty": "UNKNOWN", "kid": "unknown" },
+                { "kty": "EC", "kid": "ec", "crv": "P-256", "x": "x", "y": "y" }
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(1, jwks.keys.len());
+        assert_eq!(Some("ec"), jwks.keys[0].kid());
     }
 }

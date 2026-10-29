@@ -66,7 +66,7 @@ pub(crate) fn build_issuer_display(
 
     if name_translations.is_empty() {
         return vec![IssuerDisplay {
-            name: identifier_name.to_owned(),
+            name: Some(identifier_name.to_owned()),
             locale: Some(default_language.to_owned()),
             logo: logo_for(default_language),
         }];
@@ -75,7 +75,7 @@ pub(crate) fn build_issuer_display(
     name_translations
         .into_iter()
         .map(|text| IssuerDisplay {
-            name: text.value.clone(),
+            name: Some(text.value.clone()),
             locale: Some(text.lang.clone()),
             logo: logo_for(&text.lang),
         })

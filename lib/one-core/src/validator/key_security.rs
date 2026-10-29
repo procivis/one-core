@@ -1,7 +1,7 @@
 use std::cmp::Reverse;
 
 use one_dto_mapper::convert_inner;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 use crate::config::core_config::KeySecurityLevelType;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
@@ -9,9 +9,9 @@ use crate::service::error::ValidationError;
 
 pub(crate) fn match_key_security_level(
     key_storage: &str,
-    issuer_accepted_levels: &[KeyStorageSecurityLevel],
+    issuer_accepted_levels: &[SecurityLevel],
     key_security_level_provider: &dyn KeySecurityLevelProvider,
-) -> Result<KeyStorageSecurityLevel, ValidationError> {
+) -> Result<SecurityLevel, ValidationError> {
     let mut security_levels = issuer_accepted_levels
         .iter()
         .filter_map(|level| {

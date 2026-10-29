@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 use time::Duration;
 use uuid::Uuid;
 
@@ -108,7 +108,7 @@ impl OpenID4VCIFinal1_0 {
                 vec![None; requested_credentials.len()]
             };
         // a key is attested once, also when several configurations bind to it
-        let mut attested_keys: Vec<(&Key, KeyStorageSecurityLevel)> = vec![];
+        let mut attested_keys: Vec<(&Key, SecurityLevel)> = vec![];
         for (requested, level) in requested_credentials.iter().zip(&required_levels) {
             for binding in &requested.holder_bindings {
                 if let Some(level) = level

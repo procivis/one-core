@@ -5,7 +5,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
 use shared_types::{CredentialId, CredentialSchemaFormatId};
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 use time::Duration;
 use time::macros::format_description;
 
@@ -95,7 +95,7 @@ pub fn dummy_interaction_data(
         .key_storage_security_level
     {
         configuration["proof_types_supported"]["jwt"]["key_attestations_required"] = json!({
-            "key_storage": [KeyStorageSecurityLevel::from(key_security_level)]
+            "key_storage": [SecurityLevel::from(key_security_level)]
         });
     }
     if let Some(notification_id) = params.notification_id {

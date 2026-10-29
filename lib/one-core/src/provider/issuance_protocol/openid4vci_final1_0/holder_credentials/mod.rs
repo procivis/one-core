@@ -1,5 +1,5 @@
 use standardized_types::openid4vci::{
-    ClaimMetadata, CredentialMetadata, IssuerDisplay, KeyStorageSecurityLevel,
+    ClaimMetadata, CredentialMetadata, IssuerDisplay, KeyAttestationsRequired, SecurityLevel,
 };
 use standardized_types::openid4vp::dcql::{ClaimPath, PathSegment};
 
@@ -678,10 +678,8 @@ impl OpenID4VCIFinal1_0 {
             .as_ref()
             .and_then(|map| map.get("jwt"))
             .and_then(|jwt| jwt.key_attestations_required.as_ref())
-            .and_then(|att_list| {
-                (!att_list.key_storage.is_empty()).then_some(&att_list.key_storage)
-            })
-            .and_then(|levels| convert_inner(KeyStorageSecurityLevel::select_lowest(levels)));
+            .and_then(KeyAttestationsRequired::key_storage_levels)
+            .and_then(|levels| convert_inner(SecurityLevel::select_lowest(&levels)));
         Ok(())
     }
 }

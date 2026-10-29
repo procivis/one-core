@@ -5,7 +5,7 @@ use shared_types::CredentialFormat;
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::openid4vci::{
-    CredentialRequest, CredentialRequestIdentifier, KeyStorageSecurityLevel, ResponseEncryption,
+    CredentialRequest, CredentialRequestIdentifier, ResponseEncryption, SecurityLevel,
 };
 use time::Duration;
 
@@ -267,7 +267,7 @@ pub(crate) fn extract_wallet_metadata(
 pub(crate) async fn validate_key_attestation(
     key_attestation_jwt: &str,
     verifier: &dyn TokenVerifier,
-    expected_key_storage_security_level: KeyStorageSecurityLevel,
+    expected_key_storage_security_level: SecurityLevel,
     leeway: Duration,
 ) -> Result<DecomposedJwt<WalletUnitAttestationClaims>, OID4VCIFinal1_0ServiceError> {
     let ka = Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)

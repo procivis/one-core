@@ -2,7 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{EcosystemId, ManagedInstanceId, TrustCollectionId};
 use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 use time::{Duration, OffsetDateTime};
 
 use crate::config::core_config::DocumentSignerType;
@@ -75,7 +75,7 @@ pub struct IssueWiaRequestDTO {
 #[derive(Clone, Debug)]
 pub struct IssueWuaRequestDTO {
     pub proof: String,
-    pub security_level: KeyStorageSecurityLevel,
+    pub security_level: SecurityLevel,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -392,7 +392,7 @@ pub struct WalletInstanceAttestationClaims {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WalletUnitAttestationClaims {
-    pub key_storage: Vec<KeyStorageSecurityLevel>,
+    pub key_storage: Vec<SecurityLevel>,
     pub attested_keys: Vec<PublicJwk>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
     pub key_storage_status: Option<AttestationStatus>,

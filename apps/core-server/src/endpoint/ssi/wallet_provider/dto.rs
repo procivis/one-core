@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as};
 use shared_types::{EcosystemId, ManagedInstanceId, TrustCollectionId};
 use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 use utoipa::ToSchema;
 
 use crate::deserialize::one_or_many;
@@ -40,7 +40,7 @@ pub(crate) struct IssueWuaRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(KeyStorageSecurityLevel)]
+#[into(SecurityLevel)]
 pub(crate) enum KeyStorageSecurityLevelRestEnum {
     #[serde(rename = "iso_18045_high")]
     High,

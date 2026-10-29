@@ -17,6 +17,7 @@ use crate::w3c_vcdm::Context;
 /// `/.well-known/openid-credential-issuer`.
 ///
 /// <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4>
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CredentialIssuerMetadata {
@@ -28,6 +29,10 @@ pub struct CredentialIssuerMetadata {
     pub credential_configurations_supported: IndexMap<String, CredentialConfiguration>,
     pub display: Option<Vec<IssuerDisplay>>,
     /// ETSI TS 119 472-3 V1.1.1, Section 4.2.3
+    ///
+    /// Same structure as the OpenID4VP `verifier_info` parameter, whose unrecognized entries
+    /// (e.g. `registrar_dataset`, whose `data` is a JSON object) are ignored.
+    #[serde_as(as = "VecSkipError<_>")]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub issuer_info: Vec<IssuerInfoAttestation>,
     pub batch_credential_issuance: Option<BatchCredentialIssuance>,
@@ -71,7 +76,7 @@ pub enum IssuerInfoAttestationFormat {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct IssuerDisplay {
-    pub name: String,
+    pub name: Option<String>,
     pub locale: Option<String>,
     pub logo: Option<Image>,
 }
@@ -239,18 +244,58 @@ pub struct ProofTypeSupported {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyAttestationsRequired {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub key_storage: Vec<KeyStorageSecurityLevel>,
+    pub key_storage: Vec<AttackPotentialResistance>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub user_authentication: Vec<String>,
     /// EUDI TS3 Wallet Unit Attestation V1.5.2, Section 2.4.2
     pub preferred_key_storage_status_period: Option<u64>,
 }
 
-/// Attack potential resistance level of the key storage, as defined by ISO/IEC 18045.
+impl KeyAttestationsRequired {
+    /// The ISO/IEC 18045 levels accepted for the key storage, or `None` if the key storage is not
+    /// constrained. Empty if only levels unknown to us are accepted, which no key satisfies.
+    pub fn key_storage_levels(&self) -> Option<Vec<SecurityLevel>> {
+        (!self.key_storage.is_empty()).then(|| {
+            self.key_storage
+                .iter()
+                .filter_map(AttackPotentialResistance::iso_18045)
+                .collect()
+        })
+    }
+}
+
+/// Attack potential resistance value of `key_storage` and `user_authentication`.
+///
+/// Spec <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-attack-potential-resistance>
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AttackPotentialResistance {
+    Iso18045(SecurityLevel),
+    /// "When [ISO.18045] is not used, ecosystems may define their own values."
+    Other(String),
+}
+
+impl AttackPotentialResistance {
+    pub fn iso_18045(&self) -> Option<SecurityLevel> {
+        match self {
+            Self::Iso18045(level) => Some(*level),
+            Self::Other(_) => None,
+        }
+    }
+}
+
+impl From<SecurityLevel> for AttackPotentialResistance {
+    fn from(level: SecurityLevel) -> Self {
+        Self::Iso18045(level)
+    }
+}
+
+/// Attack potential resistance level, as defined by ISO/IEC 18045, of the key storage or of the
+/// user authentication.
 ///
 /// Spec <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-attack-potential-resistance>
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum KeyStorageSecurityLevel {
+pub enum SecurityLevel {
     #[serde(rename = "iso_18045_high")]
     High,
     #[serde(rename = "iso_18045_moderate")]
@@ -261,7 +306,7 @@ pub enum KeyStorageSecurityLevel {
     Basic,
 }
 
-impl KeyStorageSecurityLevel {
+impl SecurityLevel {
     pub fn rank(&self) -> u8 {
         match self {
             Self::High => 4,
@@ -288,9 +333,9 @@ mod test {
 
     #[test]
     fn test_key_storage_security_level_satisfies_lower_or_equal_level() {
-        assert!(KeyStorageSecurityLevel::High.satisfies(KeyStorageSecurityLevel::Basic));
-        assert!(KeyStorageSecurityLevel::Basic.satisfies(KeyStorageSecurityLevel::Basic));
-        assert!(!KeyStorageSecurityLevel::Basic.satisfies(KeyStorageSecurityLevel::Moderate));
+        assert!(SecurityLevel::High.satisfies(SecurityLevel::Basic));
+        assert!(SecurityLevel::Basic.satisfies(SecurityLevel::Basic));
+        assert!(!SecurityLevel::Basic.satisfies(SecurityLevel::Moderate));
     }
 
     #[test]
@@ -342,7 +387,7 @@ mod test {
         );
         assert_eq!(
             Some(&KeyAttestationsRequired {
-                key_storage: vec![KeyStorageSecurityLevel::Moderate],
+                key_storage: vec![SecurityLevel::Moderate.into()],
                 user_authentication: vec![],
                 preferred_key_storage_status_period: Some(3600),
             }),
@@ -454,13 +499,10 @@ mod test {
     #[test]
     fn test_key_storage_security_level_serde_names() {
         for (name, level) in [
-            ("iso_18045_high", KeyStorageSecurityLevel::High),
-            ("iso_18045_moderate", KeyStorageSecurityLevel::Moderate),
-            (
-                "iso_18045_enhanced-basic",
-                KeyStorageSecurityLevel::EnhancedBasic,
-            ),
-            ("iso_18045_basic", KeyStorageSecurityLevel::Basic),
+            ("iso_18045_high", SecurityLevel::High),
+            ("iso_18045_moderate", SecurityLevel::Moderate),
+            ("iso_18045_enhanced-basic", SecurityLevel::EnhancedBasic),
+            ("iso_18045_basic", SecurityLevel::Basic),
         ] {
             assert_eq!(
                 serde_json::json!(name),
@@ -468,7 +510,7 @@ mod test {
             );
             assert_eq!(
                 level,
-                serde_json::from_value::<KeyStorageSecurityLevel>(serde_json::json!(name)).unwrap()
+                serde_json::from_value::<SecurityLevel>(serde_json::json!(name)).unwrap()
             );
         }
     }
@@ -476,14 +518,78 @@ mod test {
     #[test]
     fn test_select_lowest_key_storage_security_level() {
         assert_eq!(
-            Some(KeyStorageSecurityLevel::EnhancedBasic),
-            KeyStorageSecurityLevel::select_lowest(&[
-                KeyStorageSecurityLevel::High,
-                KeyStorageSecurityLevel::EnhancedBasic,
-                KeyStorageSecurityLevel::Moderate,
+            Some(SecurityLevel::EnhancedBasic),
+            SecurityLevel::select_lowest(&[
+                SecurityLevel::High,
+                SecurityLevel::EnhancedBasic,
+                SecurityLevel::Moderate,
             ])
         );
-        assert_eq!(None, KeyStorageSecurityLevel::select_lowest(&[]));
+        assert_eq!(None, SecurityLevel::select_lowest(&[]));
+    }
+
+    #[test]
+    fn test_issuer_metadata_accepts_etsi_registrar_dataset_and_display_without_name() {
+        let metadata: CredentialIssuerMetadata = serde_json::from_value(serde_json::json!({
+            "credential_issuer": "https://issuer.example.com",
+            "credential_endpoint": "https://issuer.example.com/credential",
+            "credential_configurations_supported": {},
+            "display": [{ "logo": { "uri": "https://issuer.example.com/logo.png" } }],
+            "issuer_info": [
+                { "format": "registration_cert", "data": "eyJhbGciOiJFUzI1NiJ9" },
+                {
+                    "format": "registrar_dataset",
+                    "data": {
+                        "identifier": "issuer-id",
+                        "registryURI": "https://registrar.example.com"
+                    }
+                }
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(None, metadata.display.unwrap()[0].name);
+        assert_eq!(1, metadata.issuer_info.len());
+        assert_eq!(
+            IssuerInfoAttestationFormat::RegistrationCert,
+            metadata.issuer_info[0].format
+        );
+    }
+
+    #[test]
+    fn test_key_attestations_required_retains_ecosystem_defined_levels() {
+        let json = serde_json::json!({
+            "key_storage": ["iso_18045_high", "https://ecosystem.example.com/level"]
+        });
+
+        let required: KeyAttestationsRequired = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(
+            vec![
+                AttackPotentialResistance::Iso18045(SecurityLevel::High),
+                AttackPotentialResistance::Other("https://ecosystem.example.com/level".to_string()),
+            ],
+            required.key_storage
+        );
+        assert_eq!(
+            Some(vec![SecurityLevel::High]),
+            required.key_storage_levels()
+        );
+        assert_eq!(json, serde_json::to_value(&required).unwrap());
+    }
+
+    #[test]
+    fn test_key_storage_levels() {
+        let required = |key_storage: Vec<AttackPotentialResistance>| KeyAttestationsRequired {
+            key_storage,
+            ..Default::default()
+        };
+
+        assert_eq!(None, required(vec![]).key_storage_levels());
+        assert_eq!(
+            Some(vec![]),
+            required(vec![AttackPotentialResistance::Other("custom".to_string())])
+                .key_storage_levels()
+        );
     }
 
     #[test]

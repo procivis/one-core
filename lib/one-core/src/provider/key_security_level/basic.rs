@@ -1,5 +1,5 @@
 use proc_macros::Provider;
-use standardized_types::openid4vci::KeyStorageSecurityLevel;
+use standardized_types::openid4vci::SecurityLevel;
 
 use super::KeySecurityLevel;
 use super::dto::{KeySecurityLevelCapabilities, Params};
@@ -13,7 +13,7 @@ pub struct Basic {
 impl KeySecurityLevel for Basic {
     fn get_capabilities(&self) -> KeySecurityLevelCapabilities {
         KeySecurityLevelCapabilities {
-            openid_security_level: vec![KeyStorageSecurityLevel::Basic],
+            openid_security_level: vec![SecurityLevel::Basic],
         }
     }
 
