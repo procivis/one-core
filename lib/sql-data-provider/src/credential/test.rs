@@ -166,7 +166,15 @@ async fn suspension_date_follows_state(
             repository.get_credential(&id).await.unwrap().common().state,
             state
         );
-        assert_eq!(repository.lock_credential(&id).await.unwrap(), state);
+        assert_eq!(
+            repository
+                .lock_credential(&id)
+                .await
+                .unwrap()
+                .common()
+                .state,
+            state
+        );
         let row = credential::Entity::find_by_id(id)
             .one(&setup.db)
             .await
@@ -189,7 +197,12 @@ async fn suspension_date_follows_state(
     assert_eq!(stored.common().state, CredentialStateEnum::Expired);
     assert!(stored.common().state.suspend_end_date().is_none());
     assert_eq!(
-        repository.lock_credential(&id).await.unwrap(),
+        repository
+            .lock_credential(&id)
+            .await
+            .unwrap()
+            .common()
+            .state,
         CredentialStateEnum::Expired
     );
 }

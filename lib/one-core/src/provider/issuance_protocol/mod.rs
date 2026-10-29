@@ -130,6 +130,9 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
     ) -> Result<ShareResponse, IssuanceProtocolError>;
 
     /// Issues `credential` in the given format.
+    ///
+    /// Nothing is persisted apart from the status list entries, which are reserved
+    /// without a link to the credential, see `IssuedCredential::unlinked_revocation_entry_ids`.
     async fn issuer_issue_credential(
         &self,
         credential: Credential,

@@ -3,7 +3,7 @@ use std::sync::{Arc, LazyLock};
 
 use mockall::predicate::eq;
 use serde_json::json;
-use shared_types::{CredentialFormat, RevocationMethodId};
+use shared_types::{CredentialFormat, RevocationListEntryId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -43,7 +43,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::CredentialRevocationInfo;
+use crate::provider::revocation::model::{CredentialRevocationInfo, ReservedEntries};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -125,19 +125,23 @@ async fn test_issuer_submit_succeeds() {
     let mut credential = credential;
     credential.common_mut().schema = updated_schema.into();
 
+    let revocation_entry_id: RevocationListEntryId = Uuid::new_v4().into();
     let mut revocation_method = MockRevocationMethod::new();
     revocation_method
-        .expect_add_issued_credential()
+        .expect_reserve_credential_entries()
         .once()
-        .return_once(|_| {
-            Ok(CredentialRevocationInfo {
-                credential_status: CredentialStatus::W3C(vec![W3CCredentialStatus {
-                    id: Some(Uuid::new_v4().urn().to_string().parse().unwrap()),
-                    r#type: "type".to_string(),
-                    status_purpose: Some("type".to_string()),
-                    additional_fields: HashMap::new(),
-                }]),
-                serial: None,
+        .return_once(move |_| {
+            Ok(ReservedEntries {
+                entry_ids: vec![revocation_entry_id],
+                revocation_info: CredentialRevocationInfo {
+                    credential_status: CredentialStatus::W3C(vec![W3CCredentialStatus {
+                        id: Some(Uuid::new_v4().urn().to_string().parse().unwrap()),
+                        r#type: "type".to_string(),
+                        status_purpose: Some("type".to_string()),
+                        additional_fields: HashMap::new(),
+                    }]),
+                    serial: None,
+                },
             })
         });
 
@@ -240,6 +244,10 @@ async fn test_issuer_submit_succeeds() {
         .unwrap();
 
     assert_eq!(issued.serialized_credential, "token".into());
+    assert_eq!(
+        issued.unlinked_revocation_entries,
+        vec![revocation_entry_id]
+    );
     assert_eq!(
         issued.credential.common().state,
         CredentialStateEnum::Accepted

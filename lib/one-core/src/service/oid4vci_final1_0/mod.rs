@@ -18,6 +18,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::oid4vci_final1_0::resolver::IssuerMetadataFetcher;
 
 pub mod dto;
@@ -32,6 +33,7 @@ pub struct OID4VCIFinal1_0Service {
     credential_repository: Arc<dyn CredentialRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
     config: Arc<core_config::CoreConfig>,
     protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -57,6 +59,7 @@ impl OID4VCIFinal1_0Service {
         credential_repository: Arc<dyn CredentialRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
+        revocation_list_repository: Arc<dyn RevocationListRepository>,
         config: Arc<core_config::CoreConfig>,
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -77,6 +80,7 @@ impl OID4VCIFinal1_0Service {
             credential_repository,
             interaction_repository,
             identifier_repository,
+            revocation_list_repository,
             config,
             protocol_provider,
             did_method_provider,

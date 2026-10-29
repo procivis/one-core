@@ -1,5 +1,7 @@
 use serde::Deserialize;
-use shared_types::{InteractionId, OrganisationId, SerializedCredential, TaskId};
+use shared_types::{
+    InteractionId, OrganisationId, RevocationListEntryId, SerializedCredential, TaskId,
+};
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -133,6 +135,8 @@ pub(crate) struct IssuedCredential {
     /// The `credential_blob_id` is left as it was.
     pub credential: Credential,
     pub serialized_credential: SerializedCredential,
+    /// Status list entries reserved for the credential, to be linked once it is persisted
+    pub unlinked_revocation_entries: Vec<RevocationListEntryId>,
 }
 
 #[derive(Clone, Deserialize, Debug, Default)]

@@ -136,10 +136,7 @@ impl CredentialRepository for CredentialNotificationDecorator {
         self.inner.get_credential(id).await
     }
 
-    async fn lock_credential(
-        &self,
-        id: &CredentialId,
-    ) -> Result<CredentialStateEnum, DataLayerError> {
+    async fn lock_credential(&self, id: &CredentialId) -> Result<Credential, DataLayerError> {
         self.inner.lock_credential(id).await
     }
 

@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use std::ops::Add;
 use std::str::FromStr;
 
+use assert2::let_assert;
 use axum::http::header;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use futures::future::join_all;
@@ -16,7 +18,9 @@ use one_core::model::interaction::InteractionType;
 use one_core::model::key::Key;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
-use one_core::model::revocation_list::RevocationListPurpose;
+use one_core::model::revocation_list::{
+    RevocationListEntityInfo, RevocationListEntry, RevocationListPurpose,
+};
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
@@ -802,6 +806,21 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
 
     let entries = context.db.revocation_lists.get_entries(list.id).await;
     assert_eq!(entries.len(), NUM_CREDENTIALS);
+    assert_entries_linked_to_distinct_credentials(&entries);
+}
+
+/// The entries reserved while issuing are linked once the credentials are persisted
+fn assert_entries_linked_to_distinct_credentials(entries: &[RevocationListEntry]) {
+    let credential_ids: HashSet<_> = entries
+        .iter()
+        .map(|entry| {
+            let_assert!(
+                RevocationListEntityInfo::Credential(Some(credential_id)) = &entry.entity_info
+            );
+            *credential_id
+        })
+        .collect();
+    assert_eq!(credential_ids.len(), entries.len());
 }
 
 #[tokio::test]
@@ -905,6 +924,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
 
     let entries = context.db.revocation_lists.get_entries(list.id).await;
     assert_eq!(entries.len(), NUM_CREDENTIALS);
+    assert_entries_linked_to_distinct_credentials(&entries);
 }
 
 #[tokio::test]
@@ -1656,6 +1676,48 @@ async fn test_post_issuer_credential_multi_format_issues_formats_concurrently() 
     for item in &batch_items {
         assert_eq!(item.common().state, CredentialStateEnum::Accepted);
     }
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_batch_parent_issues_batches_concurrently() {
+    // GIVEN
+    const CONCURRENT_REQUESTS: usize = 10;
+    let MultiFormatIssuerSetup {
+        context,
+        credential_schema,
+        credential_id,
+        ..
+    } = multi_format_issuer_setup(Some(1), &["JWT"]).await;
+    let mut proofs = vec![];
+    for _ in 0..CONCURRENT_REQUESTS {
+        proofs.push(fresh_proof_jwt(&context).await);
+    }
+
+    // WHEN
+    let responses = futures::future::join_all(proofs.iter().map(|jwt| {
+        context
+            .api
+            .ssi
+            .issuer_create_credential(credential_schema.id, "jwt-schema-id", jwt)
+    }))
+    .await;
+
+    // THEN
+    let mut failures = vec![];
+    for resp in responses {
+        if resp.status() != 200 {
+            failures.push((resp.status(), resp.text().await));
+        }
+    }
+    assert!(failures.is_empty(), "failed requests: {failures:?}");
+    let credential = context.db.credentials.get(&credential_id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Accepted);
+    let batch_items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential_id).condition())
+        .await;
+    assert_eq!(batch_items.len(), CONCURRENT_REQUESTS);
 }
 
 #[tokio::test]

@@ -6,7 +6,8 @@ use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, 
 use super::RevocationMethod;
 use super::error::RevocationError;
 use super::model::{
-    CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities, RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, ReservedEntries, RevocationMethodCapabilities,
+    RevocationState,
 };
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -32,10 +33,10 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
         self.inner().can_check_status(credential_status)
     }
 
-    async fn add_issued_credential(
+    async fn reserve_credential_entries(
         &self,
         _credential: &Credential,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
+    ) -> Result<ReservedEntries, RevocationError> {
         self.disabled_error()
     }
 
@@ -156,11 +157,11 @@ impl RevocationMethod for CapabilityChecked {
         self.0.can_check_status(credential_status)
     }
 
-    async fn add_issued_credential(
+    async fn reserve_credential_entries(
         &self,
         credential: &Credential,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
-        self.0.add_issued_credential(credential).await
+    ) -> Result<ReservedEntries, RevocationError> {
+        self.0.reserve_credential_entries(credential).await
     }
 
     async fn mark_credential_as(

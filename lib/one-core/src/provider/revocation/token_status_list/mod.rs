@@ -24,8 +24,8 @@ use self::util::calculate_preferred_token_size;
 use super::RevocationMethod;
 use super::error::RevocationError;
 use super::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
-    RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
+    RevocationMethodCapabilities, RevocationState,
 };
 use super::status_list::StatusListSizeParams;
 use crate::config::core_config::{FormatType, RevocationType};
@@ -208,10 +208,10 @@ impl RevocationMethod for TokenStatusList {
         matches!(credential_status, CredentialStatus::TokenStatusList(_))
     }
 
-    async fn add_issued_credential(
+    async fn reserve_credential_entries(
         &self,
         credential: &Credential,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
+    ) -> Result<ReservedEntries, RevocationError> {
         let issuer = credential.issuer()?.data;
         let issuer_identifier = issuer.identifier.as_ref().await?;
 
@@ -228,15 +228,18 @@ impl RevocationMethod for TokenStatusList {
             None
         };
 
-        let (_, entry) = self
+        let (entry_id, revocation_info) = self
             .create_entry(
-                RevocationListEntityId::Credential(Some(credential.common().id)),
+                RevocationListEntityId::Credential(None),
                 &issuer_identifier,
                 issuer_certificate.as_ref(),
             )
             .await?;
 
-        Ok(entry)
+        Ok(ReservedEntries {
+            entry_ids: vec![entry_id],
+            revocation_info,
+        })
     }
 
     async fn mark_credential_as(

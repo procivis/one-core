@@ -5,7 +5,7 @@ use migration::supported_db_type::{SupportedDbType, WithSupportedDbType};
 use one_core::model::common::LockType;
 use one_core::model::credential::{
     Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialListQuery,
-    CredentialStateEnum, GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
+    GetCredentialList, SortableCredentialColumn, UpdateCredentialRequest,
 };
 use one_core::model::relation::BatchModelLoader;
 use one_core::repository::credential_repository::CredentialRepository;
@@ -17,7 +17,6 @@ use sea_orm::{
     QuerySelect, QueryTrait, RelationTrait, Select, Set, TryIntoModel, Unchanged,
 };
 use shared_types::{CredentialId, InteractionId};
-use time::OffsetDateTime;
 
 use super::CredentialProvider;
 use super::creation::{insert_credentials_with_claims, prepare_credentials};
@@ -292,26 +291,18 @@ impl CredentialRepository for CredentialProvider {
         self.credential_model_to_repository_model(credential)
     }
 
-    async fn lock_credential(
-        &self,
-        id: &CredentialId,
-    ) -> Result<CredentialStateEnum, DataLayerError> {
-        let (state, suspend_end_date): (credential::CredentialState, Option<OffsetDateTime>) =
-            credential::Entity::find_by_id(id)
-                .select_only()
-                .column(credential::Column::State)
-                .column(credential::Column::SuspendEndDate)
-                .lock(map_lock_type(LockType::Update))
-                .into_tuple()
-                .one(&self.db)
-                .await
-                .map_err(|err| DataLayerError::Db(err.into()))?
-                .ok_or_else(|| DataLayerError::EntityNotFound {
-                    kind: EntityKind::Credential,
-                    id: (*id).into(),
-                })?;
+    async fn lock_credential(&self, id: &CredentialId) -> Result<Credential, DataLayerError> {
+        let credential = credential::Entity::find_by_id(id)
+            .lock(map_lock_type(LockType::Update))
+            .one(&self.db)
+            .await
+            .map_err(|err| DataLayerError::Db(err.into()))?
+            .ok_or_else(|| DataLayerError::EntityNotFound {
+                kind: EntityKind::Credential,
+                id: (*id).into(),
+            })?;
 
-        Ok(state.to_model(suspend_end_date))
+        self.credential_model_to_repository_model(credential)
     }
 
     async fn get_credentials_by_interaction_id(

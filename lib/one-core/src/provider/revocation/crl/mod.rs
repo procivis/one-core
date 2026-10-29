@@ -13,7 +13,7 @@ use standardized_types::x509::CertificateSerial;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::model::{CredentialRevocationInfo, Operation};
+use super::model::{CredentialRevocationInfo, Operation, ReservedEntries};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::x509::SigningKeyAdapter;
 use crate::model::certificate::Certificate;
@@ -92,10 +92,10 @@ impl RevocationMethod for CRLRevocation {
         matches!(credential_status, CredentialStatus::CRL(_))
     }
 
-    async fn add_issued_credential(
+    async fn reserve_credential_entries(
         &self,
         _credential: &Credential,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
+    ) -> Result<ReservedEntries, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "CRL: credential revocation not supported".to_string(),
         ))

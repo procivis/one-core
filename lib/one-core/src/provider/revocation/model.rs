@@ -1,6 +1,7 @@
 //! `struct`s and `enum`s for revocation method provider.
 
 use serde::{Deserialize, Serialize};
+use shared_types::RevocationListEntryId;
 use standardized_types::x509::CertificateSerial;
 use strum::Display;
 use time::OffsetDateTime;
@@ -26,6 +27,14 @@ pub struct VerifierCredentialData {
 pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,
     pub serial: Option<CertificateSerial>,
+}
+
+/// Status list entries reserved for a credential that is not persisted yet
+pub struct ReservedEntries {
+    /// Not linked to the credential: link them via `UpdateRevocationListEntryRequest.credential_id`
+    /// once it is persisted
+    pub entry_ids: Vec<RevocationListEntryId>,
+    pub revocation_info: CredentialRevocationInfo,
 }
 
 #[derive(Clone, Copy, Debug, Display, PartialEq)]

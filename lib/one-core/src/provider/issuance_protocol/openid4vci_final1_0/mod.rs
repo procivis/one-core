@@ -3075,15 +3075,18 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             None => None,
         };
 
-        let credential_status = match revocation_method.as_ref() {
-            Some(method) => Some(
-                method
-                    .add_issued_credential(&credential)
+        let (unlinked_revocation_entries, credential_status) = match revocation_method.as_ref() {
+            Some(method) => {
+                let reserved = method
+                    .reserve_credential_entries(&credential)
                     .await
-                    .error_while("adding issued credential")?
-                    .credential_status,
-            ),
-            None => None,
+                    .error_while("reserving revocation entries")?;
+                (
+                    reserved.entry_ids,
+                    Some(reserved.revocation_info.credential_status),
+                )
+            }
+            None => (vec![], None),
         };
         credential.common_mut().state = CredentialStateEnum::Accepted;
 
@@ -3102,6 +3105,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         Ok(IssuedCredential {
             credential,
             serialized_credential,
+            unlinked_revocation_entries,
         })
     }
 

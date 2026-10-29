@@ -8,8 +8,8 @@ use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DpopNonce, IdentifierId,
-    InteractionId, NonceId,
+    BlobId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DpopNonce, IdentifierId,
+    InteractionId, NonceId, RevocationListEntryId,
 };
 use standardized_types::iana::EncryptionKeyManagementAlgorithm;
 use standardized_types::oauth2::TokenType;
@@ -58,8 +58,8 @@ use crate::mapper::exchange::{
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::common::{LockType, SortDirection};
 use crate::model::credential::{
-    Credential, CredentialCommon, CredentialFilterValue, CredentialStateEnum, CredentialType,
-    IssuerCredentialData, SortableCredentialColumn, UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialStateEnum, CredentialType, IssuerCredentialData,
+    SortableCredentialColumn, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -70,6 +70,9 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::relation::Related;
+use crate::model::revocation_list::{
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+};
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::dpop_handler::{
     DpopHandlerError, DpopParams, ExpectedProofValues, ProofValidationOutput,
@@ -81,7 +84,6 @@ use crate::proto::key_verification::KeyVerification;
 use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::ecosystem::model::{ProtocolArtifact, WalletAttestationArtifact};
-use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::model::IssuedCredential;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -568,13 +570,10 @@ impl OID4VCIFinal1_0Service {
                     .error_while("allocating notification id")??,
             };
 
-        let result = self
-            .transaction_manager
-            .tx(self.issue_tx(holder_identifiers, credential, format, notification_id))
+        match self
+            .issue(holder_identifiers, credential, format, notification_id)
             .await
-            .error_while("issuing credential")?;
-
-        match result {
+        {
             Ok(result) => {
                 tracing::info!("Issued credential {}", credential.common().id);
                 // errors stay plain JSON, only the successful response is encrypted
@@ -585,18 +584,10 @@ impl OID4VCIFinal1_0Service {
             Err(error) => {
                 let error = error.error_while("issuing credential");
                 if credential.common().state == CredentialStateEnum::Offered {
-                    // issuance failed, mark as Error
-                    self.credential_repository
-                        .update_credential(
-                            credential.common().id,
-                            UpdateCredentialRequest {
-                                state: Some(CredentialStateEnum::Error),
-                                error_info: Some((&error).into()),
-                                ..Default::default()
-                            },
-                        )
+                    self.transaction_manager
+                        .tx(self.mark_issuance_failed_tx(credential.common().id, (&error).into()))
                         .await
-                        .error_while("updating credential")?;
+                        .error_while("marking credential as failed")??;
                 }
 
                 Err(error.into())
@@ -922,23 +913,46 @@ impl OID4VCIFinal1_0Service {
         ))
     }
 
+    /// Marks the credential as Error, unless it is no longer `Offered`: the failure might be
+    /// a parallel request having issued it in the meantime, which must not be overwritten.
+    async fn mark_issuance_failed_tx(
+        &self,
+        credential_id: CredentialId,
+        error_info: HistoryErrorMetadata,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        let credential = self
+            .credential_repository
+            .lock_credential(&credential_id)
+            .await
+            .error_while("locking credential")?;
+        if credential.common().state != CredentialStateEnum::Offered {
+            return Ok(());
+        }
+
+        self.credential_repository
+            .update_credential(
+                credential_id,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Error),
+                    error_info: Some(error_info),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating credential")?;
+        Ok(())
+    }
+
+    /// Issues the credentials in memory and persists them in one short transaction at the end.
+    /// Signing and reserving the status list entries happen before, outside of it.
     #[tracing::instrument(level = "debug", skip_all, err(level = "info"))]
-    async fn issue_tx(
+    async fn issue(
         &self,
         mut holder_identifiers: Vec<PreparedIdentifier>,
         credential: &Credential,
         format: CredentialSchemaFormat,
         notification_id: String,
     ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
-        // Lock a single credential, so that it is issued only by one thread.
-        // Batch parents are not locked, different formats of one offer are issued in parallel.
-        if let Credential::IssuerSingle { common, .. } = credential {
-            self.credential_repository
-                .lock_credential(&common.id)
-                .await
-                .error_while("locking credential")?;
-        }
-
         let issuance_protocol = self
             .protocol_provider
             .get_protocol(&credential.common().protocol)?;
@@ -947,7 +961,7 @@ impl OID4VCIFinal1_0Service {
             .get_credential_formatter(&format.format)?;
         let format_default_expiration = formatter.get_default_expiration();
 
-        let now = crate::clock::now_utc();
+        let now = now_utc();
         let expires_at = credential.common().expires_at;
         let is_batch = credential
             .common()
@@ -969,62 +983,89 @@ impl OID4VCIFinal1_0Service {
         } else {
             expires_at
         };
+        let requested = RequestedFormat {
+            format,
+            format_type,
+            is_batch,
+        };
 
+        // Signing persists nothing apart from the status list entries, which are reserved
+        // without a link to the credential. If the issuance fails afterward, they are never
+        // linked nor released. This is accepted: entries are cheap
         let credentials = match credential {
-            Credential::IssuerSingle { common, .. } => {
+            Credential::IssuerSingle { .. } => {
                 let holder = holder_identifiers
                     .pop()
                     .ok_or(OpenID4VCIError::InvalidOrMissingProof)?;
-                // reloaded after locking, a concurrent request might have issued it in the meantime
-                let credential = self
-                    .credential_repository
-                    .get_credential(&common.id)
-                    .await
-                    .error_while("getting credential")?;
-                // Must be validated on the reloaded credential, after the lock: checked earlier
-                // (e.g. next to `validate_credential_state` in `create_credential`) two parallel
-                // requests could both see the stale `Offered` state and both issue the credential.
-                validate_credential_issuable(
-                    &credential,
-                    &format.format,
-                    format_type,
-                    is_batch,
-                    &self.config,
-                )?;
-                vec![
-                    self.issue_single_credential(
-                        holder,
-                        credential,
-                        format.id,
-                        issuance_protocol.as_ref(),
-                        now,
+                // Only fails early here: validated again on the reloaded credential before
+                // persisting, two parallel requests could both see the stale `Offered` state.
+                self.validate_issuable(credential, &requested)?;
+                let issued = issuance_protocol
+                    .issuer_issue_credential(
+                        credential.to_owned(),
+                        requested.format.id,
+                        holder.identifier,
+                        holder.key_id,
                     )
-                    .await?,
-                ]
+                    .await
+                    .error_while("issuing credential")?;
+                let issued = PendingCredential {
+                    issued,
+                    key_attestation: holder.key_attestation,
+                };
+                let response = issued.response_entry();
+                self.transaction_manager
+                    .tx(self.persist_single_tx(issued, &requested, now))
+                    .await
+                    .error_while("persisting issued credential")??;
+                vec![response]
             }
             Credential::IssuerBatchParent { common, .. } => {
                 // All items of the batch are copies of the same template, so it is validated
-                // once, before any item is created. The template state is derived from the
+                // once, before any item is issued. The template state is derived from the
                 // latest issued item of the format (see `prepare_batch_item`).
                 let template = self
-                    .prepare_batch_item(common.id, batch_item_expires_at, &format)
+                    .prepare_batch_item(
+                        credential.to_owned(),
+                        batch_item_expires_at,
+                        &requested.format,
+                    )
                     .await?;
-                validate_credential_issuable(
-                    &template,
-                    &format.format,
-                    format_type,
-                    is_batch,
-                    &self.config,
-                )?;
-                self.issue_batch_offer(
-                    common,
-                    template,
-                    holder_identifiers,
-                    format.id,
-                    issuance_protocol.as_ref(),
-                    now,
-                )
-                .await?
+                self.validate_issuable(&template, &requested)?;
+
+                let mut items = Vec::with_capacity(holder_identifiers.len());
+                for holder in holder_identifiers {
+                    let mut item = template.clone();
+                    item.common_mut().id = Uuid::new_v4().into();
+                    let issued = issuance_protocol
+                        .issuer_issue_credential(
+                            item,
+                            requested.format.id,
+                            holder.identifier,
+                            holder.key_id,
+                        )
+                        .await
+                        .error_while("issuing credential")?;
+                    items.push(PendingCredential {
+                        issued,
+                        key_attestation: holder.key_attestation,
+                    });
+                }
+                let responses = items
+                    .iter()
+                    .map(PendingCredential::response_entry)
+                    .collect();
+                self.transaction_manager
+                    .tx(self.persist_batch_tx(
+                        common.id,
+                        items,
+                        &requested,
+                        batch_item_expires_at,
+                        now,
+                    ))
+                    .await
+                    .error_while("persisting issued credentials")??;
+                responses
             }
             _ => {
                 return Err(OID4VCIFinal1_0ServiceError::MappingError(
@@ -1042,6 +1083,203 @@ impl OID4VCIFinal1_0Service {
                 notification_id: Some(notification_id),
             },
         })
+    }
+
+    fn validate_issuable(
+        &self,
+        credential: &Credential,
+        requested: &RequestedFormat,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        validate_credential_issuable(
+            credential,
+            &requested.format.format,
+            requested.format_type,
+            requested.is_batch,
+            &self.config,
+        )
+    }
+
+    /// Persists an issued single credential, unless a concurrent request issued it in the meantime
+    async fn persist_single_tx(
+        &self,
+        pending: PendingCredential,
+        requested: &RequestedFormat,
+        issuance_date: OffsetDateTime,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        let credential_id = pending.issued.credential.common().id;
+        // Lock a single credential, so that it is issued only by one thread.
+        // Loaded under the lock, a concurrent request might have issued it in the meantime
+        let current = self
+            .credential_repository
+            .lock_credential(&credential_id)
+            .await
+            .error_while("locking credential")?;
+        self.validate_issuable(&current, requested)?;
+
+        let (credential_blob_id, wua_blob_id) = self
+            .store_issued_blobs(
+                &pending,
+                current.issuer_credential()?.data.credential_blob_id,
+            )
+            .await?;
+        self.credential_repository
+            .update_credential(
+                credential_id,
+                issued_credential_update(
+                    &pending.issued.credential,
+                    credential_blob_id,
+                    issuance_date,
+                    wua_blob_id,
+                )?,
+            )
+            .await
+            .error_while("updating credential")?;
+
+        self.link_revocation_entries(credential_id, pending.issued.unlinked_revocation_entries)
+            .await
+    }
+
+    /// Persists the issued batch items and accepts the parent on its first issuance
+    async fn persist_batch_tx(
+        &self,
+        parent_id: CredentialId,
+        items: Vec<PendingCredential>,
+        requested: &RequestedFormat,
+        expires_at: Option<OffsetDateTime>,
+        issuance_date: OffsetDateTime,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        // The parent is locked before inserting the items: their foreign key takes a shared lock
+        // on it, upgrading that to update the parent deadlocks with a parallel issuance.
+        // Different formats of one offer are still issued in parallel, only persisting is serialized.
+        let parent = self
+            .credential_repository
+            .lock_credential(&parent_id)
+            .await
+            .error_while("locking parent credential")?;
+        let parent_state = parent.common().state;
+        // validated again under the lock, a concurrent request might have issued the format
+        // in the meantime
+        let template = self
+            .prepare_batch_item(parent, expires_at, &requested.format)
+            .await?;
+        self.validate_issuable(&template, requested)?;
+
+        if parent_state == CredentialStateEnum::Offered {
+            self.credential_repository
+                .update_credential(
+                    parent_id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::Accepted),
+                        issuance_date: Some(issuance_date),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating parent credential")?;
+        }
+
+        let mut credentials = Vec::with_capacity(items.len());
+        let mut revocation_entries = Vec::with_capacity(items.len());
+        for item in items {
+            let (credential_blob_id, wua_blob_id) = self.store_issued_blobs(&item, None).await?;
+            let mut credential = item.issued.credential;
+            let common = credential.common_mut();
+            common.issuance_date = Some(issuance_date);
+            common.last_modified = issuance_date;
+            let data = credential.issuer_credential_mut()?.data;
+            data.credential_blob_id = Some(credential_blob_id);
+            data.wallet_key_attestation_blob_id = wua_blob_id;
+
+            revocation_entries.push((
+                credential.common().id,
+                item.issued.unlinked_revocation_entries,
+            ));
+            credentials.push(credential);
+        }
+        self.credential_repository
+            .create_credentials(credentials)
+            .await
+            .error_while("creating batch items")?;
+
+        for (credential_id, entry_ids) in revocation_entries {
+            self.link_revocation_entries(credential_id, entry_ids)
+                .await?;
+        }
+        Ok(())
+    }
+
+    /// Stores the serialized credential, overwriting `credential_blob_id` if the credential
+    /// already has one, and the wallet unit attestation of the holder
+    async fn store_issued_blobs(
+        &self,
+        pending: &PendingCredential,
+        credential_blob_id: Option<BlobId>,
+    ) -> Result<(BlobId, Option<BlobId>), OID4VCIFinal1_0ServiceError> {
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+
+        let wua_blob_id = if let Some(attestation) = &pending.key_attestation {
+            let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO {
+                attestation: attestation.to_owned(),
+            })
+            .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
+            let wua_blob = Blob::new(wua_dto, BlobType::WalletUnitAttestation);
+            blob_storage
+                .create(wua_blob.clone())
+                .await
+                .error_while("creating WUA blob")?;
+            Some(wua_blob.id)
+        } else {
+            None
+        };
+
+        let serialized_credential = &pending.issued.serialized_credential;
+        let credential_blob_id = match credential_blob_id {
+            None => {
+                let blob = Blob::new(serialized_credential.as_ref(), BlobType::Credential);
+                blob_storage
+                    .create(blob.clone())
+                    .await
+                    .error_while("creating credential blob")?;
+                blob.id
+            }
+            Some(blob_id) => {
+                blob_storage
+                    .update(
+                        &blob_id,
+                        UpdateBlobRequest {
+                            value: Some(serialized_credential.as_ref().into()),
+                        },
+                    )
+                    .await
+                    .error_while("updating credential blob")?;
+                blob_id
+            }
+        };
+
+        Ok((credential_blob_id, wua_blob_id))
+    }
+
+    /// Links the status list entries reserved while issuing to the persisted credential
+    async fn link_revocation_entries(
+        &self,
+        credential_id: CredentialId,
+        entry_ids: Vec<RevocationListEntryId>,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        for entry_id in entry_ids {
+            self.revocation_list_repository
+                .update_entry(
+                    UpdateRevocationListEntryId::Id(entry_id),
+                    UpdateRevocationListEntryRequest {
+                        credential_id: Some(credential_id),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("linking revocation list entry")?;
+        }
+        Ok(())
     }
 
     /// Notification ids are allocated when issuing the token, tokens issued before that
@@ -1085,130 +1323,6 @@ impl OID4VCIFinal1_0Service {
             .error_while("updating interaction")?;
 
         Ok(notification_id)
-    }
-
-    async fn issue_batch_offer(
-        &self,
-        parent: &CredentialCommon,
-        template: Credential,
-        holder_identifiers: Vec<PreparedIdentifier>,
-        format_id: CredentialSchemaFormatId,
-        issuance_protocol: &dyn IssuanceProtocol,
-        now: OffsetDateTime,
-    ) -> Result<Vec<CredentialResponseEntry>, OID4VCIFinal1_0ServiceError> {
-        let mut credentials = Vec::with_capacity(holder_identifiers.len());
-        for holder_identifier in holder_identifiers {
-            let mut item = template.clone();
-            item.common_mut().id = Uuid::new_v4().into();
-            self.credential_repository
-                .create_credential(item.clone())
-                .await
-                .error_while("creating batch item copy")?;
-            credentials.push(
-                self.issue_single_credential(
-                    holder_identifier,
-                    item,
-                    format_id,
-                    issuance_protocol,
-                    now,
-                )
-                .await?,
-            );
-        }
-
-        if parent.state == CredentialStateEnum::Offered {
-            self.credential_repository
-                .update_credential(
-                    parent.id,
-                    UpdateCredentialRequest {
-                        state: Some(CredentialStateEnum::Accepted),
-                        issuance_date: Some(now),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .error_while("updating parent credential")?;
-        }
-        Ok(credentials)
-    }
-
-    async fn issue_single_credential(
-        &self,
-        holder_identifier: PreparedIdentifier,
-        credential: Credential,
-        format_id: CredentialSchemaFormatId,
-        issuance_protocol: &dyn IssuanceProtocol,
-        issuance_date: OffsetDateTime,
-    ) -> Result<CredentialResponseEntry, OID4VCIFinal1_0ServiceError> {
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)?;
-
-        let wua_blob_id = if let Some(attestation) = holder_identifier.key_attestation {
-            let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO { attestation })
-                .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
-            let wua_blob = Blob::new(wua_dto, BlobType::WalletUnitAttestation);
-            blob_storage
-                .create(wua_blob.clone())
-                .await
-                .error_while("creating WUA blob")?;
-            Some(wua_blob.id)
-        } else {
-            None
-        };
-
-        let IssuedCredential {
-            credential,
-            serialized_credential,
-        } = issuance_protocol
-            .issuer_issue_credential(
-                credential,
-                format_id,
-                holder_identifier.identifier,
-                holder_identifier.key_id,
-            )
-            .await
-            .error_while("issuing credential")?;
-
-        let credential_blob_id = match credential.issuer_credential()?.data.credential_blob_id {
-            None => {
-                let blob = Blob::new(serialized_credential.as_ref(), BlobType::Credential);
-                blob_storage
-                    .create(blob.clone())
-                    .await
-                    .error_while("creating credential blob")?;
-                blob.id
-            }
-            Some(blob_id) => {
-                blob_storage
-                    .update(
-                        &blob_id,
-                        UpdateBlobRequest {
-                            value: Some(serialized_credential.as_ref().into()),
-                        },
-                    )
-                    .await
-                    .error_while("updating credential blob")?;
-                blob_id
-            }
-        };
-
-        self.credential_repository
-            .update_credential(
-                credential.common().id,
-                issued_credential_update(
-                    &credential,
-                    credential_blob_id,
-                    issuance_date,
-                    wua_blob_id,
-                )?,
-            )
-            .await
-            .error_while("updating credential")?;
-
-        Ok(CredentialResponseEntry {
-            credential: serialized_credential.into(),
-        })
     }
 
     /// The most recently created batch item of the format, `None` if the format was never issued
@@ -1991,16 +2105,12 @@ impl OID4VCIFinal1_0Service {
 
     async fn prepare_batch_item(
         &self,
-        parent_credential_id: CredentialId,
+        parent_credential: Credential,
         expires_at: Option<OffsetDateTime>,
         format: &CredentialSchemaFormat,
     ) -> Result<Credential, OID4VCIFinal1_0ServiceError> {
         let now = crate::clock::now_utc();
-        let parent_credential = self
-            .credential_repository
-            .get_credential(&parent_credential_id)
-            .await
-            .error_while("loading credential")?;
+        let parent_credential_id = parent_credential.common().id;
 
         // `validate_credential_issuable` decides by the item state:
         // Offered -> initial issuance, Accepted -> refresh (MSO refresh for mdoc, new batch with batch size, otherwise BR_0483)
@@ -2415,6 +2525,27 @@ struct PreparedIdentifier {
     identifier: Identifier,
     key_id: String,
     key_attestation: Option<String>,
+}
+
+/// The format requested to issue, as checked by `validate_credential_issuable`
+struct RequestedFormat {
+    format: CredentialSchemaFormat,
+    format_type: FormatType,
+    is_batch: bool,
+}
+
+/// A credential issued in memory, waiting to be persisted
+struct PendingCredential {
+    issued: IssuedCredential,
+    key_attestation: Option<String>,
+}
+
+impl PendingCredential {
+    fn response_entry(&self) -> CredentialResponseEntry {
+        CredentialResponseEntry {
+            credential: self.issued.serialized_credential.to_owned().into(),
+        }
+    }
 }
 
 struct ValidatedClientAttestation {

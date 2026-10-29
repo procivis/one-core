@@ -39,6 +39,7 @@ use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::dpop_handler::MockDpopHandler;
@@ -85,6 +86,7 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::instance_repository::MockInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::wallet_attestation_repository::MockWalletAttestationRepository;
 use crate::service::oid4vci_final1_0::dto::{
     CredentialRequestPayload, CredentialResponsePayload, OID4VCIFinal1_0IssuerMetadataResponseEnum,
@@ -99,6 +101,7 @@ struct Mocks {
     pub credential_repository: MockCredentialRepository,
     pub interaction_repository: MockInteractionRepository,
     pub identifier_repository: MockIdentifierRepository,
+    pub revocation_list_repository: MockRevocationListRepository,
     pub config: CoreConfig,
     pub exchange_provider: MockIssuanceProtocolProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -123,6 +126,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.credential_repository),
         interaction_repository.clone(),
         Arc::new(mocks.identifier_repository),
+        Arc::new(mocks.revocation_list_repository),
         Arc::new(mocks.config),
         Arc::new(mocks.exchange_provider),
         Arc::new(mocks.did_method_provider),
@@ -451,7 +455,8 @@ fn expect_credential_blob_stored(
         .returning(move |_| Ok(storage.clone()));
 }
 
-/// What the issuance protocol returns: the credential accepted and bound to the holder
+/// What the issuance protocol returns: the credential accepted and bound to the holder.
+/// The reserved status list entry shares the id of the credential, see `expect_revocation_entries_linked`.
 fn issued_credential(
     mut credential: Credential,
     holder_identifier: Identifier,
@@ -463,10 +468,32 @@ fn issued_credential(
         .unwrap()
         .data
         .holder_identifier = Some(holder_identifier.into());
+    let revocation_entry_id = Uuid::from(credential.common().id).into();
     IssuedCredential {
         credential,
         serialized_credential: serialized_credential.into(),
+        unlinked_revocation_entries: vec![revocation_entry_id],
     }
+}
+
+/// Each status list entry reserved by `issued_credential` is linked to its own credential
+fn expect_revocation_entries_linked(
+    revocation_list_repository: &mut MockRevocationListRepository,
+    times: usize,
+) {
+    revocation_list_repository
+        .expect_update_entry()
+        .times(times)
+        .withf(|id, request| {
+            let UpdateRevocationListEntryId::Id(entry_id) = id else {
+                return false;
+            };
+            request.state.is_none()
+                && request
+                    .credential_id
+                    .is_some_and(|credential_id| Uuid::from(credential_id) == Uuid::from(*entry_id))
+        })
+        .returning(|_, _| Ok(()));
 }
 
 fn mock_key_algorithm() -> Arc<dyn KeyAlgorithm> {
@@ -1884,13 +1911,17 @@ async fn test_create_credential_with_instance_attestation(
             let credential = credential.clone();
             move |_| Ok(vec![credential])
         });
-    if succeeds && credential_type == CredentialType::Single {
+    if succeeds {
+        // single: the credential, batch: the parent, locked and loaded before persisting
         mocks
             .credential_repository
             .expect_lock_credential()
             .once()
             .with(eq(credential.common().id))
-            .returning(|_| Ok(CredentialStateEnum::Offered));
+            .returning({
+                let credential = credential.clone();
+                move |_| Ok(credential.clone())
+            });
     }
     mocks
         .interaction_repository
@@ -1988,21 +2019,13 @@ async fn test_create_credential_with_instance_attestation(
             .formatter_provider
             .expect_get_credential_formatter()
             .return_once(move |_| Ok(Arc::new(formatter)));
+        // single: the issued credential, batch: the accepted parent
         mocks
             .credential_repository
             .expect_update_credential()
-            .times(if credential_type == CredentialType::BatchParent {
-                2
-            } else {
-                1
-            })
-            .returning(|_, _| Ok(()));
-        // single: reloaded after locking, batch: parent loaded to prepare the batch item
-        mocks
-            .credential_repository
-            .expect_get_credential()
             .once()
-            .return_once(move |_| Ok(credential));
+            .returning(|_, _| Ok(()));
+        expect_revocation_entries_linked(&mut mocks.revocation_list_repository, 1);
         if credential_type == CredentialType::BatchParent {
             mocks
                 .credential_repository
@@ -2016,10 +2039,17 @@ async fn test_create_credential_with_instance_attestation(
                 });
             mocks
                 .credential_repository
-                .expect_create_credential()
+                .expect_create_credentials()
                 .once()
-                .withf(|item| matches!(item, Credential::IssuerBatchItem { .. }))
-                .returning(|item| Ok(item.common().id));
+                .withf(|items| {
+                    matches!(
+                        items.as_slice(),
+                        [Credential::IssuerBatchItem { credential, .. }]
+                            if credential.credential_blob_id.is_some()
+                                && credential.wallet_key_attestation_blob_id.is_some()
+                    )
+                })
+                .returning(|items| Ok(items.iter().map(|item| item.common().id).collect()));
         }
     }
     let service = setup_service(mocks);
@@ -2111,11 +2141,6 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
 
         credential_repository
             .expect_lock_credential()
-            .once()
-            .with(eq(credential.common().id))
-            .returning(|_| Ok(CredentialStateEnum::Offered));
-        credential_repository
-            .expect_get_credential()
             .once()
             .with(eq(credential.common().id))
             .return_once({
@@ -2261,8 +2286,12 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
         .with(eq(CredentialFormat::from("JWT")))
         .return_once(move |_| Ok(Arc::new(formatter)));
 
+    let mut revocation_list_repository = MockRevocationListRepository::new();
+    expect_revocation_entries_linked(&mut revocation_list_repository, 1);
+
     let service = setup_service(Mocks {
         blob_storage_provider,
+        revocation_list_repository,
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
@@ -2360,11 +2389,6 @@ async fn test_create_credential_success_sd_jwt_vc() {
 
         credential_repository
             .expect_lock_credential()
-            .once()
-            .with(eq(credential.common().id))
-            .returning(|_| Ok(CredentialStateEnum::Offered));
-        credential_repository
-            .expect_get_credential()
             .once()
             .with(eq(credential.common().id))
             .return_once({
@@ -2492,8 +2516,12 @@ async fn test_create_credential_success_sd_jwt_vc() {
         .with(eq(CredentialFormat::from("SD_JWT_VC")))
         .return_once(move |_| Ok(Arc::new(formatter)));
 
+    let mut revocation_list_repository = MockRevocationListRepository::new();
+    expect_revocation_entries_linked(&mut revocation_list_repository, 1);
+
     let service = setup_service(Mocks {
         blob_storage_provider,
+        revocation_list_repository,
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
@@ -2580,9 +2608,11 @@ async fn test_create_credential_success_mdoc() {
                 let clone = credential.clone();
                 move |_| Ok(vec![clone])
             });
+        // the parent is reloaded under the lock to prepare the batch item again
         credential_repository
-            .expect_get_credential()
+            .expect_lock_credential()
             .once()
+            .with(eq(credential.common().id))
             .return_once({
                 let clone = credential.clone();
                 move |_| Ok(clone)
@@ -2641,7 +2671,7 @@ async fn test_create_credential_success_mdoc() {
         // no batch items issued yet
         credential_repository
             .expect_get_credential_list()
-            .once()
+            .times(2)
             .returning(|_| {
                 Ok(GetCredentialList {
                     values: vec![],
@@ -2650,29 +2680,25 @@ async fn test_create_credential_success_mdoc() {
                 })
             });
 
-        let parent_id = credential.common().id;
+        // the item is only persisted once issued
         credential_repository
-            .expect_create_credential()
+            .expect_create_credentials()
             .once()
-            .withf(move |request| {
+            .withf(move |requests| {
+                let [request] = requests.as_slice() else {
+                    return false;
+                };
                 matches!(
                     request,
-                    Credential::IssuerBatchItem { credential, .. } if credential.format.id() == format_id
-                ) && request.common().state == CredentialStateEnum::Offered
+                    Credential::IssuerBatchItem { credential, .. }
+                        if credential.format.id() == format_id
+                            && credential.holder_identifier.as_ref().map(|h| h.id()) == Some(holder_identifier_id)
+                            && credential.credential_blob_id.is_some()
+                ) && request.common().state == CredentialStateEnum::Accepted
                     && request.common().expires_at.is_some()
+                    && request.common().issuance_date.is_some()
             })
-            .returning(|request| Ok(request.common().id));
-        credential_repository
-            .expect_update_credential()
-            .once()
-            .withf(move |id, request| {
-                *id != parent_id
-                    && request.state == Some(CredentialStateEnum::Accepted)
-                    && request.holder_identifier_id == Some(holder_identifier_id)
-                    && request.format == Some(format_id)
-                    && request.credential_blob_id.is_some()
-            })
-            .returning(|_, _| Ok(()));
+            .returning(|requests| Ok(requests.iter().map(|r| r.common().id).collect()));
     }
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     expect_credential_blob_stored(&mut blob_storage_provider, None);
@@ -2754,8 +2780,12 @@ async fn test_create_credential_success_mdoc() {
         .with(eq(CredentialFormat::from("MDOC")))
         .return_once(move |_| Ok(Arc::new(formatter)));
 
+    let mut revocation_list_repository = MockRevocationListRepository::new();
+    expect_revocation_entries_linked(&mut revocation_list_repository, 1);
+
     let service = setup_service(Mocks {
         blob_storage_provider,
+        revocation_list_repository,
         credential_schema_repository,
         credential_repository,
         interaction_repository,
@@ -3160,8 +3190,15 @@ async fn test_create_credential_fails_when_credential_is_expiring() {
     ));
 }
 
+#[rstest::rstest]
+#[case::still_offered(CredentialStateEnum::Offered, true)]
+// a parallel request issued the credential in the meantime, it must stay accepted
+#[case::issued_in_parallel(CredentialStateEnum::Accepted, false)]
 #[tokio::test]
-async fn test_create_credential_issuer_failed() {
+async fn test_create_credential_issuer_failed(
+    #[case] current_state: CredentialStateEnum,
+    #[case] marked_as_error: bool,
+) {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -3191,19 +3228,7 @@ async fn test_create_credential_issuer_failed() {
             .once()
             .return_once(move |_| Ok(vec![clone]));
 
-        credential_repository
-            .expect_lock_credential()
-            .once()
-            .with(eq(credential.common().id))
-            .returning(|_| Ok(CredentialStateEnum::Offered));
-        credential_repository
-            .expect_get_credential()
-            .once()
-            .with(eq(credential.common().id))
-            .return_once({
-                let clone = credential.clone();
-                move |_| Ok(clone)
-            });
+        // signing fails before persisting, the credential is neither locked nor reloaded
 
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
             .unwrap()
@@ -3235,9 +3260,19 @@ async fn test_create_credential_issuer_failed() {
             .times(2)
             .returning(move |_| Ok(issuance_protocol.clone()));
 
+        // the current state is checked under the lock before marking it as failed
+        credential_repository
+            .expect_lock_credential()
+            .once()
+            .with(eq(credential.common().id))
+            .return_once({
+                let mut current = credential.clone();
+                current.common_mut().state = current_state;
+                move |_| Ok(current)
+            });
         credential_repository
             .expect_update_credential()
-            .once()
+            .times(usize::from(marked_as_error))
             .withf(move |id, request| {
                 *id == credential.common().id
                     && request.state == Some(CredentialStateEnum::Error)

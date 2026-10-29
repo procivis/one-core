@@ -693,6 +693,7 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_interaction_repository(),
                 data_provider.get_identifier_repository(),
+                data_provider.get_revocation_list_repository(),
                 config.clone(),
                 issuance_provider.clone(),
                 did_method_provider.clone(),

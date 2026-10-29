@@ -28,8 +28,8 @@ use crate::provider::revocation::bitstring_status_list::util::{
 };
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
-    RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
+    RevocationMethodCapabilities, RevocationState,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 
@@ -56,10 +56,10 @@ impl RevocationMethod for StatusList2021 {
             .all(|status| status.r#type == CREDENTIAL_STATUS_TYPE)
     }
 
-    async fn add_issued_credential(
+    async fn reserve_credential_entries(
         &self,
         _credential: &Credential,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
+    ) -> Result<ReservedEntries, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "StatusList2021".to_string(),
         ))

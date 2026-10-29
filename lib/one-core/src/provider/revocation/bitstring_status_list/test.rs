@@ -2,11 +2,14 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use serde_json::json;
+use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
 
 use crate::model::identifier::{Identifier, IdentifierData};
-use crate::model::revocation_list::{RevocationList, StatusListCredentialFormat};
+use crate::model::revocation_list::{
+    RevocationList, RevocationListEntityId, StatusListCredentialFormat,
+};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::transaction_manager::NoTransactionManager;
@@ -19,7 +22,7 @@ use crate::provider::remote_entity_storage::{MockRemoteEntityStorage, RemoteEnti
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
 use crate::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
-use crate::provider::revocation::model::CredentialRevocationInfo;
+use crate::provider::revocation::model::ReservedEntries;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::service::test_utilities::{
     CredentialBuilder, dummy_credential, dummy_did, dummy_identifier,
@@ -27,7 +30,13 @@ use crate::service::test_utilities::{
 
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer_suspension_allowed() {
-    let status = revocation_status(true).await;
+    let ReservedEntries {
+        entry_ids,
+        revocation_info: status,
+    } = revocation_status(true).await;
+
+    // one entry each on the revocation and the suspension list
+    assert_eq!(entry_ids.len(), 2);
 
     let_assert!(CredentialStatus::W3C(statuses) = status.credential_status);
     assert!(
@@ -39,7 +48,12 @@ async fn test_check_revocation_status_as_issuer_suspension_allowed() {
 
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer_suspension_forbidden() {
-    let status = revocation_status(false).await;
+    let ReservedEntries {
+        entry_ids,
+        revocation_info: status,
+    } = revocation_status(false).await;
+
+    assert_eq!(entry_ids.len(), 1);
 
     let_assert!(CredentialStatus::W3C(statuses) = status.credential_status);
     assert!(
@@ -49,7 +63,7 @@ async fn test_check_revocation_status_as_issuer_suspension_forbidden() {
     );
 }
 
-async fn revocation_status(suspension: bool) -> CredentialRevocationInfo {
+async fn revocation_status(suspension: bool) -> ReservedEntries {
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
     let did_method_provider = MockDidMethodProvider::default();
     let key_provider = MockKeyProvider::default();
@@ -91,8 +105,10 @@ async fn revocation_status(suspension: bool) -> CredentialRevocationInfo {
     revocation_list_repository
         .expect_next_free_index()
         .returning(|_, _| Ok(0));
+    // reserved without a link to the credential, which is not persisted yet
     revocation_list_repository
         .expect_create_entry()
+        .withf(|_, entity_id, _| *entity_id == RevocationListEntityId::Credential(None))
         .returning(|_, _, _| Ok(Uuid::new_v4().into()));
 
     let revocation_list = BitstringStatusList::new(
@@ -123,7 +139,7 @@ async fn revocation_status(suspension: bool) -> CredentialRevocationInfo {
     }
 
     revocation_list
-        .add_issued_credential(&credential)
+        .reserve_credential_entries(&credential)
         .await
         .unwrap()
 }

@@ -5,7 +5,8 @@ use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, 
 
 use self::error::RevocationError;
 use self::model::{
-    CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities, RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, ReservedEntries, RevocationMethodCapabilities,
+    RevocationState,
 };
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -36,11 +37,13 @@ pub trait RevocationMethod: Provider + Send + Sync {
 
     /// Creates the `credentialStatus` field of the VC.
     ///
-    /// For BitstringStatusList, this method creates the entry in revocation and suspension lists.
-    async fn add_issued_credential(
+    /// For list-based revocation methods, this method reserves the entries in the status lists
+    /// (for BitstringStatusList in revocation and suspension lists). The entries are not linked
+    /// to the credential, so it does not need to be persisted yet, see [`ReservedEntries`].
+    async fn reserve_credential_entries(
         &self,
         credential: &Credential,
-    ) -> Result<CredentialRevocationInfo, RevocationError>;
+    ) -> Result<ReservedEntries, RevocationError>;
 
     /// Change a credential's status to valid, revoked, or suspended.
     ///

@@ -9,8 +9,7 @@ use proc_macros::Provider;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId,
-    SerializedCredential, SignerId,
+    RevocationListEntryId, RevocationListId, RevocationMethodId, SerializedCredential, SignerId,
 };
 use util::w3c_status_check;
 use uuid::Uuid;
@@ -20,8 +19,8 @@ use self::resolver::StatusListCachingLoader;
 use super::RevocationMethod;
 use super::error::RevocationError;
 use super::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, RevocationMethodCapabilities,
-    RevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
+    RevocationMethodCapabilities, RevocationState,
 };
 use super::status_list::StatusListSizeParams;
 use super::utils::status_purpose_to_revocation_state;
@@ -151,38 +150,34 @@ impl RevocationMethod for BitstringStatusList {
             .all(|status| status.r#type == CREDENTIAL_STATUS_TYPE)
     }
 
-    async fn add_issued_credential(
+    async fn reserve_credential_entries(
         &self,
         credential: &Credential,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
+    ) -> Result<ReservedEntries, RevocationError> {
         let issuer = credential.issuer()?.data;
         let issuer_identifier = issuer.identifier.as_ref().await?;
 
         let credential_schema = credential.common().schema.as_ref().await?;
 
-        let mut statuses = vec![
-            self.create_credential_entry(
-                credential.common().id,
-                &issuer_identifier,
-                RevocationListPurpose::Revocation,
-            )
-            .await?,
-        ];
-
+        let mut purposes = vec![RevocationListPurpose::Revocation];
         if credential_schema.allow_suspension {
-            statuses.push(
-                self.create_credential_entry(
-                    credential.common().id,
-                    &issuer_identifier,
-                    RevocationListPurpose::Suspension,
-                )
-                .await?,
-            );
+            purposes.push(RevocationListPurpose::Suspension);
         }
 
-        Ok(CredentialRevocationInfo {
-            credential_status: CredentialStatus::W3C(statuses),
-            serial: None,
+        let mut entry_ids = Vec::with_capacity(purposes.len());
+        let mut statuses = Vec::with_capacity(purposes.len());
+        for purpose in purposes {
+            let (entry_id, status) = self.reserve_entry(&issuer_identifier, purpose).await?;
+            entry_ids.push(entry_id);
+            statuses.push(status);
+        }
+
+        Ok(ReservedEntries {
+            entry_ids,
+            revocation_info: CredentialRevocationInfo {
+                credential_status: CredentialStatus::W3C(statuses),
+                serial: None,
+            },
         })
     }
 
@@ -416,14 +411,14 @@ impl BitstringStatusList {
         })
     }
 
-    async fn create_credential_entry(
+    /// Reserves an entry on the list of the given purpose, not linked to a credential yet
+    async fn reserve_entry(
         &self,
-        credential_id: CredentialId,
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
-    ) -> Result<W3CCredentialStatus, RevocationError> {
+    ) -> Result<(RevocationListEntryId, W3CCredentialStatus), RevocationError> {
         let mut list_id = None;
-        let mut index: Option<usize> = None;
+        let mut entry: Option<(RevocationListEntryId, usize)> = None;
         let tx_ok = self
             .transaction_manager
             .transaction(
@@ -441,14 +436,10 @@ impl BitstringStatusList {
                     list_id = Some(if let Some(current_list) = current_list {
                         current_list.id
                     } else {
-                        let list_id = self
-                            .start_new_list_for_credential(
-                                credential_id,
-                                issuer_identifier,
-                                purpose,
-                            )
+                        let (list_id, entry_id) = self
+                            .start_new_list_with_entry(issuer_identifier, purpose)
                             .await?;
-                        index = Some(0);
+                        entry = Some((entry_id, 0));
                         list_id
                     });
 
@@ -461,7 +452,7 @@ impl BitstringStatusList {
 
         if !tx_ok {
             list_id = None;
-            index = None;
+            entry = None;
         }
 
         let list_id = if let Some(list_id) = list_id {
@@ -479,20 +470,22 @@ impl BitstringStatusList {
                 .id
         };
 
-        let index = if let Some(index) = index {
-            index
+        let (entry_id, index) = if let Some(entry) = entry {
+            entry
         } else {
-            self.add_credential_to_list(list_id, credential_id).await?
+            self.reserve_entry_in_list(list_id).await?
         };
 
-        self.create_credential_status(&list_id, index, purpose.into())
+        Ok((
+            entry_id,
+            self.create_credential_status(&list_id, index, purpose.into())?,
+        ))
     }
 
-    async fn add_credential_to_list(
+    async fn reserve_entry_in_list(
         &self,
         list_id: RevocationListId,
-        credential_id: CredentialId,
-    ) -> Result<usize, RevocationError> {
+    ) -> Result<(RevocationListEntryId, usize), RevocationError> {
         let mut retry_counter = 0;
         loop {
             let result = self
@@ -507,14 +500,14 @@ impl BitstringStatusList {
                         .revocation_list_repository
                         .create_entry(
                             list_id,
-                            RevocationListEntityId::Credential(Some(credential_id)),
+                            RevocationListEntityId::Credential(None),
                             Some(index),
                         )
                         .await
                     {
-                        Ok(_) => Ok(Some(index)),
+                        Ok(entry_id) => Ok(Some((entry_id, index))),
                         Err(DataLayerError::AlreadyExists(_)) => {
-                            tracing::info!("Retrying adding credential entry to list({list_id}), occupied index({index}), retry({retry_counter})");
+                            tracing::info!("Retrying reserving entry in list({list_id}), occupied index({index}), retry({retry_counter})");
                             Ok(None)
                         },
                         Err(e) => Err(e),
@@ -525,8 +518,8 @@ impl BitstringStatusList {
                 .error_while("creating revocation list entry")?
                 .error_while("allocating list index")?;
 
-            if let Some(index) = result {
-                return Ok(index);
+            if let Some(entry) = result {
+                return Ok(entry);
             }
 
             // index taken by a concurrent writer, retry
@@ -543,12 +536,11 @@ impl BitstringStatusList {
         }
     }
 
-    async fn start_new_list_for_credential(
+    async fn start_new_list_with_entry(
         &self,
-        credential_id: CredentialId,
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
-    ) -> Result<RevocationListId, RevocationError> {
+    ) -> Result<(RevocationListId, RevocationListEntryId), RevocationError> {
         let revocation_list_id = Uuid::new_v4().into();
         let formatted_list = format_status_list_credential(
             &revocation_list_id,
@@ -578,16 +570,17 @@ impl BitstringStatusList {
             .await
             .error_while("creating revocation list")?;
 
-        self.revocation_list_repository
+        let entry_id = self
+            .revocation_list_repository
             .create_entry(
                 revocation_list_id,
-                RevocationListEntityId::Credential(Some(credential_id)),
+                RevocationListEntityId::Credential(None),
                 Some(0),
             )
             .await
             .error_while("creating revocation list entry")?;
 
-        Ok(revocation_list_id)
+        Ok((revocation_list_id, entry_id))
     }
 
     async fn publish_list(
