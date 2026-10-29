@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
@@ -10,14 +11,16 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use one_core::service::test_utilities::dummy_organisation;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, Unchanged};
 use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
 
+use crate::entity::trust_list_subscription;
 use crate::test_utilities::{
-    get_dummy_date, insert_organisation_to_database, setup_test_data_layer_and_connection,
+    get_dummy_date, insert_organisation_to_database, insert_trust_collection_to_database,
+    insert_trust_list_subscription_to_database, setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
 use crate::trust_collection::TrustCollectionProvider;
@@ -431,4 +434,61 @@ async fn test_list_trust_collection_pagination() {
     assert_eq!(list.total_items.unwrap(), 5);
     assert_eq!(list.total_pages.unwrap(), 3);
     assert_eq!(list.values.len(), 2);
+}
+
+#[tokio::test]
+async fn test_list_trust_collection_empty_filter_ignores_deactivated_subscriptions() {
+    let TestSetup {
+        provider,
+        org_id,
+        db,
+        ..
+    } = setup().await;
+
+    let empty = insert_trust_collection_to_database(&db, org_id)
+        .await
+        .unwrap();
+    let with_active = insert_trust_collection_to_database(&db, org_id)
+        .await
+        .unwrap();
+    insert_trust_list_subscription_to_database(&db, with_active)
+        .await
+        .unwrap();
+    let with_deactivated = insert_trust_collection_to_database(&db, org_id)
+        .await
+        .unwrap();
+    let deactivated = insert_trust_list_subscription_to_database(&db, with_deactivated)
+        .await
+        .unwrap();
+    trust_list_subscription::ActiveModel {
+        id: Unchanged(deactivated),
+        deactivated_at: Set(Some(get_dummy_date())),
+        ..Default::default()
+    }
+    .update(&db)
+    .await
+    .unwrap();
+
+    let list_ids = |is_empty| {
+        let provider = &provider;
+        async move {
+            provider
+                .list(TrustCollectionListQuery {
+                    filtering: Some(TrustCollectionFilterValue::Empty(is_empty).condition()),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+                .values
+                .into_iter()
+                .map(|c| c.id)
+                .collect::<HashSet<_>>()
+        }
+    };
+
+    assert_eq!(
+        list_ids(true).await,
+        HashSet::from([empty, with_deactivated])
+    );
+    assert_eq!(list_ids(false).await, HashSet::from([with_active]));
 }

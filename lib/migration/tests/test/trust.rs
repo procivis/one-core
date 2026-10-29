@@ -207,11 +207,19 @@ async fn test_db_schema_trust_collection() {
         index_columns1.push("deactivated_at")
     }
 
-    let trust_entry = schema.table("trust_collection").columns(&columns).index(
-        "index-TrustCol-Name-Org-DeactivatedAt-Unique",
-        true,
-        &index_columns1,
-    );
+    let trust_entry = schema
+        .table("trust_collection")
+        .columns(&columns)
+        .index(
+            "index-TrustCol-Name-Org-DeactivatedAt-Unique",
+            true,
+            &index_columns1,
+        )
+        .index(
+            "index-TrustCollection-OrganisationId",
+            false,
+            &["organisation_id"],
+        );
     trust_entry
         .column("id")
         .r#type(ColumnType::Uuid)
@@ -301,6 +309,11 @@ async fn test_db_schema_trust_subscription() {
             "index-TrustListSubscription-Reference-Col-DeactivatedAt-Unique",
             true,
             &index_columns2,
+        )
+        .index(
+            "index-TrustListSubscription-TrustCollectionId-DeactivatedAt",
+            false,
+            &["trust_collection_id", "deactivated_at"],
         );
     trust_entry
         .column("id")

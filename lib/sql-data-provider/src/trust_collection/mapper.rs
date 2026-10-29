@@ -8,7 +8,7 @@ use one_core::model::trust_collection::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{ColumnRef, IntoCondition, Query};
+use sea_orm::sea_query::{ColumnRef, Expr, IntoCondition, Query, SelectStatement};
 use sea_orm::{ColumnTrait, ExprTrait};
 use url::Url;
 
@@ -114,22 +114,35 @@ impl IntoFilterCondition for TrustCollectionFilterValue {
             Self::Remote(false) => trust_collection::Column::RemoteTrustCollectionUrl
                 .is_null()
                 .into_condition(),
-            TrustCollectionFilterValue::Empty(true) => trust_collection::Column::Id
-                .not_in_subquery(
-                    Query::select()
-                        .column(trust_list_subscription::Column::TrustCollectionId)
-                        .from(trust_list_subscription::Entity)
-                        .to_owned(),
-                )
+            Self::Empty(true) => Expr::exists(active_subscriptions_of_collection())
+                .not()
                 .into_condition(),
-            TrustCollectionFilterValue::Empty(false) => trust_collection::Column::Id
-                .in_subquery(
-                    Query::select()
-                        .column(trust_list_subscription::Column::TrustCollectionId)
-                        .from(trust_list_subscription::Entity)
-                        .to_owned(),
-                )
-                .into_condition(),
+            Self::Empty(false) => {
+                Expr::exists(active_subscriptions_of_collection()).into_condition()
+            }
         }
     }
+}
+
+/// Correlated subquery for the active subscriptions of the listed trust collection.
+/// Uncorrelated `IN (SELECT ...)` would scan the whole (soft-delete only) subscription table.
+fn active_subscriptions_of_collection() -> SelectStatement {
+    Query::select()
+        .expr(Expr::value(1))
+        .from(trust_list_subscription::Entity)
+        .and_where(
+            Expr::col((
+                trust_list_subscription::Entity,
+                trust_list_subscription::Column::TrustCollectionId,
+            ))
+            .equals((trust_collection::Entity, trust_collection::Column::Id)),
+        )
+        .and_where(
+            Expr::col((
+                trust_list_subscription::Entity,
+                trust_list_subscription::Column::DeactivatedAt,
+            ))
+            .is_null(),
+        )
+        .to_owned()
 }
