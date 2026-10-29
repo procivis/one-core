@@ -350,7 +350,7 @@ async fn test_parse_credential() {
     assert_eq!(schema.allow_revocation, true);
     assert_eq!(schema.name, "8761JsonLd");
     assert_eq!(
-        schema.schema_id().await.unwrap(),
+        schema.single_format().await.ecosystem_schema_id,
         format!("{base_url}/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647")
     );
 

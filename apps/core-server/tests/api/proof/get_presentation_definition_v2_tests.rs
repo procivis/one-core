@@ -215,17 +215,18 @@ async fn test_get_presentation_definition_2_biometric_data_user_consent() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["given_name".to_string()])
-                .build(),
-            ClaimQuery::builder()
-                .path(vec!["picture".to_string()])
-                .build(),
-        ])
-        .build();
+    let credential_query =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_query_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["given_name".to_string()])
+                    .build(),
+                ClaimQuery::builder()
+                    .path(vec!["picture".to_string()])
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
@@ -465,18 +466,19 @@ async fn test_get_presentation_definition_2_with_user_selection() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-            ClaimQuery::builder()
-                .path(vec!["not_required_claim".to_string()])
-                .required(false)
-                .build(),
-        ])
-        .build();
+    let credential_query =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_query_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["required_claim".to_string()])
+                    .build(),
+                ClaimQuery::builder()
+                    .path(vec!["not_required_claim".to_string()])
+                    .required(false)
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
@@ -568,25 +570,26 @@ async fn test_get_presentation_definition_2_with_user_selection_nesting_mixed_sd
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-            // Optionality: the "root obj" claim and the "root obj/string" claim can _both_ be
-            // toggled. Because they are nested, there are interdependencies in the selection
-            // (which the front-end will have to correctly handle).
-            ClaimQuery::builder()
-                .path(vec!["root obj".to_string()])
-                .required(false)
-                .build(),
-            ClaimQuery::builder()
-                .path(vec!["root obj".to_string(), "string".to_string()])
-                .required(false)
-                .build(),
-        ])
-        .build();
+    let credential_query =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_query_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["required_claim".to_string()])
+                    .build(),
+                // Optionality: the "root obj" claim and the "root obj/string" claim can _both_ be
+                // toggled. Because they are nested, there are interdependencies in the selection
+                // (which the front-end will have to correctly handle).
+                ClaimQuery::builder()
+                    .path(vec!["root obj".to_string()])
+                    .required(false)
+                    .build(),
+                ClaimQuery::builder()
+                    .path(vec!["root obj".to_string(), "string".to_string()])
+                    .required(false)
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
@@ -801,21 +804,22 @@ async fn test_get_presentation_definition_2_nested_array_element_selection() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec![
-                    "root obj array".into(),
-                    PathSegment::ArrayAll,
-                    "nested object".into(),
-                    "nested string array".into(),
-                    PathSegment::ArrayIndex(1),
-                ])
-                .required(false)
-                .build(),
-        ])
-        .build();
+    let credential_query =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_query_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec![
+                        "root obj array".into(),
+                        PathSegment::ArrayAll,
+                        "nested object".into(),
+                        "nested string array".into(),
+                        PathSegment::ArrayIndex(1),
+                    ])
+                    .required(false)
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
@@ -947,14 +951,15 @@ async fn test_get_presentation_definition_2_inapplicable_credential_with_schema(
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["not_required_claim".to_string()])
-                .build(),
-        ])
-        .build();
+    let credential_query =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_query_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["not_required_claim".to_string()])
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
@@ -1695,14 +1700,15 @@ async fn test_get_presentation_definition_2_batch_disclosure_policy_per_format()
 }
 
 async fn simple_dcql_query(schema: &CredentialSchema) -> DcqlQuery {
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-        ])
-        .build();
+    let credential_query =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_query_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["required_claim".to_string()])
+                    .build(),
+            ])
+            .build();
 
     DcqlQuery::builder()
         .credentials(vec![credential_query])

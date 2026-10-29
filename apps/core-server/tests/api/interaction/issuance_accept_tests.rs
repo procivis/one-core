@@ -1948,7 +1948,10 @@ async fn test_issuance_accept_schema_name_already_exists(#[values(false, true)] 
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
+        .token_endpoint(
+            credential_schema.single_format().await.ecosystem_schema_id,
+            "123",
+        )
         .await;
 
     // WHEN
@@ -2951,7 +2954,11 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
 
     context
         .server_mock
-        .token_endpoint_tx_code(credential_schema.schema_id().await.unwrap(), "123", tx_code)
+        .token_endpoint_tx_code(
+            credential_schema.single_format().await.ecosystem_schema_id,
+            "123",
+            tx_code,
+        )
         .await;
 
     // WHEN

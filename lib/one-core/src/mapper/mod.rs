@@ -37,6 +37,7 @@ pub(crate) mod credential_schema_claim;
 pub(crate) mod etsi_lote;
 pub(crate) mod etsi_lotl;
 pub(crate) mod exchange;
+pub(crate) mod identifier_trust_information;
 mod key_security;
 pub(crate) mod oidc;
 pub(crate) mod openid4vp;

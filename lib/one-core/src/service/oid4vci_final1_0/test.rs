@@ -2056,7 +2056,7 @@ async fn test_create_credential_with_instance_attestation(
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap(),
+                    schema.single_format().await.ecosystem_schema_id,
                 ),
                 proofs: Some(Proofs::Jwt(vec![proof])),
                 credential_response_encryption: None,
@@ -2307,7 +2307,7 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -2537,7 +2537,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -2801,7 +2801,7 @@ async fn test_create_credential_success_mdoc() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -2925,7 +2925,7 @@ async fn test_create_credential_format_invalid_bearer_token() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -2979,7 +2979,7 @@ async fn test_create_credential_pre_authorized_code_not_used() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -3033,7 +3033,7 @@ async fn test_create_credential_interaction_data_invalid() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -3095,7 +3095,7 @@ async fn test_create_credential_access_token_expired() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -3170,7 +3170,7 @@ async fn test_create_credential_fails_when_credential_is_expiring() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -3385,7 +3385,7 @@ async fn test_create_credential_issuer_failed(
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,
@@ -3542,7 +3542,7 @@ async fn test_create_credential_nonce_reused() {
             None,
             CredentialRequestPayload::Plain(Box::new(CredentialRequest {
                 credential: CredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id().await.unwrap().to_owned(),
+                    schema.single_format().await.ecosystem_schema_id.to_owned(),
                 ),
                 proofs: Some(Proofs::Jwt(vec![PROOF_JWT.to_string()])),
                 credential_response_encryption: None,

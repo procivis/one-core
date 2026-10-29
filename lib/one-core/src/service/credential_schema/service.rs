@@ -584,10 +584,17 @@ impl CredentialSchemaService {
             .error_while("parsing schema")?;
 
         let success_log = format!(
-            "Imported credential schema `{}` ({}): format `{}`, allow revocation `{}`, key storage security {}",
+            "Imported credential schema `{}` ({}): formats `{}`, allow revocation `{}`, key storage security {}",
             credential_schema.name,
             credential_schema.id,
-            credential_schema.format().await?,
+            credential_schema
+                .formats
+                .as_ref()
+                .await?
+                .iter()
+                .map(|format| format.format.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
             credential_schema.allow_revocation,
             quoted_opt_provider(
                 &credential_schema

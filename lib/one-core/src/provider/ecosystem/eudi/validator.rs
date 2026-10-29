@@ -1,6 +1,9 @@
 use super::EudiEcosystem;
-use super::mapper::credential_schema_to_schema_format;
 use crate::config::core_config::FormatType;
+use crate::mapper::identifier_trust_information::{
+    credential_schema_to_schema_formats, proof_schema_to_schema_formats,
+};
+use crate::mapper::openid4vp::format_type_to_dcql_format;
 use crate::model::credential::Credential;
 use crate::model::identifier::IdentifierData;
 use crate::model::proof::Proof;
@@ -25,18 +28,21 @@ impl EudiEcosystem {
         };
 
         let credential_schema = credential.common().schema.as_ref().await?;
-        let (schema_format, format_type) =
-            credential_schema_to_schema_format(&credential_schema, &self.config).await?;
-        if !ALLOWED_FORMAT_TYPES.contains(&format_type) {
-            return Err(EcosystemError::DisallowedSchemaFormat(schema_format));
-        }
-
         let reg_certs = issuer_identifier.trust_information.as_ref().await?;
-        if reg_certs
-            .iter()
-            .any(|reg_cert| !reg_cert.allowed_issuance_types.contains(&schema_format))
+        let allowed_formats = allowed_formats();
+        for schema_format in
+            credential_schema_to_schema_formats(&credential_schema, &self.config).await?
         {
-            return Err(EcosystemError::DisallowedSchemaFormat(schema_format));
+            if !allowed_formats.contains(&schema_format.format) {
+                return Err(EcosystemError::DisallowedSchemaFormat(schema_format));
+            }
+
+            if reg_certs
+                .iter()
+                .any(|reg_cert| !reg_cert.allowed_issuance_types.contains(&schema_format))
+            {
+                return Err(EcosystemError::DisallowedSchemaFormat(schema_format));
+            }
         }
 
         Ok(())
@@ -65,14 +71,10 @@ impl EudiEcosystem {
             ));
         };
         let proof_schema = proof_schema.as_ref().await?;
-        let input_schemas = proof_schema.input_schemas.as_ref().await?;
         let reg_certs = verifier_identifier.trust_information.as_ref().await?;
-
-        for input_schema in &input_schemas {
-            let credential_schema = input_schema.credential_schema.as_ref().await?;
-            let (schema_format, format_type) =
-                credential_schema_to_schema_format(&credential_schema, &self.config).await?;
-            if !ALLOWED_FORMAT_TYPES.contains(&format_type) {
+        let allowed_formats = allowed_formats();
+        for schema_format in proof_schema_to_schema_formats(&proof_schema, &self.config).await? {
+            if !allowed_formats.contains(&schema_format.format) {
                 return Err(EcosystemError::DisallowedSchemaFormat(schema_format));
             }
 
@@ -86,4 +88,11 @@ impl EudiEcosystem {
 
         Ok(())
     }
+}
+
+fn allowed_formats() -> Vec<String> {
+    ALLOWED_FORMAT_TYPES
+        .iter()
+        .map(format_type_to_dcql_format)
+        .collect()
 }

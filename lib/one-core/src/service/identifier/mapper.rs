@@ -10,17 +10,17 @@ use super::dto::{
 use super::error::IdentifierServiceError;
 use crate::config::core_config::{BlobStorageType, CoreConfig};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::mapper::openid4vp::format_type_to_dcql_format;
+use crate::mapper::identifier_trust_information::{
+    credential_schema_to_schema_formats, proof_schema_to_schema_formats,
+};
 use crate::mapper::{identifier_translations_dto, resolve_identifier_logo};
 use crate::model::blob::BlobType;
 use crate::model::certificate::Certificate;
-use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::{
     ExactIdentifierFilterColumn, GetIdentifierList, Identifier, IdentifierData,
     IdentifierFilterValue, IdentifierListIncludeEntity, IdentifierListQuery,
     SortableIdentifierColumn,
 };
-use crate::model::identifier_trust_information::SchemaFormat;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
@@ -432,22 +432,24 @@ async fn params_to_condition(
         })
     });
 
-    let trust_issuance_types = if let Some(credential_schema_id) = value.trust_issuance_schema_id {
-        let filter_value =
-            credential_schema_filter(&credential_schema_id, credential_schema_repository, config)
-                .await?;
-        Some(filter_value)
-    } else {
-        None
+    let trust_issuance_types = match value.trust_issuance_schema_id {
+        Some(credential_schema_id) => Some(
+            trust_issuance_types_filter(
+                &credential_schema_id,
+                credential_schema_repository,
+                config,
+            )
+            .await?,
+        ),
+        None => None,
     };
 
-    let trust_verification_types = if let Some(proof_schema_id) = value.trust_verification_schema_id
-    {
-        let filter_condition =
-            proof_schema_filter(&proof_schema_id, proof_schema_repository, config).await?;
-        Some(filter_condition)
-    } else {
-        None
+    let trust_verification_types = match value.trust_verification_schema_id {
+        Some(proof_schema_id) => Some(
+            trust_verification_types_filter(&proof_schema_id, proof_schema_repository, config)
+                .await?,
+        ),
+        None => None,
     };
 
     let ecosystem_filter = ecosystem_filter(
@@ -480,11 +482,11 @@ async fn params_to_condition(
         & last_modified_before)
 }
 
-async fn credential_schema_filter(
+async fn trust_issuance_types_filter(
     credential_schema_id: &CredentialSchemaId,
     credential_schema_repository: &dyn CredentialSchemaRepository,
     config: &CoreConfig,
-) -> Result<IdentifierFilterValue, IdentifierServiceError> {
+) -> Result<ListFilterCondition<IdentifierFilterValue>, IdentifierServiceError> {
     let schema = credential_schema_repository
         .get_credential_schema(credential_schema_id)
         .await
@@ -494,12 +496,12 @@ async fn credential_schema_filter(
             }
             error => error.error_while("retrieving credential schema").into(),
         })?;
-    let filter_value =
-        filter_value_from_credential_schema(config, &schema, TrustContext::Issuance).await?;
-    Ok(filter_value)
+    Ok(IdentifierFilterValue::trust_allowed_issuance_types(
+        credential_schema_to_schema_formats(&schema, config).await?,
+    ))
 }
 
-async fn proof_schema_filter(
+async fn trust_verification_types_filter(
     proof_schema_id: &ProofSchemaId,
     proof_schema_repository: &dyn ProofSchemaRepository,
     config: &CoreConfig,
@@ -513,48 +515,9 @@ async fn proof_schema_filter(
             }
             error => error.error_while("retrieving proof schema").into(),
         })?;
-    let mut trust_verification_types = ListFilterCondition::<IdentifierFilterValue>::default();
-    let input_schemas = schema.input_schemas.as_ref().await?;
-    for input_schema in &input_schemas {
-        let credential_schema = input_schema.credential_schema.as_ref().await?;
-        let filter_value = filter_value_from_credential_schema(
-            config,
-            &credential_schema,
-            TrustContext::Verification,
-        )
-        .await?;
-        trust_verification_types = trust_verification_types & filter_value;
-    }
-    Ok(trust_verification_types)
-}
-
-enum TrustContext {
-    Issuance,
-    Verification,
-}
-
-async fn filter_value_from_credential_schema(
-    config: &CoreConfig,
-    schema: &CredentialSchema,
-    context: TrustContext,
-) -> Result<IdentifierFilterValue, IdentifierServiceError> {
-    let schema_format = schema.format().await?;
-    let format_type = config
-        .format
-        .get_type(&schema_format)
-        .error_while("retrieving credential schema format")?;
-    let schema_id = schema.schema_id().await?;
-    let schema_format = SchemaFormat {
-        format: format_type_to_dcql_format(&format_type),
-        schema_id,
-    };
-    let filter_value = match context {
-        TrustContext::Issuance => IdentifierFilterValue::TrustAllowedIssuanceTypes(schema_format),
-        TrustContext::Verification => {
-            IdentifierFilterValue::TrustAllowedVerificationTypes(schema_format)
-        }
-    };
-    Ok(filter_value)
+    Ok(IdentifierFilterValue::trust_allowed_verification_types(
+        proof_schema_to_schema_formats(&schema, config).await?,
+    ))
 }
 
 async fn ecosystem_filter(

@@ -2060,7 +2060,7 @@ async fn issue_mdoc(
         .ssi
         .issuer_create_credential(
             credential_schema.id,
-            &credential_schema.schema_id().await.unwrap(),
+            &credential_schema.single_format().await.ecosystem_schema_id,
             &jwt,
         )
         .await

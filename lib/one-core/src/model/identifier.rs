@@ -9,7 +9,7 @@ use super::certificate::{Certificate, CertificateRole, CertificateState};
 use super::common::GetListResponse;
 use super::did::{Did, KeyRole};
 use super::key::Key;
-use super::list_filter::{ListFilterValue, StringMatch};
+use super::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::Organisation;
 use super::relation::{Related, RelatedVec};
@@ -147,6 +147,34 @@ pub enum IdentifierFilterValue {
     TrustAllowedVerificationTypes(SchemaFormat),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
+}
+
+impl IdentifierFilterValue {
+    /// Identifiers whose trust information allows the issuance of every one of `schema_formats`.
+    pub fn trust_allowed_issuance_types(
+        schema_formats: Vec<SchemaFormat>,
+    ) -> ListFilterCondition<Self> {
+        ListFilterCondition::And(
+            schema_formats
+                .into_iter()
+                .map(Self::TrustAllowedIssuanceTypes)
+                .map(Into::into)
+                .collect(),
+        )
+    }
+
+    /// Identifiers whose trust information allows the verification of every one of `schema_formats`.
+    pub fn trust_allowed_verification_types(
+        schema_formats: Vec<SchemaFormat>,
+    ) -> ListFilterCondition<Self> {
+        ListFilterCondition::And(
+            schema_formats
+                .into_iter()
+                .map(Self::TrustAllowedVerificationTypes)
+                .map(Into::into)
+                .collect(),
+        )
+    }
 }
 
 impl ListFilterValue for IdentifierFilterValue {}

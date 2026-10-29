@@ -707,8 +707,7 @@ async fn test_fetch_unexportable_credentials_local() {
         .as_ref()
         .await
         .expect("schema present");
-    let format = schema.format().await.expect("format loadable");
-    assert_eq!(format.as_ref(), "JWT");
+    assert_eq!(schema.single_format().await.format.as_ref(), "JWT");
 }
 
 #[tokio::test]
@@ -866,8 +865,7 @@ async fn test_fetch_unexportable_credentials_dump() {
         .as_ref()
         .await
         .expect("schema present");
-    let format = schema.format().await.expect("format loadable from dump");
-    assert_eq!(format.as_ref(), "JWT");
+    assert_eq!(schema.single_format().await.format.as_ref(), "JWT");
 }
 
 #[tokio::test]

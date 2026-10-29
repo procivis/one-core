@@ -86,16 +86,16 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             )
             .await?;
 
-        if credential_schema_with_any_schema_id_exists(&conflicting_credential_schemas, &schema_ids)
-            .await?
-        {
-            return Err(Error::AlreadyExists);
+        for existing in &conflicting_credential_schemas {
+            if existing.matches_schema_id(&schema_ids).await? {
+                return Err(Error::AlreadyExists);
+            }
         }
 
-        if credential_schema_with_same_name_exists(
-            &credential_schema,
-            conflicting_credential_schemas,
-        ) {
+        if conflicting_credential_schemas
+            .iter()
+            .any(|existing| existing.name == credential_schema.name)
+        {
             credential_schema.name =
                 self.generate_unique_credential_schema_name(&credential_schema)?;
         }
@@ -163,25 +163,4 @@ impl CredentialSchemaImporterProto {
             .map_err(|e| Error::MappingError(format!("Failed to format date: {e}")))?;
         Ok(format!("{}_{}", credential_schema.name, formated_now))
     }
-}
-
-fn credential_schema_with_same_name_exists(
-    credential_schema: &CredentialSchema,
-    conflicting_credential_schemas: Vec<CredentialSchema>,
-) -> bool {
-    conflicting_credential_schemas
-        .iter()
-        .any(|existing_cs| existing_cs.name == credential_schema.name)
-}
-
-async fn credential_schema_with_any_schema_id_exists(
-    conflicting_credential_schemas: &[CredentialSchema],
-    schema_ids: &[String],
-) -> Result<bool, Error> {
-    for existing_cs in conflicting_credential_schemas {
-        if existing_cs.matches_schema_id(schema_ids).await? {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }

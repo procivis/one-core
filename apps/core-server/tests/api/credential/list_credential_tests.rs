@@ -1543,7 +1543,10 @@ async fn test_get_list_credential_filter_by_schema_ids() {
             10,
             &organisation.id,
             Filters {
-                credential_schema_ids: Some(&[&credential_schema1.schema_id().await.unwrap()]),
+                credential_schema_ids: Some(&[&credential_schema1
+                    .single_format()
+                    .await
+                    .ecosystem_schema_id]),
                 ..Default::default()
             },
             None,

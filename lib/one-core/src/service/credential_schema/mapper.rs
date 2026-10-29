@@ -45,6 +45,7 @@ use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::service::error::ServiceError;
 
 pub(super) fn map_v1_mdoc_create_claims_to_v2(
     claims: Vec<CredentialClaimSchemaRequestDTO>,
@@ -687,8 +688,20 @@ pub(crate) async fn to_credential_schema_list_response(
     include_translations: bool,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialSchemaListItemResponseDTO, NestedError> {
-    let format = credential_schema.format().await?.to_owned();
-    let schema_id = credential_schema.schema_id().await?;
+    // the v1 list item predates multi-format schemas
+    // the first format and schema_id are returned
+    let formats = credential_schema.formats.as_ref().await?;
+    let first_format = formats
+        .first()
+        .ok_or_else(|| {
+            ServiceError::MappingError(format!(
+                "Credential schema {} has no credential schema format",
+                credential_schema.id
+            ))
+        })
+        .error_while("mapping credential schema")?;
+    let format = first_format.format.to_owned();
+    let schema_id = first_format.ecosystem_schema_id.to_owned();
     let translations = if include_translations {
         Some(
             map_translations(&credential_schema)

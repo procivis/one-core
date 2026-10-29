@@ -1,12 +1,13 @@
 use shared_types::{CredentialSchemaId, ProofSchemaId};
 
 use super::EudiEcosystem;
-use super::mapper::credential_schema_to_schema_format;
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::mapper::identifier_trust_information::{
+    credential_schema_to_schema_formats, proof_schema_to_schema_formats,
+};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
 use crate::model::certificate::CertificateRole;
-use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
 use crate::model::identifier_trust_information::SchemaFormat;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
@@ -42,10 +43,11 @@ impl EudiEcosystem {
                             filter: filter.to_owned(),
                         });
                     }
-                    Some(SchemaFilter::CredentialSchema(credential_schema_id)) => Some(
-                        self.credential_schema_filter(credential_schema_id, TrustContext::Issuance)
-                            .await?,
-                    ),
+                    Some(SchemaFilter::CredentialSchema(credential_schema_id)) => {
+                        Some(IdentifierFilterValue::trust_allowed_issuance_types(
+                            self.credential_schema_formats(credential_schema_id).await?,
+                        ))
+                    }
                 };
 
                 IdentifierFilterValue::Types(vec![IdentifierType::Certificate]).condition()
@@ -65,15 +67,13 @@ impl EudiEcosystem {
                         });
                     }
                     Some(filter @ SchemaFilter::CredentialSchema(credential_schema_id)) => {
-                        let schema = self
-                            .credential_schema_repository
-                            .get_credential_schema(credential_schema_id)
-                            .await
-                            .error_while("getting credential schema")?;
-                        let (schema_format, _) =
-                            credential_schema_to_schema_format(&schema, &self.config).await?;
+                        let schema_formats =
+                            self.credential_schema_formats(credential_schema_id).await?;
 
-                        if !all_pid_schema_formats.contains(&schema_format) {
+                        if !schema_formats
+                            .iter()
+                            .all(|schema_format| all_pid_schema_formats.contains(schema_format))
+                        {
                             return Err(EcosystemError::InvalidRoleFilter {
                                 role,
                                 filter: filter.to_owned(),
@@ -82,7 +82,7 @@ impl EudiEcosystem {
                             .into());
                         }
 
-                        vec![schema_format]
+                        schema_formats
                     }
                 };
 
@@ -100,20 +100,17 @@ impl EudiEcosystem {
                     & schema_condition
             }
             EcosystemRole::Verifier => {
-                let schema_condition = match schema_filter {
+                let schema_formats = match schema_filter {
                     None => None,
                     Some(SchemaFilter::ProofSchema(proof_schema_id)) => {
-                        Some(self.proof_schema_filter(proof_schema_id).await?)
+                        Some(self.proof_schema_formats(proof_schema_id).await?)
                     }
-                    Some(SchemaFilter::CredentialSchema(credential_schema_id)) => Some(
-                        self.credential_schema_filter(
-                            credential_schema_id,
-                            TrustContext::Verification,
-                        )
-                        .await?
-                        .condition(),
-                    ),
+                    Some(SchemaFilter::CredentialSchema(credential_schema_id)) => {
+                        Some(self.credential_schema_formats(credential_schema_id).await?)
+                    }
                 };
+                let schema_condition =
+                    schema_formats.map(IdentifierFilterValue::trust_allowed_verification_types);
 
                 IdentifierFilterValue::Types(vec![IdentifierType::Certificate]).condition()
                     & IdentifierFilterValue::CertificateRole(CertificateRole::Authentication)
@@ -147,43 +144,28 @@ impl EudiEcosystem {
         })
     }
 
-    async fn credential_schema_filter(
+    async fn credential_schema_formats(
         &self,
         credential_schema_id: &CredentialSchemaId,
-        context: TrustContext,
-    ) -> Result<IdentifierFilterValue, EcosystemError> {
+    ) -> Result<Vec<SchemaFormat>, EcosystemError> {
         let schema = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?;
-        let filter_value =
-            filter_value_from_credential_schema(&schema, &self.config, context).await?;
-        Ok(filter_value)
+        Ok(credential_schema_to_schema_formats(&schema, &self.config).await?)
     }
 
-    async fn proof_schema_filter(
+    async fn proof_schema_formats(
         &self,
         proof_schema_id: &ProofSchemaId,
-    ) -> Result<ListFilterCondition<IdentifierFilterValue>, EcosystemError> {
+    ) -> Result<Vec<SchemaFormat>, EcosystemError> {
         let schema = self
             .proof_schema_repository
             .get_proof_schema(proof_schema_id)
             .await
             .error_while("getting proof schema")?;
-        let mut trust_verification_types = ListFilterCondition::<IdentifierFilterValue>::default();
-        let input_schemas = schema.input_schemas.as_ref().await?;
-        for input_schema in &input_schemas {
-            let credential_schema = input_schema.credential_schema.as_ref().await?;
-            let filter_value = filter_value_from_credential_schema(
-                &credential_schema,
-                &self.config,
-                TrustContext::Verification,
-            )
-            .await?;
-            trust_verification_types = trust_verification_types & filter_value;
-        }
-        Ok(trust_verification_types)
+        Ok(proof_schema_to_schema_formats(&schema, &self.config).await?)
     }
 
     fn pid_schema_formats(&self) -> Result<Vec<SchemaFormat>, EcosystemError> {
@@ -214,23 +196,4 @@ fn supported_key_algorithms() -> IdentifierFilterValue {
         KeyAlgorithmType::Eddsa.to_string(),
         KeyAlgorithmType::Ecdsa.to_string(),
     ])
-}
-
-enum TrustContext {
-    Issuance,
-    Verification,
-}
-
-async fn filter_value_from_credential_schema(
-    schema: &CredentialSchema,
-    config: &CoreConfig,
-    context: TrustContext,
-) -> Result<IdentifierFilterValue, EcosystemError> {
-    let (schema_format, _) = credential_schema_to_schema_format(schema, config).await?;
-    Ok(match context {
-        TrustContext::Issuance => IdentifierFilterValue::TrustAllowedIssuanceTypes(schema_format),
-        TrustContext::Verification => {
-            IdentifierFilterValue::TrustAllowedVerificationTypes(schema_format)
-        }
-    })
 }

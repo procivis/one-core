@@ -557,6 +557,21 @@ pub fn dummy_proof_schema() -> ProofSchema {
     }
 }
 
+impl CredentialSchema {
+    /// The only format of a single-format test schema.
+    pub async fn single_format(&self) -> CredentialSchemaFormat {
+        let formats = self.formats.as_ref().await.unwrap();
+        assert_eq!(
+            formats.len(),
+            1,
+            "credential schema {} has {} formats",
+            self.id,
+            formats.len()
+        );
+        formats.first().unwrap().to_owned()
+    }
+}
+
 pub fn dummy_credential_schema() -> CredentialSchema {
     dummy_credential_schema_with_format("format")
 }

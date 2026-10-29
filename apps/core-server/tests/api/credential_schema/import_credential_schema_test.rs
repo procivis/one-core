@@ -169,7 +169,9 @@ async fn test_import_credential_schema_success_with_same_name() {
 
     let mut imported_credential_schema = None;
     for credential_schema in credential_schemas {
-        if credential_schema.schema_id().await.unwrap() == imported_schema_id.to_string() {
+        if credential_schema.single_format().await.ecosystem_schema_id
+            == imported_schema_id.to_string()
+        {
             imported_credential_schema = Some(credential_schema);
             break;
         }

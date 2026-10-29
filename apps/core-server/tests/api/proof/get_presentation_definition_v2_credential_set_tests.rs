@@ -21,22 +21,24 @@ async fn test_get_presentation_definition_v2_credential_sets_simple() {
     let schema2 = simple_schema(&context, &org, "https://example.org/foo2").await;
     let credential = simple_credential(&context, &identifier, &schema).await;
 
-    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["firstName".to_string()])
-                .build(),
-        ])
-        .build();
-    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id().await.unwrap()])
-        .id("test_id2")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["firstName".to_string()])
-                .build(),
-        ])
-        .build();
+    let credential_query1 =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+    let credential_query2 =
+        CredentialQuery::sd_jwt_vc(vec![schema2.single_format().await.ecosystem_schema_id])
+            .id("test_id2")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query1, credential_query2])
         .credential_sets(vec![CredentialSet {
@@ -97,22 +99,24 @@ async fn test_get_presentation_definition_v2_credential_sets_multiple_credential
     let credential3 = simple_credential(&context, &identifier, &schema2).await;
     let credential4 = simple_credential(&context, &identifier, &schema2).await;
 
-    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["firstName".to_string()])
-                .build(),
-        ])
-        .build();
-    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id().await.unwrap()])
-        .id("test_id2")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["firstName".to_string()])
-                .build(),
-        ])
-        .build();
+    let credential_query1 =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+    let credential_query2 =
+        CredentialQuery::sd_jwt_vc(vec![schema2.single_format().await.ecosystem_schema_id])
+            .id("test_id2")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query1, credential_query2])
         .credential_sets(vec![
@@ -206,22 +210,24 @@ async fn test_get_presentation_definition_v2_optional_credential_sets() {
     let credential1 = simple_credential(&context, &identifier, &schema).await;
     let credential2 = simple_credential(&context, &identifier, &schema2).await;
 
-    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["firstName".to_string()])
-                .build(),
-        ])
-        .build();
-    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id().await.unwrap()])
-        .id("test_id2")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["firstName".to_string()])
-                .build(),
-        ])
-        .build();
+    let credential_query1 =
+        CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+            .id("test_id")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+    let credential_query2 =
+        CredentialQuery::sd_jwt_vc(vec![schema2.single_format().await.ecosystem_schema_id])
+            .id("test_id2")
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query1, credential_query2])
         .credential_sets(vec![

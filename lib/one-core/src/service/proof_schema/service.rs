@@ -11,10 +11,7 @@ use super::dto::{
 };
 use super::error::ProofSchemaServiceError;
 use super::mapper::{convert_proof_schema_to_response, proof_schema_from_create_request};
-use super::validator::{
-    extract_claims_from_credential_schema, throw_if_invalid_credential_combination,
-    validate_create_request,
-};
+use super::validator::{extract_claims_from_credential_schema, validate_create_request};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
 use crate::model::credential_schema::CredentialSchemaListQuery;
@@ -157,9 +154,6 @@ impl ProofSchemaService {
             )
             .error_while("validating key storage security")?;
         }
-
-        throw_if_invalid_credential_combination(&credential_schemas, &*self.formatter_provider)
-            .await?;
 
         let claim_schemas = extract_claims_from_credential_schema(
             &request.proof_input_schemas,

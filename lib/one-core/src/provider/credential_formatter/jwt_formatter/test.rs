@@ -873,7 +873,7 @@ async fn test_parse_credential() {
     assert_eq!(schema.allow_revocation, true);
     assert_eq!(schema.name, "7543Nested");
     assert_eq!(
-        schema.schema_id().await.unwrap(),
+        schema.single_format().await.ecosystem_schema_id,
         "https://core.dev.procivis-one.com/ssi/schema/v1/b79b7b5b-20f9-434b-b247-b0d19cc151da"
     );
 

@@ -9,31 +9,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::validator::proof_schema::validate_proof_input_formats;
-
-pub async fn throw_if_invalid_credential_combination(
-    schemas: &[CredentialSchema],
-    formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<(), ProofSchemaServiceError> {
-    if schemas.len() > 1 {
-        for schema in schemas {
-            let schema_format = schema.format().await?;
-            let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
-
-            if !formatter
-                .get_capabilities()
-                .features
-                .contains(&Features::SupportsCombinedPresentation)
-            {
-                return Err(ProofSchemaServiceError::InvalidCredentialCombination {
-                    credential_format: schema_format.to_string(),
-                });
-            }
-        }
-    }
-
-    Ok(())
-}
+use crate::validator::proof_schema::{resolve_proof_input_formats, validate_proof_input_formats};
 
 pub fn validate_create_request(
     request: &CreateProofSchemaRequestDTO,
@@ -81,9 +57,24 @@ pub(super) async fn extract_claims_from_credential_schema(
             .iter()
             .find(|schema| schema.id == proof_input.credential_schema_id)
             .ok_or(ProofSchemaServiceError::MissingCredentialSchema)?;
-
-        let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
+        let formats = resolve_proof_input_formats(proof_input.formats.clone(), credential_schema)
+            .await
+            .error_while("resolving proof input formats")?;
+        let mut formatters = vec![];
+        for schema_format in formats {
+            let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
+            if proof_inputs.len() > 1
+                && !formatter
+                    .get_capabilities()
+                    .features
+                    .contains(&Features::SupportsCombinedPresentation)
+            {
+                return Err(ProofSchemaServiceError::InvalidCredentialCombination {
+                    credential_format: schema_format.to_string(),
+                });
+            }
+            formatters.push(formatter);
+        }
 
         let claims = credential_schema.claim_schemas.as_ref().await?;
         let arrays = collect_lists(&claims);
@@ -94,7 +85,9 @@ pub(super) async fn extract_claims_from_credential_schema(
                 .find(|schema_claim| schema_claim.id == proof_claim.id)
                 .ok_or(ProofSchemaServiceError::MissingClaimSchema(proof_claim.id))?;
 
-            validate_proof_schema_nesting(claim_schema, &*formatter)?;
+            for formatter in &formatters {
+                validate_proof_schema_nesting(claim_schema, &**formatter)?;
+            }
             validate_proof_schema_claim_not_in_array(&claim_schema.key, &arrays)?;
             result.push(claim_schema.to_owned());
         }

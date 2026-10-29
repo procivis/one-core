@@ -583,9 +583,12 @@ async fn proof_input_schema_to_doc_request(
     let proof_claim_schemas = input.claim_schemas.as_ref().await?;
     let credential_schema = input.credential_schema.as_ref().await?;
     let formats = credential_schema.formats.as_ref().await?;
-    let format = formats.first().ok_or(VerificationProtocolError::Failed(
-        "formats is empty".to_string(),
-    ))?;
+    let format = formats
+        .iter()
+        .find(|format| input.formats.contains(&format.format))
+        .ok_or(VerificationProtocolError::Failed(
+            "proof input has no format of its credential schema".to_string(),
+        ))?;
     let mappings = format.claim_mappings.as_ref().await?;
     let mappings_by_schema_id: HashMap<_, _> = mappings
         .into_iter()
@@ -622,7 +625,7 @@ async fn proof_input_schema_to_doc_request(
     }
 
     let items_request = EmbeddedCbor::new(ItemsRequest {
-        doc_type: credential_schema.schema_id().await?,
+        doc_type: format.ecosystem_schema_id.to_owned(),
         name_spaces,
         request_info: None,
     })?;

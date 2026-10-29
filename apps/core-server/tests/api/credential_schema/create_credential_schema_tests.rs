@@ -39,12 +39,15 @@ async fn test_create_credential_schema_success() {
 
     assert_eq!(credential_schema.name, "some credential schema");
     assert_eq!(credential_schema.organisation.id(), organisation.id);
-    assert_eq!(credential_schema.format().await.unwrap().as_ref(), "JWT");
+    assert_eq!(
+        credential_schema.single_format().await.format.as_ref(),
+        "JWT"
+    );
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
     assert_eq!(claim_schemas.iter().filter(|cs| !cs.metadata).count(), 2);
     assert_eq!(claim_schemas.iter().filter(|cs| cs.metadata).count(), 10);
     assert_eq!(
-        credential_schema.schema_id().await.unwrap(),
+        credential_schema.single_format().await.ecosystem_schema_id,
         format!(
             "{}/ssi/schema/v2/{id}/JWT",
             context.config.app.core_base_url
@@ -519,8 +522,14 @@ async fn test_create_credential_schema_mdoc_without_schema_id() {
 
     assert_eq!(credential_schema.name, "schema");
     assert_eq!(credential_schema.organisation.id(), organisation.id);
-    assert_eq!(credential_schema.format().await.unwrap().as_ref(), "MDOC");
-    assert_eq!(credential_schema.schema_id().await.unwrap(), id.to_string());
+    assert_eq!(
+        credential_schema.single_format().await.format.as_ref(),
+        "MDOC"
+    );
+    assert_eq!(
+        credential_schema.single_format().await.ecosystem_schema_id,
+        id.to_string()
+    );
     let schema_translations = context.db.localized_text.get(credential_schema.id).await;
     assert_eq!(schema_translations.len(), 1);
     assert_eq!(schema_translations[0].lang, "en");
@@ -570,8 +579,11 @@ async fn test_create_credential_schema_sdjwtvc_with_schema_id() {
     assert_eq!(credential_schema.name, "schema");
     assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(
-        credential_schema.format().await.unwrap().as_ref(),
+        credential_schema.single_format().await.format.as_ref(),
         "SD_JWT_VC"
     );
-    assert_eq!(credential_schema.schema_id().await.unwrap(), schema_id);
+    assert_eq!(
+        credential_schema.single_format().await.ecosystem_schema_id,
+        schema_id
+    );
 }

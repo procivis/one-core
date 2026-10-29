@@ -115,7 +115,7 @@ async fn test_parse_import_credential_schema_success() {
     // then
     let_assert!(Ok(schema) = result);
     assert_eq!(schema.name, "Imported Schema");
-    assert_eq!(schema.format().await.unwrap().as_ref(), "JWT");
+    assert_eq!(schema.single_format().await.format.as_ref(), "JWT");
     assert_eq!(
         schema.transaction_code.unwrap().r#type,
         TransactionCodeType::Numeric

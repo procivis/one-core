@@ -76,7 +76,13 @@ async fn test_get_credential_offer_success_jwt() {
 
     assert_eq!(
         credential_id.as_str(),
-        Some(credential_schema.schema_id().await.unwrap().as_str())
+        Some(
+            credential_schema
+                .single_format()
+                .await
+                .ecosystem_schema_id
+                .as_str()
+        )
     );
 }
 
@@ -162,7 +168,13 @@ async fn test_get_credential_offer_success_with_tx_code() {
     let credential_id = &offer["credential_configuration_ids"][0];
     assert_eq!(
         credential_id.as_str(),
-        Some(credential_schema.schema_id().await.unwrap().as_str())
+        Some(
+            credential_schema
+                .single_format()
+                .await
+                .ecosystem_schema_id
+                .as_str()
+        )
     );
 }
 
@@ -231,7 +243,13 @@ async fn test_get_credential_offer_success_certificate_identifier() {
 
     assert_eq!(
         credential_id.as_str(),
-        Some(credential_schema.schema_id().await.unwrap().as_str())
+        Some(
+            credential_schema
+                .single_format()
+                .await
+                .ecosystem_schema_id
+                .as_str()
+        )
     );
 }
 
@@ -307,7 +325,13 @@ async fn test_get_credential_offer_success_mdoc() {
 
     assert_eq!(
         credential_id.as_str(),
-        Some(credential_schema.schema_id().await.unwrap().as_str())
+        Some(
+            credential_schema
+                .single_format()
+                .await
+                .ecosystem_schema_id
+                .as_str()
+        )
     );
 }
 

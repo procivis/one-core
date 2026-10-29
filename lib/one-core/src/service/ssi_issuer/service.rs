@@ -102,27 +102,36 @@ impl SSIIssuerService {
             .await
             .error_while("getting credential schema")?;
 
-        let (schema_format, claim_mappings) = if let Some(format) = format {
-            let formats = credential_schema.formats.as_ref().await?;
-            let Some(format) = formats.iter().find(|f| f.format == *format) else {
-                return Err(IssuerServiceError::InvalidFormat);
-            };
-            (
-                format.format.clone(),
-                Some(format.claim_mappings.as_ref().await?.to_vec()),
-            )
-        } else {
-            (credential_schema.format().await?, None)
-        };
-
-        let config = self
-            .config
-            .format
-            .get_fields(&schema_format)
-            .error_while("getting format config")?;
-        if ![FormatType::JsonLdBbsPlus, FormatType::JsonLdClassic].contains(&config.r#type) {
-            return Err(IssuerServiceError::InvalidFormat);
+        let formats = credential_schema.formats.as_ref().await?;
+        let mut json_ld_formats = vec![];
+        for schema_format in formats.iter() {
+            let format_type = self
+                .config
+                .format
+                .get_type(&schema_format.format)
+                .error_while("getting format config")?;
+            if [FormatType::JsonLdBbsPlus, FormatType::JsonLdClassic].contains(&format_type) {
+                json_ld_formats.push(schema_format);
+            }
         }
+
+        let (schema_format, claim_mappings) = match format {
+            Some(format) => {
+                let Some(schema_format) = json_ld_formats.iter().find(|f| f.format == *format)
+                else {
+                    return Err(IssuerServiceError::InvalidFormat);
+                };
+                (
+                    schema_format.format.clone(),
+                    Some(schema_format.claim_mappings.as_ref().await?.to_vec()),
+                )
+            }
+            // context URLs issued before the format was part of the path
+            None => match json_ld_formats.as_slice() {
+                [schema_format] => (schema_format.format.clone(), None),
+                _ => return Err(IssuerServiceError::InvalidFormat),
+            },
+        };
 
         let base_url = format!(
             "{}/ssi/context/v1/{credential_schema_id}/{schema_format}",

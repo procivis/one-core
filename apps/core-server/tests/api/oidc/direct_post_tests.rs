@@ -159,7 +159,7 @@ async fn jwt_query(schema: &CredentialSchema, claims: &[TestClaim<'_>]) -> Value
         "format": "jwt_vc_json",
         "meta": {"type_values": [[
             "https://www.w3.org/2018/credentials#VerifiableCredential",
-            format!("{}#{}", schema.schema_id().await.unwrap(), schema.name)
+            format!("{}#{}", schema.single_format().await.ecosystem_schema_id, schema.name)
         ]]},
         "claims": claims.iter().map(|(id, key, required, _, _)| json!({
             "id": id, "path": ["credentialSubject", key], "required": required

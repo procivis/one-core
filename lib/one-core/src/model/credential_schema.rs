@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use proc_macros::Model;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialFormat, CredentialSchemaId, EcosystemId, RevocationMethodId};
+use shared_types::{CredentialSchemaId, EcosystemId, RevocationMethodId};
 use strum::Display;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
@@ -13,7 +13,7 @@ use super::common::GetListResponse;
 use super::list_query::ListQuery;
 use super::organisation::Organisation;
 use super::relation::{Related, RelatedVec};
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::localized_text::LocalizedText;
@@ -21,7 +21,6 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
-use crate::service::error::ServiceError;
 
 pub type CredentialSchemaName = String;
 
@@ -71,45 +70,16 @@ impl ErrorCodeMixin for CredentialSchemaModelError {
 }
 
 impl CredentialSchema {
-    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
     pub async fn matches_schema_id(
         &self,
         other_schema_ids: &[String],
     ) -> Result<bool, NestedError> {
         Ok(self
-            .get_formats()
+            .formats
+            .as_ref()
             .await?
             .iter()
             .any(|f| other_schema_ids.contains(&f.ecosystem_schema_id)))
-    }
-
-    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
-    pub async fn format(&self) -> Result<CredentialFormat, NestedError> {
-        Ok(self.first_format().await?.format)
-    }
-
-    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
-    pub async fn schema_id(&self) -> Result<String, NestedError> {
-        Ok(self.first_format().await?.ecosystem_schema_id)
-    }
-
-    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
-    async fn first_format(&self) -> Result<CredentialSchemaFormat, NestedError> {
-        self.get_formats()
-            .await?
-            .into_iter()
-            .next()
-            .ok_or_else(|| {
-                ServiceError::MappingError(format!(
-                    "Credential schema {} has no credential schema format",
-                    self.id
-                ))
-            })
-            .error_while("Failed to retrieve credential format")
-    }
-
-    async fn get_formats(&self) -> Result<Vec<CredentialSchemaFormat>, NestedError> {
-        Ok(self.formats.as_ref().await?.to_owned())
     }
 
     pub fn revocation_method_id<'a>(

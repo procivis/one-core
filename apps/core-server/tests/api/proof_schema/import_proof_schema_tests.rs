@@ -112,12 +112,12 @@ async fn test_import_proof_schema_ok() {
             json!({
               "createdDate": now,
               "lastModified": now,
-              "format": original_credential_schema.format().await.unwrap(),
+              "format": original_credential_schema.single_format().await.format,
               "id": original_credential_schema_id,
               "importedSourceUrl": original_credential_schema.imported_source_url,
               "name": original_credential_schema.name,
               "organisationId": source_organisation.id,
-              "schemaId": original_credential_schema.schema_id().await.unwrap(),
+              "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
               "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
               "allowSuspension": original_credential_schema.allow_suspension,
               "ecosystem": "EUDI",
@@ -165,10 +165,10 @@ async fn test_import_proof_schema_ok() {
                     "lastModified": now,
                     "importedSourceUrl": original_credential_schema.imported_source_url,
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.format().await.unwrap(),
-                    "revocationMethod": original_credential_schema.format().await.unwrap(),
+                    "format": original_credential_schema.single_format().await.format,
+                    "revocationMethod": original_credential_schema.single_format().await.format,
                     "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": original_credential_schema.schema_id().await.unwrap(),
+                    "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
                     "ecosystem": "EUDI",
                 }
             }
@@ -254,10 +254,10 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
                     "lastModified": now,
                     "importedSourceUrl": "invalid_should_not_be_needed",
                     "name": credential_schema.name,
-                    "format": credential_schema.format().await.unwrap(),
-                    "revocationMethod": credential_schema.format().await.unwrap(),
+                    "format": credential_schema.single_format().await.format,
+                    "revocationMethod": credential_schema.single_format().await.format,
                     "keyStorageSecurity": credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": credential_schema.schema_id().await.unwrap(),
+                    "schemaId": credential_schema.single_format().await.ecosystem_schema_id,
                 }
             }
         ]
@@ -322,10 +322,10 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
                     "lastModified": now,
                     "importedSourceUrl": "invalid_should_not_be_needed",
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.format().await.unwrap(),
-                    "revocationMethod": original_credential_schema.format().await.unwrap(),
+                    "format": original_credential_schema.single_format().await.format,
+                    "revocationMethod": original_credential_schema.single_format().await.format,
                     "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": original_credential_schema.schema_id().await.unwrap(),
+                    "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
                 }
             }
         ]
@@ -457,10 +457,10 @@ async fn test_import_proof_schema_nested_array() {
                     "lastModified": now,
                     "importedSourceUrl": "invalid_should_not_be_needed",
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.format().await.unwrap(),
-                    "revocationMethod": original_credential_schema.format().await.unwrap(),
+                    "format": original_credential_schema.single_format().await.format,
+                    "revocationMethod": original_credential_schema.single_format().await.format,
                     "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": original_credential_schema.schema_id().await.unwrap(),
+                    "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
                 }
             }
         ]

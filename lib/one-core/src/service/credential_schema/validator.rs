@@ -14,9 +14,9 @@ use super::mapper::create_unique_name_check_request;
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, IdentifierType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
-use crate::error::{ContextWithErrorCode, NestedError};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::model::credential_schema::{GetCredentialSchemaList, KeyStorageSecurity};
+use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -42,31 +42,19 @@ pub(crate) async fn credential_schema_already_exists(
         .await
         .error_while("getting credential schemas")?;
 
-    if exists_credential_schema_with_same_ecosystem_schema_id(
-        &credential_schemas,
-        &ecosystem_schema_ids,
-    )
-    .await?
-    {
-        return Ok(UniquenessCheckResult::SchemaIdConflict);
+    for credential_schema in &credential_schemas.values {
+        if credential_schema
+            .matches_schema_id(&ecosystem_schema_ids)
+            .await?
+        {
+            return Ok(UniquenessCheckResult::SchemaIdConflict);
+        }
     }
     if credential_schemas.values.iter().any(|cs| cs.name == name) {
         Ok(UniquenessCheckResult::NameConflict)
     } else {
         Ok(UniquenessCheckResult::Ok)
     }
-}
-
-async fn exists_credential_schema_with_same_ecosystem_schema_id(
-    credential_schemas: &GetCredentialSchemaList,
-    ecosystem_schema_ids: &[String],
-) -> Result<bool, NestedError> {
-    for value in &credential_schemas.values {
-        if value.matches_schema_id(ecosystem_schema_ids).await? {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 pub(crate) enum UniquenessCheckResult {

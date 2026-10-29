@@ -118,7 +118,8 @@ async fn test_get_credential_issuer_metadata_wallet_attestation_status_periods()
 
     assert_eq!(resp["preferred_client_status_period"], 2592000);
     let key_attestations_required = &resp["credential_configurations_supported"]
-        [credential_schema.schema_id().await.unwrap()]["proof_types_supported"]["jwt"]["key_attestations_required"];
+        [credential_schema.single_format().await.ecosystem_schema_id]["proof_types_supported"]["jwt"]
+        ["key_attestations_required"];
     assert_eq!(
         key_attestations_required["key_storage"],
         json!(["iso_18045_basic"])
@@ -211,7 +212,7 @@ async fn test_get_credential_issuer_metadata_jwt_certificate_identifier_with_tru
             TestingIdentifierTrustInformationParams {
                 allowed_issuance_types: Some(vec![SchemaFormat {
                     format: "jwt_vc_json".to_string(),
-                    schema_id: credential_schema.schema_id().await.unwrap(),
+                    schema_id: credential_schema.single_format().await.ecosystem_schema_id,
                 }]),
                 ..Default::default()
             },
@@ -252,7 +253,7 @@ async fn test_get_credential_issuer_metadata_jwt_certificate_identifier_with_tru
         issuer_info["credential_ids"][0]
             .as_str()
             .expect("credential_ids should be string"),
-        credential_schema.schema_id().await.unwrap()
+        credential_schema.single_format().await.ecosystem_schema_id
     );
     assert_issuer_metadata(&context, &identifier, &credential_schema, jwt_payload).await;
 
@@ -460,8 +461,11 @@ async fn test_get_credential_issuer_metadata_with_disclosure_policy() {
     let body: Value = resp.json_value().await;
 
     assert_eq!(
-        body["credential_configurations_supported"]
-            [credential_schema.schema_id().await.unwrap().as_str()]["disclosure_policy"],
+        body["credential_configurations_supported"][credential_schema
+            .single_format()
+            .await
+            .ecosystem_schema_id
+            .as_str()]["disclosure_policy"],
         serde_json::json!({
             "id": "ID",
             "policy": "rootOfTrust",
@@ -515,7 +519,7 @@ async fn test_get_credential_issuer_metadata_with_claim_mappings() {
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json_value().await;
 
-    let schema_id = credential_schema.schema_id().await.unwrap();
+    let schema_id = credential_schema.single_format().await.ecosystem_schema_id;
     // layout properties are using mapped paths
     assert_eq!(
         body["credential_configurations_supported"][schema_id.as_str()]["credential_metadata"]["display"]
@@ -565,18 +569,18 @@ async fn assert_issuer_metadata(
 
     // Check the credential format and metadata structure
     assert_eq!(
-        credentials[&credential_schema.schema_id().await.unwrap()]["format"],
+        credentials[&credential_schema.single_format().await.ecosystem_schema_id]["format"],
         "jwt_vc_json"
     );
 
     // Check display properties are present
-    let display = &credentials[&credential_schema.schema_id().await.unwrap()]["credential_metadata"]
+    let display = &credentials[&credential_schema.single_format().await.ecosystem_schema_id]["credential_metadata"]
         ["display"][0];
     assert_eq!(display["name"], "test_schema");
     assert_eq!(display["locale"], "en");
 
     // Check claims structure
-    let claims = &credentials[&credential_schema.schema_id().await.unwrap()]["credential_metadata"]
+    let claims = &credentials[&credential_schema.single_format().await.ecosystem_schema_id]["credential_metadata"]
         ["claims"];
     assert_expected_claims(claims);
 }

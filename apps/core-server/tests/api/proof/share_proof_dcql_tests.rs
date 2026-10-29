@@ -209,7 +209,7 @@ async fn test_share_proof_dcql_jwt_success() {
                     "type_values": [
                         [
                           "https://www.w3.org/2018/credentials#VerifiableCredential".to_string(),
-                          format!("{}#{}", credential_schema.schema_id().await.unwrap(), credential_schema.name),
+                          format!("{}#{}", credential_schema.single_format().await.ecosystem_schema_id, credential_schema.name),
                         ],
                         [credential_schema.name.to_string()]
                     ]
@@ -461,7 +461,7 @@ async fn test_share_proof_dcql_jsonld_success() {
                     "type_values": [
                         [
                           "https://www.w3.org/2018/credentials#VerifiableCredential".to_string(),
-                          format!("{}#{}", credential_schema.schema_id().await.unwrap(), credential_schema.name)],
+                          format!("{}#{}", credential_schema.single_format().await.ecosystem_schema_id, credential_schema.name)],
                         [credential_schema.name.to_string()]
                     ]
                 }
@@ -574,7 +574,7 @@ async fn test_share_proof_dcql_jsonld_bbs_success() {
                     "type_values": [
                         [
                           "https://www.w3.org/2018/credentials#VerifiableCredential".to_string(),
-                          format!("{}#{}", credential_schema.schema_id().await.unwrap(), credential_schema.name)],
+                          format!("{}#{}", credential_schema.single_format().await.ecosystem_schema_id, credential_schema.name)],
                         [credential_schema.name.to_string()]
                     ]
                 }
@@ -687,7 +687,7 @@ async fn test_share_proof_dcql_sd_jwt_success() {
                     "type_values": [
                         [
                           "https://www.w3.org/2018/credentials#VerifiableCredential".to_string(),
-                          format!("{}#{}", credential_schema.schema_id().await.unwrap(), credential_schema.name)
+                          format!("{}#{}", credential_schema.single_format().await.ecosystem_schema_id, credential_schema.name)
                         ],
                         [credential_schema.name.to_string()]
                     ]
@@ -797,7 +797,7 @@ async fn test_share_proof_dcql_sd_jwt_vc_success() {
                 "multiple": false,
                 "require_cryptographic_holder_binding": true,
                 "meta": {
-                    "vct_values": [credential_schema.schema_id().await.unwrap()]
+                    "vct_values": [credential_schema.single_format().await.ecosystem_schema_id]
                 }
             }
         ]
@@ -895,7 +895,7 @@ async fn test_share_proof_dcql_nested_object_with_array_success() {
                     "type_values": [
                         [
                           "https://www.w3.org/2018/credentials#VerifiableCredential".to_string(),
-                          format!("{}#{}", credential_schema.schema_id().await.unwrap(), credential_schema.name)
+                          format!("{}#{}", credential_schema.single_format().await.ecosystem_schema_id, credential_schema.name)
                         ],
                         [credential_schema.name.to_string()]
                     ]
