@@ -9,7 +9,9 @@ use crate::config::core_config::BlobStorageType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::revocation_list::RevocationListEntityInfo;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
+use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListEntryFilterValue};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::signer::dto::{CreateSignatureResponseDTO, Issuer};
 use crate::repository::error::DataLayerError;
@@ -181,9 +183,16 @@ impl SignatureService {
     ) -> Result<HashMap<Uuid, SignatureStatusInfo>, SignatureServiceError> {
         let entries = self
             .revocation_list_repository
-            .get_entries_by_id(convert_inner(signature_ids))
+            .get_entries(ListQuery {
+                include_count: false,
+                filtering: Some(
+                    RevocationListEntryFilterValue::Ids(convert_inner(signature_ids)).condition(),
+                ),
+                ..Default::default()
+            })
             .await
-            .error_while("getting revocation list entries")?;
+            .error_while("getting revocation list entries")?
+            .values;
         let mut result = HashMap::new();
         for entry in entries {
             let RevocationListEntityInfo::Signature(r#type, _) = entry.entity_info else {

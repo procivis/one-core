@@ -14,7 +14,9 @@ use crate::config::core_config::{
 };
 use crate::config::{ConfigValidationError, ProviderReference};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
-use crate::model::revocation_list::RevocationListEntityInfo;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::{ListPagination, ListQuery};
+use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListEntryFilterValue};
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -49,8 +51,19 @@ impl SignerProvider for SignerProviderImpl {
     ) -> Result<(SignerId, Arc<dyn Signer>), NestedError> {
         let entry = async {
             self.revocation_list_repository
-                .get_entries_by_id(vec![id.into()])
+                .get_entries(ListQuery {
+                    include_count: false,
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: 1,
+                    }),
+                    filtering: Some(
+                        RevocationListEntryFilterValue::Ids(vec![id.into()]).condition(),
+                    ),
+                    ..Default::default()
+                })
                 .await?
+                .values
                 .into_iter()
                 .next()
                 .ok_or_else(|| DataLayerError::EntityNotFound {

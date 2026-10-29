@@ -9,7 +9,7 @@ use super::error::DataLayerError;
 use crate::model::common::LockType;
 use crate::model::relation::AsyncModelLoader;
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilter,
+    RevocationList, RevocationListEntityId, RevocationListEntryList, RevocationListEntryListQuery,
     RevocationListPurpose, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 
@@ -74,14 +74,8 @@ pub trait RevocationListRepository: Send + Sync {
 
     async fn get_entries(
         &self,
-        list_id: RevocationListId,
-        filter: RevocationListEntryFilter,
-    ) -> Result<Vec<RevocationListEntry>, DataLayerError>;
-
-    async fn get_entries_by_id(
-        &self,
-        entry_ids: Vec<RevocationListEntryId>,
-    ) -> Result<Vec<RevocationListEntry>, DataLayerError>;
+        query: RevocationListEntryListQuery,
+    ) -> Result<RevocationListEntryList, DataLayerError>;
 }
 
 #[async_trait::async_trait]

@@ -5,6 +5,7 @@ use one_core::repository::identifier_repository::IdentifierRepository;
 
 use crate::transaction_context::TransactionManagerImpl;
 
+mod mapper;
 pub mod repository;
 
 pub(crate) struct RevocationListProvider {

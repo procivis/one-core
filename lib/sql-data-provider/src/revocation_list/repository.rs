@@ -1,20 +1,19 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
+use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::common::LockType;
 use one_core::model::relation::Related;
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryFilter, RevocationListPurpose, UpdateRevocationListEntryId,
-    UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntryList, RevocationListEntryListQuery,
+    RevocationListPurpose, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use one_dto_mapper::try_convert_inner;
-use sea_orm::sea_query::{CaseStatement, Expr, IntoCondition};
+use sea_orm::sea_query::{CaseStatement, Expr};
 use sea_orm::{
-    ActiveEnum, ColumnTrait, Condition, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder,
-    QuerySelect, Set, Unchanged,
+    ActiveEnum, ColumnTrait, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder, QuerySelect,
+    Set, Unchanged,
 };
 use shared_types::{
     CertificateId, CredentialId, IdentifierId, RevocationListEntryId, RevocationListId,
@@ -22,10 +21,13 @@ use shared_types::{
 };
 use uuid::Uuid;
 
+use super::RevocationListProvider;
+use super::mapper::revocation_list_entry_from_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
 use crate::entity::{managed_instance_attestation, revocation_list, revocation_list_entry};
+use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
-use crate::revocation_list::RevocationListProvider;
 
 impl RevocationListProvider {
     fn entity_model_to_repository_model(
@@ -403,86 +405,21 @@ impl RevocationListRepository for RevocationListProvider {
 
     async fn get_entries(
         &self,
-        list_id: RevocationListId,
-        filter: RevocationListEntryFilter,
-    ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
-        let mut condition = Condition::all()
-            .add(revocation_list_entry::Column::RevocationListId.eq(list_id.to_string()));
+        query_params: RevocationListEntryListQuery,
+    ) -> Result<RevocationListEntryList, DataLayerError> {
+        let mut query = revocation_list_entry::Entity::find()
+            .with_list_query(&query_params, self.db.supported_db_type());
 
-        if let Some(index_from) = filter.index_from {
-            condition = condition.add(revocation_list_entry::Column::Index.gte(index_from as i32));
-        }
-        if let Some(index_to) = filter.index_to {
-            condition = condition.add(revocation_list_entry::Column::Index.lt(index_to as i32));
-        }
-
-        if let Some(states) = filter.states {
-            condition = condition.add(
-                revocation_list_entry::Column::State
-                    .is_in(states.into_iter().map(RevocationListEntryState::from)),
-            );
+        if query_params.sorting.is_some() || query_params.pagination.is_some() {
+            // fallback ordering
+            query = query
+                .order_by_desc(revocation_list_entry::Column::CreatedDate)
+                .order_by_desc(revocation_list_entry::Column::Id);
         }
 
-        self.get_filtered_entries(condition).await
-    }
-
-    async fn get_entries_by_id(
-        &self,
-        entry_ids: Vec<RevocationListEntryId>,
-    ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
-        self.get_filtered_entries(
-            revocation_list_entry::Column::Id
-                .is_in(entry_ids)
-                .into_condition(),
-        )
+        list_query_with_custom_model(query, query_params, &self.db, |model| {
+            revocation_list_entry_from_model(model)
+        })
         .await
-    }
-}
-
-impl RevocationListProvider {
-    async fn get_filtered_entries(
-        &self,
-        filter: sea_orm::Condition,
-    ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
-        let entries = revocation_list_entry::Entity::find()
-            .filter(filter)
-            .order_by_asc(revocation_list_entry::Column::Index)
-            .all(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
-
-        entries
-            .into_iter()
-            .map(|entry| {
-                let entity_info = match entry.r#type {
-                    RevocationListEntryType::Credential => {
-                        Ok(RevocationListEntityInfo::Credential(entry.credential_id))
-                    }
-                    RevocationListEntryType::KeyAttestation => {
-                        Ok(RevocationListEntityInfo::KeyAttestation)
-                    }
-                    RevocationListEntryType::WalletInstanceAttestation => {
-                        Ok(RevocationListEntityInfo::WalletInstanceAttestation)
-                    }
-                    RevocationListEntryType::Signature => match entry.signature_type {
-                        Some(signature_type) => Ok(RevocationListEntityInfo::Signature(
-                            signature_type.into(),
-                            try_convert_inner(entry.serial)?,
-                        )),
-                        None => Err(DataLayerError::MappingError(anyhow!(
-                            "Signature revocation list entry is missing signature_type"
-                        ))),
-                    },
-                }?;
-                Ok(RevocationListEntry {
-                    id: entry.id,
-                    created_date: entry.created_date,
-                    last_modified: entry.last_modified,
-                    entity_info,
-                    index: entry.index.map(|index| index as _),
-                    state: entry.state.into(),
-                })
-            })
-            .collect::<Result<_, DataLayerError>>()
     }
 }

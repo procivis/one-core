@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use one_core::model::certificate::Certificate;
 use one_core::model::identifier::Identifier;
+use one_core::model::list_filter::ListFilterValue;
+use one_core::model::list_query::ListQuery;
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryState,
-    RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
-    UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilterValue,
+    RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use one_dto_mapper::convert_inner;
@@ -123,8 +125,12 @@ impl RevocationListsDB {
 
     pub async fn get_entries(&self, list_id: RevocationListId) -> Vec<RevocationListEntry> {
         self.repository
-            .get_entries(list_id, Default::default())
+            .get_entries(ListQuery {
+                filtering: Some(RevocationListEntryFilterValue::List(list_id).condition()),
+                ..Default::default()
+            })
             .await
             .unwrap()
+            .values
     }
 }

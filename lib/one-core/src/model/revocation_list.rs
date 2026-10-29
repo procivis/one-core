@@ -10,9 +10,12 @@ use standardized_types::x509::CertificateSerial;
 use strum::Display;
 use time::OffsetDateTime;
 
-use crate::model::certificate::Certificate;
-use crate::model::identifier::Identifier;
-use crate::model::relation::Related;
+use super::certificate::Certificate;
+use super::common::GetListResponse;
+use super::identifier::Identifier;
+use super::list_filter::ListFilterValue;
+use super::list_query::ListQuery;
+use super::relation::Related;
 
 #[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -100,31 +103,42 @@ pub struct UpdateRevocationListEntryRequest {
     pub credential_id: Option<CredentialId>,
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct RevocationListEntryFilter {
-    /// inclusive
-    pub index_from: Option<usize>,
-    /// exclusive (to avoid panic on empty range 0..0)
-    pub index_to: Option<usize>,
-    pub states: Option<Vec<RevocationListEntryState>>,
+#[derive(Clone, Debug, PartialEq)]
+pub enum RevocationListEntryFilterValue {
+    List(RevocationListId),
+    Ids(Vec<RevocationListEntryId>),
+    IndexRange {
+        /// inclusive
+        from: Option<usize>,
+        /// exclusive (to avoid panic on empty range 0..0)
+        to: Option<usize>,
+    },
+    States(Vec<RevocationListEntryState>),
 }
 
-impl RevocationListEntryFilter {
-    pub fn from_index_range(range: impl RangeBounds<usize>) -> Self {
-        let index_from = match range.start_bound() {
+impl ListFilterValue for RevocationListEntryFilterValue {}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableRevocationListEntryColumn {
+    Index,
+}
+
+pub type RevocationListEntryList<Count = Option<u64>> = GetListResponse<RevocationListEntry, Count>;
+pub type RevocationListEntryListQuery =
+    ListQuery<SortableRevocationListEntryColumn, RevocationListEntryFilterValue>;
+
+impl RevocationListEntryFilterValue {
+    pub fn index_range(range: impl RangeBounds<usize>) -> Self {
+        let from = match range.start_bound() {
             Bound::Included(&from) => Some(from),
             Bound::Excluded(&from) => Some(from + 1),
             Bound::Unbounded => None,
         };
-        let index_to = match range.end_bound() {
+        let to = match range.end_bound() {
             Bound::Included(&to) => Some(to + 1),
             Bound::Excluded(&to) => Some(to),
             Bound::Unbounded => None,
         };
-        Self {
-            index_from,
-            index_to,
-            ..Default::default()
-        }
+        Self::IndexRange { from, to }
     }
 }

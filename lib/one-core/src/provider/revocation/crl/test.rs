@@ -16,7 +16,7 @@ use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryFilter, RevocationListEntryState, RevocationListPurpose,
+    RevocationListEntryList, RevocationListEntryState, RevocationListPurpose,
     StatusListCredentialFormat, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::proto::transaction_manager::NoTransactionManager;
@@ -188,24 +188,24 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
     let revocation_time = crate::clock::now_utc().replace_millisecond(0).unwrap();
     revocation_list_repository
         .expect_get_entries()
-        .with(
-            eq(list_id),
-            eq(RevocationListEntryFilter {
-                states: Some(vec![RevocationListEntryState::Revoked]),
-                ..Default::default()
-            }),
-        )
         .return_once({
             let serial = serial.clone();
-            move |_, _| {
-                Ok(vec![RevocationListEntry {
-                    id: signature_id,
-                    created_date: revocation_time,
-                    last_modified: revocation_time,
-                    entity_info: RevocationListEntityInfo::Signature("type".into(), Some(serial)),
-                    index: None,
-                    state: RevocationListEntryState::Revoked,
-                }])
+            move |_| {
+                Ok(RevocationListEntryList {
+                    values: vec![RevocationListEntry {
+                        id: signature_id,
+                        created_date: revocation_time,
+                        last_modified: revocation_time,
+                        entity_info: RevocationListEntityInfo::Signature(
+                            "type".into(),
+                            Some(serial),
+                        ),
+                        index: None,
+                        state: RevocationListEntryState::Revoked,
+                    }],
+                    total_pages: None,
+                    total_items: None,
+                })
             }
         });
 
@@ -358,14 +358,13 @@ async fn test_get_updated_list_with_update() {
 
     revocation_list_repository
         .expect_get_entries()
-        .with(
-            eq(list_id),
-            eq(RevocationListEntryFilter {
-                states: Some(vec![RevocationListEntryState::Revoked]),
-                ..Default::default()
-            }),
-        )
-        .return_once(|_, _| Ok(vec![]));
+        .return_once(|_| {
+            Ok(RevocationListEntryList {
+                values: vec![],
+                total_pages: None,
+                total_items: None,
+            })
+        });
 
     revocation_list_repository
         .expect_update_formatted_list()

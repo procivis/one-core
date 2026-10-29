@@ -36,12 +36,14 @@ use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::managed_instance_attestation::{
     ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::model::relation::Related;
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilter,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilterValue,
     RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
@@ -744,15 +746,17 @@ impl TokenStatusList {
 
         let entries = self
             .revocation_list_repository
-            .get_entries(
-                list_id,
-                RevocationListEntryFilter {
-                    states: Some(states),
-                    ..Default::default()
-                },
-            )
+            .get_entries(ListQuery {
+                include_count: false,
+                filtering: Some(
+                    RevocationListEntryFilterValue::List(list_id).condition()
+                        & RevocationListEntryFilterValue::States(states),
+                ),
+                ..Default::default()
+            })
             .await
-            .error_while("getting revocation list entries")?;
+            .error_while("getting revocation list entries")?
+            .values;
 
         let encoded_list = generate_token_from_entries(entries, self.required_bits()?).await?;
 

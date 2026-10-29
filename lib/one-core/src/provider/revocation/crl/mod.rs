@@ -19,13 +19,15 @@ use crate::mapper::x509::SigningKeyAdapter;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::managed_instance_attestation::{
     ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
 };
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntryFilter,
-    RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
-    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntityInfo,
+    RevocationListEntryFilterValue, RevocationListEntryState, RevocationListPurpose,
+    StatusListCredentialFormat, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::transaction_manager::TransactionManager;
@@ -335,15 +337,19 @@ impl CRLRevocation {
 
         let revoked_certificates = self
             .revocation_list_repository
-            .get_entries(
-                list.id,
-                RevocationListEntryFilter {
-                    states: Some(vec![RevocationListEntryState::Revoked]),
-                    ..Default::default()
-                },
-            )
+            .get_entries(ListQuery {
+                include_count: false,
+                filtering: Some(
+                    RevocationListEntryFilterValue::List(list.id).condition()
+                        & RevocationListEntryFilterValue::States(vec![
+                            RevocationListEntryState::Revoked,
+                        ]),
+                ),
+                ..Default::default()
+            })
             .await
             .error_while("getting revocation list entries")?
+            .values
             .into_iter()
             .filter_map(|entry| {
                 if let RevocationListEntityInfo::Signature(_, Some(serial)) = entry.entity_info {

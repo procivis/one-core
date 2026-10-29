@@ -2,13 +2,17 @@ use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 use std::vec;
 
+use one_core::model::common::SortDirection;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{Did, DidType};
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierState};
+use one_core::model::list_filter::ListFilterValue;
+use one_core::model::list_query::{ListQuery, ListSorting};
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryFilter, RevocationListEntryState, RevocationListPurpose,
-    StatusListCredentialFormat, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    RevocationListEntryFilterValue, RevocationListEntryState, RevocationListPurpose,
+    SortableRevocationListEntryColumn, StatusListCredentialFormat, UpdateRevocationListEntryId,
+    UpdateRevocationListEntryRequest,
 };
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::error::DataLayerError;
@@ -330,9 +334,13 @@ async fn test_create_credential_entry_without_credential_id() {
 
     let entries = setup
         .provider
-        .get_entries_by_id(vec![entry_id])
+        .get_entries(ListQuery {
+            filtering: Some(RevocationListEntryFilterValue::Ids(vec![entry_id]).condition()),
+            ..Default::default()
+        })
         .await
-        .unwrap();
+        .unwrap()
+        .values;
     assert_eq!(entries.len(), 1);
     assert_eq!(
         entries[0].entity_info,
@@ -354,9 +362,13 @@ async fn test_create_credential_entry_without_credential_id() {
 
     let entries = setup
         .provider
-        .get_entries_by_id(vec![entry_id])
+        .get_entries(ListQuery {
+            filtering: Some(RevocationListEntryFilterValue::Ids(vec![entry_id]).condition()),
+            ..Default::default()
+        })
         .await
-        .unwrap();
+        .unwrap()
+        .values;
     assert_eq!(entries.len(), 1);
     assert_eq!(
         entries[0].entity_info,
@@ -392,9 +404,13 @@ async fn test_link_credential_entries() {
     for (entry_id, credential_id) in links {
         let entries = setup
             .provider
-            .get_entries_by_id(vec![entry_id])
+            .get_entries(ListQuery {
+                filtering: Some(RevocationListEntryFilterValue::Ids(vec![entry_id]).condition()),
+                ..Default::default()
+            })
             .await
-            .unwrap();
+            .unwrap()
+            .values;
         assert_eq!(
             entries[0].entity_info,
             RevocationListEntityInfo::Credential(Some(credential_id))
@@ -440,9 +456,15 @@ async fn test_link_credential_entries_fails_for_linked_or_missing_entry() {
     // rolled back, the unlinked entry stays unlinked
     let entries = setup
         .provider
-        .get_entries_by_id(vec![unlinked_entry_id])
+        .get_entries(ListQuery {
+            filtering: Some(
+                RevocationListEntryFilterValue::Ids(vec![unlinked_entry_id]).condition(),
+            ),
+            ..Default::default()
+        })
         .await
-        .unwrap();
+        .unwrap()
+        .values;
     assert_eq!(
         entries[0].entity_info,
         RevocationListEntityInfo::Credential(None)
@@ -510,9 +532,13 @@ async fn test_get_entries_empty_list() {
 
     let results = setup
         .provider
-        .get_entries(setup.list_id, Default::default())
+        .get_entries(ListQuery {
+            filtering: Some(RevocationListEntryFilterValue::List(setup.list_id).condition()),
+            ..Default::default()
+        })
         .await
-        .unwrap();
+        .unwrap()
+        .values;
     assert_eq!(results.len(), 0);
 }
 
@@ -529,12 +555,19 @@ async fn test_get_entries_non_empty() {
         .await
         .unwrap();
 
-    // without filter
     let results = setup
         .provider
-        .get_entries(setup.list_id, Default::default())
+        .get_entries(ListQuery {
+            filtering: Some(RevocationListEntryFilterValue::List(setup.list_id).condition()),
+            sorting: Some(ListSorting {
+                column: SortableRevocationListEntryColumn::Index,
+                direction: Some(SortDirection::Ascending),
+            }),
+            ..Default::default()
+        })
         .await
-        .unwrap();
+        .unwrap()
+        .values;
     assert_eq!(results.len(), 2);
     assert_eq!(
         results[0],
@@ -572,12 +605,17 @@ async fn test_get_entries_non_empty() {
     ] {
         let results = setup
             .provider
-            .get_entries(
-                setup.list_id,
-                RevocationListEntryFilter::from_index_range(range),
-            )
+            .get_entries(ListQuery {
+                filtering: Some(
+                    RevocationListEntryFilterValue::List(setup.list_id).condition()
+                        & RevocationListEntryFilterValue::index_range(range),
+                ),
+
+                ..Default::default()
+            })
             .await
-            .unwrap();
+            .unwrap()
+            .values;
         assert_eq!(
             results.len(),
             expected_result_count,
@@ -592,15 +630,17 @@ async fn test_get_entries_non_empty() {
     ] {
         let results = setup
             .provider
-            .get_entries(
-                setup.list_id,
-                RevocationListEntryFilter {
-                    states: Some(vec![state]),
-                    ..Default::default()
-                },
-            )
+            .get_entries(ListQuery {
+                filtering: Some(
+                    RevocationListEntryFilterValue::List(setup.list_id).condition()
+                        & RevocationListEntryFilterValue::States(vec![state]),
+                ),
+
+                ..Default::default()
+            })
             .await
-            .unwrap();
+            .unwrap()
+            .values;
         assert_eq!(
             results.len(),
             expected_result_count,
