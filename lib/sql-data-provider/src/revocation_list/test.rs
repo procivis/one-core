@@ -365,6 +365,91 @@ async fn test_create_credential_entry_without_credential_id() {
 }
 
 #[tokio::test]
+async fn test_link_credential_entries() {
+    let setup = setup_with_list().await;
+
+    let mut links = vec![];
+    for index in 0..3 {
+        let entry_id = setup
+            .provider
+            .create_entry(
+                setup.list_id,
+                RevocationListEntityId::Credential(None),
+                Some(index),
+            )
+            .await
+            .unwrap();
+        let credential_id = create_dummy_credential(&setup.db, setup.identifier.clone()).await;
+        links.push((entry_id, credential_id));
+    }
+
+    setup
+        .provider
+        .link_credential_entries(links.clone())
+        .await
+        .unwrap();
+
+    for (entry_id, credential_id) in links {
+        let entries = setup
+            .provider
+            .get_entries_by_id(vec![entry_id])
+            .await
+            .unwrap();
+        assert_eq!(
+            entries[0].entity_info,
+            RevocationListEntityInfo::Credential(Some(credential_id))
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_link_credential_entries_fails_for_linked_or_missing_entry() {
+    let setup = setup_with_list().await;
+
+    let unlinked_entry_id = setup
+        .provider
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Credential(None),
+            Some(0),
+        )
+        .await
+        .unwrap();
+    let credential_id = create_dummy_credential(&setup.db, setup.identifier.clone()).await;
+    let linked_entry_id = setup
+        .provider
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Credential(Some(credential_id)),
+            Some(1),
+        )
+        .await
+        .unwrap();
+
+    for other_entry_id in [linked_entry_id, Uuid::new_v4().into()] {
+        let result = setup
+            .provider
+            .link_credential_entries(vec![
+                (unlinked_entry_id, credential_id),
+                (other_entry_id, credential_id),
+            ])
+            .await;
+        assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+    }
+
+    // rolled back, the unlinked entry stays unlinked
+    let entries = setup
+        .provider
+        .get_entries_by_id(vec![unlinked_entry_id])
+        .await
+        .unwrap();
+    assert_eq!(
+        entries[0].entity_info,
+        RevocationListEntityInfo::Credential(None)
+    );
+}
+
+#[tokio::test]
 async fn test_create_signature_entry_with_serial() {
     let setup = setup_with_list().await;
 
@@ -530,12 +615,13 @@ async fn create_dummy_credential(
 ) -> CredentialId {
     let organisation_id = identifier.organisation.id();
 
-    let credential_schema_name = "schema";
+    // unique, so that several credentials can be created in one test
+    let credential_schema_name = Uuid::new_v4().to_string();
     let credential_schema_id = insert_credential_schema_to_database(
         db,
         None,
         organisation_id,
-        credential_schema_name,
+        &credential_schema_name,
         true,
         Some(KeyStorageSecurity::Basic),
     )

@@ -39,7 +39,6 @@ use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
-use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::dpop_handler::MockDpopHandler;
@@ -479,21 +478,18 @@ fn issued_credential(
 /// Each status list entry reserved by `issued_credential` is linked to its own credential
 fn expect_revocation_entries_linked(
     revocation_list_repository: &mut MockRevocationListRepository,
-    times: usize,
+    entries: usize,
 ) {
     revocation_list_repository
-        .expect_update_entry()
-        .times(times)
-        .withf(|id, request| {
-            let UpdateRevocationListEntryId::Id(entry_id) = id else {
-                return false;
-            };
-            request.state.is_none()
-                && request
-                    .credential_id
-                    .is_some_and(|credential_id| Uuid::from(credential_id) == Uuid::from(*entry_id))
+        .expect_link_credential_entries()
+        .once()
+        .withf(move |links| {
+            links.len() == entries
+                && links.iter().all(|(entry_id, credential_id)| {
+                    Uuid::from(*credential_id) == Uuid::from(*entry_id)
+                })
         })
-        .returning(|_, _| Ok(()));
+        .returning(|_| Ok(()));
 }
 
 fn mock_key_algorithm() -> Arc<dyn KeyAlgorithm> {

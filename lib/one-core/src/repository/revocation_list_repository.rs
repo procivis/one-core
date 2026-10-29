@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use shared_types::{
-    CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+    CertificateId, CredentialId, IdentifierId, RevocationListEntryId, RevocationListId,
+    RevocationMethodId,
 };
 
 use super::error::DataLayerError;
@@ -62,6 +63,13 @@ pub trait RevocationListRepository: Send + Sync {
         &self,
         id: UpdateRevocationListEntryId,
         request: UpdateRevocationListEntryRequest,
+    ) -> Result<(), DataLayerError>;
+
+    /// Links reserved credential entries to their credentials in a single statement.
+    /// Fails unless every entry is a credential entry not linked yet.
+    async fn link_credential_entries(
+        &self,
+        links: Vec<(RevocationListEntryId, CredentialId)>,
     ) -> Result<(), DataLayerError>;
 
     async fn get_entries(

@@ -9,7 +9,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{
     BlobId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DpopNonce, IdentifierId,
-    InteractionId, NonceId, RevocationListEntryId,
+    InteractionId, NonceId,
 };
 use standardized_types::iana::EncryptionKeyManagementAlgorithm;
 use standardized_types::oauth2::TokenType;
@@ -70,9 +70,6 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::relation::Related;
-use crate::model::revocation_list::{
-    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
-};
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::dpop_handler::{
     DpopHandlerError, DpopParams, ExpectedProofValues, ProofValidationOutput,
@@ -1135,8 +1132,19 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("updating credential")?;
 
-        self.link_revocation_entries(credential_id, pending.issued.unlinked_revocation_entries)
+        // link the status list entries reserved while issuing
+        self.revocation_list_repository
+            .link_credential_entries(
+                pending
+                    .issued
+                    .unlinked_revocation_entries
+                    .into_iter()
+                    .map(|entry_id| (entry_id, credential_id))
+                    .collect(),
+            )
             .await
+            .error_while("linking revocation list entries")?;
+        Ok(())
     }
 
     /// Persists the issued batch items and accepts the parent on its first issuance
@@ -1179,7 +1187,7 @@ impl OID4VCIFinal1_0Service {
         }
 
         let mut credentials = Vec::with_capacity(items.len());
-        let mut revocation_entries = Vec::with_capacity(items.len());
+        let mut revocation_entries = vec![];
         for item in items {
             let (credential_blob_id, wua_blob_id) = self.store_issued_blobs(&item, None).await?;
             let mut credential = item.issued.credential;
@@ -1190,10 +1198,13 @@ impl OID4VCIFinal1_0Service {
             data.credential_blob_id = Some(credential_blob_id);
             data.wallet_key_attestation_blob_id = wua_blob_id;
 
-            revocation_entries.push((
-                credential.common().id,
-                item.issued.unlinked_revocation_entries,
-            ));
+            let credential_id = credential.common().id;
+            revocation_entries.extend(
+                item.issued
+                    .unlinked_revocation_entries
+                    .into_iter()
+                    .map(|entry_id| (entry_id, credential_id)),
+            );
             credentials.push(credential);
         }
         self.credential_repository
@@ -1201,10 +1212,11 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("creating batch items")?;
 
-        for (credential_id, entry_ids) in revocation_entries {
-            self.link_revocation_entries(credential_id, entry_ids)
-                .await?;
-        }
+        // link the status list entries reserved while issuing, all items at once
+        self.revocation_list_repository
+            .link_credential_entries(revocation_entries)
+            .await
+            .error_while("linking revocation list entries")?;
         Ok(())
     }
 
@@ -1259,27 +1271,6 @@ impl OID4VCIFinal1_0Service {
         };
 
         Ok((credential_blob_id, wua_blob_id))
-    }
-
-    /// Links the status list entries reserved while issuing to the persisted credential
-    async fn link_revocation_entries(
-        &self,
-        credential_id: CredentialId,
-        entry_ids: Vec<RevocationListEntryId>,
-    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
-        for entry_id in entry_ids {
-            self.revocation_list_repository
-                .update_entry(
-                    UpdateRevocationListEntryId::Id(entry_id),
-                    UpdateRevocationListEntryRequest {
-                        credential_id: Some(credential_id),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .error_while("linking revocation list entry")?;
-        }
-        Ok(())
     }
 
     /// Notification ids are allocated when issuing the token, tokens issued before that

@@ -11,13 +11,14 @@ use one_core::model::revocation_list::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use one_dto_mapper::try_convert_inner;
-use sea_orm::sea_query::IntoCondition;
+use sea_orm::sea_query::{CaseStatement, Expr, IntoCondition};
 use sea_orm::{
     ActiveEnum, ColumnTrait, Condition, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder,
     QuerySelect, Set, Unchanged,
 };
 use shared_types::{
-    CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+    CertificateId, CredentialId, IdentifierId, RevocationListEntryId, RevocationListId,
+    RevocationMethodId,
 };
 use uuid::Uuid;
 
@@ -346,6 +347,58 @@ impl RevocationListRepository for RevocationListProvider {
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())
+    }
+
+    async fn link_credential_entries(
+        &self,
+        links: Vec<(RevocationListEntryId, CredentialId)>,
+    ) -> Result<(), DataLayerError> {
+        if links.is_empty() {
+            return Ok(());
+        }
+
+        let credential_id =
+            links
+                .iter()
+                .fold(CaseStatement::new(), |case, (entry_id, credential_id)| {
+                    case.case(
+                        revocation_list_entry::Column::Id.eq(*entry_id),
+                        Expr::val(*credential_id),
+                    )
+                });
+        // rolled back unless all entries are linked
+        self.db
+            .tx(async {
+                let result = revocation_list_entry::Entity::update_many()
+                    .col_expr(
+                        revocation_list_entry::Column::CredentialId,
+                        credential_id.into(),
+                    )
+                    .col_expr(
+                        revocation_list_entry::Column::LastModified,
+                        Expr::val(one_core::clock::now_utc()),
+                    )
+                    .filter(
+                        revocation_list_entry::Column::Id.is_in(links.iter().map(|(id, _)| *id)),
+                    )
+                    .filter(
+                        revocation_list_entry::Column::Type.eq(RevocationListEntryType::Credential),
+                    )
+                    .filter(revocation_list_entry::Column::CredentialId.is_null())
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+
+                if result.rows_affected != links.len() as u64 {
+                    return Err(DataLayerError::RecordNotUpdated(anyhow!(
+                        "linked {} of {} revocation list entries",
+                        result.rows_affected,
+                        links.len()
+                    )));
+                }
+                Ok(())
+            })
+            .await?
     }
 
     async fn get_entries(
