@@ -31,11 +31,20 @@ async fn test_db_schema_identifier() {
     } else {
         index_columns.push("deleted_at")
     }
-    let identifier = schema.table("identifier").columns(&columns).index(
-        "index_Identifier_Name-OrganisationId-DeletedAt_Unique",
-        true,
-        &index_columns,
-    );
+    let identifier = schema
+        .table("identifier")
+        .columns(&columns)
+        .index(
+            "index_Identifier_Name-OrganisationId-DeletedAt_Unique",
+            true,
+            &index_columns,
+        )
+        .index(
+            "index-Identifier-OrganisationId-CreatedDate-Id-DeletedAt",
+            false,
+            &["organisation_id", "created_date", "id", "deleted_at"],
+        )
+        .index("index-Identifier-KeyId", false, &["key_id"]);
     identifier
         .column("id")
         .r#type(ColumnType::Uuid)

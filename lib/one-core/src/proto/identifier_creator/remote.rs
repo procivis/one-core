@@ -9,10 +9,7 @@ use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
 };
 use crate::model::did::{Did, DidType};
-use crate::model::identifier::{
-    Identifier, IdentifierData, IdentifierFilterValue, IdentifierListQuery, IdentifierState,
-    IdentifierType,
-};
+use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
@@ -240,20 +237,9 @@ impl IdentifierCreatorProto {
         let key = if let Some(key) = list.values.into_iter().next() {
             let identifier = self
                 .identifier_repository
-                .get_identifier_list(IdentifierListQuery {
-                    include_count: false,
-                    filtering: Some(
-                        IdentifierFilterValue::KeyIds(vec![key.id]).condition()
-                            & IdentifierFilterValue::Types(vec![IdentifierType::Key])
-                            & IdentifierFilterValue::OrganisationId(organisation.id()),
-                    ),
-                    ..Default::default()
-                })
+                .get_newest_from_key_id(key.id)
                 .await
-                .error_while("getting identifiers")?
-                .values
-                .into_iter()
-                .next();
+                .error_while("getting identifier")?;
 
             if let Some(identifier) = identifier {
                 return Ok((key, identifier));
@@ -409,20 +395,9 @@ impl IdentifierCreatorProto {
 
                 let Some(identifier) = self
                     .identifier_repository
-                    .get_identifier_list(IdentifierListQuery {
-                        include_count: false,
-                        filtering: Some(
-                            IdentifierFilterValue::KeyIds(vec![key.id]).condition()
-                                & IdentifierFilterValue::Types(vec![IdentifierType::Key])
-                                & IdentifierFilterValue::OrganisationId(organisation_id),
-                        ),
-                        ..Default::default()
-                    })
+                    .get_newest_from_key_id(key.id)
                     .await
-                    .error_while("getting identifiers")?
-                    .values
-                    .into_iter()
-                    .next()
+                    .error_while("getting identifier")?
                 else {
                     return Ok(None);
                 };

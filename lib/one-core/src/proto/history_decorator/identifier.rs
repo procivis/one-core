@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{DidId, IdentifierId, OrganisationId};
+use shared_types::{DidId, IdentifierId, KeyId, OrganisationId};
 use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
@@ -57,6 +57,12 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
     }
     async fn get_from_did_id(&self, did_id: DidId) -> Result<Option<Identifier>, DataLayerError> {
         self.inner.get_from_did_id(did_id).await
+    }
+    async fn get_newest_from_key_id(
+        &self,
+        key_id: KeyId,
+    ) -> Result<Option<Identifier>, DataLayerError> {
+        self.inner.get_newest_from_key_id(key_id).await
     }
     async fn get_identifier_list(
         &self,

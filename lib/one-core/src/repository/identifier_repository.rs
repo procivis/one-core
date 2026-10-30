@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::{DidId, IdentifierId};
+use shared_types::{DidId, IdentifierId, KeyId};
 
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, SortableCertificateColumn,
@@ -26,6 +26,12 @@ pub trait IdentifierRepository: Send + Sync {
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError>;
     async fn get(&self, id: IdentifierId) -> Result<Identifier, DataLayerError>;
     async fn get_from_did_id(&self, did_id: DidId) -> Result<Option<Identifier>, DataLayerError>;
+    /// The newest non-deleted [`IdentifierType::Key`](crate::model::identifier::IdentifierType::Key)
+    /// identifier using the key `key_id`.
+    async fn get_newest_from_key_id(
+        &self,
+        key_id: KeyId,
+    ) -> Result<Option<Identifier>, DataLayerError>;
     async fn update(
         &self,
         id: &IdentifierId,

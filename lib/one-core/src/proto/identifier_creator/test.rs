@@ -23,9 +23,7 @@ use crate::model::certificate::{
 };
 use crate::model::common::LockType;
 use crate::model::did::{Did, DidType as DidModelType, KeyRole, RelatedKey};
-use crate::model::identifier::{
-    GetIdentifierList, Identifier, IdentifierData, UpdateIdentifierRequest,
-};
+use crate::model::identifier::{Identifier, IdentifierData, UpdateIdentifierRequest};
 use crate::model::key::{GetKeyList, Key};
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::relation::RelatedVec;
@@ -296,17 +294,9 @@ async fn test_get_or_create_remote_identifier_key_existing() {
     let identifier_id = identifier.id;
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
-        .expect_get_identifier_list()
+        .expect_get_newest_from_key_id()
         .once()
-        .return_once({
-            move |_| {
-                Ok(GetIdentifierList {
-                    values: vec![identifier],
-                    total_pages: Some(1),
-                    total_items: Some(1),
-                })
-            }
-        });
+        .return_once(move |_| Ok(Some(identifier)));
 
     let creator = setup_creator(Mocks {
         key_algorithm_provider,
@@ -374,15 +364,9 @@ fn expect_existing_key_identifier(
             })
         });
     identifier_repository
-        .expect_get_identifier_list()
+        .expect_get_newest_from_key_id()
         .once()
-        .return_once(move |_| {
-            Ok(GetIdentifierList {
-                values: vec![identifier],
-                total_pages: Some(1),
-                total_items: Some(1),
-            })
-        });
+        .return_once(move |_| Ok(Some(identifier)));
 }
 
 fn key_jwk() -> IdentifierDetails {
@@ -691,17 +675,9 @@ async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
     let identifier_id = identifier.id;
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
-        .expect_get_identifier_list()
+        .expect_get_newest_from_key_id()
         .once()
-        .return_once({
-            move |_| {
-                Ok(GetIdentifierList {
-                    values: vec![identifier],
-                    total_pages: Some(1),
-                    total_items: Some(1),
-                })
-            }
-        });
+        .return_once(move |_| Ok(Some(identifier)));
 
     let creator = setup_creator(Mocks {
         key_algorithm_provider,

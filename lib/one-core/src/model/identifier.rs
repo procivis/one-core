@@ -141,7 +141,6 @@ pub enum IdentifierFilterValue {
     KeyAlgorithms(Vec<String>),
     KeyRoles(Vec<KeyRole>),
     KeyStorages(Vec<String>),
-    KeyIds(Vec<KeyId>),
     CertificateRole(CertificateRole),
     TrustAllowedIssuanceTypes(SchemaFormat),
     TrustAllowedVerificationTypes(SchemaFormat),

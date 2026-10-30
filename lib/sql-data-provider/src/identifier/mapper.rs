@@ -243,19 +243,6 @@ impl IntoFilterCondition for IdentifierFilterValue {
                 ))
                 .is_in(key_storages))
                 .into_condition(),
-            Self::KeyIds(key_ids) => key::Column::Id
-                .is_in(&key_ids)
-                .or(ColumnRef::Column(ColumnName(
-                    Some(Alias::new("did_key").into()),
-                    key::Column::Id.into_iden(),
-                ))
-                .is_in(&key_ids))
-                .or(ColumnRef::Column(ColumnName(
-                    Some(Alias::new("certificate_key").into()),
-                    key::Column::Id.into_iden(),
-                ))
-                .is_in(key_ids))
-                .into_condition(),
             Self::CertificateRole(role) => get_string_match_condition(
                 certificate::Column::Roles,
                 StringMatch {
@@ -334,9 +321,7 @@ impl IntoJoinRelations for IdentifierFilterValue {
                     },
                 ]
             }
-            IdentifierFilterValue::KeyAlgorithms(_)
-            | IdentifierFilterValue::KeyStorages(_)
-            | IdentifierFilterValue::KeyIds(_) => {
+            IdentifierFilterValue::KeyAlgorithms(_) | IdentifierFilterValue::KeyStorages(_) => {
                 vec![
                     // IdentifierType::Did
                     JoinRelation {
