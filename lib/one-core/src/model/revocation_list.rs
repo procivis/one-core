@@ -29,6 +29,9 @@ pub struct RevocationList {
     pub r#type: RevocationMethodId,
     pub purpose: RevocationListPurpose,
 
+    /// persisted parameters specific to used revocation method
+    pub params: Option<Vec<u8>>,
+
     /// Distinction between multiple lists of the same issuer
     pub sequence_number: usize,
 

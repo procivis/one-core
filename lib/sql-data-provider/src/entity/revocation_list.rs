@@ -16,6 +16,8 @@ pub struct Model {
     pub format: RevocationListFormat,
     pub r#type: RevocationMethodId,
     pub sequence_number: i32,
+    #[sea_orm(column_type = "Blob")]
+    pub params: Option<Vec<u8>>,
 
     pub issuer_identifier_id: IdentifierId,
     pub issuer_certificate_id: Option<CertificateId>,

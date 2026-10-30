@@ -99,6 +99,7 @@ async fn revocation_status(suspension: bool) -> ReservedEntries {
                     issuer_identifier: issuer_identifier.clone().into(),
                     issuer_certificate: None,
                     sequence_number: 0,
+                    params: None,
                 }))
             }
         });

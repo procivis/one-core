@@ -85,6 +85,11 @@ pub mod util;
 #[cfg(test)]
 mod test;
 
+type ListSizeParams = StatusListSizeParams<
+    // no explicit values defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21#name-status-list-size
+    1,
+>;
+
 #[serde_as]
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -98,10 +103,7 @@ struct Params {
     leeway_seconds: Duration,
 
     #[serde(flatten)]
-    pub size: StatusListSizeParams<
-        // no explicit values defined in https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21#name-status-list-size
-        1,
-    >,
+    pub size: ListSizeParams,
 }
 
 fn default_format() -> StatusListCredentialFormat {
@@ -262,20 +264,13 @@ impl RevocationMethod for TokenStatusList {
             None
         };
 
-        let current_list = self
+        let lists = self
             .revocation_list_repository
-            .get_latest_list_by_issuer(
-                issuer_identifier.id,
-                issuer_certificate.as_ref().map(|c| c.id),
-                self.purpose()?,
-                &self.config_id,
-            )
-            .await
-            .error_while("getting revocation list")?
-            .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
+            .get_revocation_lists_by_entity(RevocationListEntityId::Credential(Some(
                 credential.common().id,
-                issuer_identifier.id,
-            ))?;
+            )))
+            .await
+            .error_while("getting revocation list")?;
 
         self.revocation_list_repository
             .update_entry(
@@ -288,12 +283,11 @@ impl RevocationMethod for TokenStatusList {
             .await
             .error_while("updating revocation list entry")?;
 
-        self.publish_list(
-            current_list.id,
-            &issuer_identifier,
-            issuer_certificate.as_ref(),
-        )
-        .await
+        for list in lists {
+            self.publish_list(&list, &issuer_identifier, issuer_certificate.as_ref())
+                .await?;
+        }
+        Ok(())
     }
 
     async fn check_credential_revocation_status(
@@ -439,7 +433,7 @@ impl RevocationMethod for TokenStatusList {
                         Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
                     };
                     self.publish_list(
-                        list.id,
+                        &list,
                         list.issuer_identifier.as_ref().await?.as_ref(),
                         issuer_certificate.as_ref(),
                     )
@@ -499,7 +493,7 @@ impl RevocationMethod for TokenStatusList {
                     Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
                 };
                 self.publish_list(
-                    current_list.id,
+                    &current_list,
                     current_list.issuer_identifier.as_ref().await?.as_ref(),
                     issuer_certificate.as_ref(),
                 )
@@ -560,13 +554,13 @@ impl TokenStatusList {
             issuer_certificate.map(|c| c.id),
             purpose,
             &self.config_id,
-            &self.params.size,
             self.transaction_manager.as_ref(),
             self.revocation_list_repository.as_ref(),
             async || {
                 self.prepare_empty_list(issuer_identifier, issuer_certificate, purpose)
                     .await
             },
+            |list| Ok(self.get_list_size_params(list)),
         )
         .await?;
 
@@ -600,6 +594,8 @@ impl TokenStatusList {
         )
         .await?;
 
+        let params = serde_json::to_vec(&self.params.size)?;
+
         Ok(RevocationList {
             id: revocation_list_id,
             created_date: crate::clock::now_utc(),
@@ -611,12 +607,13 @@ impl TokenStatusList {
             issuer_identifier: issuer_identifier.to_owned().into(),
             issuer_certificate: convert_inner(issuer_certificate.cloned()),
             sequence_number: 0,
+            params: Some(params),
         })
     }
 
     async fn publish_list(
         &self,
-        list_id: RevocationListId,
+        list: &RevocationList,
         issuer_identifier: &Identifier,
         issuer_certificate: Option<&Certificate>,
     ) -> Result<(), RevocationError> {
@@ -635,7 +632,7 @@ impl TokenStatusList {
             .get_entries(ListQuery {
                 include_count: false,
                 filtering: Some(
-                    RevocationListEntryFilterValue::List(list_id).condition()
+                    RevocationListEntryFilterValue::List(list.id).condition()
                         & RevocationListEntryFilterValue::States(states),
                 ),
                 ..Default::default()
@@ -644,12 +641,13 @@ impl TokenStatusList {
             .error_while("getting revocation list entries")?
             .values;
 
+        let size_params = self.get_list_size_params(list);
         let encoded_list =
-            generate_token_from_entries(entries, self.params.size.capacity, self.required_bits()?)
+            generate_token_from_entries(entries, size_params.capacity, self.required_bits()?)
                 .await?;
 
         let formatted_list = format_status_list_credential(
-            &list_id,
+            &list.id,
             issuer_identifier,
             issuer_certificate,
             encoded_list,
@@ -661,8 +659,9 @@ impl TokenStatusList {
         )
         .await?;
 
+        let params = Some(serde_json::to_vec(&size_params)?);
         self.revocation_list_repository
-            .update_formatted_list(&list_id, formatted_list)
+            .update_formatted_list(&list.id, formatted_list, params)
             .await
             .error_while("updating revocation list")?;
 
@@ -709,6 +708,18 @@ impl TokenStatusList {
                 1
             },
         )
+    }
+
+    fn get_list_size_params(&self, list: &RevocationList) -> ListSizeParams {
+        if let Some(params) = &list.params
+            && let Ok(params) = serde_json::from_slice::<ListSizeParams>(params)
+        {
+            params
+        } else {
+            // old lists without stored params have allocated indices sequentially,
+            // so it should be OK to switch to new config
+            self.params.size
+        }
     }
 
     async fn extract_info_from_list_credential_jwt(

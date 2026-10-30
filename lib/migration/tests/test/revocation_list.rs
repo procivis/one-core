@@ -17,6 +17,7 @@ async fn test_db_schema_revocation_list() {
         "issuer_identifier_id",
         "issuer_certificate_id",
         "sequence_number",
+        "params",
     ];
     if schema.backend() == DbBackend::MySql {
         columns.extend(["issuer_certificate_id_materialized"]);
@@ -99,6 +100,10 @@ async fn test_db_schema_revocation_list() {
         .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
+    revocation_list
+        .column("params")
+        .r#type(ColumnType::Blob)
+        .nullable(true);
 }
 
 #[tokio::test]

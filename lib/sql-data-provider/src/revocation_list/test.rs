@@ -18,18 +18,22 @@ use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use shared_types::{CredentialId, RevocationListId};
+use sea_orm::{ActiveModelTrait, Set};
+use shared_types::{CredentialId, ManagedInstanceAttestationId, RevocationListId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::RevocationListProvider;
 use crate::entity::credential::CredentialRole;
 use crate::entity::credential_schema::KeyStorageSecurity;
+use crate::entity::managed_instance_attestation;
 use crate::entity::revocation_list::RevocationListFormat;
+use crate::entity::wallet_attestation::AttestationType;
 use crate::test_utilities::{
-    dummy_organisation, get_dummy_date, insert_credential, insert_credential_schema_to_database,
-    insert_credential_schema_with_revocation_to_database, insert_identifier,
-    insert_organisation_to_database, insert_revocation_list, insert_revocation_list_entry,
+    assert_eq_unordered, dummy_organisation, get_dummy_date, insert_credential,
+    insert_credential_schema_to_database, insert_credential_schema_with_revocation_to_database,
+    insert_identifier, insert_organisation_to_database, insert_revocation_list,
+    insert_revocation_list_entry, insert_wallet_instance_to_database,
     setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
@@ -145,6 +149,7 @@ async fn test_create_revocation_list() {
             issuer_identifier: setup.identifier.into(),
             issuer_certificate: None,
             sequence_number: 0,
+            params: None,
         })
         .await
         .unwrap();
@@ -196,6 +201,7 @@ async fn test_get_latest_list_by_issuer_picks_highest_sequence_number() {
         issuer_identifier: setup.identifier.clone().into(),
         issuer_certificate: None,
         sequence_number,
+        params: None,
     };
 
     setup
@@ -224,12 +230,112 @@ async fn test_get_latest_list_by_issuer_picks_highest_sequence_number() {
 }
 
 #[tokio::test]
+async fn test_get_revocation_lists_by_credential() {
+    let setup = setup_with_list().await;
+
+    let suspension_list_id = insert_revocation_list(
+        &setup.db,
+        RevocationListPurpose::Suspension.into(),
+        RevocationListFormat::Jwt,
+        setup.identifier.id,
+        "BITSTRINGSTATUSLIST".into(),
+        None,
+    )
+    .await
+    .unwrap();
+    let other_list_id = insert_revocation_list(
+        &setup.db,
+        RevocationListPurpose::Revocation.into(),
+        RevocationListFormat::Jwt,
+        setup.identifier.id,
+        "TOKENSTATUSLIST".into(),
+        None,
+    )
+    .await
+    .unwrap();
+
+    let credential_id = create_dummy_credential(&setup.db, setup.identifier.clone()).await;
+    insert_revocation_list_entry(&setup.db, setup.list_id, 0, Some(credential_id))
+        .await
+        .unwrap();
+    insert_revocation_list_entry(&setup.db, suspension_list_id, 0, Some(credential_id))
+        .await
+        .unwrap();
+
+    // list of a different credential is not returned
+    let other_credential_id = create_dummy_credential(&setup.db, setup.identifier).await;
+    insert_revocation_list_entry(&setup.db, other_list_id, 0, Some(other_credential_id))
+        .await
+        .unwrap();
+
+    let result = setup
+        .provider
+        .get_revocation_lists_by_entity(RevocationListEntityId::Credential(Some(credential_id)))
+        .await
+        .unwrap();
+    assert_eq_unordered(
+        result.into_iter().map(|list| list.id),
+        [setup.list_id, suspension_list_id],
+    );
+}
+
+#[tokio::test]
+async fn test_get_revocation_lists_by_wallet_instance_attestation() {
+    let setup = setup_with_list().await;
+
+    let managed_instance_id = insert_wallet_instance_to_database(
+        &setup.db,
+        setup.identifier.organisation.id(),
+        "wallet".to_string(),
+    )
+    .await;
+    let attestation_id: ManagedInstanceAttestationId = Uuid::new_v4().into();
+    managed_instance_attestation::ActiveModel {
+        id: Set(attestation_id),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        expiration_date: Set(get_dummy_date()),
+        attestation_content_hash: Set(None),
+        managed_instance_id: Set(managed_instance_id),
+        revocation_list_entry_id: Set(None),
+        r#type: Set(AttestationType::WalletInstanceAttestation),
+    }
+    .insert(&setup.db)
+    .await
+    .unwrap();
+
+    let entity_id = RevocationListEntityId::WalletInstanceAttestation(attestation_id);
+
+    // no entry linked yet
+    let result = setup
+        .provider
+        .get_revocation_lists_by_entity(entity_id.clone())
+        .await
+        .unwrap();
+    assert!(result.is_empty());
+
+    setup
+        .provider
+        .create_entry(setup.list_id, entity_id.clone(), Some(0))
+        .await
+        .unwrap();
+
+    let result = setup
+        .provider
+        .get_revocation_lists_by_entity(entity_id)
+        .await
+        .unwrap();
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].id, setup.list_id);
+}
+
+#[tokio::test]
 async fn test_update_formatted_list() {
     let setup = setup_with_list().await;
 
     setup
         .provider
-        .update_formatted_list(&setup.list_id, vec![])
+        .update_formatted_list(&setup.list_id, vec![], None)
         .await
         .unwrap();
 }

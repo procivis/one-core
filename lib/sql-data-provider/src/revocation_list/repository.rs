@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
@@ -51,6 +53,7 @@ impl RevocationListProvider {
             format: revocation_list.format.into(),
             r#type: revocation_list.r#type,
             sequence_number: revocation_list.sequence_number as _,
+            params: revocation_list.params,
         }
     }
 }
@@ -73,6 +76,7 @@ impl RevocationListRepository for RevocationListProvider {
             r#type: Set(request.r#type),
             issuer_certificate_id: Set(request.issuer_certificate.map(|c| c.id())),
             sequence_number: Set(request.sequence_number as _),
+            params: Set(request.params),
         })
         .exec_without_returning(&self.db)
         .await
@@ -106,10 +110,79 @@ impl RevocationListRepository for RevocationListProvider {
             .await
             .map_err(to_data_layer_error)?
             .ok_or_else(|| DataLayerError::EntityNotFound {
-                kind: EntityKind::RevocationList,
+                kind: EntityKind::RevocationListEntry,
                 id: entry_id.into(),
             })?;
         self.get_revocation_list(&entry.revocation_list_id).await
+    }
+
+    async fn get_revocation_lists_by_entity(
+        &self,
+        entity_id: RevocationListEntityId,
+    ) -> Result<Vec<RevocationList>, DataLayerError> {
+        let list_ids: HashSet<_> = match entity_id {
+            RevocationListEntityId::Credential(credential_id) => {
+                let Some(credential_id) = credential_id else {
+                    return Err(DataLayerError::MappingError(anyhow!(
+                        "Credential entry missing ID"
+                    )));
+                };
+
+                revocation_list_entry::Entity::find()
+                    .filter(
+                        revocation_list_entry::Column::Type.eq(RevocationListEntryType::Credential),
+                    )
+                    .filter(revocation_list_entry::Column::CredentialId.eq(credential_id))
+                    .all(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?
+                    .into_iter()
+                    .map(|entry| entry.revocation_list_id)
+                    .collect()
+            }
+            RevocationListEntityId::Signature(_, _) => {
+                return Err(DataLayerError::MappingError(anyhow!(
+                    "Signature lookup not supported"
+                )));
+            }
+            RevocationListEntityId::KeyAttestation(managed_instance_attestation_id)
+            | RevocationListEntityId::WalletInstanceAttestation(managed_instance_attestation_id) => {
+                let managed_instance_attestation =
+                    managed_instance_attestation::Entity::find_by_id(
+                        managed_instance_attestation_id,
+                    )
+                    .one(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?
+                    .ok_or_else(|| DataLayerError::EntityNotFound {
+                        kind: EntityKind::ManagedInstanceAttestation,
+                        id: managed_instance_attestation_id.into(),
+                    })?;
+
+                let Some(revocation_list_entry_id) =
+                    managed_instance_attestation.revocation_list_entry_id
+                else {
+                    return Ok(vec![]);
+                };
+
+                let entry = revocation_list_entry::Entity::find_by_id(revocation_list_entry_id)
+                    .one(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?
+                    .ok_or_else(|| DataLayerError::EntityNotFound {
+                        kind: EntityKind::RevocationListEntry,
+                        id: revocation_list_entry_id.into(),
+                    })?;
+
+                std::iter::once(entry.revocation_list_id).collect()
+            }
+        };
+
+        let mut result = Vec::with_capacity(list_ids.len());
+        for list_id in list_ids {
+            result.push(self.get_revocation_list(&list_id).await?)
+        }
+        Ok(result)
     }
 
     async fn get_latest_list_by_issuer(
@@ -145,11 +218,18 @@ impl RevocationListRepository for RevocationListProvider {
         &self,
         revocation_list_id: &RevocationListId,
         formatted_list: Vec<u8>,
+        params: Option<Vec<u8>>,
     ) -> Result<(), DataLayerError> {
+        let params = match params {
+            Some(params) => Set(Some(params)),
+            None => NotSet,
+        };
+
         let update_model = revocation_list::ActiveModel {
             id: Unchanged(*revocation_list_id),
             last_modified: Set(one_core::clock::now_utc()),
             formatted_list: Set(formatted_list),
+            params,
             ..Default::default()
         };
 
@@ -206,15 +286,6 @@ impl RevocationListRepository for RevocationListProvider {
             }
         };
 
-        let r#type = match &entity_id {
-            RevocationListEntityId::Credential(_) => RevocationListEntryType::Credential,
-            RevocationListEntityId::Signature(_, _) => RevocationListEntryType::Signature,
-            RevocationListEntityId::KeyAttestation(_) => RevocationListEntryType::KeyAttestation,
-            RevocationListEntityId::WalletInstanceAttestation(_) => {
-                RevocationListEntryType::WalletInstanceAttestation
-            }
-        };
-
         let now = one_core::clock::now_utc();
         let entry_id: RevocationListEntryId = Uuid::new_v4().into();
 
@@ -227,7 +298,7 @@ impl RevocationListRepository for RevocationListProvider {
                     revocation_list_id: Set(list_id),
                     index: Set(index_on_status_list.map(|index| index as _)),
                     credential_id: Set(credential_id),
-                    r#type: Set(r#type),
+                    r#type: Set(RevocationListEntryType::from(&entity_id)),
                     signature_type: Set(signature_type.map(|t| t.to_string())),
                     state: Set(RevocationListEntryState::Active),
                     serial: Set(serial),

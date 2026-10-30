@@ -322,6 +322,7 @@ impl CRLRevocation {
                 issuer_identifier: issuer.to_owned().into(),
                 issuer_certificate: Some(certificate.to_owned().into()),
                 sequence_number: 0,
+                params: None,
             })
             .await
             .error_while("creating revocation list")?)
@@ -386,7 +387,7 @@ impl CRLRevocation {
             .await?;
 
         self.revocation_list_repository
-            .update_formatted_list(&list.id, formatted_list.to_owned())
+            .update_formatted_list(&list.id, formatted_list.to_owned(), None)
             .await
             .error_while("updating revocation list")?;
 

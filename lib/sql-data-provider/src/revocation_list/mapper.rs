@@ -1,7 +1,7 @@
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::revocation_list::{
-    RevocationListEntityInfo, RevocationListEntry, RevocationListEntryFilterValue,
-    SortableRevocationListEntryColumn,
+    RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
+    RevocationListEntryFilterValue, SortableRevocationListEntryColumn,
 };
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::try_convert_inner;
@@ -91,5 +91,16 @@ impl IntoJoinRelations for RevocationListEntryFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
         // No joins needed for current filters
         vec![]
+    }
+}
+
+impl From<&RevocationListEntityId> for RevocationListEntryType {
+    fn from(value: &RevocationListEntityId) -> Self {
+        match value {
+            RevocationListEntityId::Credential(_) => Self::Credential,
+            RevocationListEntityId::Signature(_, _) => Self::Signature,
+            RevocationListEntityId::KeyAttestation(_) => Self::KeyAttestation,
+            RevocationListEntityId::WalletInstanceAttestation(_) => Self::WalletInstanceAttestation,
+        }
     }
 }

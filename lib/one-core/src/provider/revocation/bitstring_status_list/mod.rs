@@ -65,6 +65,11 @@ mod test;
 
 const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
 
+type ListSizeParams = StatusListSizeParams<
+    // https://www.w3.org/TR/vc-bitstring-status-list/#revocation-bitstring-length
+    131072,
+>;
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct Params {
@@ -72,10 +77,7 @@ struct Params {
     pub format: StatusListCredentialFormat,
 
     #[serde(flatten)]
-    pub size: StatusListSizeParams<
-        // https://www.w3.org/TR/vc-bitstring-status-list/#revocation-bitstring-length
-        131072,
-    >,
+    pub size: ListSizeParams,
 }
 
 fn default_format() -> StatusListCredentialFormat {
@@ -194,20 +196,13 @@ impl RevocationMethod for BitstringStatusList {
             RevocationListPurpose::Suspension
         };
 
-        let current_list = self
+        let lists = self
             .revocation_list_repository
-            .get_latest_list_by_issuer(
-                issuer_identifier.id,
-                issuer.certificate.as_ref().map(|c| c.id()),
-                purpose,
-                &self.config_id,
-            )
-            .await
-            .error_while("getting revocation list")?
-            .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
+            .get_revocation_lists_by_entity(RevocationListEntityId::Credential(Some(
                 credential.common().id,
-                issuer_identifier.id,
-            ))?;
+            )))
+            .await
+            .error_while("getting revocation list")?;
 
         self.revocation_list_repository
             .update_entry(
@@ -220,8 +215,13 @@ impl RevocationMethod for BitstringStatusList {
             .await
             .error_while("updating revocation list entry")?;
 
-        self.publish_list(current_list.id, &issuer_identifier, purpose)
-            .await
+        for list in lists.iter().filter(|list| {
+            list.purpose == purpose
+                || list.purpose == RevocationListPurpose::RevocationAndSuspension
+        }) {
+            self.publish_list(list, &issuer_identifier, purpose).await?;
+        }
+        Ok(())
     }
 
     async fn check_credential_revocation_status(
@@ -422,10 +422,10 @@ impl BitstringStatusList {
             None,
             purpose,
             &self.config_id,
-            &self.params.size,
             self.transaction_manager.as_ref(),
             self.revocation_list_repository.as_ref(),
             async || self.prepare_empty_list(issuer_identifier, purpose).await,
+            |list| Ok(self.get_list_size_params(list)),
         )
         .await?;
 
@@ -454,6 +454,8 @@ impl BitstringStatusList {
         )
         .await?;
 
+        let params = serde_json::to_vec(&self.params.size)?;
+
         Ok(RevocationList {
             id: revocation_list_id,
             created_date: crate::clock::now_utc(),
@@ -465,12 +467,25 @@ impl BitstringStatusList {
             issuer_identifier: issuer_identifier.to_owned().into(),
             issuer_certificate: None,
             sequence_number: 0,
+            params: Some(params),
         })
+    }
+
+    fn get_list_size_params(&self, list: &RevocationList) -> ListSizeParams {
+        if let Some(params) = &list.params
+            && let Ok(params) = serde_json::from_slice::<ListSizeParams>(params)
+        {
+            params
+        } else {
+            // old lists without stored params have allocated indices sequentially,
+            // so it should be OK to switch to new config
+            self.params.size
+        }
     }
 
     async fn publish_list(
         &self,
-        list_id: RevocationListId,
+        list: &RevocationList,
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
     ) -> Result<(), RevocationError> {
@@ -487,7 +502,7 @@ impl BitstringStatusList {
             .get_entries(ListQuery {
                 include_count: false,
                 filtering: Some(
-                    RevocationListEntryFilterValue::List(list_id).condition()
+                    RevocationListEntryFilterValue::List(list.id).condition()
                         & RevocationListEntryFilterValue::States(states),
                 ),
                 ..Default::default()
@@ -496,11 +511,11 @@ impl BitstringStatusList {
             .error_while("getting revocation list entries")?
             .values;
 
-        let encoded_list =
-            generate_bitstring_from_entries(entries, self.params.size.capacity).await?;
+        let size_params = self.get_list_size_params(list);
+        let encoded_list = generate_bitstring_from_entries(entries, size_params.capacity).await?;
 
         let formatted_list = format_status_list_credential(
-            &list_id,
+            &list.id,
             issuer_identifier,
             encoded_list,
             purpose,
@@ -511,8 +526,9 @@ impl BitstringStatusList {
         )
         .await?;
 
+        let params = Some(serde_json::to_vec(&size_params)?);
         self.revocation_list_repository
-            .update_formatted_list(&list_id, formatted_list)
+            .update_formatted_list(&list.id, formatted_list, params)
             .await
             .error_while("updating revocation list")?;
 

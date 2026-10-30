@@ -30,6 +30,11 @@ pub trait RevocationListRepository: Send + Sync {
         entry_id: RevocationListEntryId,
     ) -> Result<RevocationList, DataLayerError>;
 
+    async fn get_revocation_lists_by_entity(
+        &self,
+        entity_id: RevocationListEntityId,
+    ) -> Result<Vec<RevocationList>, DataLayerError>;
+
     async fn get_latest_list_by_issuer(
         &self,
         issuer_identifier_id: IdentifierId,
@@ -42,6 +47,7 @@ pub trait RevocationListRepository: Send + Sync {
         &self,
         revocation_list_id: &RevocationListId,
         formatted_list: Vec<u8>,
+        params: Option<Vec<u8>>,
     ) -> Result<(), DataLayerError>;
 
     async fn create_entry(

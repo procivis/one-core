@@ -181,6 +181,7 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
                 issuer_identifier: dummy_identifier().into(),
                 issuer_certificate: Some(certificate.into()),
                 sequence_number: 0,
+                params: None,
             })
         });
 
@@ -213,10 +214,10 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
     revocation_list_repository
         .expect_update_formatted_list()
         .once()
-        .with(eq(list_id), always())
+        .with(eq(list_id), always(), eq(None))
         .return_once({
             let formatted_list = formatted_list.clone();
-            move |_, data| {
+            move |_, data, _| {
                 *formatted_list.lock().unwrap() = Some(data);
                 Ok(())
             }
@@ -306,6 +307,7 @@ async fn test_get_updated_list_no_update() {
                     issuer_identifier: dummy_identifier().into(),
                     issuer_certificate: Some(certificate.into()),
                     sequence_number: 0,
+                    params: None,
                 })
             }
         });
@@ -352,6 +354,7 @@ async fn test_get_updated_list_with_update() {
                     issuer_identifier: dummy_identifier().into(),
                     issuer_certificate: Some(certificate.into()),
                     sequence_number: 0,
+                    params: None,
                 })
             }
         });
@@ -369,8 +372,8 @@ async fn test_get_updated_list_with_update() {
     revocation_list_repository
         .expect_update_formatted_list()
         .once()
-        .with(eq(list_id), always())
-        .return_once(|_, _| Ok(()));
+        .with(eq(list_id), always(), eq(None))
+        .return_once(|_, _, _| Ok(()));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider.expect_get_key_storage().returning(|_| {

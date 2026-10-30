@@ -21,7 +21,7 @@ use crate::model::revocation_list::{
 use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 
-#[derive(Serialize, Clone, PartialEq)]
+#[derive(Serialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct StatusListSizeParams<const MINIMUM_CAPACITY: usize> {
     /// (maximum) number of entries on the generated status list
@@ -117,10 +117,13 @@ pub(super) async fn add_entry_to_status_list<
     issuer_certificate_id: Option<CertificateId>,
     purpose: RevocationListPurpose,
     list_type: &RevocationMethodId,
-    list_size_params: &StatusListSizeParams<MINIMUM_CAPACITY>,
     transaction_manager: &dyn TransactionManager,
     revocation_list_repository: &dyn RevocationListRepository,
     prepare_empty_list: PrepareEmptyList,
+    get_list_size_params: impl Fn(
+        &RevocationList,
+    )
+        -> Result<StatusListSizeParams<MINIMUM_CAPACITY>, RevocationError>,
 ) -> Result<AllocatedIndexEntry, RevocationError>
 where
     PrepareEmptyList: Fn() -> PrepareEmptyListFut,
@@ -146,7 +149,7 @@ where
     let mut rng = get_rng();
     let available_index = match pick_available_block_index(
         list.id,
-        list_size_params,
+        get_list_size_params(&list)?,
         revocation_list_repository,
         &mut rng,
     )
@@ -167,7 +170,7 @@ where
 
             pick_available_block_index(
                 list.id,
-                list_size_params,
+                get_list_size_params(&list)?,
                 revocation_list_repository,
                 &mut rng,
             )
@@ -269,7 +272,7 @@ where
 /// Returns `None` if the list is considered full (i.e. a selected block is full)
 async fn pick_available_block_index<const MINIMUM_CAPACITY: usize>(
     list_id: RevocationListId,
-    list_size_params: &StatusListSizeParams<MINIMUM_CAPACITY>,
+    list_size_params: StatusListSizeParams<MINIMUM_CAPACITY>,
     revocation_list_repository: &dyn RevocationListRepository,
     rng: &mut impl CryptoRng,
 ) -> Result<Option<usize>, RevocationError> {

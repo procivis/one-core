@@ -45,6 +45,7 @@ async fn test_get_revocation_list() {
             r#type: "BITSTRINGSTATUSLIST".into(),
             issuer_certificate: None,
             sequence_number: 0,
+            params: None,
         };
 
         revocation_list_repository
