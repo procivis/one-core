@@ -19,7 +19,8 @@ use super::issuance_accept_tests::{
 };
 use crate::fixtures::TestingDidParams;
 use crate::fixtures::interaction::{
-    ConfigurationParams, InteractionDataParams, dummy_interaction_data,
+    ConfigurationParams, InteractionDataParams, dummy_holder_issuance_interaction_data,
+    dummy_issuer_metadata,
 };
 use crate::fixtures::presentation::w3c_jwt_vc;
 use crate::utils::api_clients::histories::QueryParams;
@@ -214,23 +215,28 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     // DID (rather than a bare key) for each proof, which is what our jwt_vc_json credentials
     // (bound via `sub`) need
     let did_key_binding = Some(vec!["did:key".to_string()]);
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams {
-            batch_size: offer.batch_size,
-            cryptographic_binding_methods_supported: did_key_binding.clone(),
-            disclosure_policy: Some(json!({"id": "policy-0", "policy": "none"})),
-            additional_configurations: vec![ConfigurationParams {
-                credential_configuration_id: "second".to_string(),
-                format: "jwt_vc_json".to_string(),
-                cryptographic_binding_methods_supported: did_key_binding,
-                disclosure_policy: Some(json!({"id": "policy-1", "policy": "none"})),
-                ..Default::default()
-            }],
+    let params = InteractionDataParams {
+        batch_size: offer.batch_size,
+        cryptographic_binding_methods_supported: did_key_binding.clone(),
+        disclosure_policy: Some(json!({"id": "policy-0", "policy": "none"})),
+        additional_configurations: vec![ConfigurationParams {
+            credential_configuration_id: "second".to_string(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: did_key_binding,
+            disclosure_policy: Some(json!({"id": "policy-1", "policy": "none"})),
             ..Default::default()
-        },
-    );
+        }],
+        ..Default::default()
+    };
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions

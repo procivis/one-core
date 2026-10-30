@@ -59,6 +59,18 @@ impl MockServer {
             .await;
     }
 
+    /// Serves the unsigned credential issuer metadata of the issuer of `schema_id`
+    pub async fn issuer_metadata(&self, schema_id: impl Display, metadata: impl Serialize) {
+        Mock::given(method(Method::GET))
+            .and(path(format!(
+                "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{schema_id}"
+            )))
+            .and(header("Accept", "application/json"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(metadata))
+            .mount(&self.mock)
+            .await;
+    }
+
     pub async fn token_endpoint(&self, schema_id: impl Display, test_token: impl Serialize) {
         Mock::given(method(Method::POST))
             .and(path(format!("/ssi/openid4vci/final-1.0/{schema_id}/token")))

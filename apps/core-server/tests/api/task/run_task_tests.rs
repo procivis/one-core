@@ -25,7 +25,7 @@ use uuid::Uuid;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
+use crate::fixtures::interaction::{InteractionDataParams, dummy_holder_issuance_interaction_data};
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
@@ -645,7 +645,7 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_refresh_tok
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
     let far_in_the_future = one_core::clock::now_utc() + Duration::days(365);
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -768,7 +768,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_own_expires_at_
 
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -877,7 +877,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_with_no_items() {
 
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -963,7 +963,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_refresh_token_e
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
     let far_in_the_future = one_core::clock::now_utc() + Duration::days(365);
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1071,7 +1071,7 @@ async fn test_run_task_lifecycle_check_batch_parent_stays_valid_when_not_all_ite
 
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1200,7 +1200,7 @@ async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attribu
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
     let far_in_the_future = one_core::clock::now_utc() + Duration::days(365);
 
-    let expiring_interaction_data = dummy_interaction_data(
+    let expiring_interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1258,7 +1258,7 @@ async fn test_run_task_lifecycle_check_batch_parents_items_are_not_cross_attribu
         )
         .await;
 
-    let valid_interaction_data = dummy_interaction_data(
+    let valid_interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1378,7 +1378,7 @@ async fn test_run_task_lifecycle_check_batch_parent_expires_when_item_revoked_no
 
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {

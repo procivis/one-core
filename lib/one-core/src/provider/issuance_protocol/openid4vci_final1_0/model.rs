@@ -202,6 +202,7 @@ pub(crate) struct HolderInteractionData {
     pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
     #[serde(default)]
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+    /// Not stored anymore: accepting takes the display data from the current issuer metadata
     #[serde(default)]
     pub issuer_display: Option<Vec<IssuerDisplay>>,
     #[serde(default)]
@@ -268,6 +269,7 @@ pub(crate) struct HolderCredentialConfiguration {
     pub credential_signing_alg_values_supported: Option<Vec<SigningAlgValue>>,
     #[serde(default)]
     pub proof_types_supported: Option<IndexMap<String, ProofTypeSupported>>,
+    /// Not stored anymore: accepting takes the display data from the current issuer metadata
     #[serde(default)]
     pub credential_metadata: Option<CredentialMetadata>,
     #[serde(default)]

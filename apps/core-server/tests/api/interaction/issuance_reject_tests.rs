@@ -12,7 +12,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::interaction::{
-    ConfigurationParams, InteractionDataParams, dummy_interaction_data,
+    ConfigurationParams, InteractionDataParams, dummy_holder_issuance_interaction_data,
 };
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
@@ -38,7 +38,7 @@ async fn test_issuance_reject_subset_of_multi_format_offer() {
 
     let first_credential_id = Uuid::new_v4().into();
     let second_credential_id = Uuid::new_v4().into();
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -124,7 +124,7 @@ async fn check_reject_batch_parent(include_item: bool) {
         .credential_schemas
         .create("test", &organisation, Default::default())
         .await;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -213,7 +213,8 @@ async fn test_issuance_reject_openid4vci_notification_not_supported_by_issuer() 
         .create("test", &organisation, Default::default())
         .await;
 
-    let interaction_data = dummy_interaction_data(&context, &credential_schema, Default::default());
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, Default::default());
     let interaction = context
         .db
         .interactions
@@ -267,7 +268,7 @@ async fn test_issuance_reject_openid4vci_with_notification() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -437,7 +438,7 @@ async fn check_batch_item_rejection(
     let formats = schema.formats.as_ref().await.unwrap();
     let parent_id: CredentialId = Uuid::new_v4().into();
     let did_key_binding = Some(vec!["did:key".to_string()]);
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &schema,
         InteractionDataParams {

@@ -47,10 +47,20 @@ async fn test_handle_invitation_multi_format_offer() {
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "credential_endpoint": format!("{credential_issuer}/credential"),
             "credential_issuer": credential_issuer,
+            "display": [{
+                "name": "Issuer",
+                "logo": { "uri": "data:image/png;base64,aXNzdWVy" }
+            }],
             "credential_configurations_supported": {
                 "doctype": {
                     "format": "mso_mdoc",
                     "doctype": "doctype",
+                    "credential_metadata": {
+                        "display": [{
+                            "name": "Document",
+                            "logo": { "uri": "data:image/png;base64,ZG9jdW1lbnQ=" }
+                        }]
+                    },
                     "claims": {
                         "namespace": {
                             "field": { "value_type": "string", "mandatory": true }
@@ -130,6 +140,9 @@ async fn test_handle_invitation_multi_format_offer() {
     assert_eq!(configurations[0]["format"], "mso_mdoc");
     assert_eq!(configurations[1]["credential_configuration_id"], "vct");
     assert_eq!(configurations[1]["format"], "dc+sd-jwt");
+    // the display data is taken from the current issuer metadata when accepting
+    assert!(data["issuer_display"].is_null());
+    assert!(configurations[0]["credential_metadata"].is_null());
 }
 
 #[tokio::test]

@@ -23,7 +23,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
+use crate::fixtures::interaction::{InteractionDataParams, dummy_holder_issuance_interaction_data};
 use crate::fixtures::mdoc::format_mdoc_credential;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
@@ -553,7 +553,7 @@ async fn test_revoke_check_mdoc_update() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -710,7 +710,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -870,7 +870,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1029,7 +1029,7 @@ async fn test_revoke_check_token_update() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1196,7 +1196,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1345,7 +1345,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams::with_format("mso_mdoc".to_string()),
@@ -1477,7 +1477,7 @@ async fn test_suspended_to_valid_mdoc() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1671,7 +1671,7 @@ async fn test_suspended_to_suspended_update_failed() {
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -1941,7 +1941,7 @@ async fn test_revoke_check_batch_parent_stays_accepted_when_item_expires_but_ref
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -2096,7 +2096,7 @@ async fn test_revoke_check_batch_parent_expires_when_all_items_and_refresh_token
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -2200,7 +2200,7 @@ async fn test_revoke_check_batch_parent_expires_when_refresh_token_expired_even_
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
@@ -2330,7 +2330,7 @@ async fn test_revoke_check_batch_parent_expires_when_own_expires_at_passed() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
+    let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {

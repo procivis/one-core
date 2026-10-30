@@ -29,6 +29,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderInteractionData;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::mapper::revocation_state_from_credential_state;
@@ -761,20 +762,30 @@ pub(crate) fn is_batch_parent_expired(
     let Some(interaction) = interaction else {
         return Ok(false);
     };
-    let data: RefreshTokenInteractionData = deserialize_interaction_data(interaction.data.as_ref())
-        .error_while("parsing interaction data")?;
+    let refresh_token_expires_at = match parent.role() {
+        CredentialRole::Holder => {
+            let data: HolderInteractionData =
+                deserialize_interaction_data(interaction.data.as_ref())
+                    .error_while("parsing holder interaction data")?;
+            data.refresh_token_expires_at
+        }
+        CredentialRole::Issuer => {
+            let data: IssuerRefreshTokenInteractionData =
+                deserialize_interaction_data(interaction.data.as_ref())
+                    .error_while("parsing issuer interaction data")?;
+            data.refresh_token_expires_at
+        }
+        CredentialRole::Verifier => None,
+    };
 
-    Ok(data
-        .refresh_token_expires_at
-        .is_some_and(|expires_at| expires_at < now))
+    Ok(refresh_token_expires_at.is_some_and(|expires_at| expires_at < now))
 }
 
 /// Only the `refresh_token_expires_at` field is relevant here, so we deserialize into this
-/// minimal shape instead of the full `HolderInteractionData` - that struct requires fields
-/// (e.g. `issuer_url`) that aren't present on every interaction (e.g. issuer-role ones),
-/// which would otherwise make this fail for interactions it isn't meant to model.
+/// minimal shape instead of the full issuer interaction data, which carries fields not needed
+/// here that older interactions may lack.
 #[derive(serde::Deserialize)]
-struct RefreshTokenInteractionData {
+struct IssuerRefreshTokenInteractionData {
     #[serde(default, with = "time::serde::rfc3339::option")]
     refresh_token_expires_at: Option<OffsetDateTime>,
 }

@@ -54,11 +54,13 @@ use crate::provider::issuance_protocol::{IssuanceAcceptResponse, IssuanceProtoco
 use crate::validator::validate_issuance_time;
 
 impl OpenID4VCIFinal1_0 {
+    #[expect(clippy::too_many_arguments)]
     pub(super) async fn holder_process_accepted_credentials(
         &self,
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
         configuration: &HolderCredentialConfiguration,
+        issuer_display: Option<&[IssuerDisplay]>,
         mut holder_bindings: Vec<HolderBinding>,
         organisation: &Organisation,
         interaction: &Interaction,
@@ -94,7 +96,7 @@ impl OpenID4VCIFinal1_0 {
                     interaction,
                     formatter.as_ref(),
                     issuer_response.redirect_uri.as_ref(),
-                    interaction_data.issuer_display.as_deref(),
+                    issuer_display,
                 )
                 .await?;
             credential.holder_mut()?.data.embedded_disclosure_policy = disclosure_policy.clone();

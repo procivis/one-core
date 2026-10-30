@@ -30,7 +30,8 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::fixtures::interaction::{
-    ConfigurationParams, InteractionDataParams, dummy_interaction_data,
+    ConfigurationParams, InteractionDataParams, dummy_holder_issuance_interaction_data,
+    dummy_issuer_metadata,
 };
 use crate::fixtures::presentation::w3c_jwt_vc;
 use crate::fixtures::wallet_provider::create_wallet_unit_attestation_issuer_identifier;
@@ -156,11 +157,16 @@ async fn test_issuance_accept_openid4vc() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -323,33 +329,37 @@ pub(super) async fn accept_multi_configuration_offer(
     };
     let schema_ids = [first_schema.id, second_schema.id];
     let credential_server = MockServer::start().await;
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &first_schema,
-        InteractionDataParams {
-            batch_size: offer.batch_size,
-            credential_endpoint: Some(format!("{}/credential", credential_server.uri())),
-            // Token capabilities are established by the token endpoint, not by prepopulated
-            // fixture data.
-            without_refresh_token: true,
-            notification_endpoint: Some(format!(
-                "{}/ssi/openid4vci/final-1.0/{}/notification",
-                context.server_mock.uri(),
-                first_schema.id
-            )),
-            credential_configuration_id: Some("first".to_string()),
+    let params = InteractionDataParams {
+        batch_size: offer.batch_size,
+        credential_endpoint: Some(format!("{}/credential", credential_server.uri())),
+        // Token capabilities are established by the token endpoint, not by prepopulated
+        // fixture data.
+        without_refresh_token: true,
+        notification_endpoint: Some(format!(
+            "{}/ssi/openid4vci/final-1.0/{}/notification",
+            context.server_mock.uri(),
+            first_schema.id
+        )),
+        credential_configuration_id: Some("first".to_string()),
+        cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
+        disclosure_policy: Some(json!({"id": "policy-0", "policy": "none"})),
+        additional_configurations: vec![ConfigurationParams {
+            credential_configuration_id: "second".to_string(),
+            format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
-            disclosure_policy: Some(json!({"id": "policy-0", "policy": "none"})),
-            additional_configurations: vec![ConfigurationParams {
-                credential_configuration_id: "second".to_string(),
-                format: "jwt_vc_json".to_string(),
-                cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
-                disclosure_policy: Some(json!({"id": "policy-1", "policy": "none"})),
-                ..Default::default()
-            }],
+            disclosure_policy: Some(json!({"id": "policy-1", "policy": "none"})),
             ..Default::default()
-        },
-    );
+        }],
+        ..Default::default()
+    };
+    context
+        .server_mock
+        .issuer_metadata(
+            first_schema.id,
+            dummy_issuer_metadata(&context, &first_schema, &params),
+        )
+        .await;
+    let interaction_data = dummy_holder_issuance_interaction_data(&context, &first_schema, params);
     let interaction = context
         .db
         .interactions
@@ -1009,11 +1019,16 @@ async fn test_issuance_accept_extracts_expires_at_from_issued_credential() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -1093,18 +1108,23 @@ async fn batch_issuance_interaction(
     organisation: &one_core::model::organisation::Organisation,
     credential_schema: &one_core::model::credential_schema::CredentialSchema,
 ) -> one_core::model::interaction::Interaction {
-    let interaction_data = dummy_interaction_data(
-        context,
-        credential_schema,
-        InteractionDataParams {
-            batch_size: Some(2),
-            // only issuers that don't support jwk/cose_key binding force the wallet to
-            // auto-generate a DID (rather than a bare key) for each proof, which is what our
-            // jwt_vc_json credentials (bound via `sub`) need
-            cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
-            ..Default::default()
-        },
-    );
+    let params = InteractionDataParams {
+        batch_size: Some(2),
+        // only issuers that don't support jwk/cose_key binding force the wallet to
+        // auto-generate a DID (rather than a bare key) for each proof, which is what our
+        // jwt_vc_json credentials (bound via `sub`) need
+        cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
+        ..Default::default()
+    };
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(context, credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(context, credential_schema, params);
 
     context
         .db
@@ -1689,11 +1709,16 @@ async fn test_issuance_accept_with_new_nested_optional_claims() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -1896,11 +1921,16 @@ async fn test_issuance_accept_schema_name_already_exists(#[values(false, true)] 
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
 
     let interaction = context
         .db
@@ -2049,11 +2079,16 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
 
     let interaction = context
         .db
@@ -2187,11 +2222,16 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -2282,11 +2322,16 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
         .create("test", &organisation, Default::default())
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -2403,11 +2448,16 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .create("test", &organisation, Default::default())
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -2523,11 +2573,16 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
         .create("test", &organisation, Default::default())
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -2586,11 +2641,16 @@ async fn test_fail_issuance_accept_openid4vc_no_suitable_key_storage() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -2685,11 +2745,16 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
         .create("test", &organisation, Default::default())
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -2787,11 +2852,16 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams::default(),
-    );
+    let params = InteractionDataParams::default();
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -2899,14 +2969,19 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         )
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams {
-            require_tx_code: true,
-            ..Default::default()
-        },
-    );
+    let params = InteractionDataParams {
+        require_tx_code: true,
+        ..Default::default()
+    };
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -3114,7 +3189,15 @@ async fn accept_with_wallet_instance_attestation(
             },
         )
         .await;
-    let interaction_data = dummy_interaction_data(&context, &credential_schema, params);
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
 
     let interaction = context
         .db
@@ -3318,21 +3401,26 @@ async fn test_issuance_accept_persists_issuer_display_translations_and_logo() {
         .create("test", &organisation, Default::default())
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams {
-            issuer_display: Some(json!([
-                { "name": "English issuer", "locale": "en" },
-                {
-                    "name": "Deutscher Aussteller",
-                    "locale": "de",
-                    "logo": { "uri": LOGO_URI, "alt_text": "Logo Beschreibung" }
-                }
-            ])),
-            ..Default::default()
-        },
-    );
+    let params = InteractionDataParams {
+        issuer_display: Some(json!([
+            { "name": "English issuer", "locale": "en" },
+            {
+                "name": "Deutscher Aussteller",
+                "locale": "de",
+                "logo": { "uri": LOGO_URI, "alt_text": "Logo Beschreibung" }
+            }
+        ])),
+        ..Default::default()
+    };
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
@@ -3503,20 +3591,25 @@ async fn test_issuance_accept_refreshes_display_for_existing_issuer_identifier()
         .create("test", &organisation, Default::default())
         .await;
 
-    let interaction_data = dummy_interaction_data(
-        &context,
-        &credential_schema,
-        InteractionDataParams {
-            issuer_display: Some(json!([
-                {
-                    "name": "Deutscher Aussteller",
-                    "locale": "de",
-                    "logo": { "uri": SMALL_PNG_DATA_URI, "alt_text": "alt" }
-                }
-            ])),
-            ..Default::default()
-        },
-    );
+    let params = InteractionDataParams {
+        issuer_display: Some(json!([
+            {
+                "name": "Deutscher Aussteller",
+                "locale": "de",
+                "logo": { "uri": SMALL_PNG_DATA_URI, "alt_text": "alt" }
+            }
+        ])),
+        ..Default::default()
+    };
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            dummy_issuer_metadata(&context, &credential_schema, &params),
+        )
+        .await;
+    let interaction_data =
+        dummy_holder_issuance_interaction_data(&context, &credential_schema, params);
     let interaction = context
         .db
         .interactions
