@@ -323,42 +323,33 @@ pub(super) async fn accept_multi_configuration_offer(
     };
     let schema_ids = [first_schema.id, second_schema.id];
     let credential_server = MockServer::start().await;
-    let mut interaction_data: serde_json::Value = serde_json::from_slice(&dummy_interaction_data(
+    let interaction_data = dummy_interaction_data(
         &context,
         &first_schema,
         InteractionDataParams {
             batch_size: offer.batch_size,
+            credential_endpoint: Some(format!("{}/credential", credential_server.uri())),
+            // Token capabilities are established by the token endpoint, not by prepopulated
+            // fixture data.
+            without_refresh_token: true,
             notification_endpoint: Some(format!(
                 "{}/ssi/openid4vci/final-1.0/{}/notification",
                 context.server_mock.uri(),
                 first_schema.id
             )),
+            credential_configuration_id: Some("first".to_string()),
+            cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
+            disclosure_policy: Some(json!({"id": "policy-0", "policy": "none"})),
             additional_configurations: vec![ConfigurationParams {
                 credential_configuration_id: "second".to_string(),
                 format: "jwt_vc_json".to_string(),
-                notification_id: None,
-                credential_id: None,
+                cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
+                disclosure_policy: Some(json!({"id": "policy-1", "policy": "none"})),
+                ..Default::default()
             }],
             ..Default::default()
         },
-    ))
-    .unwrap();
-    interaction_data["credential_endpoint"] =
-        json!(format!("{}/credential", credential_server.uri()));
-    // Token capabilities are established by the token endpoint, not by prepopulated fixture data.
-    interaction_data["refresh_token"] = serde_json::Value::Null;
-    interaction_data["refresh_token_expires_at"] = serde_json::Value::Null;
-    for (index, configuration) in interaction_data["credential_configurations"]
-        .as_array_mut()
-        .unwrap()
-        .iter_mut()
-        .enumerate()
-    {
-        configuration["credential_configuration_id"] = json!(["first", "second"][index]);
-        configuration["cryptographic_binding_methods_supported"] = json!(["did:key"]);
-        configuration["disclosure_policy"] =
-            json!({"id": format!("policy-{index}"), "policy": "none"});
-    }
+    );
     let interaction = context
         .db
         .interactions
@@ -366,7 +357,7 @@ pub(super) async fn accept_multi_configuration_offer(
             &organisation,
             InteractionType::Issuance,
             TestingInteractionParams {
-                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+                data: Some(interaction_data),
                 ..Default::default()
             },
         )
@@ -1102,21 +1093,18 @@ async fn batch_issuance_interaction(
     organisation: &one_core::model::organisation::Organisation,
     credential_schema: &one_core::model::credential_schema::CredentialSchema,
 ) -> one_core::model::interaction::Interaction {
-    let mut interaction_data: serde_json::Value = serde_json::from_slice(&dummy_interaction_data(
+    let interaction_data = dummy_interaction_data(
         context,
         credential_schema,
         InteractionDataParams {
             batch_size: Some(2),
+            // only issuers that don't support jwk/cose_key binding force the wallet to
+            // auto-generate a DID (rather than a bare key) for each proof, which is what our
+            // jwt_vc_json credentials (bound via `sub`) need
+            cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
             ..Default::default()
         },
-    ))
-    .unwrap();
-    // only issuers that don't support jwk/cose_key binding force the wallet to auto-generate a
-    // DID (rather than a bare key) for each proof, which is what our jwt_vc_json credentials
-    // (bound via `sub`) need
-    interaction_data["credential_configurations"][0]["cryptographic_binding_methods_supported"] =
-        json!(["did:key"]);
-    let interaction_data = serde_json::to_vec(&interaction_data).unwrap();
+    );
 
     context
         .db

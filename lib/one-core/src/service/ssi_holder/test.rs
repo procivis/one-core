@@ -61,9 +61,7 @@ use crate::provider::issuance_protocol::model::{
     AuthorizationDpopKey, ContinueIssuanceResponseDTO, CredentialWithBlob, IssuanceAcceptResponse,
     IssuanceAcceptResult,
 };
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    HolderCredentialConfiguration, HolderInteractionData,
-};
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderInteractionData;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -90,6 +88,7 @@ use crate::service::test_utilities::{
     CredentialBuilder, dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof,
     generic_config, generic_formatter_capabilities, get_dummy_date,
 };
+use crate::util::test_utilities::{TestHolderCredentialConfiguration, TestHolderInteractionData};
 
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested()
@@ -647,7 +646,9 @@ async fn test_accept_credential() {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                data: Some(
+                    serde_json::to_vec(&HolderInteractionData::from(dummy_interaction())).unwrap(),
+                ),
                 organisation: dummy_organisation(None).into(),
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -793,6 +794,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
     let mut second = interaction_data.credential_configurations[0].clone();
     second.credential_configuration_id = "second".to_string();
     interaction_data.credential_configurations.push(second);
+    let interaction_data = HolderInteractionData::from(interaction_data);
     let mut organisation = dummy_organisation(None);
     organisation.configuration.selected_ecosystems = vec![ecosystem_id.clone()];
 
@@ -998,7 +1000,9 @@ async fn test_accept_credential_with_did() {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                data: Some(
+                    serde_json::to_vec(&HolderInteractionData::from(dummy_interaction())).unwrap(),
+                ),
                 organisation: dummy_organisation(None).into(),
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -1117,10 +1121,10 @@ async fn test_accept_credential_batch() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(
-                    serde_json::to_vec(&HolderInteractionData {
+                    serde_json::to_vec(&HolderInteractionData::from(TestHolderInteractionData {
                         batch_size: Some(2),
                         ..dummy_interaction()
-                    })
+                    }))
                     .unwrap(),
                 ),
                 organisation: dummy_organisation(None).into(),
@@ -1236,7 +1240,9 @@ async fn test_accept_credential_wrong_tx_code() {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                data: Some(
+                    serde_json::to_vec(&HolderInteractionData::from(dummy_interaction())).unwrap(),
+                ),
                 organisation: organisation.clone().into(),
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -2158,7 +2164,9 @@ async fn test_accept_interaction_credential_org_mismatch() {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                data: Some(
+                    serde_json::to_vec(&HolderInteractionData::from(dummy_interaction())).unwrap(),
+                ),
                 organisation: organisation.clone().into(),
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -2263,41 +2271,15 @@ async fn test_initiate_issuance_session_org_mismatch() {
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
-fn dummy_interaction() -> HolderInteractionData {
-    HolderInteractionData {
-        issuer_url: "".to_string(),
-        credential_endpoint: "".to_string(),
-        token_endpoint: None,
-        notification_endpoint: None,
-        nonce_endpoint: None,
-        challenge_endpoint: None,
-        grants: None,
-        batch_size: None,
-        continue_issuance: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        refresh_token_expires_at: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        issuer_display: None,
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
+fn dummy_interaction() -> TestHolderInteractionData {
+    TestHolderInteractionData {
         protocol: "".to_string(),
-        credential_configurations: vec![HolderCredentialConfiguration {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: "".to_string(),
             format: "dc+sd-jwt".to_string(),
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
+        ..Default::default()
     }
 }
 
@@ -2644,14 +2626,17 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
     data.refresh_token = Some(b"refresh-token".to_vec());
     data.credential_configurations = configurations
         .iter()
-        .map(|(configuration_id, item)| HolderCredentialConfiguration {
-            credential_configuration_id: configuration_id.to_string(),
-            format: "jwt_vc_json".to_string(),
-            credential_id: Some(parent.credential.common().id),
-            credential_schema_format_id: Some(item.holder().unwrap().data.format.id()),
-            ..data.credential_configurations[0].clone()
-        })
+        .map(
+            |(configuration_id, item)| TestHolderCredentialConfiguration {
+                credential_configuration_id: configuration_id.to_string(),
+                format: "jwt_vc_json".to_string(),
+                credential_id: Some(parent.credential.common().id),
+                credential_schema_format_id: Some(item.holder().unwrap().data.format.id()),
+                ..data.credential_configurations[0].clone()
+            },
+        )
         .collect();
+    let data = HolderInteractionData::from(data);
 
     let mut protocol = MockIssuanceProtocol::new();
     protocol

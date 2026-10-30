@@ -37,6 +37,7 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, DetailCredential, IdentifierDetails, W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderInteractionData;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::error::RevocationError;
@@ -46,6 +47,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::service::test_utilities::{
     CredentialBuilder, dummy_blob, dummy_organisation, generic_config,
 };
+use crate::util::test_utilities::TestHolderInteractionData;
 
 #[derive(Default)]
 struct Repositories {
@@ -483,17 +485,7 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
     let item_credential_id: CredentialId = Uuid::new_v4().into();
 
     let refresh_token_expires_at = crate::clock::now_utc() - Duration::hours(1);
-    let interaction_data = serde_json::to_vec(&serde_json::json!({
-        "issuer_url": "https://issuer.example",
-        "credential_endpoint": "https://issuer.example/credential",
-        "credential_configuration_id": "test",
-        "protocol": "OPENID4VCI_DRAFT13",
-        "format": "JWT",
-        "refresh_token_expires_at": refresh_token_expires_at
-            .format(&time::format_description::well_known::Rfc3339)
-            .unwrap(),
-    }))
-    .unwrap();
+    let interaction_data = holder_interaction_data(refresh_token_expires_at);
 
     let credential = {
         let mut updated_credential = generic_credential();
@@ -675,17 +667,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
     let item_credential_id: CredentialId = Uuid::new_v4().into();
 
     let refresh_token_expires_at = crate::clock::now_utc() - Duration::hours(1);
-    let interaction_data = serde_json::to_vec(&serde_json::json!({
-        "issuer_url": "https://issuer.example",
-        "credential_endpoint": "https://issuer.example/credential",
-        "credential_configuration_id": "test",
-        "protocol": "OPENID4VCI_DRAFT13",
-        "format": "JWT",
-        "refresh_token_expires_at": refresh_token_expires_at
-            .format(&time::format_description::well_known::Rfc3339)
-            .unwrap(),
-    }))
-    .unwrap();
+    let interaction_data = holder_interaction_data(refresh_token_expires_at);
 
     let credential = {
         let mut updated_credential = generic_credential();
@@ -1048,17 +1030,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
 
     // refresh token is still valid, and won't expire for a while
     let refresh_token_expires_at = crate::clock::now_utc() + Duration::hours(1);
-    let interaction_data = serde_json::to_vec(&serde_json::json!({
-        "issuer_url": "https://issuer.example",
-        "credential_endpoint": "https://issuer.example/credential",
-        "credential_configuration_id": "test",
-        "protocol": "OPENID4VCI_DRAFT13",
-        "format": "JWT",
-        "refresh_token_expires_at": refresh_token_expires_at
-            .format(&time::format_description::well_known::Rfc3339)
-            .unwrap(),
-    }))
-    .unwrap();
+    let interaction_data = holder_interaction_data(refresh_token_expires_at);
 
     let credential = {
         let mut updated_credential = generic_credential();
@@ -3395,4 +3367,12 @@ async fn test_expiring_is_not_supported_for_single_credentials() {
 
     assert_eq!(ErrorCode::BR_0442, error.error_code());
     assert!(updates.take().is_empty());
+}
+
+fn holder_interaction_data(refresh_token_expires_at: OffsetDateTime) -> Vec<u8> {
+    serde_json::to_vec(&HolderInteractionData::from(TestHolderInteractionData {
+        refresh_token_expires_at: Some(refresh_token_expires_at),
+        ..Default::default()
+    }))
+    .unwrap()
 }

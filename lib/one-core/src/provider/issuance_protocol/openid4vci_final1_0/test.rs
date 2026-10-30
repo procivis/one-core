@@ -24,8 +24,8 @@ use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::{
     ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialIssuerMetadata, CredentialMetadata,
     CredentialRequest, CredentialRequestEncryption, CredentialRequestIdentifier,
-    CredentialResponseEncryption, Grants, Image, IssuerDisplay, KeyAttestationsRequired,
-    PreAuthorizedCodeGrant, ProofTypeSupported, Proofs, SecurityLevel,
+    CredentialResponseEncryption, Image, IssuerDisplay, KeyAttestationsRequired,
+    ProofTypeSupported, Proofs, SecurityLevel,
 };
 use time::Duration;
 use url::Url;
@@ -132,6 +132,7 @@ use crate::service::test_utilities::{
     CredentialBuilder, dummy_claim_schema, dummy_did, dummy_identifier, dummy_key,
     dummy_organisation, generic_formatter_capabilities, get_dummy_date,
 };
+use crate::util::test_utilities::{TestHolderCredentialConfiguration, TestHolderInteractionData};
 
 #[derive(Default)]
 struct TestInputs {
@@ -606,33 +607,9 @@ async fn test_holder_accept_credential_success() {
         .unwrap()
         .data = IdentifierData::Key(Related::from(key.clone()));
 
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server.uri(),
-        credential_endpoint: format!("{}/credential", mock_server.uri()),
-        token_endpoint: Some(format!("{}/token", mock_server.uri())),
-        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
         notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token_expires_at: None,
-        continue_issuance: None,
-        issuer_display: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential
                 .common()
                 .schema
@@ -644,8 +621,6 @@ async fn test_holder_accept_credential_success() {
                 .ecosystem_schema_id,
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
             credential_metadata: Some(CredentialMetadata {
                 display: Some(vec![CredentialDisplay {
                     name: "Number credential".to_string(),
@@ -663,12 +638,10 @@ async fn test_holder_accept_credential_success() {
                     additional_values: Default::default(),
                 }]),
             }),
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    });
 
     let interaction = Interaction {
         dpop_key: None,
@@ -943,33 +916,8 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 
     let credential = generic_credential_key();
 
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server.uri(),
-        credential_endpoint: format!("{}/credential", mock_server.uri()),
-        token_endpoint: Some(format!("{}/token", mock_server.uri())),
-        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
-        notification_endpoint: None,
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token: None,
-        refresh_token_expires_at: None,
-        continue_issuance: None,
-        issuer_display: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential
                 .common()
                 .schema
@@ -981,15 +929,10 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                 .ecosystem_schema_id,
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    });
 
     let interaction = Interaction {
         dpop_key: None,
@@ -1235,33 +1178,9 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
 
     let credential = generic_credential_did_with_holder_identifier();
 
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server.uri(),
-        credential_endpoint: format!("{}/credential", mock_server.uri()),
-        token_endpoint: Some(format!("{}/token", mock_server.uri())),
-        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
         notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        access_token: None,
-        batch_size: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token_expires_at: None,
-        continue_issuance: None,
-        issuer_display: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential
                 .common()
                 .schema
@@ -1273,15 +1192,10 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
                 .ecosystem_schema_id,
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    });
 
     let interaction = Interaction {
         dpop_key: None,
@@ -1560,33 +1474,10 @@ async fn batch_autogenerated_binding_interaction(
     mock_server: &MockServer,
     credential: &Credential,
 ) -> Interaction {
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server.uri(),
-        credential_endpoint: format!("{}/credential", mock_server.uri()),
-        token_endpoint: Some(format!("{}/token", mock_server.uri())),
-        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
         notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        access_token: None,
         batch_size: Some(2),
-        access_token_expires_at: None,
-        refresh_token: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token_expires_at: None,
-        continue_issuance: None,
-        issuer_display: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential
                 .common()
                 .schema
@@ -1598,15 +1489,10 @@ async fn batch_autogenerated_binding_interaction(
                 .ecosystem_schema_id,
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    });
 
     Interaction {
         dpop_key: None,
@@ -2650,45 +2536,17 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         .single_format()
         .await
         .ecosystem_schema_id;
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server.uri(),
-        credential_endpoint: format!("{}/credential", mock_server.uri()),
-        token_endpoint: Some(format!("{}/token", mock_server.uri())),
-        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
         notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        access_token: None,
         batch_size: Some(2),
-        access_token_expires_at: None,
-        refresh_token: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token_expires_at: None,
-        issuer_display: None,
-        continue_issuance: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential_configuration_id.clone(),
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    });
 
     let interaction = Interaction {
         dpop_key: None,
@@ -2994,35 +2852,12 @@ async fn test_holder_reject_credential() {
         }
         .build();
 
-        let interaction_data = HolderInteractionData {
-            issuer_url: mock_server.uri(),
-            credential_endpoint: format!("{}/credential", mock_server.uri()),
-            token_endpoint: Some(format!("{}/token", mock_server.uri())),
-            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+        let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            challenge_endpoint: None,
-            grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-                pre_authorized_code: "code".to_string(),
-                tx_code: None,
-                authorization_server: None,
-            })),
-            batch_size: None,
-            access_token: None,
-            access_token_expires_at: None,
             refresh_token: Some(
                 encrypt_data(&SecretSlice::from(vec![0; 32]), &encryption).unwrap(),
             ),
-            refresh_token_expires_at: None,
-            token_endpoint_auth_methods_supported: vec![],
-            client_attestation_pop_signing_alg_values_supported: None,
-            continue_issuance: None,
-            issuer_display: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
-            credential_request_encryption: None,
-            credential_response_encryption: None,
-            dpop_signing_alg_values_supported: None,
-            dpop_nonce: None,
-            credential_configurations: vec![HolderCredentialConfiguration {
+            credential_configurations: vec![TestHolderCredentialConfiguration {
                 credential_configuration_id: credential
                     .common()
                     .schema
@@ -3033,16 +2868,12 @@ async fn test_holder_reject_credential() {
                     .await
                     .ecosystem_schema_id,
                 format: "jwt_vc_json".to_string(),
-                cryptographic_binding_methods_supported: None,
-                credential_signing_alg_values_supported: None,
-                proof_types_supported: None,
-                credential_metadata: None,
-                disclosure_policy: None,
                 notification_ids: vec!["notification_id".to_string()],
                 credential_id: Some(credential.common().id),
-                credential_schema_format_id: None,
+                ..Default::default()
             }],
-        };
+            ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+        });
 
         credential.common_mut().interaction = Some(
             Interaction {
@@ -4233,33 +4064,8 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         },
     );
 
-    let interaction_data = HolderInteractionData {
-        issuer_url: "http://issuer".to_string(),
-        credential_endpoint: "http://issuer/credential".to_string(),
-        token_endpoint: Some("http://issuer/token".to_string()),
-        nonce_endpoint: Some("http://issuer/nonce".to_string()),
-        notification_endpoint: None,
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        refresh_token_expires_at: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        continue_issuance: None,
-        issuer_display: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential
                 .common()
                 .schema
@@ -4270,16 +4076,11 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
                 .await
                 .ecosystem_schema_id,
             format: "jwt_vc_json".to_string(),
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
             proof_types_supported: Some(proof_types),
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer("http://issuer")
+    });
 
     let interaction = Interaction {
         dpop_key: None,
@@ -4401,33 +4202,9 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         },
     );
 
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server.uri(),
-        credential_endpoint: format!("{}/credential", mock_server.uri()),
-        token_endpoint: Some(format!("{}/token", mock_server.uri())),
-        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
         notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        refresh_token_expires_at: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        continue_issuance: None,
-        issuer_display: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential
                 .common()
                 .schema
@@ -4439,15 +4216,11 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
                 .ecosystem_schema_id,
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
             proof_types_supported: Some(proof_types),
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    });
 
     let interaction = Interaction {
         dpop_key: None,
@@ -4740,45 +4513,16 @@ async fn interaction_with_metadata(
     credential_metadata: CredentialMetadata,
     mock_server_uri: &str,
 ) -> Interaction {
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server_uri.to_owned(),
-        credential_endpoint: format!("{mock_server_uri}/credential"),
-        token_endpoint: Some(format!("{mock_server_uri}/token")),
-        nonce_endpoint: Some(format!("{mock_server_uri}/nonce")),
-        notification_endpoint: None,
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token_expires_at: None,
-        issuer_display: None,
-        continue_issuance: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: "CredentialSchemaId".to_owned(),
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
             credential_metadata: Some(credential_metadata),
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(mock_server_uri)
+    });
 
     Interaction {
         dpop_key: None,
@@ -5739,45 +5483,16 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
     };
 
     let mock_server_uri = mock_server.uri();
-    let interaction_data = HolderInteractionData {
-        issuer_url: mock_server_uri.to_owned(),
-        credential_endpoint: format!("{mock_server_uri}/credential"),
-        token_endpoint: Some(format!("{mock_server_uri}/token")),
-        nonce_endpoint: Some(format!("{mock_server_uri}/nonce")),
-        notification_endpoint: None,
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token_expires_at: None,
-        issuer_display: None,
-        continue_issuance: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        credential_configurations: vec![HolderCredentialConfiguration {
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: "CredentialSchemaId".to_owned(),
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
-            credential_metadata: None,
             disclosure_policy: Some(disclosure_policy.to_owned()),
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    };
+        ..TestHolderInteractionData::mock_issuer(&mock_server_uri)
+    });
 
     let interaction = Interaction {
         dpop_key: None,
@@ -6001,33 +5716,10 @@ async fn encryption_interaction_data(
     credential_request_encryption: Option<CredentialRequestEncryption>,
     credential_response_encryption: Option<CredentialResponseEncryption>,
 ) -> HolderInteractionData {
-    HolderInteractionData {
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        issuer_url: mock_server.uri(),
-        credential_endpoint: format!("{}/credential", mock_server.uri()),
-        token_endpoint: Some(format!("{}/token", mock_server.uri())),
-        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
-        notification_endpoint: None,
-        challenge_endpoint: None,
-        grants: Some(Grants::PreAuthorizedCode(PreAuthorizedCodeGrant {
-            pre_authorized_code: "code".to_string(),
-            tx_code: None,
-            authorization_server: None,
-        })),
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        refresh_token_expires_at: None,
-        continue_issuance: None,
-        issuer_display: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
+    HolderInteractionData::from(TestHolderInteractionData {
         credential_request_encryption,
         credential_response_encryption,
-        credential_configurations: vec![HolderCredentialConfiguration {
+        credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: credential
                 .common()
                 .schema
@@ -6039,15 +5731,10 @@ async fn encryption_interaction_data(
                 .ecosystem_schema_id,
             format: "jwt_vc_json".to_string(),
             cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
-            credential_signing_alg_values_supported: None,
-            proof_types_supported: None,
-            credential_metadata: None,
-            disclosure_policy: None,
-            notification_ids: vec![],
-            credential_id: None,
-            credential_schema_format_id: None,
+            ..Default::default()
         }],
-    }
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    })
 }
 
 async fn interaction_for(
@@ -6675,11 +6362,9 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
         ..Default::default()
     });
 
-    let configuration = |id: &str, key_storage: Option<Vec<_>>| HolderCredentialConfiguration {
+    let configuration = |id: &str, key_storage: Option<Vec<_>>| TestHolderCredentialConfiguration {
         credential_configuration_id: id.to_string(),
         format: "jwt_vc_json".to_string(),
-        cryptographic_binding_methods_supported: None,
-        credential_signing_alg_values_supported: None,
         proof_types_supported: Some(IndexMap::from([(
             "jwt".to_string(),
             ProofTypeSupported {
@@ -6691,57 +6376,35 @@ async fn test_prepare_wallet_attestations_attests_each_key_once() {
                 }),
             },
         )])),
-        credential_metadata: None,
-        disclosure_policy: None,
-        notification_ids: vec![],
-        credential_id: None,
-        credential_schema_format_id: None,
+        ..Default::default()
     };
     let key = Key {
         storage_type: "INTERNAL".to_string(),
         ..dummy_key()
     };
-    let requested = |id: &str, key_storage: Option<Vec<_>>| RequestedCredential {
-        configuration: configuration(id, key_storage),
-        holder_bindings: vec![HolderBinding {
-            identifier: dummy_identifier(),
-            key: key.clone(),
-            wua_proof: None,
-        }],
-    };
-    let mut requested_credentials = vec![
-        requested("a", Some(vec![SecurityLevel::Basic.into()])),
-        requested("b", None),
-        requested("c", Some(vec![SecurityLevel::Basic.into()])),
-        requested("d", Some(vec![])),
+    let configurations = vec![
+        configuration("a", Some(vec![SecurityLevel::Basic.into()])),
+        configuration("b", None),
+        configuration("c", Some(vec![SecurityLevel::Basic.into()])),
+        configuration("d", Some(vec![])),
     ];
-    let interaction_data = HolderInteractionData {
+    let mut requested_credentials: Vec<_> = configurations
+        .iter()
+        .map(|configuration| RequestedCredential {
+            configuration: configuration.clone().into(),
+            holder_bindings: vec![HolderBinding {
+                identifier: dummy_identifier(),
+                key: key.clone(),
+                wua_proof: None,
+            }],
+        })
+        .collect();
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
         issuer_url: "http://issuer".to_string(),
         credential_endpoint: "http://issuer/credential".to_string(),
-        token_endpoint: None,
-        notification_endpoint: None,
-        nonce_endpoint: None,
-        challenge_endpoint: None,
-        grants: None,
-        continue_issuance: None,
-        batch_size: None,
-        access_token: None,
-        access_token_expires_at: None,
-        refresh_token: None,
-        refresh_token_expires_at: None,
-        token_endpoint_auth_methods_supported: vec![],
-        client_attestation_pop_signing_alg_values_supported: None,
-        issuer_display: None,
-        credential_request_encryption: None,
-        credential_response_encryption: None,
-        dpop_signing_alg_values_supported: None,
-        dpop_nonce: None,
-        protocol: "OPENID4VCI_FINAL1".to_string(),
-        credential_configurations: requested_credentials
-            .iter()
-            .map(|requested| requested.configuration.clone())
-            .collect(),
-    };
+        credential_configurations: configurations,
+        ..Default::default()
+    });
 
     let (interaction, _) = dpop_offer(None);
     let wia_tokens = protocol
@@ -6908,13 +6571,10 @@ fn no_logo_when_identifier_has_none() {
 }
 
 fn holder_interaction_data(configurations: Value) -> HolderInteractionData {
-    serde_json::from_value(json!({
-        "issuer_url": "https://issuer.example.com",
-        "credential_endpoint": "https://issuer.example.com/credential",
-        "protocol": "OPENID4VCI_FINAL1",
-        "credential_configurations": configurations,
-    }))
-    .unwrap()
+    HolderInteractionData::from(TestHolderInteractionData {
+        credential_configurations: serde_json::from_value(configurations).unwrap(),
+        ..Default::default()
+    })
 }
 
 fn accepted_batch_parent() -> Credential {
@@ -7306,12 +6966,13 @@ async fn refresh_resolves_the_issued_format_independently_of_schema_order() {
         updated_credential.common_mut().schema = schema.into();
         updated_credential
     };
-    let configuration: HolderCredentialConfiguration = serde_json::from_value(json!({
-        "credential_configuration_id": "jwt", "format": "jwt_vc_json",
-        "credential_id": parent.common().id,
-        "credential_schema_format_id": issued_format.id,
-    }))
-    .unwrap();
+    let configuration = HolderCredentialConfiguration::from(TestHolderCredentialConfiguration {
+        credential_configuration_id: "jwt".to_string(),
+        format: "jwt_vc_json".to_string(),
+        credential_id: Some(parent.common().id),
+        credential_schema_format_id: Some(issued_format.id),
+        ..Default::default()
+    });
     let protocol = setup_protocol(TestInputs {
         config: dummy_config(),
         ..Default::default()
@@ -7668,14 +7329,12 @@ async fn test_swiyu_dpop_nonce_is_not_fetched_again_after_the_nonce_endpoint_was
 /// An offer the holder has not accepted yet, carrying the DPoP signing algorithms the
 /// authorization server advertised.
 fn dpop_offer(dpop_signing_algs: Option<&[&str]>) -> (Interaction, HolderInteractionData) {
-    let interaction_data: HolderInteractionData = serde_json::from_value(json!({
-        "issuer_url": "https://issuer.example.com/",
-        "credential_endpoint": "https://issuer.example.com/credential",
-        "protocol": "OPENID4VCI_FINAL1",
-        "credential_configurations": [],
-        "dpop_signing_alg_values_supported": dpop_signing_algs,
-    }))
-    .unwrap();
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
+        issuer_url: "https://issuer.example.com/".to_string(),
+        dpop_signing_alg_values_supported: dpop_signing_algs
+            .map(|algs| algs.iter().map(ToString::to_string).collect()),
+        ..Default::default()
+    });
 
     let interaction = interaction_from_handle_invitation(
         Some(serde_json::to_vec(&interaction_data).unwrap()),

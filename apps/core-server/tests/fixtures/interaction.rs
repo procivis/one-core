@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use one_core::model::credential::Credential;
 use one_core::model::credential_schema::CredentialSchema;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -21,8 +20,21 @@ pub struct InteractionDataParams {
     pub require_tx_code: bool,
     pub access_token_expired: bool,
     pub refresh_token_expired: bool,
+    /// no refresh token was issued
+    pub without_refresh_token: bool,
+    /// overrides the credential endpoint of the issuer
+    pub credential_endpoint: Option<String>,
+    /// id of the default configuration
+    pub credential_configuration_id: Option<String>,
     pub format: Option<String>,
+    /// binding methods of the default configuration, `jwk` and `cose_key` if unset
+    pub cryptographic_binding_methods_supported: Option<Vec<String>>,
+    pub disclosure_policy: Option<serde_json::Value>,
     pub notification_id: Option<String>,
+    /// top-level credential issued for the default configuration
+    pub credential_id: Option<CredentialId>,
+    /// format of the credential issued for the default configuration
+    pub credential_schema_format_id: Option<CredentialSchemaFormatId>,
     pub notification_endpoint: Option<String>,
     pub batch_size: Option<u32>,
     pub issuer_display: Option<serde_json::Value>,
@@ -30,11 +42,16 @@ pub struct InteractionDataParams {
     pub additional_configurations: Vec<ConfigurationParams>,
 }
 
+#[derive(Default)]
 pub struct ConfigurationParams {
     pub credential_configuration_id: String,
     pub format: String,
+    /// `jwk` and `cose_key` if unset
+    pub cryptographic_binding_methods_supported: Option<Vec<String>>,
+    pub disclosure_policy: Option<serde_json::Value>,
     pub notification_id: Option<String>,
     pub credential_id: Option<CredentialId>,
+    pub credential_schema_format_id: Option<CredentialSchemaFormatId>,
 }
 
 impl InteractionDataParams {
@@ -67,29 +84,32 @@ pub fn dummy_interaction_data(
         context.server_mock.uri(),
         credential_schema.id,
     );
-    let mut configuration = json!({
-        "credential_configuration_id": "01ee2044-2e75-4a3b-a575-b48669bd8254",
-        "format": params.format.unwrap_or("jwt_vc_json".to_string()),
-        "cryptographic_binding_methods_supported": [
-            "jwk",
-            "cose_key"
-        ],
-        "proof_types_supported": {
-            "jwt": {
-                "proof_signing_alg_values_supported": [
-                    "EdDSA",
-                    "ES256",
-                ]
-            }
-        },
-        "credential_metadata": {
-            "display": [
-                {
-                    "lang": "en",
-                    "name": "test"
-                }
+    let mut configuration = configuration_json(ConfigurationParams {
+        credential_configuration_id: params
+            .credential_configuration_id
+            .unwrap_or("01ee2044-2e75-4a3b-a575-b48669bd8254".to_string()),
+        format: params.format.unwrap_or("jwt_vc_json".to_string()),
+        cryptographic_binding_methods_supported: params.cryptographic_binding_methods_supported,
+        disclosure_policy: params.disclosure_policy,
+        notification_id: params.notification_id,
+        credential_id: params.credential_id,
+        credential_schema_format_id: params.credential_schema_format_id,
+    });
+    configuration["proof_types_supported"] = json!({
+        "jwt": {
+            "proof_signing_alg_values_supported": [
+                "EdDSA",
+                "ES256",
             ]
-        },
+        }
+    });
+    configuration["credential_metadata"] = json!({
+        "display": [
+            {
+                "lang": "en",
+                "name": "test"
+            }
+        ]
     });
     if let Some(key_security_level) = credential_schema
         .wallet_attestation
@@ -99,26 +119,17 @@ pub fn dummy_interaction_data(
             "key_storage": [SecurityLevel::from(key_security_level)]
         });
     }
-    if let Some(notification_id) = params.notification_id {
-        configuration["notification_ids"] = json!([notification_id]);
-    }
     let mut configurations = vec![configuration];
-    for configuration in params.additional_configurations {
-        let mut additional = json!({
-            "credential_configuration_id": configuration.credential_configuration_id,
-            "format": configuration.format,
-            "cryptographic_binding_methods_supported": ["jwk", "cose_key"],
-            "credential_id": configuration.credential_id,
-        });
-        if let Some(notification_id) = configuration.notification_id {
-            additional["notification_ids"] = json!([notification_id]);
-        }
-        configurations.push(additional);
-    }
+    configurations.extend(
+        params
+            .additional_configurations
+            .into_iter()
+            .map(configuration_json),
+    );
 
     let mut value = json!({
     "issuer_url": issuer_url,
-    "credential_endpoint": format!("{}/credential", issuer_url),
+    "credential_endpoint": params.credential_endpoint.unwrap_or(format!("{}/credential", issuer_url)),
     "token_endpoint": format!("{}/token", issuer_url),
     "nonce_endpoint": format!("{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce", context.server_mock.uri()),
     "grants":{
@@ -135,9 +146,14 @@ pub fn dummy_interaction_data(
     ],
     "protocol": "OPENID4VCI_FINAL1",
     "credential_configurations": configurations,
-    "trust_resolution": "UNTRUSTED",
-    "trust_mode": "TRUST_OPTIONAL"
     });
+    if params.without_refresh_token {
+        value.as_object_mut().unwrap().remove("refresh_token");
+        value
+            .as_object_mut()
+            .unwrap()
+            .remove("refresh_token_expires_at");
+    }
     if params.require_instance_attestation {
         value["token_endpoint_auth_methods_supported"] = json!(["attest_jwt_client_auth"]);
         value["client_attestation_pop_signing_alg_values_supported"] = json!(["ES256"]);
@@ -163,26 +179,27 @@ pub fn dummy_interaction_data(
     serde_json::to_vec(&value).unwrap()
 }
 
-/// Associates the first configuration of the interaction with the issued `credential`
-pub async fn associate_issued_credential(context: &TestContext, credential: &Credential) {
-    let interaction_id = credential.common().interaction.as_ref().unwrap().id();
-    let interaction = context.db.interactions.get(interaction_id).await.unwrap();
-    let mut data: serde_json::Value =
-        serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
-    let main_id = match credential {
-        Credential::HolderBatchItem { parent, .. } => parent.id(),
-        _ => credential.common().id,
-    };
-    let configuration = &mut data["credential_configurations"][0];
-    configuration["credential_id"] = json!(main_id);
-    if let Ok(holder) = credential.holder() {
-        configuration["credential_schema_format_id"] = json!(holder.data.format.id());
+fn configuration_json(params: ConfigurationParams) -> serde_json::Value {
+    let mut configuration = json!({
+        "credential_configuration_id": params.credential_configuration_id,
+        "format": params.format,
+        "cryptographic_binding_methods_supported": params
+            .cryptographic_binding_methods_supported
+            .unwrap_or(vec!["jwk".to_string(), "cose_key".to_string()]),
+    });
+    if let Some(disclosure_policy) = params.disclosure_policy {
+        configuration["disclosure_policy"] = disclosure_policy;
     }
-    context
-        .db
-        .interactions
-        .update_data(&interaction_id, serde_json::to_vec(&data).unwrap())
-        .await;
+    if let Some(notification_id) = params.notification_id {
+        configuration["notification_ids"] = json!([notification_id]);
+    }
+    if let Some(credential_id) = params.credential_id {
+        configuration["credential_id"] = json!(credential_id);
+    }
+    if let Some(credential_schema_format_id) = params.credential_schema_format_id {
+        configuration["credential_schema_format_id"] = json!(credential_schema_format_id);
+    }
+    configuration
 }
 
 #[derive(Default)]

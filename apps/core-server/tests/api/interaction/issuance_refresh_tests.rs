@@ -210,36 +210,27 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         )
         .await;
 
-    let mut interaction_data: serde_json::Value = serde_json::from_slice(&dummy_interaction_data(
+    // only issuers that don't support jwk/cose_key binding force the wallet to auto-generate a
+    // DID (rather than a bare key) for each proof, which is what our jwt_vc_json credentials
+    // (bound via `sub`) need
+    let did_key_binding = Some(vec!["did:key".to_string()]);
+    let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
             batch_size: offer.batch_size,
+            cryptographic_binding_methods_supported: did_key_binding.clone(),
+            disclosure_policy: Some(json!({"id": "policy-0", "policy": "none"})),
             additional_configurations: vec![ConfigurationParams {
                 credential_configuration_id: "second".to_string(),
                 format: "jwt_vc_json".to_string(),
-                notification_id: None,
-                credential_id: None,
+                cryptographic_binding_methods_supported: did_key_binding,
+                disclosure_policy: Some(json!({"id": "policy-1", "policy": "none"})),
+                ..Default::default()
             }],
             ..Default::default()
         },
-    ))
-    .unwrap();
-    // only issuers that don't support jwk/cose_key binding force the wallet to auto-generate a
-    // DID (rather than a bare key) for each proof, which is what our jwt_vc_json credentials
-    // (bound via `sub`) need
-    for (index, configuration) in interaction_data["credential_configurations"]
-        .as_array_mut()
-        .unwrap()
-        .iter_mut()
-        .enumerate()
-    {
-        configuration["cryptographic_binding_methods_supported"] = json!(["did:key"]);
-        configuration["disclosure_policy"] = json!({
-            "id": format!("policy-{index}"),
-            "policy": "none",
-        });
-    }
+    );
     let interaction = context
         .db
         .interactions
@@ -247,7 +238,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             &organisation,
             InteractionType::Issuance,
             TestingInteractionParams {
-                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+                data: Some(interaction_data),
                 ..Default::default()
             },
         )

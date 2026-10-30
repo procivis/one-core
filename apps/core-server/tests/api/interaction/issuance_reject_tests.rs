@@ -12,7 +12,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::interaction::{
-    ConfigurationParams, InteractionDataParams, associate_issued_credential, dummy_interaction_data,
+    ConfigurationParams, InteractionDataParams, dummy_interaction_data,
 };
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
@@ -49,6 +49,7 @@ async fn test_issuance_reject_subset_of_multi_format_offer() {
                 format: "jwt_vc_json".to_string(),
                 notification_id: Some("second".to_string()),
                 credential_id: Some(second_credential_id),
+                ..Default::default()
             }],
             ..Default::default()
         },
@@ -264,10 +265,14 @@ async fn test_issuance_reject_openid4vci_with_notification() {
         .create("test", &organisation, Default::default())
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
             notification_endpoint: Some(format!(
                 "{}/ssi/openid4vci/final-1.0/{}/notification",
                 context.server_mock.uri(),
@@ -298,13 +303,13 @@ async fn test_issuance_reject_openid4vci_with_notification() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 interaction: Some(interaction.to_owned()),
                 key: Some(key),
                 ..Default::default()
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -431,12 +436,16 @@ async fn check_batch_item_rejection(
         .await;
     let formats = schema.formats.as_ref().await.unwrap();
     let parent_id: CredentialId = Uuid::new_v4().into();
-    let mut data: serde_json::Value = serde_json::from_slice(&dummy_interaction_data(
+    let did_key_binding = Some(vec!["did:key".to_string()]);
+    let interaction_data = dummy_interaction_data(
         &context,
         &schema,
         InteractionDataParams {
             batch_size: Some(2),
+            cryptographic_binding_methods_supported: did_key_binding.clone(),
             notification_id: Some("first".into()),
+            credential_id: Some(parent_id),
+            credential_schema_format_id: Some(formats[0].id),
             notification_endpoint: notifications_supported.then(|| {
                 format!(
                     "{}/ssi/openid4vci/final-1.0/{}/notification",
@@ -447,23 +456,15 @@ async fn check_batch_item_rejection(
             additional_configurations: vec![ConfigurationParams {
                 credential_configuration_id: "second".into(),
                 format: "jwt_vc_json".into(),
+                cryptographic_binding_methods_supported: did_key_binding,
                 notification_id: Some("second".into()),
                 credential_id: Some(parent_id),
+                credential_schema_format_id: Some(formats[1].id),
+                ..Default::default()
             }],
             ..Default::default()
         },
-    ))
-    .unwrap();
-    for (configuration, format) in data["credential_configurations"]
-        .as_array_mut()
-        .unwrap()
-        .iter_mut()
-        .zip(formats.iter())
-    {
-        configuration["credential_id"] = json!(parent_id);
-        configuration["credential_schema_format_id"] = json!(format.id);
-        configuration["cryptographic_binding_methods_supported"] = json!(["did:key"]);
-    }
+    );
     let interaction = context
         .db
         .interactions
@@ -471,7 +472,7 @@ async fn check_batch_item_rejection(
             &organisation,
             InteractionType::Issuance,
             TestingInteractionParams {
-                data: Some(serde_json::to_vec(&data).unwrap()),
+                data: Some(interaction_data),
                 ..Default::default()
             },
         )

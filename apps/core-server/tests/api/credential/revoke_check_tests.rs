@@ -14,7 +14,7 @@ use one_core::service::test_utilities::dummy_organisation;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
-use shared_types::{CredentialFormat, SerializedCredential};
+use shared_types::{CredentialFormat, CredentialId, SerializedCredential};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
@@ -23,9 +23,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::interaction::{
-    InteractionDataParams, associate_issued_credential, dummy_interaction_data,
-};
+use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
 use crate::fixtures::mdoc::format_mdoc_credential;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
@@ -553,10 +551,16 @@ async fn test_revoke_check_mdoc_update() {
         )
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        InteractionDataParams::with_format("mso_mdoc".to_string()),
+        InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
+            ..InteractionDataParams::with_format("mso_mdoc".to_string())
+        },
     );
     let interaction = context
         .db
@@ -589,6 +593,7 @@ async fn test_revoke_check_mdoc_update() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_identifier: Some(identifier.clone()),
@@ -598,7 +603,6 @@ async fn test_revoke_check_mdoc_update() {
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -704,10 +708,16 @@ async fn test_revoke_check_mdoc_update_invalid() {
         )
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        InteractionDataParams::with_format("mso_mdoc".to_string()),
+        InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
+            ..InteractionDataParams::with_format("mso_mdoc".to_string())
+        },
     );
     let interaction = context
         .db
@@ -739,6 +749,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
@@ -748,7 +759,6 @@ async fn test_revoke_check_mdoc_update_invalid() {
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -858,10 +868,16 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         )
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        InteractionDataParams::with_format("mso_mdoc".to_string()),
+        InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
+            ..InteractionDataParams::with_format("mso_mdoc".to_string())
+        },
     );
 
     let interaction = context
@@ -896,6 +912,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
@@ -905,7 +922,6 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -1011,10 +1027,14 @@ async fn test_revoke_check_token_update() {
         )
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
             format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
             ..Default::default()
@@ -1051,6 +1071,7 @@ async fn test_revoke_check_token_update() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
@@ -1060,7 +1081,6 @@ async fn test_revoke_check_token_update() {
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     // the issuer rotates the refresh token, with an expiry different from the access token
     let access_token_expires_at = one_core::clock::now_utc().unix_timestamp() + 600;
@@ -1174,10 +1194,14 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         )
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
             format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
             refresh_token_expired: true,
@@ -1215,6 +1239,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
@@ -1224,7 +1249,6 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     // WHEN
     let resp = context
@@ -1451,10 +1475,14 @@ async fn test_suspended_to_valid_mdoc() {
         )
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
             format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
             ..Default::default()
@@ -1493,6 +1521,7 @@ async fn test_suspended_to_valid_mdoc() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
@@ -1502,7 +1531,6 @@ async fn test_suspended_to_valid_mdoc() {
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -1641,10 +1669,14 @@ async fn test_suspended_to_suspended_update_failed() {
         )
         .await;
 
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
         InteractionDataParams {
+            credential_id: Some(credential_id),
+            credential_schema_format_id: Some(format_id),
             format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
             ..Default::default()
@@ -1683,6 +1715,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &identifier,
             "OPENID4VCI_FINAL1",
             TestingCredentialParams {
+                id: Some(credential_id),
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
                 key: Some(local_key),
@@ -1692,7 +1725,6 @@ async fn test_suspended_to_suspended_update_failed() {
             },
         )
         .await;
-    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
