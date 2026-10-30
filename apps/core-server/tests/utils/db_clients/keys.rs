@@ -26,7 +26,10 @@ impl KeysDB {
             id: params.id.unwrap_or(Uuid::new_v4().into()),
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
-            public_key: params.public_key.unwrap_or_default(),
+            // public keys are unique per organisation
+            public_key: params
+                .public_key
+                .unwrap_or_else(|| Uuid::new_v4().as_bytes().to_vec()),
             name: unwrap_or_random(params.name),
             key_reference: params.key_reference,
             storage_type: params.storage_type.unwrap_or_default(),
@@ -79,6 +82,22 @@ pub fn eddsa_testing_params() -> TestingKeyParams {
         // private key (unencrypted): [198,42,58,194,72,37,250,120,202,196,254,252,111,170,50,115,237,210,60,246,89,235,38,17,208,42,2,2,229,233,217,178,74,4,73,201,147,238,139,201,79,45,112,196,152,35,15,38,190,141,58,19,101,184,37,84,210,101,19,245,37,171,239,95]
         key_reference: Some(
             hex!("8f6107bff565c52559d1c3cb0000000000000040756ccec86ddd9a982597806376ad3bb339619d0e406b68c85923dbeb0291fff60ace6c5e07eba0fbaaa3caf3c117fac446fa9418c8af1996e8cc727b793a2b787b76ef373358bf44016c3ab6c062df85").to_vec()
+        ),
+        ..Default::default()
+    }
+}
+
+/// A second ECDSA key, for tests that need two keys of the same type in one organisation (public
+/// keys are unique per organisation)
+pub fn ecdsa_testing_params_2() -> TestingKeyParams {
+    TestingKeyParams {
+        key_type: Some("ECDSA".to_string()),
+        storage_type: Some("INTERNAL".to_string()),
+        public_key: Some(
+            hex!("03376adb1641f57bbd327ca2ec8588d36ca1543877fcf510d2a68d57b394734cd6").to_vec(),
+        ),
+        key_reference: Some(
+            hex!("0f349d7363d4365e3529b9bb0000000000000020c385b88c35d43896dfedbde31992d8c5dec9a7292ebd0be6a3abf7ac8469682575a9d94f855a9f4a48da60e69003b3f1").to_vec(),
         ),
         ..Default::default()
     }

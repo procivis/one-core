@@ -3,10 +3,13 @@ use std::str::FromStr;
 use one_core::model::did::DidType;
 use similar_asserts::assert_eq;
 
+use crate::api_oidc_tests::common::eddsa_key_2;
 use crate::fixtures::TestingKeyParams;
 use crate::utils::api_clients::dids::DidKeys;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
+use crate::utils::db_clients::keys::{
+    ecdsa_testing_params, ecdsa_testing_params_2, eddsa_testing_params,
+};
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -125,7 +128,7 @@ async fn test_fail_to_create_did_key_to_much_keys() {
     let key2 = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
 
     // WHEN
@@ -196,7 +199,7 @@ async fn test_create_did_web_mixed_keys() {
     let key2 = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
 
     // WHEN
@@ -308,7 +311,7 @@ async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
     let key2 = context
         .db
         .keys
-        .create(&organisation, eddsa_testing_params())
+        .create(&organisation, eddsa_key_2().params)
         .await;
 
     let resp = context

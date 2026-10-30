@@ -30,6 +30,7 @@ use crate::entity::did::{self, DidType};
 use crate::entity::identifier::{self, IdentifierState, IdentifierType};
 use crate::entity::key_did::KeyRole;
 use crate::entity::{claim_schema, key};
+use crate::key::mapper::public_key_hash;
 use crate::test_utilities::{
     ClaimInsertInfo, ProofInput, assert_eq_unordered, get_dummy_date,
     insert_credential_schema_to_database, insert_credential_schema_with_revocation_to_database,
@@ -44,12 +45,14 @@ async fn insert_key_to_database(
     storage_type: &str,
     deleted: bool,
 ) -> KeyId {
+    let public_key = Uuid::new_v4().as_bytes().to_vec();
     key::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(Uuid::new_v4().to_string()),
-        public_key: Set(vec![]),
+        public_key: Set(public_key.clone()),
+        public_key_hash: Set(public_key_hash(&public_key)),
         key_reference: Set(None),
         storage_type: Set(storage_type.into()),
         key_type: Set("".into()),

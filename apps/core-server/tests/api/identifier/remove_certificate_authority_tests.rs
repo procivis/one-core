@@ -3,7 +3,7 @@ use serde_json::json;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::ecdsa_testing_params;
+use crate::utils::db_clients::keys::{ecdsa_testing_params, ecdsa_testing_params_2};
 
 async fn create_two_ca_cert_identifier(
     context: &TestContext,
@@ -42,7 +42,7 @@ async fn create_two_ca_cert_identifier(
     let second_key = context
         .db
         .keys
-        .create(organisation, ecdsa_testing_params())
+        .create(organisation, ecdsa_testing_params_2())
         .await;
 
     let add_result = context

@@ -10,7 +10,7 @@ use shared_types::KeyId;
 use crate::common::list_query_with_custom_model;
 use crate::entity::key;
 use crate::key::KeyProvider;
-use crate::key::mapper::key_from_model;
+use crate::key::mapper::{key_from_model, public_key_hash};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -23,6 +23,7 @@ impl KeyRepository for KeyProvider {
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
             name: Set(request.name),
+            public_key_hash: Set(public_key_hash(&request.public_key)),
             public_key: Set(request.public_key),
             key_reference: Set(request.key_reference),
             storage_type: Set(request.storage_type),

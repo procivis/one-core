@@ -3092,7 +3092,7 @@ async fn accept_with_wallet_instance_attestation(
         .holder_wallet_units
         .create(
             organisation.clone(),
-            Some(holder_auth_key),
+            Some(holder_auth_key.clone()),
             TestHolderWalletInstanceParams {
                 provider_url: Some(context.config.app.core_base_url.clone()),
                 provider_wallet_unit_id: Some(wallet_unit.id),
@@ -3129,11 +3129,8 @@ async fn accept_with_wallet_instance_attestation(
         )
         .await;
 
-    let holder_did_key = context
-        .db
-        .keys
-        .create(&organisation, ecdsa_testing_params())
-        .await;
+    // the holder DID is the did:key of the holder auth key
+    let holder_did_key = holder_auth_key;
     let holder_did = context
         .db
         .dids

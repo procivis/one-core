@@ -13,7 +13,9 @@ use crate::fixtures::{
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::identifier_trust_information::TestingIdentifierTrustInformationParams;
-use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
+use crate::utils::db_clients::keys::{
+    ecdsa_testing_params, ecdsa_testing_params_2, eddsa_testing_params,
+};
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 #[tokio::test]
@@ -143,7 +145,7 @@ async fn test_certificate_identifier_expired() {
     let key = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
 
     // https://ca.dev.mdl-plus.com/admin/django_ca/certificate/79584
@@ -322,7 +324,7 @@ async fn test_identifier_filter_key_success() {
     let did_key = context
         .db
         .keys
-        .create(&organisation, eddsa_key_2().params)
+        .create(&organisation, eddsa_testing_params())
         .await;
     let did_identifier_name = "test-did-identifier";
     let result = context

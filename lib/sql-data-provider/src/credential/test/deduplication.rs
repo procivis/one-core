@@ -298,7 +298,7 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
         let key_id = insert_key_to_database(
             &setup.db,
             "EDDSA".into(),
-            vec![],
+            Uuid::new_v4().as_bytes().to_vec(),
             vec![],
             None,
             schema.organisation.id(),

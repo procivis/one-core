@@ -7,7 +7,9 @@ use similar_asserts::assert_eq;
 use crate::fixtures::TestingIdentifierParams;
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
+use crate::utils::db_clients::keys::{
+    ecdsa_testing_params, ecdsa_testing_params_2, eddsa_testing_params,
+};
 
 #[tokio::test]
 async fn test_add_certificate_from_pem_success() {
@@ -143,7 +145,7 @@ async fn test_add_certificate_from_content_success() {
     let cert_key = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
     let create_result = context
         .api

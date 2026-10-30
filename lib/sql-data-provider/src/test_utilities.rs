@@ -47,6 +47,7 @@ use crate::entity::{
     proof_input_schema, proof_schema, revocation_list, revocation_list_entry, trust_collection,
     trust_list_subscription, used_nonce,
 };
+use crate::key::mapper::public_key_hash;
 use crate::managed_instance::mapper::authentication_key_hash;
 use crate::trust_list_subscription::mapper::reference_hash;
 use crate::{DataLayer, db_conn};
@@ -101,8 +102,15 @@ pub async fn insert_credential(
 
     let key_id = if role == CredentialRole::Issuer {
         Some(
-            insert_key_to_database(db, "EDDSA".into(), vec![], vec![], None, organisation_id)
-                .await?,
+            insert_key_to_database(
+                db,
+                "EDDSA".into(),
+                Uuid::new_v4().as_bytes().to_vec(),
+                vec![],
+                None,
+                organisation_id,
+            )
+            .await?,
         )
     } else {
         None
@@ -514,6 +522,7 @@ pub async fn insert_key_to_database(
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(format!("{}-key", id).to_owned()),
+        public_key_hash: Set(public_key_hash(&public_key)),
         public_key: Set(public_key),
         key_reference: Set(Some(key_reference)),
         storage_type: Set("INTERNAL".to_string()),

@@ -12,6 +12,7 @@ async fn test_db_schema_key() {
         "last_modified",
         "name",
         "public_key",
+        "public_key_hash",
         "key_reference",
         "storage_type",
         "key_type",
@@ -23,19 +24,32 @@ async fn test_db_schema_key() {
         columns.extend(["deleted_at_materialized"]);
     }
 
-    let mut index_columns = vec!["name", "organisation_id"];
-    if schema.backend() == DbBackend::MySql {
-        index_columns.push("deleted_at_materialized")
+    let deleted_at_index_column = if schema.backend() == DbBackend::MySql {
+        "deleted_at_materialized"
     } else {
-        index_columns.push("deleted_at")
-    }
+        "deleted_at"
+    };
     let key = schema
         .table("key")
         .columns(&columns)
         .index(
             "index_Key_Name-OrganisationId-DeletedAt_Unique",
             true,
-            &index_columns,
+            &["name", "organisation_id", deleted_at_index_column],
+        )
+        .index(
+            "index-Key-OrganisationId-PublicKeyHash-DeletedAt-Unique",
+            true,
+            &[
+                "organisation_id",
+                "public_key_hash",
+                deleted_at_index_column,
+            ],
+        )
+        .index(
+            "index-Key-OrganisationId-CreatedDate-Id-DeletedAt",
+            false,
+            &["organisation_id", "created_date", "id", "deleted_at"],
         )
         .index("index-Key-CreatedDate", false, &["created_date"]);
     key.column("id")
@@ -57,6 +71,10 @@ async fn test_db_schema_key() {
         .default(None);
     key.column("public_key")
         .r#type(ColumnType::Blob)
+        .nullable(false)
+        .default(None);
+    key.column("public_key_hash")
+        .r#type(ColumnType::String(Some(64)))
         .nullable(false)
         .default(None);
     key.column("key_reference")

@@ -137,7 +137,7 @@ async fn setup(
     let key_id = insert_key_to_database(
         &db,
         "ED25519".to_string(),
-        vec![],
+        Uuid::new_v4().as_bytes().to_vec(),
         vec![],
         None,
         organisation_id,

@@ -7,7 +7,7 @@ use sql_data_provider::DataLayer;
 use crate::fixtures::{TestingCredentialParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
-use crate::utils::db_clients::keys::ecdsa_testing_params;
+use crate::utils::db_clients::keys::ecdsa_testing_params_2;
 
 #[rstest]
 #[tokio::test]
@@ -18,7 +18,7 @@ async fn test_binding_cleanup_preserves_credential_references(
     let key = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
     let holder = context
         .db

@@ -374,6 +374,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20261029_120000_normalize_holder_interaction_data::Migration),
             Box::new(migrations::m20261030_120000_add_identifier_list_indexes::Migration),
             Box::new(migrations::m20261030_120401_revocation_list_params::Migration),
+            Box::new(migrations::m20261102_130000_key_public_key_hash::Migration),
         ]
     }
 }

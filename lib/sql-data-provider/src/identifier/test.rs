@@ -232,7 +232,7 @@ async fn test_get_newest_from_key_id() {
             insert_key_to_database(
                 &setup.db,
                 "EDDSA".to_string(),
-                vec![0, 1, 2, 3],
+                Uuid::new_v4().as_bytes().to_vec(),
                 vec![4, 5, 6, 7],
                 None,
                 setup.organisation.id,

@@ -1,5 +1,6 @@
 use core_server::endpoint::trust_list_publication::dto::TrustListRoleRestEnum;
 use one_core::model::identifier::{Identifier, IdentifierData};
+use one_core::model::key::Key;
 use one_core::model::trust_list_publication::TrustListPublication;
 use one_core::proto::jwt::Jwt;
 use rcgen::{BasicConstraints, CertificateParams, IsCa, KeyUsagePurpose};
@@ -10,7 +11,6 @@ use similar_asserts::assert_eq;
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
 use crate::utils::api_clients::trust_list_publication::CreateTrustListPublicationTestParams;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::ecdsa_testing_params;
 
 fn published_certificates(publication: &TrustListPublication) -> Vec<Value> {
     let content = std::str::from_utf8(&publication.content).unwrap();
@@ -25,12 +25,13 @@ fn published_certificates(publication: &TrustListPublication) -> Vec<Value> {
 struct Fixture {
     context: TestContext,
     identifier: Identifier,
+    key: Key,
     publications: Vec<TrustListPublication>,
 }
 
 impl Fixture {
     async fn new(is_ca: bool) -> Self {
-        let (context, organisation, identifier, ..) = if is_ca {
+        let (context, organisation, identifier, _, key) = if is_ca {
             TestContext::new_with_ca_identifier(None).await
         } else {
             TestContext::new_with_certificate_identifier(None).await
@@ -70,6 +71,7 @@ impl Fixture {
         Self {
             context,
             identifier,
+            key,
             publications,
         }
     }
@@ -82,13 +84,8 @@ impl Fixture {
     }
 
     async fn add_certificate(&self) -> CertificateId {
-        let organisation = self.identifier.organisation.as_ref().await.unwrap();
-        let key = self
-            .context
-            .db
-            .keys
-            .create(&organisation, ecdsa_testing_params())
-            .await;
+        // the certificate is issued for `ecdsa::Key`, which is the key of the identifier
+        let key = &self.key;
         let mut ca_params = CertificateParams::default();
         let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
         let mut params = CertificateParams::default();

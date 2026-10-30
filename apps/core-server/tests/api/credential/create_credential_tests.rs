@@ -18,7 +18,9 @@ use crate::utils::api_clients::credentials::CreateCredentialTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
-use crate::utils::db_clients::keys::ecdsa_testing_params;
+use crate::utils::db_clients::keys::{
+    ecdsa_testing_params, ecdsa_testing_params_2, eddsa_testing_params,
+};
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -435,13 +437,13 @@ async fn test_create_credential_with_issuer_key() {
     let key1 = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, eddsa_testing_params())
         .await;
 
     let key2 = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
 
     let key3 = context
@@ -733,7 +735,7 @@ async fn test_create_credential_with_certificate_selection() {
     let key2 = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
 
     let identifier = context

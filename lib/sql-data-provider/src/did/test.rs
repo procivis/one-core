@@ -47,7 +47,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
     let key_id = insert_key_to_database(
         &db,
         "ED25519".to_string(),
-        vec![],
+        Uuid::new_v4().as_bytes().to_vec(),
         vec![],
         None,
         organisation_id,
@@ -184,7 +184,7 @@ async fn test_update_did_keys_replaces_roles_and_references() {
     let new_key_id = insert_key_to_database(
         &setup.db,
         "EDDSA".to_string(),
-        vec![],
+        Uuid::new_v4().as_bytes().to_vec(),
         vec![],
         None,
         setup.organisation.id,

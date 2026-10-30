@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::fixtures::{self, TestingDidParams, TestingIdentifierParams, assert_history_count};
 use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::ecdsa_testing_params;
+use crate::utils::db_clients::keys::{ecdsa_testing_params, ecdsa_testing_params_2};
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::db_clients::proofs::TestingProofParams;
 
@@ -221,7 +221,7 @@ async fn test_share_proof_success_with_separate_encryption_key() {
     let encryption_key = context
         .db
         .keys
-        .create(&organisation, ecdsa_testing_params())
+        .create(&organisation, ecdsa_testing_params_2())
         .await;
 
     let did = context
