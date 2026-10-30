@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use one_core::model::credential::Credential;
 use one_core::model::credential_schema::CredentialSchema;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -99,7 +100,7 @@ pub fn dummy_interaction_data(
         });
     }
     if let Some(notification_id) = params.notification_id {
-        configuration["notification_id"] = json!(notification_id);
+        configuration["notification_ids"] = json!([notification_id]);
     }
     let mut configurations = vec![configuration];
     for configuration in params.additional_configurations {
@@ -110,7 +111,7 @@ pub fn dummy_interaction_data(
             "credential_id": configuration.credential_id,
         });
         if let Some(notification_id) = configuration.notification_id {
-            additional["notification_id"] = json!(notification_id);
+            additional["notification_ids"] = json!([notification_id]);
         }
         configurations.push(additional);
     }
@@ -160,6 +161,28 @@ pub fn dummy_interaction_data(
         value["issuer_display"] = issuer_display;
     }
     serde_json::to_vec(&value).unwrap()
+}
+
+/// Associates the first configuration of the interaction with the issued `credential`
+pub async fn associate_issued_credential(context: &TestContext, credential: &Credential) {
+    let interaction_id = credential.common().interaction.as_ref().unwrap().id();
+    let interaction = context.db.interactions.get(interaction_id).await.unwrap();
+    let mut data: serde_json::Value =
+        serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
+    let main_id = match credential {
+        Credential::HolderBatchItem { parent, .. } => parent.id(),
+        _ => credential.common().id,
+    };
+    let configuration = &mut data["credential_configurations"][0];
+    configuration["credential_id"] = json!(main_id);
+    if let Ok(holder) = credential.holder() {
+        configuration["credential_schema_format_id"] = json!(holder.data.format.id());
+    }
+    context
+        .db
+        .interactions
+        .update_data(&interaction_id, serde_json::to_vec(&data).unwrap())
+        .await;
 }
 
 #[derive(Default)]

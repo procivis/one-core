@@ -5,9 +5,8 @@ use indexmap::IndexMap;
 use one_dto_mapper::{Into, convert_inner};
 use secrecy::SecretSlice;
 use serde::de::{MapAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_with::formats::PreferMany;
-use serde_with::{DurationSeconds, OneOrMany, serde_as, skip_serializing_none};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{CredentialId, CredentialSchemaFormatId, SerializedCredential};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
@@ -221,45 +220,7 @@ pub(crate) struct HolderInteractionData {
     pub protocol: String,
 
     /// offered credential configurations, in the order of the credential offer
-    #[serde(
-        flatten,
-        serialize_with = "serialize_credential_configurations",
-        deserialize_with = "deserialize_credential_configurations"
-    )]
     pub credential_configurations: Vec<HolderCredentialConfiguration>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct CredentialConfigurations<T> {
-    credential_configurations: T,
-}
-
-// interactions created before multi-format support store the single configuration at the top level
-fn deserialize_credential_configurations<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Vec<HolderCredentialConfiguration>, D::Error> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Repr {
-        Entries(CredentialConfigurations<Vec<HolderCredentialConfiguration>>),
-        Legacy(Box<HolderCredentialConfiguration>),
-    }
-
-    Ok(match Repr::deserialize(deserializer)? {
-        Repr::Entries(entries) => entries.credential_configurations,
-        Repr::Legacy(configuration) => vec![*configuration],
-    })
-}
-
-// a flattened field serializes as a map, not as a sequence
-fn serialize_credential_configurations<S: Serializer>(
-    credential_configurations: &[HolderCredentialConfiguration],
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    CredentialConfigurations {
-        credential_configurations,
-    }
-    .serialize(serializer)
 }
 
 impl HolderInteractionData {
@@ -284,20 +245,17 @@ impl HolderInteractionData {
             .find(|c| c.credential_configuration_id == credential_configuration_id)
     }
 
-    /// Successful configurations associated with the main credential
+    /// Configurations associated with the main credential
     pub fn configurations_for_credential(
         &self,
         credential_id: CredentialId,
     ) -> impl Iterator<Item = &HolderCredentialConfiguration> {
-        self.credential_configurations.iter().filter(move |c| {
-            c.credential_id == Some(credential_id)
-                    // Legacy interactions have one configuration without a credential ID.
-                    || (c.credential_id.is_none() && self.credential_configurations.len() == 1)
-        })
+        self.credential_configurations
+            .iter()
+            .filter(move |c| c.credential_id == Some(credential_id))
     }
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct HolderCredentialConfiguration {
@@ -316,14 +274,13 @@ pub(crate) struct HolderCredentialConfiguration {
     pub disclosure_policy: Option<DisclosurePolicy>,
     /// Each notification_id corresponds to one credential response
     /// For cases where the holder retrieves the batch items in batches
-    #[serde(default, alias = "notification_id")]
-    #[serde_as(as = "OneOrMany<_, PreferMany>")]
-    // Changed to a list in ONE-11759, OneOrMany and the alias are for parsing older interaction data
+    #[serde(default)]
     pub notification_ids: Vec<String>,
-    /// Main credential created for this configuration
+    /// Top-level credential (single or batch parent) holding the items of this configuration,
+    /// `None` if not issued
     #[serde(default)]
     pub credential_id: Option<CredentialId>,
-    /// Exact format of the issued items; absent in interactions created before format routing.
+    /// Exact format of the issued items, `None` if not issued
     #[serde(default)]
     pub credential_schema_format_id: Option<CredentialSchemaFormatId>,
 }

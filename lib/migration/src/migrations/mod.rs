@@ -77,3 +77,4 @@ pub mod m20261027_160000_trust_list_subscription_reference_hash;
 pub mod m20261027_170000_trust_list_publication_name_length;
 pub mod m20261029_052518_revocation_list_sequence_number;
 pub mod m20261029_120000_add_trust_collection_list_indexes;
+pub mod m20261029_120000_normalize_holder_interaction_data;

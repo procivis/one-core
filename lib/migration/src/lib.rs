@@ -371,6 +371,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20261027_170000_trust_list_publication_name_length::Migration),
             Box::new(migrations::m20261029_052518_revocation_list_sequence_number::Migration),
             Box::new(migrations::m20261029_120000_add_trust_collection_list_indexes::Migration),
+            Box::new(migrations::m20261029_120000_normalize_holder_interaction_data::Migration),
         ]
     }
 }

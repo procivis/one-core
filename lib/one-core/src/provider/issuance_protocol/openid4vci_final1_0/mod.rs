@@ -1441,7 +1441,7 @@ impl OpenID4VCIFinal1_0 {
     }
 
     /// Selects accepted configurations whose batch parents can still be refreshed, or the
-    /// exact configuration of an MSO item. Missing associations are resolved for legacy data.
+    /// exact configuration of an MSO item.
     async fn select_refresh_configurations(
         &self,
         interaction: &Interaction,
@@ -1458,12 +1458,10 @@ impl OpenID4VCIFinal1_0 {
                 _ => holder.common.id,
             };
             let format_id = holder.data.format.id();
-            let mut configuration = data
+            let configuration = data
                 .configurations_for_credential(main_id)
                 .filter(|configuration| {
-                    configuration
-                        .credential_schema_format_id
-                        .is_none_or(|id| id == format_id)
+                    configuration.credential_schema_format_id == Some(format_id)
                 })
                 .exactly_one()
                 .map_err(|_| {
@@ -1472,8 +1470,6 @@ impl OpenID4VCIFinal1_0 {
                     )
                 })?
                 .clone();
-            configuration.credential_id = Some(main_id);
-            configuration.credential_schema_format_id = Some(format_id);
             let binding = holder
                 .data
                 .binding
@@ -1495,31 +1491,27 @@ impl OpenID4VCIFinal1_0 {
         let mut configurations = vec![];
         let mut unsupported_fixed_binding = false;
         for configuration in &data.credential_configurations {
+            // failed/skipped configurations have no stored credential
+            let (Some(credential_id), Some(format_id)) = (
+                configuration.credential_id,
+                configuration.credential_schema_format_id,
+            ) else {
+                continue;
+            };
             let Some(parent) = credentials.iter().find(|credential| {
                 matches!(credential, Credential::HolderBatchParent { .. })
                     && credential.common().deleted_at.is_none()
                     && credential.common().state != CredentialStateEnum::Rejected
-                    && configuration
-                        .credential_id
-                        .map_or(data.credential_configurations.len() == 1, |id| {
-                            id == credential.common().id
-                        })
+                    && credential.common().id == credential_id
             }) else {
-                // Failed/skipped configurations have no stored credential. A legacy association
-                // without an ID is usable only when its parent actually exists.
                 continue;
             };
             if self
-                .batch_format_is_rejected(
-                    parent.common().id,
-                    configuration.credential_schema_format_id,
-                )
+                .batch_format_is_rejected(parent.common().id, format_id)
                 .await?
             {
                 continue;
             }
-            let mut configuration = configuration.clone();
-            configuration.credential_id = Some(parent.common().id);
             // Binding and expiry belong to concrete items, not their format-agnostic parent.
             // Include consumed and expired items: they still determine how to renew the batch.
             let items = self
@@ -1534,9 +1526,7 @@ impl OpenID4VCIFinal1_0 {
                         CredentialFilterValue::ParentCredential(parent.common().id).condition()
                             & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
                             & CredentialFilterValue::Deleted(false)
-                            & configuration
-                                .credential_schema_format_id
-                                .map(|id| CredentialFilterValue::FormatIds(vec![id])),
+                            & CredentialFilterValue::FormatIds(vec![format_id]),
                     ),
                     ..Default::default()
                 })
@@ -1556,9 +1546,8 @@ impl OpenID4VCIFinal1_0 {
                 unsupported_fixed_binding = true;
                 continue;
             }
-            configuration.credential_schema_format_id = Some(holder.data.format.id());
             configurations.push(RefreshConfiguration {
-                configuration,
+                configuration: configuration.clone(),
                 holder_binding: match fixed_binding {
                     Some(binding) => Some(Self::resolve_holder_binding(binding).await?),
                     None => None,
@@ -1581,11 +1570,11 @@ impl OpenID4VCIFinal1_0 {
 
     /// Rejection is scoped to the parent and exact schema format. Include old, consumed and
     /// deleted items: their stored rejection state still determines whether the format can
-    /// be refreshed. Legacy single-format interactions have no stored format ID.
+    /// be refreshed.
     async fn batch_format_is_rejected(
         &self,
         parent_id: CredentialId,
-        format_id: Option<CredentialSchemaFormatId>,
+        format_id: CredentialSchemaFormatId,
     ) -> Result<bool, IssuanceProtocolError> {
         let items = self
             .credential_repository
@@ -1594,7 +1583,7 @@ impl OpenID4VCIFinal1_0 {
                 filtering: Some(
                     CredentialFilterValue::ParentCredential(parent_id).condition()
                         & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
-                        & format_id.map(|id| CredentialFilterValue::FormatIds(vec![id])),
+                        & CredentialFilterValue::FormatIds(vec![format_id]),
                 ),
                 ..Default::default()
             })
@@ -1613,61 +1602,25 @@ impl OpenID4VCIFinal1_0 {
         configuration: &HolderCredentialConfiguration,
         format_type: FormatType,
     ) -> Result<CredentialSchemaFormat, IssuanceProtocolError> {
-        let format = if let Some(format_id) = configuration.credential_schema_format_id {
-            parent
-                .common()
-                .schema
-                .as_ref()
-                .await?
-                .formats
-                .as_ref()
-                .await?
-                .iter()
-                .find(|format| format.id == format_id)
-                .cloned()
-                .ok_or_else(|| {
-                    IssuanceProtocolError::Failed(format!(
-                        "Credential schema format {format_id} missing from batch schema"
-                    ))
-                })?
-        } else {
-            // Legacy batches predate the exact association. Resolve it from concrete items;
-            // schema order and a parent's legacy format do not identify the issued format.
-            let items = self
-                .credential_repository
-                .get_credential_list(ListQuery {
-                    filtering: Some(
-                        CredentialFilterValue::ParentCredential(parent.common().id).condition()
-                            & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
-                            & CredentialFilterValue::Deleted(false),
-                    ),
-                    ..Default::default()
-                })
-                .await
-                .error_while("getting legacy batch items")?;
-            let mut formats = vec![];
-            for item in items.values {
-                let format = item.holder()?.data.format.as_ref().await?;
-                if self
-                    .config
-                    .format
-                    .get_type(&format.format)
-                    .error_while("getting format type")?
-                    == format_type
-                {
-                    formats.push(format.to_owned());
-                }
-            }
-            formats
-                .into_iter()
-                .unique_by(|format| format.id)
-                .exactly_one()
-                .map_err(|_| {
-                    IssuanceProtocolError::Failed(
-                        "Missing or ambiguous format association for legacy batch".to_string(),
-                    )
-                })?
-        };
+        let format_id = configuration.credential_schema_format_id.ok_or_else(|| {
+            IssuanceProtocolError::Failed("Missing format of batch configuration".to_string())
+        })?;
+        let format = parent
+            .common()
+            .schema
+            .as_ref()
+            .await?
+            .formats
+            .as_ref()
+            .await?
+            .iter()
+            .find(|format| format.id == format_id)
+            .cloned()
+            .ok_or_else(|| {
+                IssuanceProtocolError::Failed(format!(
+                    "Credential schema format {format_id} missing from batch schema"
+                ))
+            })?;
         if self
             .config
             .format
@@ -1720,24 +1673,6 @@ impl OpenID4VCIFinal1_0 {
             if !notification_ids.is_empty() && stored.notification_ids != notification_ids {
                 stored.notification_ids = notification_ids.clone();
                 interaction_data_changed = true;
-            }
-            // A successful legacy refresh resolves associations absent from the old interaction.
-            if let Ok(credentials) = &refreshed
-                && let Some(credential) = credentials.first()
-            {
-                if stored.credential_id.is_none() {
-                    stored.credential_id = Some(match credential {
-                        Credential::IssuerBatchItem { parent, .. }
-                        | Credential::HolderBatchItem { parent, .. } => parent.id(),
-                        _ => credential.common().id,
-                    });
-                    interaction_data_changed = true;
-                }
-                if stored.credential_schema_format_id.is_none() {
-                    stored.credential_schema_format_id =
-                        Some(credential.holder()?.data.format.id());
-                    interaction_data_changed = true;
-                }
             }
         }
         interaction_data_changed |= store_dpop_nonce(dpop, interaction_data);
@@ -2862,7 +2797,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             let parent = parent.as_ref().await?;
             let format_id = format.id();
             if !self
-                .batch_format_is_rejected(parent.common().id, Some(format_id))
+                .batch_format_is_rejected(parent.common().id, format_id)
                 .await?
             {
                 // Only a single item of a batch with others of the same format has been rejected.
@@ -2900,8 +2835,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .filter(|configuration| {
                 rejected_format.is_none_or(|format_id| {
                     configuration.credential_schema_format_id == Some(format_id)
-                        || (configuration.credential_schema_format_id.is_none()
-                            && interaction_data.credential_configurations.len() == 1)
                 })
             })
             .flat_map(|configuration| {

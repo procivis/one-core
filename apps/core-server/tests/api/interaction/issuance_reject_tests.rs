@@ -12,7 +12,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::interaction::{
-    ConfigurationParams, InteractionDataParams, dummy_interaction_data,
+    ConfigurationParams, InteractionDataParams, associate_issued_credential, dummy_interaction_data,
 };
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
@@ -304,6 +304,7 @@ async fn test_issuance_reject_openid4vci_with_notification() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock

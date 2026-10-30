@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use one_core::model::interaction::{Interaction, InteractionEcosystems, InteractionType};
+use one_core::model::interaction::{
+    Interaction, InteractionEcosystems, InteractionType, UpdateInteractionRequest,
+};
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
@@ -54,6 +56,19 @@ impl InteractionsDB {
             .unwrap();
 
         interaction
+    }
+
+    pub async fn update_data(&self, id: &InteractionId, data: Vec<u8>) {
+        self.repository
+            .update_interaction(
+                *id,
+                UpdateInteractionRequest {
+                    data: Some(Some(data)),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
     }
 
     pub async fn mark_nonce_as_used(&self, interaction_id: &InteractionId) {

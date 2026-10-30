@@ -23,7 +23,9 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
+use crate::fixtures::interaction::{
+    InteractionDataParams, associate_issued_credential, dummy_interaction_data,
+};
 use crate::fixtures::mdoc::format_mdoc_credential;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
@@ -596,6 +598,7 @@ async fn test_revoke_check_mdoc_update() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -745,6 +748,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -901,6 +905,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -1055,6 +1060,7 @@ async fn test_revoke_check_token_update() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     // the issuer rotates the refresh token, with an expiry different from the access token
     let access_token_expires_at = one_core::clock::now_utc().unix_timestamp() + 600;
@@ -1218,6 +1224,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     // WHEN
     let resp = context
@@ -1495,6 +1502,7 @@ async fn test_suspended_to_valid_mdoc() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock
@@ -1684,6 +1692,7 @@ async fn test_suspended_to_suspended_update_failed() {
             },
         )
         .await;
+    associate_issued_credential(&context, &credential).await;
 
     context
         .server_mock

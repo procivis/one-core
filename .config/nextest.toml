@@ -12,15 +12,19 @@ slow-timeout = { period = "60s", terminate-after = 5 }
 schema-discovery = { max-threads = 4 }
 
 [[profile.default.overrides]]
-# First: the schema tests build INIT_DB, the database the integration tests copy.
-filter = 'package(migration)'
+# Runs eight migrators against one fresh database, a burst of DDL. Started before
+# every other test: nextest only retries a queued group test when another test of
+# that group finishes, so if this one waits for four free threads behind other
+# group tests, it and the rest of the group's queue never run.
+filter = 'test(concurrent_first_time_migrations_against_empty_db_all_succeed)'
 priority = 100
-test-group = 'schema-discovery'
+threads-required = 4
 
 [[profile.default.overrides]]
-# Runs eight migrators against one fresh database, a burst of DDL.
-filter = 'test(concurrent_first_time_migrations_against_empty_db_all_succeed)'
-threads-required = 4
+# Next: the schema tests build INIT_DB, the database the integration tests copy.
+filter = 'package(migration) & kind(test)'
+priority = 99
+test-group = 'schema-discovery'
 
 [[profile.default.overrides]]
 # The PBKDF2 tests take about 6 s each; started last, they would extend the run.
