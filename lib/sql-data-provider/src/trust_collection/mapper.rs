@@ -8,8 +8,9 @@ use one_core::model::trust_collection::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{ColumnRef, Expr, IntoCondition, Query, SelectStatement};
+use sea_orm::sea_query::{Alias, ColumnRef, Expr, IntoCondition, JoinType, Query, SelectStatement};
 use sea_orm::{ColumnTrait, ExprTrait};
+use shared_types::OrganisationId;
 use url::Url;
 
 use crate::entity::{organisation, trust_collection, trust_list_subscription};
@@ -85,14 +86,7 @@ impl IntoFilterCondition for TrustCollectionFilterValue {
                 if include_inherited_collections {
                     // an organisation "inherits" collections owned by itself or its parent
                     trust_collection::Column::OrganisationId
-                        .eq(id)
-                        .or(trust_collection::Column::OrganisationId.in_subquery(
-                            Query::select()
-                                .column(organisation::Column::ParentOrganisation)
-                                .from(organisation::Entity)
-                                .cond_where(organisation::Column::Id.eq(id))
-                                .to_owned(),
-                        ))
+                        .in_subquery(organisation_and_parent(id))
                         .into_condition()
                 } else {
                     get_equals_condition(trust_collection::Column::OrganisationId, id)
@@ -124,8 +118,30 @@ impl IntoFilterCondition for TrustCollectionFilterValue {
     }
 }
 
+/// Selects the given organisation and its parent (if any).
+/// Joining via the given organisation lets MariaDB resolve both ids by primary key and then look
+/// up the collections via the `organisation_id` index, while
+/// `organisation_id = ? OR organisation_id IN (SELECT parent ...)` scans the whole table.
+fn organisation_and_parent(id: OrganisationId) -> SelectStatement {
+    let child = Alias::new("child_organisation");
+    Query::select()
+        .column((organisation::Entity, organisation::Column::Id))
+        .from(organisation::Entity)
+        .join_as(
+            JoinType::InnerJoin,
+            organisation::Entity,
+            child.clone(),
+            Expr::col((organisation::Entity, organisation::Column::Id))
+                .equals((child.clone(), organisation::Column::Id))
+                .or(Expr::col((organisation::Entity, organisation::Column::Id))
+                    .equals((child.clone(), organisation::Column::ParentOrganisation))),
+        )
+        .and_where(Expr::col((child, organisation::Column::Id)).eq(id))
+        .to_owned()
+}
+
 /// Correlated subquery for the active subscriptions of the listed trust collection.
-/// Uncorrelated `IN (SELECT ...)` would scan the whole (soft-delete only) subscription table.
+/// Subscriptions are only soft-deleted, so deactivated ones must not count.
 fn active_subscriptions_of_collection() -> SelectStatement {
     Query::select()
         .expr(Expr::value(1))
