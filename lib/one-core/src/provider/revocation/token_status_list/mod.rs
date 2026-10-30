@@ -20,19 +20,17 @@ use url::Url;
 use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
-use self::util::calculate_preferred_token_size;
 use super::RevocationMethod;
 use super::error::RevocationError;
 use super::model::{
     CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
     RevocationMethodCapabilities, RevocationState,
 };
-use super::status_list::StatusListSizeParams;
+use super::status_list::{StatusListSizeParams, add_entry_to_status_list};
 use crate::config::core_config::{FormatType, RevocationType};
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 use crate::model::certificate::{Certificate, CertificateState};
-use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -73,7 +71,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::mso_mdoc::try_verify_cose_sign1;
 use crate::provider::provider_directory::InitializationError;
-use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::managed_instance_repository::ManagedInstanceRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -557,176 +554,64 @@ impl TokenStatusList {
         issuer_certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let purpose = self.purpose()?;
-        let maybe_list_and_entry_id = self
-            .transaction_manager
-            .tx(async {
-                let current_list = self
-                    .revocation_list_repository
-                    .get_latest_list_by_issuer(
-                        issuer_identifier.id,
-                        issuer_certificate.map(|c| c.id),
-                        purpose,
-                        &self.config_id,
-                    )
+        let allocated = add_entry_to_status_list(
+            entity_id,
+            issuer_identifier.id,
+            issuer_certificate.map(|c| c.id),
+            purpose,
+            &self.config_id,
+            &self.params.size,
+            self.transaction_manager.as_ref(),
+            self.revocation_list_repository.as_ref(),
+            async || {
+                self.prepare_empty_list(issuer_identifier, issuer_certificate, purpose)
                     .await
-                    .error_while("getting revocation list")?;
-
-                Ok(match current_list {
-                    Some(list) => (list.id, None),
-                    None => {
-                        let (new_list_id, new_entry_id) = self
-                            .start_new_list_for_entity(
-                                entity_id.clone(),
-                                issuer_identifier,
-                                issuer_certificate,
-                            )
-                            .await
-                            .error_while("starting new token status list")?;
-                        (new_list_id, Some(new_entry_id))
-                    }
-                })
-            }
-            .boxed())
-            .await
-            .error_while("finding revocation list")
-            .flatten();
-
-        let (list_id, maybe_entry_id) = match maybe_list_and_entry_id {
-            Ok((list_id, maybe_entry_id)) => (list_id, maybe_entry_id),
-            Err(error) if error.error_code() == ErrorCode::BR_0357 => {
-                // this means the transaction failed, and a new list was created in parallel
-                // fetch the newly created list instead
-                (
-                    self.revocation_list_repository
-                        .get_latest_list_by_issuer(
-                            issuer_identifier.id,
-                            issuer_certificate.map(|c| c.id),
-                            purpose,
-                            &self.config_id,
-                        )
-                        .await
-                        .error_while("getting revocation list")?
-                        .ok_or(RevocationError::MappingError(
-                            "No revocation list found".to_string(),
-                        ))?
-                        .id,
-                    None,
-                )
-            }
-            Err(e) => {
-                return Err(e.into());
-            }
-        };
-
-        let (entry_id, entry_index) = match maybe_entry_id {
-            Some(entry_id) => (entry_id, 0),
-            None => self.add_entity_to_list(list_id, entity_id).await?,
-        };
+            },
+        )
+        .await?;
 
         let revocation_info = CredentialRevocationInfo {
-            credential_status: self.create_credential_status(&list_id, entry_index)?,
+            credential_status: self
+                .create_credential_status(&allocated.list_id, allocated.index)?,
             serial: None,
         };
-        Ok((entry_id, revocation_info))
-    }
-
-    async fn add_entity_to_list(
-        &self,
-        list_id: RevocationListId,
-        entity_id: RevocationListEntityId,
-    ) -> Result<(RevocationListEntryId, usize), RevocationError> {
-        let mut retry_counter = 0;
-        loop {
-            let result = self
-                .transaction_manager
-                .tx(async {
-                    let index = self
-                        .revocation_list_repository
-                        .next_free_index(&list_id, Some(LockType::Update))
-                        .await?;
-
-                    match self
-                        .revocation_list_repository
-                        .create_entry(list_id, entity_id.to_owned(), Some(index))
-                        .await
-                    {
-                        Ok(entry_id) => Ok(Some((entry_id, index))),
-                        Err(DataLayerError::AlreadyExists(_)) => {
-                            tracing::info!(
-                                "Retrying adding entity to list({list_id}), occupied index({index}), retry({retry_counter})"
-                            );
-                            Ok(None)
-                        }
-                        Err(e) => Err(e),
-                    }
-                }
-                .boxed())
-                .await
-                .error_while("adding entity to list")?
-                .error_while("allocating list index")?;
-
-            if let Some(index) = result {
-                return Ok(index);
-            }
-
-            // index taken by a concurrent writer, retry
-            if retry_counter > 100 {
-                tracing::error!("Too many retries on revocation list: {list_id}");
-                return Err(
-                    DataLayerError::TransactionError("Too many retries".to_string())
-                        .error_while("adding revocation list entry")
-                        .into(),
-                );
-            }
-
-            retry_counter += 1;
-        }
+        Ok((allocated.entry_id, revocation_info))
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
-    async fn start_new_list_for_entity(
+    async fn prepare_empty_list(
         &self,
-        entity_id: RevocationListEntityId,
         issuer_identifier: &Identifier,
         issuer_certificate: Option<&Certificate>,
-    ) -> Result<(RevocationListId, RevocationListEntryId), RevocationError> {
+        purpose: RevocationListPurpose,
+    ) -> Result<RevocationList, RevocationError> {
         let revocation_list_id = Uuid::new_v4().into();
         let formatted_list = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,
             issuer_certificate,
-            generate_token_from_entries(vec![], self.required_bits()?).await?,
+            generate_token_from_entries(vec![], self.params.size.capacity, self.required_bits()?)
+                .await?,
             &*self.key_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
             &*self.get_formatter_for_issuance()?,
-            self.purpose()?,
+            purpose,
         )
         .await?;
 
-        self.revocation_list_repository
-            .create_revocation_list(RevocationList {
-                id: revocation_list_id,
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                formatted_list,
-                format: self.params.format,
-                r#type: self.config_id.to_owned(),
-                purpose: self.purpose()?,
-                issuer_identifier: issuer_identifier.to_owned().into(),
-                issuer_certificate: convert_inner(issuer_certificate.cloned()),
-                sequence_number: 0,
-            })
-            .await
-            .error_while("creating revocation list")?;
-
-        let entry_id = self
-            .revocation_list_repository
-            .create_entry(revocation_list_id, entity_id, Some(0))
-            .await
-            .error_while("creating revocation list entry")?;
-
-        Ok((revocation_list_id, entry_id))
+        Ok(RevocationList {
+            id: revocation_list_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            formatted_list,
+            format: self.params.format,
+            r#type: self.config_id.to_owned(),
+            purpose,
+            issuer_identifier: issuer_identifier.to_owned().into(),
+            issuer_certificate: convert_inner(issuer_certificate.cloned()),
+            sequence_number: 0,
+        })
     }
 
     async fn publish_list(
@@ -735,7 +620,8 @@ impl TokenStatusList {
         issuer_identifier: &Identifier,
         issuer_certificate: Option<&Certificate>,
     ) -> Result<(), RevocationError> {
-        let states = match self.purpose()? {
+        let purpose = self.purpose()?;
+        let states = match purpose {
             RevocationListPurpose::Revocation => vec![RevocationListEntryState::Revoked],
             RevocationListPurpose::Suspension => vec![RevocationListEntryState::Suspended],
             RevocationListPurpose::RevocationAndSuspension => vec![
@@ -758,7 +644,9 @@ impl TokenStatusList {
             .error_while("getting revocation list entries")?
             .values;
 
-        let encoded_list = generate_token_from_entries(entries, self.required_bits()?).await?;
+        let encoded_list =
+            generate_token_from_entries(entries, self.params.size.capacity, self.required_bits()?)
+                .await?;
 
         let formatted_list = format_status_list_credential(
             &list_id,
@@ -769,7 +657,7 @@ impl TokenStatusList {
             &self.key_algorithm_provider,
             &self.core_base_url,
             &*self.get_formatter_for_issuance()?,
-            self.purpose()?,
+            purpose,
         )
         .await?;
 
@@ -1050,6 +938,7 @@ async fn format_status_list_credential(
 
 async fn generate_token_from_entries(
     entries: Vec<RevocationListEntry>,
+    capacity: usize,
     bits: usize,
 ) -> Result<String, RevocationError> {
     let index_states = entries
@@ -1064,12 +953,8 @@ async fn generate_token_from_entries(
         })
         .collect::<Result<Vec<_>, RevocationError>>()?;
 
-    let preferred_token_size =
-        calculate_preferred_token_size(index_states.iter().map(|(index, _)| *index).max(), bits);
-    Ok(
-        util::generate_token(index_states, bits, preferred_token_size)
-            .error_while("generating token status list")?,
-    )
+    Ok(util::generate_token(index_states, bits, capacity)
+        .error_while("generating token status list")?)
 }
 
 fn get_revocation_list_url(

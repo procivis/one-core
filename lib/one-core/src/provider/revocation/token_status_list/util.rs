@@ -2,7 +2,8 @@
 
 use std::io::{BufReader, Read, Write};
 
-use bit_vec::BitVec;
+use bitvec::order::Msb0;
+use bitvec::view::BitView;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
@@ -57,10 +58,10 @@ pub(super) fn extract_state_from_token(
         .nth(entry_bit_index / 8)
         .ok_or(TokenError::IndexOutOfBounds { index })?
         .map_err(TokenError::Decompression)?;
-    let bits = BitVec::from_bytes(&[target_byte]);
+    let bits = target_byte.view_bits::<Msb0>();
     let revocation_bit_index = 7 - (entry_bit_index % 8);
 
-    let revoked = bits
+    let revoked = *bits
         .get(revocation_bit_index)
         .ok_or(TokenError::IndexOutOfBounds { index })?;
     if revoked {
@@ -69,7 +70,7 @@ pub(super) fn extract_state_from_token(
 
     if entry_size > 1 {
         let suspension_bit_index = revocation_bit_index - 1;
-        let suspended = bits
+        let suspended = *bits
             .get(suspension_bit_index)
             .ok_or(TokenError::IndexOutOfBounds { index })?;
         if suspended {
@@ -85,40 +86,37 @@ pub(super) fn extract_state_from_token(
 pub(super) fn generate_token(
     input: Vec<(usize, RevocationListEntryState)>,
     bits: usize,
-    preferred_token_size: usize,
+    capacity: usize,
 ) -> Result<String, TokenError> {
-    let mut bitvec = BitVec::from_elem(preferred_token_size, false);
+    let mut bytes = vec![0u8; (capacity * bits).div_ceil(8)];
+    let status_bits = bytes.view_bits_mut::<Msb0>();
     input.into_iter().try_for_each(|(index, state)| {
+        if index >= capacity {
+            return Err(TokenError::IndexOutOfBounds { index });
+        }
         let most_significant_bit_index = get_most_significant_bit_index(index, bits);
         match state {
             RevocationListEntryState::Active => {}
             RevocationListEntryState::Revoked => {
                 let revocation_bit_index = most_significant_bit_index + bits - 1;
-                bitvec.set(revocation_bit_index, true)
+                status_bits.set(revocation_bit_index, true)
             }
             RevocationListEntryState::Suspended => {
                 if bits < 2 {
                     return Err(TokenError::SuspensionRequiresAtLeastTwoBits);
                 }
                 let suspension_bit_index = most_significant_bit_index + bits - 2;
-                bitvec.set(suspension_bit_index, true)
+                status_bits.set(suspension_bit_index, true)
             }
         }
         Ok(())
     })?;
 
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());
-    encoder
-        .write_all(&bitvec.to_bytes())
-        .map_err(TokenError::Compression)?;
+    encoder.write_all(&bytes).map_err(TokenError::Compression)?;
     let compressed = encoder.finish().map_err(TokenError::Compression)?;
 
     Base64UrlSafeNoPadding::encode_to_string(compressed).map_err(TokenError::Base64Encoding)
-}
-
-pub(super) fn calculate_preferred_token_size(maximum_index: Option<usize>, bits: usize) -> usize {
-    const MINIMUM_INPUT_SIZE: usize = 131072;
-    std::cmp::max(maximum_index.unwrap_or(0) + 1, MINIMUM_INPUT_SIZE) * bits
 }
 
 pub(super) fn get_most_significant_bit_index(index: usize, bit_size: usize) -> usize {

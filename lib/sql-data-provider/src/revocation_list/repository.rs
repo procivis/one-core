@@ -2,7 +2,6 @@ use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
-use one_core::model::common::LockType;
 use one_core::model::relation::Related;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntryList, RevocationListEntryListQuery,
@@ -12,8 +11,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::sea_query::{CaseStatement, Expr};
 use sea_orm::{
-    ActiveEnum, ColumnTrait, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder, QuerySelect,
-    Set, Unchanged,
+    ActiveEnum, ColumnTrait, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder, Set,
+    Unchanged,
 };
 use shared_types::{
     CertificateId, CredentialId, IdentifierId, RevocationListEntryId, RevocationListId,
@@ -27,7 +26,7 @@ use crate::common::list_query_with_custom_model;
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
 use crate::entity::{managed_instance_attestation, revocation_list, revocation_list_entry};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 impl RevocationListProvider {
     fn entity_model_to_repository_model(
@@ -160,47 +159,6 @@ impl RevocationListRepository for RevocationListProvider {
             .map_err(to_update_data_layer_error)?;
 
         Ok(())
-    }
-
-    async fn next_free_index(
-        &self,
-        id: &RevocationListId,
-        lock: Option<LockType>,
-    ) -> Result<usize, DataLayerError> {
-        // lock the list row, not the entries: a FOR UPDATE on the entries is a gap lock on MySQL,
-        // two writers both get it and then deadlock on their inserts
-        let mut list = revocation_list::Entity::find_by_id(id)
-            .select_only()
-            .column(revocation_list::Column::Id);
-
-        if let Some(lock) = lock {
-            list = list.lock(map_lock_type(lock));
-        };
-
-        if list
-            .into_tuple::<RevocationListId>()
-            .one(&self.db)
-            .await
-            .map_err(to_data_layer_error)?
-            .is_none()
-        {
-            return Err(DataLayerError::MissingRequiredRelation {
-                relation: "revocation_list",
-                id: id.to_string(),
-            });
-        }
-
-        let max: Option<Option<i32>> = revocation_list_entry::Entity::find()
-            .select_only()
-            .column(revocation_list_entry::Column::Index)
-            .filter(revocation_list_entry::Column::RevocationListId.eq(id))
-            .order_by_desc(revocation_list_entry::Column::Index)
-            .into_tuple()
-            .one(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
-
-        Ok(max.flatten().map(|index| index + 1).unwrap_or(0) as _)
     }
 
     async fn create_entry(

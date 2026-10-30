@@ -235,52 +235,6 @@ async fn test_update_formatted_list() {
 }
 
 #[tokio::test]
-async fn test_next_free_index_empty_list() {
-    let setup = setup_with_list().await;
-
-    let result = setup
-        .provider
-        .next_free_index(&setup.list_id, None)
-        .await
-        .unwrap();
-    assert_eq!(result, 0);
-}
-
-#[tokio::test]
-async fn test_next_free_index_list_with_entry() {
-    let setup = setup_with_list().await;
-
-    insert_revocation_list_entry(&setup.db, setup.list_id, 0, None)
-        .await
-        .unwrap();
-
-    let result = setup
-        .provider
-        .next_free_index(&setup.list_id, None)
-        .await
-        .unwrap();
-    assert_eq!(result, 1);
-}
-
-#[tokio::test]
-async fn test_next_free_index_wrong_list_id() {
-    let setup = setup_with_list().await;
-
-    let result = setup
-        .provider
-        .next_free_index(&Uuid::new_v4().into(), None)
-        .await;
-
-    assert!(matches!(
-        result,
-        Err(DataLayerError::MissingRequiredRelation {
-            relation: "revocation_list",
-            ..
-        })
-    ));
-}
-
-#[tokio::test]
 async fn test_create_credential_entry_success() {
     let setup = setup_with_list().await;
 

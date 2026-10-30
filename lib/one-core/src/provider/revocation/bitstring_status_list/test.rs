@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, StatusListCredentialFormat,
+    RevocationList, RevocationListEntityId, RevocationListEntryList, StatusListCredentialFormat,
 };
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
@@ -103,8 +103,14 @@ async fn revocation_status(suspension: bool) -> ReservedEntries {
             }
         });
     revocation_list_repository
-        .expect_next_free_index()
-        .returning(|_, _| Ok(0));
+        .expect_get_entries()
+        .returning(|_| {
+            Ok(RevocationListEntryList {
+                values: vec![],
+                total_pages: None,
+                total_items: None,
+            })
+        });
     // reserved without a link to the credential, which is not persisted yet
     revocation_list_repository
         .expect_create_entry()

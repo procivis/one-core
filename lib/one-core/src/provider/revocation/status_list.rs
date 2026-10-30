@@ -1,11 +1,33 @@
 //! Common code for status list types
 
+use std::collections::HashSet;
+use std::future::Future;
+
+use futures::FutureExt;
+use one_crypto::utilities::get_rng;
+use rand::{CryptoRng, RngExt};
 use serde::{Deserialize, Serialize};
+use shared_types::{
+    CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+};
+
+use super::RevocationError;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
+use crate::model::revocation_list::{
+    RevocationList, RevocationListEntityId, RevocationListEntryFilterValue, RevocationListPurpose,
+};
+use crate::proto::transaction_manager::TransactionManager;
+use crate::repository::revocation_list_repository::RevocationListRepository;
 
 #[derive(Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct StatusListSizeParams<const MINIMUM_CAPACITY: usize> {
-    /// number of entries on the generated status list
+    /// (maximum) number of entries on the generated status list
+    ///
+    /// Beware that increasing `capacity` breaks the already generated lists,
+    /// as they are assumed to be generated with this size
     pub capacity: usize,
     /// assignment block size, when allocating indexes on the status-list,
     /// a random block is selected (to optimize for parallel execution).
@@ -68,5 +90,249 @@ impl<'de, const MINIMUM_CAPACITY: usize> Deserialize<'de>
             capacity,
             block_size,
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct AllocatedIndexEntry {
+    pub list_id: RevocationListId,
+    pub entry_id: RevocationListEntryId,
+    pub index: usize,
+}
+
+/// Common logic for selecting and allocating a (random) index on a status list
+/// If no list exists or the latest is "full" already, a new list gets created.
+/// Beware that this does not update the formatted list as it is expected
+/// that the free indices are already marked as Valid/Active entries,
+/// and the size of the status lists does not change
+#[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+#[expect(clippy::too_many_arguments)]
+pub(super) async fn add_entry_to_status_list<
+    PrepareEmptyList,
+    PrepareEmptyListFut,
+    const MINIMUM_CAPACITY: usize,
+>(
+    entity_id: RevocationListEntityId,
+    issuer_identifier_id: IdentifierId,
+    issuer_certificate_id: Option<CertificateId>,
+    purpose: RevocationListPurpose,
+    list_type: &RevocationMethodId,
+    list_size_params: &StatusListSizeParams<MINIMUM_CAPACITY>,
+    transaction_manager: &dyn TransactionManager,
+    revocation_list_repository: &dyn RevocationListRepository,
+    prepare_empty_list: PrepareEmptyList,
+) -> Result<AllocatedIndexEntry, RevocationError>
+where
+    PrepareEmptyList: Fn() -> PrepareEmptyListFut,
+    PrepareEmptyListFut: Future<Output = Result<RevocationList, RevocationError>> + Send,
+{
+    let list_lookup = ListLookup {
+        issuer_identifier_id,
+        issuer_certificate_id,
+        purpose,
+        list_type,
+        revocation_list_repository,
+    };
+
+    let mut list = select_status_list(
+        &list_lookup,
+        transaction_manager,
+        revocation_list_repository,
+        &prepare_empty_list,
+        None,
+    )
+    .await?;
+
+    let mut rng = get_rng();
+    let available_index = match pick_available_block_index(
+        list.id,
+        list_size_params,
+        revocation_list_repository,
+        &mut rng,
+    )
+    .await?
+    {
+        Some(index) => index,
+        None => {
+            // the previous list is full, a new one needs to be created
+            list = select_status_list(
+                &list_lookup,
+                transaction_manager,
+                revocation_list_repository,
+                &prepare_empty_list,
+                // increment sequence_number
+                Some(list.sequence_number + 1),
+            )
+            .await?;
+
+            pick_available_block_index(
+                list.id,
+                list_size_params,
+                revocation_list_repository,
+                &mut rng,
+            )
+            .await?
+            .ok_or(
+                // even after fresh list creation no indices found, fail here
+                RevocationError::MappingError(
+                    "No available indices after retry with fresh list".to_string(),
+                ),
+            )?
+        }
+    };
+
+    let entry_id = revocation_list_repository
+        .create_entry(list.id, entity_id, Some(available_index))
+        .await
+        .error_while("creating revocation list entry")?;
+
+    Ok(AllocatedIndexEntry {
+        list_id: list.id,
+        entry_id,
+        index: available_index,
+    })
+}
+
+#[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+async fn select_status_list<'a, PrepareEmptyList, PrepareEmptyListFut>(
+    list_lookup: &ListLookup<'a>,
+    transaction_manager: &dyn TransactionManager,
+    revocation_list_repository: &dyn RevocationListRepository,
+    prepare_empty_list: &PrepareEmptyList,
+    desired_sequence_number: Option<usize>,
+) -> Result<RevocationList, RevocationError>
+where
+    PrepareEmptyList: Fn() -> PrepareEmptyListFut,
+    PrepareEmptyListFut: Future<Output = Result<RevocationList, RevocationError>> + Send,
+{
+    if desired_sequence_number.is_none()
+        && let Some(list) = list_lookup.lookup().await?
+    {
+        return Ok(list);
+    }
+
+    // no such list exists, or a list with a higher sequence_number is required, try to create a new list
+    let mut new_list = prepare_empty_list().await?;
+    new_list.sequence_number = desired_sequence_number.unwrap_or(0);
+    let maybe_list = transaction_manager
+        .tx(async {
+            revocation_list_repository
+                .create_revocation_list(new_list.clone())
+                .await
+                .error_while("creating revocation list")
+        }
+        .boxed())
+        .await
+        .error_while("creating revocation list")
+        .flatten();
+
+    match maybe_list {
+        Ok(_) => {
+            return Ok(new_list);
+        }
+        Err(error) if error.error_code() == ErrorCode::BR_0357 => {
+            tracing::debug!(%error, "First list creation failure, another task already created a list");
+            // this means the transaction failed, and a new list was created in parallel
+            // fetch the newly created list instead
+            let fresh_list = list_lookup
+                .lookup()
+                .await?
+                .ok_or(RevocationError::MappingError(
+                    "No revocation list found".to_string(),
+                ))?;
+
+            match desired_sequence_number {
+                None => {
+                    return Ok(fresh_list);
+                }
+                Some(desired_sequence_number)
+                    if desired_sequence_number <= fresh_list.sequence_number =>
+                {
+                    return Ok(fresh_list);
+                }
+                Some(desired_sequence_number) => {
+                    tracing::warn!(%error,
+                        "Creation failed and the latest loaded list does not have \
+                        the expected sequence_number (desired: {desired_sequence_number}, \
+                        loaded: {})", fresh_list.sequence_number);
+                    return Err(error.into());
+                }
+            }
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    }
+}
+
+/// Picks a randomized index on the list.
+/// Returns `None` if the list is considered full (i.e. a selected block is full)
+async fn pick_available_block_index<const MINIMUM_CAPACITY: usize>(
+    list_id: RevocationListId,
+    list_size_params: &StatusListSizeParams<MINIMUM_CAPACITY>,
+    revocation_list_repository: &dyn RevocationListRepository,
+    rng: &mut impl CryptoRng,
+) -> Result<Option<usize>, RevocationError> {
+    let block_size = list_size_params.block_size;
+    let num_blocks = list_size_params.capacity / block_size;
+
+    // select a random block
+    let selected_block = rng.random_range(0..num_blocks);
+    tracing::trace!("Selected block: {selected_block}");
+
+    let block_range = (selected_block * block_size)..((selected_block + 1) * block_size);
+    let occupied_indices: HashSet<_> = revocation_list_repository
+        .get_entries(ListQuery {
+            include_count: false,
+            filtering: Some(
+                RevocationListEntryFilterValue::List(list_id).condition()
+                    & RevocationListEntryFilterValue::index_range(block_range.clone()),
+            ),
+            ..Default::default()
+        })
+        .await
+        .error_while("looking up block entries")?
+        .values
+        .into_iter()
+        .filter_map(|entry| entry.index)
+        .collect();
+
+    if occupied_indices.len() >= block_size {
+        // the block is full
+        tracing::debug!("A full block found: {selected_block} on list: {list_id}");
+        return Ok(None);
+    }
+
+    // select a random available index inside the selected block
+    let available_indices: Vec<_> = block_range
+        .filter(|index| !occupied_indices.contains(index))
+        .collect();
+    tracing::trace!("Available indices: {}", available_indices.len());
+
+    let picked_item = rng.random_range(0..available_indices.len());
+    Ok(available_indices.get(picked_item).cloned())
+}
+
+/// Utility wrapper for looking-up the latest status list of certain issuer
+struct ListLookup<'a> {
+    issuer_identifier_id: IdentifierId,
+    issuer_certificate_id: Option<CertificateId>,
+    purpose: RevocationListPurpose,
+    list_type: &'a RevocationMethodId,
+    revocation_list_repository: &'a dyn RevocationListRepository,
+}
+
+impl<'a> ListLookup<'a> {
+    async fn lookup(&self) -> Result<Option<RevocationList>, RevocationError> {
+        Ok(self
+            .revocation_list_repository
+            .get_latest_list_by_issuer(
+                self.issuer_identifier_id,
+                self.issuer_certificate_id,
+                self.purpose,
+                self.list_type,
+            )
+            .await
+            .error_while("getting revocation list")?)
     }
 }

@@ -6,7 +6,6 @@ use shared_types::{
 };
 
 use super::error::DataLayerError;
-use crate::model::common::LockType;
 use crate::model::relation::AsyncModelLoader;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntryList, RevocationListEntryListQuery,
@@ -44,12 +43,6 @@ pub trait RevocationListRepository: Send + Sync {
         revocation_list_id: &RevocationListId,
         formatted_list: Vec<u8>,
     ) -> Result<(), DataLayerError>;
-
-    async fn next_free_index(
-        &self,
-        id: &RevocationListId,
-        lock: Option<LockType>,
-    ) -> Result<usize, DataLayerError>;
 
     async fn create_entry(
         &self,

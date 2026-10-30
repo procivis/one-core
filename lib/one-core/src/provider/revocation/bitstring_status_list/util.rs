@@ -1,6 +1,7 @@
 //! Utilities for Bitstring Status List.
 
-use bit_vec::BitVec;
+use bitvec::order::Msb0;
+use bitvec::view::BitView;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use thiserror::Error;
 
@@ -62,29 +63,30 @@ pub(crate) fn extract_bitstring_index(
         }
     })?;
 
-    let bits = BitVec::from_bytes(&bytes);
-    bits.get(index)
-        .ok_or(BitstringError::IndexOutOfBounds { index })
+    Ok(*bytes
+        .view_bits::<Msb0>()
+        .get(index)
+        .ok_or(BitstringError::IndexOutOfBounds { index })?)
 }
 
-pub(super) fn generate_bitstring(revoked_indices: Vec<usize>) -> Result<String, BitstringError> {
-    let size = calculate_bitstring_size(revoked_indices.iter().max().cloned());
-    let mut bits = BitVec::from_elem(size, false);
-    revoked_indices
-        .into_iter()
-        .for_each(|index| bits.set(index, true));
+pub(super) fn generate_bitstring(
+    revoked_indices: Vec<usize>,
+    capacity: usize,
+) -> Result<String, BitstringError> {
+    let mut bytes = vec![0u8; capacity.div_ceil(8)];
+    let bits = bytes.view_bits_mut::<Msb0>();
+    for index in revoked_indices {
+        if index >= capacity {
+            return Err(BitstringError::IndexOutOfBounds { index });
+        }
+        bits.set(index, true);
+    }
 
-    let bytes = bits.to_bytes();
     let compressed = gzip_compress(bytes).map_err(BitstringError::Compression)?;
 
     Base64UrlSafeNoPadding::encode_to_string(compressed)
         .map_err(BitstringError::Base64Encoding)
         .map(|s| format!("{MULTIBASE_PREFIX}{s}"))
-}
-
-fn calculate_bitstring_size(max_index: Option<usize>) -> usize {
-    const MINIMUM_INPUT_SIZE: usize = 131072;
-    std::cmp::max(max_index.unwrap_or(0) + 1, MINIMUM_INPUT_SIZE)
 }
 
 /// Resolve the worst status from W3C statuses
@@ -161,13 +163,29 @@ mod test {
     #[test]
     fn test_generate_bitstring() {
         assert_eq!(
-            generate_bitstring(vec![]).unwrap(),
+            generate_bitstring(vec![], 131072).unwrap(),
             BITSTRING_NO_REVOCATIONS_NEW
         );
         assert_eq!(
-            generate_bitstring(vec![1]).unwrap(),
+            generate_bitstring(vec![1], 131072).unwrap(),
             BITSTRING_ONE_REVOCATION_NEW
         );
+    }
+
+    #[test]
+    fn test_generate_bitstring_index_out_of_bounds() {
+        let result = generate_bitstring(vec![131072], 131072);
+        assert!(matches!(
+            result,
+            Err(BitstringError::IndexOutOfBounds { index: 131072 })
+        ));
+
+        // capacity not aligned to bytes - index fits in the padding, but is still out of bounds
+        let result = generate_bitstring(vec![10], 10);
+        assert!(matches!(
+            result,
+            Err(BitstringError::IndexOutOfBounds { index: 10 })
+        ));
     }
 
     #[test]

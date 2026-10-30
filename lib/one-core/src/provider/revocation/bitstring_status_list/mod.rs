@@ -4,7 +4,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use futures::FutureExt;
 use proc_macros::Provider;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
@@ -22,12 +21,11 @@ use super::model::{
     CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
     RevocationMethodCapabilities, RevocationState,
 };
-use super::status_list::StatusListSizeParams;
+use super::status_list::{StatusListSizeParams, add_entry_to_status_list};
 use super::utils::status_purpose_to_revocation_state;
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
-use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
@@ -55,7 +53,6 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::provider_directory::InitializationError;
-use crate::repository::error::DataLayerError;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 
@@ -419,135 +416,36 @@ impl BitstringStatusList {
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
     ) -> Result<(RevocationListEntryId, W3CCredentialStatus), RevocationError> {
-        let mut list_id = None;
-        let mut entry: Option<(RevocationListEntryId, usize)> = None;
-        let tx_ok = self
-            .transaction_manager
-            .transaction(
-                async {
-                    let current_list = self
-                        .revocation_list_repository
-                        .get_latest_list_by_issuer(
-                            issuer_identifier.id,
-                            None,
-                            purpose,
-                            &self.config_id,
-                        )
-                        .await?;
-
-                    list_id = Some(if let Some(current_list) = current_list {
-                        current_list.id
-                    } else {
-                        let (list_id, entry_id) = self
-                            .start_new_list_with_entry(issuer_identifier, purpose)
-                            .await?;
-                        entry = Some((entry_id, 0));
-                        list_id
-                    });
-
-                    Ok(())
-                }
-                .boxed(),
-            )
-            .await
-            .is_ok_and(|res| res.is_ok());
-
-        if !tx_ok {
-            list_id = None;
-            entry = None;
-        }
-
-        let list_id = if let Some(list_id) = list_id {
-            list_id
-        } else {
-            // this means the transaction failed, and a new list was created in parallel
-            // fetch the newly created list instead
-            self.revocation_list_repository
-                .get_latest_list_by_issuer(issuer_identifier.id, None, purpose, &self.config_id)
-                .await
-                .error_while("getting revocation list")?
-                .ok_or(RevocationError::MappingError(
-                    "No revocation list found".to_string(),
-                ))?
-                .id
-        };
-
-        let (entry_id, index) = if let Some(entry) = entry {
-            entry
-        } else {
-            self.reserve_entry_in_list(list_id).await?
-        };
+        let allocated = add_entry_to_status_list(
+            RevocationListEntityId::Credential(None),
+            issuer_identifier.id,
+            None,
+            purpose,
+            &self.config_id,
+            &self.params.size,
+            self.transaction_manager.as_ref(),
+            self.revocation_list_repository.as_ref(),
+            async || self.prepare_empty_list(issuer_identifier, purpose).await,
+        )
+        .await?;
 
         Ok((
-            entry_id,
-            self.create_credential_status(&list_id, index, purpose.into())?,
+            allocated.entry_id,
+            self.create_credential_status(&allocated.list_id, allocated.index, purpose.into())?,
         ))
     }
 
-    async fn reserve_entry_in_list(
-        &self,
-        list_id: RevocationListId,
-    ) -> Result<(RevocationListEntryId, usize), RevocationError> {
-        let mut retry_counter = 0;
-        loop {
-            let result = self
-                .transaction_manager
-                .tx(async {
-                    let index = self
-                        .revocation_list_repository
-                        .next_free_index(&list_id, Some(LockType::Update))
-                        .await?;
-
-                    match self
-                        .revocation_list_repository
-                        .create_entry(
-                            list_id,
-                            RevocationListEntityId::Credential(None),
-                            Some(index),
-                        )
-                        .await
-                    {
-                        Ok(entry_id) => Ok(Some((entry_id, index))),
-                        Err(DataLayerError::AlreadyExists(_)) => {
-                            tracing::info!("Retrying reserving entry in list({list_id}), occupied index({index}), retry({retry_counter})");
-                            Ok(None)
-                        },
-                        Err(e) => Err(e),
-                    }
-                }
-                .boxed())
-                .await
-                .error_while("creating revocation list entry")?
-                .error_while("allocating list index")?;
-
-            if let Some(entry) = result {
-                return Ok(entry);
-            }
-
-            // index taken by a concurrent writer, retry
-            if retry_counter > 100 {
-                tracing::error!("Too many retries on revocation list: {list_id}");
-                return Err(
-                    DataLayerError::TransactionError("Too many retries".to_string())
-                        .error_while("adding revocation list entry")
-                        .into(),
-                );
-            }
-
-            retry_counter += 1;
-        }
-    }
-
-    async fn start_new_list_with_entry(
+    async fn prepare_empty_list(
         &self,
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
-    ) -> Result<(RevocationListId, RevocationListEntryId), RevocationError> {
+    ) -> Result<RevocationList, RevocationError> {
         let revocation_list_id = Uuid::new_v4().into();
         let formatted_list = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,
-            util::generate_bitstring(vec![]).error_while("generating bitstring")?,
+            util::generate_bitstring(vec![], self.params.size.capacity)
+                .error_while("generating bitstring")?,
             purpose,
             &*self.key_provider,
             &self.key_algorithm_provider,
@@ -556,33 +454,18 @@ impl BitstringStatusList {
         )
         .await?;
 
-        self.revocation_list_repository
-            .create_revocation_list(RevocationList {
-                id: revocation_list_id,
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                formatted_list,
-                format: self.params.format,
-                r#type: self.config_id.to_owned(),
-                purpose,
-                issuer_identifier: issuer_identifier.to_owned().into(),
-                issuer_certificate: None,
-                sequence_number: 0,
-            })
-            .await
-            .error_while("creating revocation list")?;
-
-        let entry_id = self
-            .revocation_list_repository
-            .create_entry(
-                revocation_list_id,
-                RevocationListEntityId::Credential(None),
-                Some(0),
-            )
-            .await
-            .error_while("creating revocation list entry")?;
-
-        Ok((revocation_list_id, entry_id))
+        Ok(RevocationList {
+            id: revocation_list_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            formatted_list,
+            format: self.params.format,
+            r#type: self.config_id.to_owned(),
+            purpose,
+            issuer_identifier: issuer_identifier.to_owned().into(),
+            issuer_certificate: None,
+            sequence_number: 0,
+        })
     }
 
     async fn publish_list(
@@ -613,7 +496,8 @@ impl BitstringStatusList {
             .error_while("getting revocation list entries")?
             .values;
 
-        let encoded_list = generate_bitstring_from_entries(entries).await?;
+        let encoded_list =
+            generate_bitstring_from_entries(entries, self.params.size.capacity).await?;
 
         let formatted_list = format_status_list_credential(
             &list_id,
@@ -782,6 +666,7 @@ pub(crate) async fn format_status_list_credential(
 
 async fn generate_bitstring_from_entries(
     entries: Vec<RevocationListEntry>,
+    capacity: usize,
 ) -> Result<String, RevocationError> {
     let states = entries
         .into_iter()
@@ -792,7 +677,7 @@ async fn generate_bitstring_from_entries(
         })
         .collect::<Result<_, _>>()?;
 
-    Ok(util::generate_bitstring(states).error_while("generating bitstring")?)
+    Ok(util::generate_bitstring(states, capacity).error_while("generating bitstring")?)
 }
 
 fn get_revocation_list_url(

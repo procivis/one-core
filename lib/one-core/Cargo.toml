@@ -13,7 +13,7 @@ aes-gcm                      = { workspace = true, features = ["std"] }
 anyhow.workspace             = true
 asn1-rs.workspace            = true
 async-trait.workspace        = true
-bit-vec                      = { version = "0.10", default-features = false }
+bitvec                       = { version = "1.1", default-features = false }
 bon.workspace                = true
 bs58.workspace               = true
 ciborium.workspace           = true
@@ -48,6 +48,7 @@ one-dto-mapper.workspace     = true
 pem                          = { version = "4" }
 proc-macros.workspace        = true
 quick-xml.workspace          = true
+rand.workspace               = true
 rcgen.workspace              = true
 regex.workspace              = true
 reqwest                      = { workspace = true, features = ["stream"] }

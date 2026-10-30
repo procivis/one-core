@@ -217,32 +217,49 @@ fn test_parse_token_status_list() {
 
 #[test]
 fn test_generate_token_status_list() {
-    const PREFERRED_TOKEN_SIZE_FOR_BIT_SIZE_1: usize = 16;
-    const PREFERRED_TOKEN_SIZE_FOR_BIT_SIZE_2: usize = 16 * 2;
-
     let (example, states) = example_token_status_list_subject_with_bit_size_1();
-    let token = generate_token(states, example.bits, PREFERRED_TOKEN_SIZE_FOR_BIT_SIZE_1).unwrap();
+    let token = generate_token(states.clone(), example.bits, states.len()).unwrap();
     assert_eq!(example.value, token);
 
     let (example, states) = example_token_status_list_subject_with_bit_size_2();
-    let token = generate_token(states, example.bits, PREFERRED_TOKEN_SIZE_FOR_BIT_SIZE_2).unwrap();
+    let token = generate_token(states.clone(), example.bits, states.len()).unwrap();
     assert_eq!(example.value, token);
 
     let state = vec![(0, RevocationListEntryState::Suspended)];
     assert!(matches!(
-        generate_token(state, 1, PREFERRED_TOKEN_SIZE_FOR_BIT_SIZE_1),
+        generate_token(state, 1, 16),
         Err(TokenError::SuspensionRequiresAtLeastTwoBits)
     ));
 }
 
 #[test]
-fn test_generate_and_parse_token_status_list() {
-    const PREFERRED_TOKEN_SIZE_FOR_BIT_SIZE_2: usize = 16 * 2;
+fn test_generate_token_status_list_index_out_of_bounds() {
+    let state = vec![(16, RevocationListEntryState::Revoked)];
+    assert!(matches!(
+        generate_token(state, 1, 16),
+        Err(TokenError::IndexOutOfBounds { index: 16 })
+    ));
 
+    let state = vec![(16, RevocationListEntryState::Suspended)];
+    assert!(matches!(
+        generate_token(state, 2, 16),
+        Err(TokenError::IndexOutOfBounds { index: 16 })
+    ));
+
+    // capacity not aligned to bytes - index fits in the padding, but is still out of bounds
+    let state = vec![(3, RevocationListEntryState::Revoked)];
+    assert!(matches!(
+        generate_token(state, 2, 3),
+        Err(TokenError::IndexOutOfBounds { index: 3 })
+    ));
+}
+
+#[test]
+fn test_generate_and_parse_token_status_list() {
     let (_, mut states) = example_token_status_list_subject_with_bit_size_2();
     states[12] = (12, RevocationListEntryState::Suspended);
 
-    let token = generate_token(states.clone(), 2, PREFERRED_TOKEN_SIZE_FOR_BIT_SIZE_2).unwrap();
+    let token = generate_token(states.clone(), 2, states.len()).unwrap();
 
     let status_list_subject = TokenStatusListSubject {
         value: token,
@@ -297,7 +314,7 @@ fn test_generate_and_parse_token_from_spec() {
         );
     });
 
-    let token = generate_token(states.clone(), 2usize, 24).unwrap();
+    let token = generate_token(states.clone(), subject.bits, states.len()).unwrap();
     let token_subject = TokenStatusListSubject {
         bits: subject.bits,
         value: token,
