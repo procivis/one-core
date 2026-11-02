@@ -291,15 +291,15 @@ fn example_token_from_spec_with_bits_2() -> (
             (0, RevocationListEntryState::Revoked),
             (1, RevocationListEntryState::Suspended),
             (2, RevocationListEntryState::Active),
-            (3, RevocationListEntryState::Revoked),
+            // 3 => 0b11
             (4, RevocationListEntryState::Active),
             (5, RevocationListEntryState::Revoked),
             (6, RevocationListEntryState::Active),
             (7, RevocationListEntryState::Revoked),
             (8, RevocationListEntryState::Revoked),
             (9, RevocationListEntryState::Suspended),
-            (10, RevocationListEntryState::Revoked),
-            (11, RevocationListEntryState::Revoked),
+            // 10 => 0b11
+            // 11 => 0b11
         ],
     )
 }
@@ -311,11 +311,11 @@ fn test_generate_and_parse_token_from_spec() {
     states.iter().for_each(|(index, expected)| {
         assert_eq!(
             *expected,
-            RevocationListEntryState::from(extract_state_from_token(&subject, *index).unwrap())
+            RevocationListEntryState::from(extract_state_from_token(&subject, *index).unwrap()),
         );
     });
 
-    let token = generate_token(states.clone(), subject.bits, states.len()).unwrap();
+    let token = generate_token(states.clone(), subject.bits, 12).unwrap();
     let token_subject = TokenStatusListSubject {
         bits: subject.bits,
         value: token,

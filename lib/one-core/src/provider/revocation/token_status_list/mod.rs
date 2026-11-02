@@ -321,8 +321,12 @@ impl RevocationMethod for TokenStatusList {
             .await?
         } else {
             let response_content = String::from_utf8(response.content)?;
-            self.extract_info_from_list_credential_jwt(&response_content, issuer_details)
-                .await?
+            self.extract_info_from_list_credential_jwt(
+                &response_content,
+                issuer_details,
+                &status.uri,
+            )
+            .await?
         };
 
         Ok(util::extract_state_from_token(&status_list, status.index)
@@ -712,7 +716,9 @@ impl TokenStatusList {
 
     fn get_list_size_params(&self, list: &RevocationList) -> ListSizeParams {
         if let Some(params) = &list.params
-            && let Ok(params) = serde_json::from_slice::<ListSizeParams>(params)
+            && let Ok(params) = serde_json::from_slice(params).inspect_err(|error| {
+                tracing::warn!(%error, "Invalid params detected for list id: {}", list.id);
+            })
         {
             params
         } else {
@@ -726,6 +732,7 @@ impl TokenStatusList {
         &self,
         jwt: &str,
         issuer_details: &IdentifierDetails,
+        uri: &Url,
     ) -> Result<TokenStatusListSubject, RevocationError> {
         let key_verification: Box<dyn TokenVerifier> = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -746,6 +753,26 @@ impl TokenStatusList {
             Jwt::build_from_token(jwt, Some(&key_verification), issuer_did)
                 .await
                 .error_while("validating token status list")?;
+
+        validate_issuance_time(&jwt.payload.issued_at, self.params.leeway_seconds)
+            .error_while("checking validity")?;
+        validate_not_before_time(&jwt.payload.invalid_before, self.params.leeway_seconds)
+            .error_while("checking validity")?;
+        validate_expiration_time(&jwt.payload.expires_at, self.params.leeway_seconds)
+            .error_while("validating expiration")?;
+
+        let Some(subject) = jwt.payload.subject else {
+            return Err(RevocationError::ValidationError(
+                "Missing list subject".to_string(),
+            ));
+        };
+        if uri
+            != &Url::parse(&subject).map_err(|e| RevocationError::ValidationError(e.to_string()))?
+        {
+            return Err(RevocationError::ValidationError(format!(
+                "Invalid subject: {subject}, status-list uri: {uri}"
+            )));
+        }
 
         Ok(jwt.payload.custom.status_list)
     }

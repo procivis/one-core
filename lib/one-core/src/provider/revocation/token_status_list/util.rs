@@ -31,6 +31,8 @@ pub(super) enum TokenError {
     SuspensionRequiresAtLeastTwoBits,
     #[error("Invalid entry size: {0}")]
     InvalidEntrySize(usize),
+    #[error("Validation error: {0}")]
+    Validation(String),
 }
 
 impl ErrorCodeMixin for TokenError {
@@ -47,7 +49,9 @@ pub(super) fn extract_state_from_token(
     if ![1, 2, 4, 8].contains(&entry_size) {
         return Err(TokenError::InvalidEntrySize(entry_size));
     }
-    let entry_bit_index = index * entry_size;
+    let entry_bit_index = index
+        .checked_mul(entry_size)
+        .ok_or(TokenError::IndexOutOfBounds { index })?;
 
     let compressed = Base64UrlSafeNoPadding::decode_to_vec(&status_list.value, Some(&[b'='; 4]))
         .map_err(TokenError::Base64Decoding)?;
@@ -58,29 +62,23 @@ pub(super) fn extract_state_from_token(
         .nth(entry_bit_index / 8)
         .ok_or(TokenError::IndexOutOfBounds { index })?
         .map_err(TokenError::Decompression)?;
-    let bits = target_byte.view_bits::<Msb0>();
-    let revocation_bit_index = 7 - (entry_bit_index % 8);
 
-    let revoked = *bits
-        .get(revocation_bit_index)
-        .ok_or(TokenError::IndexOutOfBounds { index })?;
-    if revoked {
-        return Ok(RevocationState::Revoked);
-    }
+    // entries are packed starting from the least significant bit and never span multiple bytes
+    let entry_value = (target_byte >> (entry_bit_index % 8)) & (u8::MAX >> (8 - entry_size));
 
-    if entry_size > 1 {
-        let suspension_bit_index = revocation_bit_index - 1;
-        let suspended = *bits
-            .get(suspension_bit_index)
-            .ok_or(TokenError::IndexOutOfBounds { index })?;
-        if suspended {
-            return Ok(RevocationState::Suspended {
-                suspend_end_date: None,
-            });
+    // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-21#name-status-types-values
+    Ok(match entry_value {
+        0x00 => RevocationState::Valid,
+        0x01 => RevocationState::Revoked,
+        0x02 => RevocationState::Suspended {
+            suspend_end_date: None,
+        },
+        value => {
+            return Err(TokenError::Validation(format!(
+                "Unknown entry value: {value}"
+            )));
         }
-    }
-
-    Ok(RevocationState::Valid)
+    })
 }
 
 pub(super) fn generate_token(

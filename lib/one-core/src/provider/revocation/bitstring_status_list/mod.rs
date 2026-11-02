@@ -473,7 +473,9 @@ impl BitstringStatusList {
 
     fn get_list_size_params(&self, list: &RevocationList) -> ListSizeParams {
         if let Some(params) = &list.params
-            && let Ok(params) = serde_json::from_slice::<ListSizeParams>(params)
+            && let Ok(params) = serde_json::from_slice(params).inspect_err(|error| {
+                tracing::warn!(%error, "Invalid params detected for list id: {}", list.id);
+            })
         {
             params
         } else {
