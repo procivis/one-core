@@ -1,4 +1,4 @@
-use std::env;
+use std::{assert_matches, env};
 
 use rusty_fork::rusty_fork_test;
 use serde::{Deserialize, Serialize};
@@ -252,10 +252,9 @@ rusty_fork_test! {
         ]);
 
         // then
-        assert!(
-            matches!(
-                config,
-                Err(ConfigParsingError::ParsingError(m)) if m == "figment: missing field `display` for key \"default.identifier.DID\" in YAML source string")
+        assert_matches!(
+            config,
+            Err(ConfigParsingError::ParsingError(m)) if m == "figment: missing field `display` for key \"default.identifier.DID\" in YAML source string"
         )
     }
 }

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -706,8 +707,9 @@ async fn test_holder_submit_direct_post_jwt_no_encryption_keys_fails() {
 
     let result = protocol.holder_submit_proof(&proof, vec![]).await;
 
-    assert!(
-        matches!(&result, Err(VerificationProtocolError::InvalidRequest(_))),
+    assert_matches!(
+        &result,
+        Err(VerificationProtocolError::InvalidRequest(_)),
         "Expected InvalidRequest error when direct_post.jwt has no encryption keys, got: {:?}",
         result
     );
@@ -883,12 +885,12 @@ async fn test_holder_submit_transaction_data_unknown_selection_fails() {
         .holder_submit_proof(&proof, vec![presentation])
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         &result,
         Err(VerificationProtocolError::InvalidTransactionDataAssignment(
             _
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -907,12 +909,12 @@ async fn test_holder_submit_transaction_data_non_applicable_selection_fails() {
         .holder_submit_proof(&proof, vec![presentation])
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         &result,
         Err(VerificationProtocolError::InvalidTransactionDataAssignment(
             _
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -933,12 +935,12 @@ async fn test_holder_submit_transaction_data_duplicate_selection_fails() {
         .holder_submit_proof(&proof, vec![presentation])
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         &result,
         Err(VerificationProtocolError::InvalidTransactionDataAssignment(
             _
         ))
-    ));
+    );
 }
 
 #[test]
@@ -1030,12 +1032,12 @@ fn test_assign_transaction_data_auto_assign_conflicting_entries_fails_without_mu
         vec![test_credential_presentation("cred1", vec![])],
     );
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(VerificationProtocolError::InvalidTransactionDataAssignment(
             _
         ))
-    ));
+    );
 }
 
 #[test]
@@ -1276,12 +1278,12 @@ fn test_assign_transaction_data_explicit_conflicting_selection_fails_without_mul
         vec![test_credential_presentation("cred1", vec![tx1, tx2])],
     );
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(VerificationProtocolError::InvalidTransactionDataAssignment(
             _
         ))
-    ));
+    );
 }
 
 #[test]
@@ -1411,11 +1413,11 @@ async fn test_request_from_openid4vp_query_unsigned_request_fails_for_signed_onl
         ))
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(VerificationProtocolError::InvalidRequest(reason))
             if reason.contains("requires a signed request object")
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1427,11 +1429,11 @@ async fn test_request_from_openid4vp_query_unsigned_request_fails_for_unsupporte
         .request_from_openid4vp_query(&unsigned_request_query("x509_san_dns:verifier.example.com"))
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(VerificationProtocolError::InvalidRequest(reason))
             if reason.contains("Unsupported client_id_scheme")
-    ));
+    );
 }
 
 #[tokio::test]

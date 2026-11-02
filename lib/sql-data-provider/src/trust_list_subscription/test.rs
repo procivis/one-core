@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
@@ -88,7 +89,7 @@ async fn test_get_trust_list_subscription_missing() {
     let TestSetup { provider, .. } = setup().await;
 
     let result = provider.get(&Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]
@@ -130,10 +131,7 @@ async fn test_delete_trust_list_subscription() {
     assert!(result.is_ok());
 
     let get_result = provider.get(&id).await;
-    assert!(matches!(
-        get_result,
-        Err(DataLayerError::EntityNotFound { .. })
-    ));
+    assert_matches!(get_result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

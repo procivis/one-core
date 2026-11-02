@@ -125,6 +125,8 @@ fn conflict(key: &str) -> TransactionDataError {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use indexmap::IndexMap;
     use serde_json::json;
     use similar_asserts::assert_eq;
@@ -178,10 +180,7 @@ mod test {
 
         let err = a.merge(b).unwrap_err();
 
-        assert!(matches!(
-            err,
-            TransactionDataError::TransactionDataConflict(_)
-        ));
+        assert_matches!(err, TransactionDataError::TransactionDataConflict(_));
     }
 
     // two transaction data entries authorized by the same credential: their hashes
@@ -215,10 +214,7 @@ mod test {
 
         let err = a.merge(b).unwrap_err();
 
-        assert!(matches!(
-            err,
-            TransactionDataError::TransactionDataConflict(_)
-        ));
+        assert_matches!(err, TransactionDataError::TransactionDataConflict(_));
     }
 
     #[test]
@@ -228,10 +224,7 @@ mod test {
 
         let err = a.merge(b).unwrap_err();
 
-        assert!(matches!(
-            err,
-            TransactionDataError::TransactionDataConflict(_)
-        ));
+        assert_matches!(err, TransactionDataError::TransactionDataConflict(_));
     }
 
     #[test]
@@ -358,10 +351,7 @@ mod test {
 
         let err = a.merge(b).unwrap_err();
 
-        assert!(matches!(
-            err,
-            TransactionDataError::TransactionDataConflict(_)
-        ));
+        assert_matches!(err, TransactionDataError::TransactionDataConflict(_));
     }
 
     #[test]
@@ -371,9 +361,6 @@ mod test {
 
         let err = a.merge(b).unwrap_err();
 
-        assert!(matches!(
-            err,
-            TransactionDataError::TransactionDataConflict(_)
-        ));
+        assert_matches!(err, TransactionDataError::TransactionDataConflict(_));
     }
 }

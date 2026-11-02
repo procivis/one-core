@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use assert2::let_assert;
 use one_core::model::credential::{HolderBinding, HolderCredentialData, IssuerIdentity};
 use one_core::repository::DataRepository;
@@ -105,10 +107,7 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
     );
 
     let loaded_parent = repository.get_credential(&parent_id).await.unwrap();
-    assert!(matches!(
-        loaded_parent,
-        Credential::HolderBatchParent { .. }
-    ));
+    assert_matches!(loaded_parent, Credential::HolderBatchParent { .. });
     assert_eq!(
         loaded_parent.common().schema.as_ref().await.unwrap().id,
         setup.credential_schema.id
@@ -220,14 +219,14 @@ async fn invalid_holder_batch_item_rows_return_mapping_errors(
     }
     row.holder_identifier_id = Set(identifier_only.then_some(setup.identifier.id));
     row.update(&setup.db).await.unwrap();
-    assert!(matches!(
+    assert_matches!(
         repository.get_credential(&setup.credential_id).await,
         Err(DataLayerError::MappingError(_))
-    ));
-    assert!(matches!(
+    );
+    assert_matches!(
         repository
             .get_credential_list(CredentialListQuery::default())
             .await,
         Err(DataLayerError::MappingError(_))
-    ));
+    );
 }

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use anyhow::anyhow;
@@ -141,10 +142,7 @@ async fn test_create_organisation_already_exists() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(OrganisationServiceError::AlreadyExists)
-    ));
+    assert_matches!(result, Err(OrganisationServiceError::AlreadyExists));
 }
 
 #[tokio::test]

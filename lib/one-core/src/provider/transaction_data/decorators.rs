@@ -181,6 +181,8 @@ impl TransactionData for CapabilityChecked {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
     use serde_json::json;
 
@@ -230,10 +232,10 @@ mod test {
             )
             .await;
 
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(TransactionDataError::UnsupportedCredentialFormat(_))
-        ));
+        );
     }
 
     #[test]
@@ -245,9 +247,6 @@ mod test {
             json!({ "type": "https://example.com/other", "credential_ids": ["cred1"] }),
         ));
 
-        assert!(matches!(
-            result,
-            Err(TransactionDataError::UnsupportedType(_))
-        ));
+        assert_matches!(result, Err(TransactionDataError::UnsupportedType(_)));
     }
 }

@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, CredentialType,
@@ -651,10 +653,10 @@ async fn check_batch_item_rejection(
         let mut counts = [0, 0];
         for id in ids {
             let item = context.db.credentials.get(&id.parse()).await;
-            assert!(matches!(
+            assert_matches!(
                 &item,
                 Credential::HolderBatchItem { parent, .. } if parent.id() == parent_id
-            ));
+            );
             assert_eq!(item.common().state, CredentialStateEnum::Accepted);
             let format_id = item.holder().unwrap().data.format.id();
             counts[formats

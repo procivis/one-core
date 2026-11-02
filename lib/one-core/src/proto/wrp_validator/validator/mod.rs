@@ -289,6 +289,7 @@ impl WRPValidator for WRPValidatorImpl {
     }
 }
 
+#[derive(Debug)]
 enum TrustEntityIdentifier<'a> {
     PemChain(Cow<'a, str>),
     Jwk(Cow<'a, PublicJwk>),

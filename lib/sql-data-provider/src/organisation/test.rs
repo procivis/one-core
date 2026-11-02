@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::common::SortDirection;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{
@@ -61,7 +63,7 @@ async fn test_get_organisation_missing() {
     let TestSetup { repository, .. } = setup().await;
 
     let result = repository.get_organisation(&Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

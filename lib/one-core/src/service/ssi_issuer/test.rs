@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use shared_types::{CredentialSchemaId, IdentifierId};
@@ -153,7 +154,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
 
     // then
     assert_eq!(did.did.as_str(), result.issuer);
-    assert!(matches!(result.jwks, SdJwtVcIssuerMetadataJwks::Jwks(ref jwks) if jwks.len() == 1));
+    assert_matches!(result.jwks, SdJwtVcIssuerMetadataJwks::Jwks(ref jwks) if jwks.len() == 1);
 }
 
 #[tokio::test]
@@ -236,7 +237,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success() {
         "{core_base_url}/ssi/openid4vci/{protocol_id}/{expected_identifier_id}/{expected_schema_id}"
     );
     assert_eq!(expected_issuer, result.issuer);
-    assert!(matches!(result.jwks, SdJwtVcIssuerMetadataJwks::Jwks(ref jwks) if jwks.len() == 1));
+    assert_matches!(result.jwks, SdJwtVcIssuerMetadataJwks::Jwks(ref jwks) if jwks.len() == 1);
 }
 
 #[tokio::test]
@@ -261,10 +262,10 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_core_base_url_is_missing(
         .await;
 
     // then
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(IssuerServiceError::MappingError(message)) if message == "Missing core_base_url for jwt vc issuer metadata"
-    ));
+    );
 }
 
 #[tokio::test]
@@ -299,10 +300,10 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_protocol_not_found() {
         .await;
 
     // then
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(IssuerServiceError::MissingProtocol(value)) if value == protocol_id
-    ));
+    );
 }
 
 #[tokio::test]

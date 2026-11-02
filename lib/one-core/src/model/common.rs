@@ -61,6 +61,8 @@ pub enum LockType {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -89,10 +91,7 @@ mod tests {
                 total_items,
                 total_pages,
             };
-            assert!(matches!(
-                result.require_count(),
-                Err(DataLayerError::MissingCount)
-            ));
+            assert_matches!(result.require_count(), Err(DataLayerError::MissingCount));
         }
     }
 }

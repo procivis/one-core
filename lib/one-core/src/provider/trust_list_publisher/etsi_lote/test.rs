@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::{Arc, Mutex};
 
 use ct_codecs::Decoder;
@@ -552,8 +553,9 @@ async fn test_create_trust_list_rejects_identifier_without_certificate() {
         })
         .await;
 
-    assert!(
-        matches!(result, Err(TrustListPublisherError::Nested(_))),
+    assert_matches!(
+        result,
+        Err(TrustListPublisherError::Nested(_)),
         "expected key selection error, got: {result:?}"
     );
 }

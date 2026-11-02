@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use anyhow::anyhow;
@@ -373,7 +374,7 @@ async fn test_delete_proof_schema_failure() {
     });
 
     let result = service.delete_proof_schema(&Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(ProofSchemaServiceError::NotFound(_))));
+    assert_matches!(result, Err(ProofSchemaServiceError::NotFound(_)));
 }
 
 #[tokio::test]
@@ -1298,10 +1299,10 @@ async fn test_create_proof_schema_claims_dont_exist() {
         })
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(ProofSchemaServiceError::MissingClaimSchema { .. })
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1322,10 +1323,7 @@ async fn test_create_proof_schema_no_claims() {
             ecosystem: None,
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ProofSchemaServiceError::MissingClaims)
-    ));
+    assert_matches!(result, Err(ProofSchemaServiceError::MissingClaims));
 }
 
 #[tokio::test]
@@ -1349,10 +1347,7 @@ async fn test_create_proof_schema_no_required_claims() {
             ecosystem: None,
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ProofSchemaServiceError::NoRequiredClaim)
-    ));
+    assert_matches!(result, Err(ProofSchemaServiceError::NoRequiredClaim));
 }
 
 #[tokio::test]
@@ -1377,10 +1372,7 @@ async fn test_create_proof_schema_duplicit_claims() {
             ecosystem: None,
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(ProofSchemaServiceError::DuplicitClaim)
-    ));
+    assert_matches!(result, Err(ProofSchemaServiceError::DuplicitClaim));
 }
 
 #[tokio::test]

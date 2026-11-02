@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::{Arc, Mutex};
 
 use similar_asserts::assert_eq;
@@ -177,7 +178,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
         .expect_create_credential()
         .times(2)
         .returning(move |credential| {
-            assert!(matches!(credential, Credential::Verifier { .. }));
+            assert_matches!(credential, Credential::Verifier { .. });
             assert_eq!(credential.common().protocol, "ISO_MDL");
             assert_eq!(
                 credential.verifier().unwrap().data.issuer.identifier.id(),

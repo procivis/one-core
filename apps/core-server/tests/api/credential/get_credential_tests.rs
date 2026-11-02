@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
@@ -595,10 +597,7 @@ async fn test_get_mdoc_batch_item_expires_at_matches_mso_validity_expiration() {
     assert_eq!(parent_details.status(), 200);
     let parent_details = parent_details.json_value().await;
     // Issuer batch parents carry neither a format nor MSO validity.
-    assert!(matches!(
-        parent_credential,
-        Credential::IssuerBatchParent { .. }
-    ));
+    assert_matches!(parent_credential, Credential::IssuerBatchParent { .. });
     assert!(parent_details["mdocMsoValidity"].is_null());
 
     // MDOC's `expirationSeconds` config default is 72h - pick a real expiration that doesn't
@@ -694,10 +693,10 @@ async fn test_get_credential_success_batch_parent_offered_formats() {
         )
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         parent_credential,
         one_core::model::credential::Credential::IssuerBatchParent { .. }
-    ));
+    );
     let format = credential_schema
         .formats
         .as_ref()
@@ -750,10 +749,10 @@ async fn test_get_credential_success_batch_parent_offered_formats() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     assert!(!resp.as_object().unwrap().contains_key("offeredFormats"));
-    assert!(matches!(
+    assert_matches!(
         item_credential,
         one_core::model::credential::Credential::IssuerBatchItem { .. }
-    ));
+    );
     assert_eq!(resp["subscriberInformation"], "parent metadata");
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
     assert_eq!(resp["claims"][0]["value"], "test");

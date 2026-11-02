@@ -128,6 +128,8 @@ impl From<TrustDetailInfo> for TrustInformationDetailResponseEnum {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use ct_codecs::{Base64, Encoder};
     use shared_types::EcosystemId;
     use similar_asserts::assert_eq;
@@ -231,16 +233,16 @@ mod test {
         assert!(result.is_ok());
 
         let result = BoundedB64Image::<9>::try_from(data_str);
-        assert!(matches!(result, Err(ValidationError::InvalidImage(_))));
+        assert_matches!(result, Err(ValidationError::InvalidImage(_)));
 
         let result =
             BoundedB64Image::<10>::try_from("data:image/png;base64,NÖT_BÄSE64".to_string());
-        assert!(matches!(result, Err(ValidationError::InvalidImage(_))));
+        assert_matches!(result, Err(ValidationError::InvalidImage(_)));
 
         let result = BoundedB64Image::<10>::try_from(format!(
             "data:image/gif;base64,{}", // unsupported mime type
             Base64::encode_to_string(&data).unwrap()
         ));
-        assert!(matches!(result, Err(ValidationError::InvalidImage(_))));
+        assert_matches!(result, Err(ValidationError::InvalidImage(_)));
     }
 }

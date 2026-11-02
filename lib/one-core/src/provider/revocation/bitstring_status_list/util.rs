@@ -139,6 +139,8 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -175,17 +177,14 @@ mod test {
     #[test]
     fn test_generate_bitstring_index_out_of_bounds() {
         let result = generate_bitstring(vec![131072], 131072);
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(BitstringError::IndexOutOfBounds { index: 131072 })
-        ));
+        );
 
         // capacity not aligned to bytes - index fits in the padding, but is still out of bounds
         let result = generate_bitstring(vec![10], 10);
-        assert!(matches!(
-            result,
-            Err(BitstringError::IndexOutOfBounds { index: 10 })
-        ));
+        assert_matches!(result, Err(BitstringError::IndexOutOfBounds { index: 10 }));
     }
 
     #[test]
@@ -206,18 +205,18 @@ mod test {
     #[test]
     fn test_extract_bitstring_invalid_base64() {
         let result = extract_bitstring_index("invalid".to_owned(), 1000000);
-        assert!(matches!(result, Err(BitstringError::InvalidPrefix(_))));
+        assert_matches!(result, Err(BitstringError::InvalidPrefix(_)));
 
         let result = extract_bitstring_index("uH4s3-3?10".to_owned(), 1000000);
-        assert!(matches!(result, Err(BitstringError::Base64Decoding(_))));
+        assert_matches!(result, Err(BitstringError::Base64Decoding(_)));
     }
 
     #[test]
     fn test_extract_bitstring_index_out_of_bounds() {
         let result = extract_bitstring_index(BITSTRING_ONE_REVOCATION.to_owned(), 1000000);
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(BitstringError::IndexOutOfBounds { index: 1000000 })
-        ));
+        );
     }
 }

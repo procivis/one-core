@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -79,7 +80,7 @@ async fn test_get_trust_collection_missing() {
     let TestSetup { provider, .. } = setup().await;
 
     let result = provider.get(&Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]
@@ -118,7 +119,7 @@ async fn test_get_trust_collection_retains_url_error() {
 
     let error = provider.get(&id).await.unwrap_err();
 
-    assert!(matches!(error, DataLayerError::MappingError(_)));
+    assert_matches!(error, DataLayerError::MappingError(_));
     let cause = url::ParseError::RelativeUrlWithoutBase;
     assert!(error.to_string().contains(&cause.to_string()));
     assert_eq!(
@@ -141,10 +142,7 @@ async fn test_delete_trust_collection() {
     assert!(result.is_ok());
 
     let get_result = provider.get(&id).await;
-    assert!(matches!(
-        get_result,
-        Err(DataLayerError::EntityNotFound { .. })
-    ));
+    assert_matches!(get_result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

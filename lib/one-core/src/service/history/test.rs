@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use super::HistoryService;
@@ -46,7 +47,7 @@ async fn test_get_list_success() {
 async fn test_create_history_invalid_source() {
     let service = setup_service(MockHistoryRepository::default());
 
-    assert!(matches!(
+    assert_matches!(
         service
             .create_history(CreateHistoryRequestDTO {
                 source: HistorySource::Core,
@@ -60,5 +61,5 @@ async fn test_create_history_invalid_source() {
             })
             .await,
         Err(HistoryServiceError::InvalidSource)
-    ));
+    );
 }

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashSet;
 use std::ops::Add;
 use std::sync::Arc;
@@ -213,7 +214,7 @@ async fn test_lock_credential_not_found() {
     let repository = credential_repository(setup.db.clone(), None);
 
     let result = repository.lock_credential(&Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 struct TestSetup {
@@ -662,7 +663,7 @@ async fn test_create_credential_already_exists() {
         })
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
     let history = crate::entity::history::Entity::find()
         .all(&db)
         .await
@@ -1417,10 +1418,7 @@ async fn test_get_credential_fail_not_found() {
 
     let credential = provider.get_credential(&Uuid::new_v4().into()).await;
 
-    assert!(matches!(
-        credential,
-        Err(DataLayerError::EntityNotFound { .. })
-    ));
+    assert_matches!(credential, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

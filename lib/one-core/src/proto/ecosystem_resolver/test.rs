@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::borrow::Cow;
 use std::sync::{Arc, LazyLock, Mutex};
 
@@ -490,10 +491,7 @@ async fn test_a_user_selection_the_organisation_does_not_permit_fails() {
         .await
         .unwrap_err();
 
-    assert!(matches!(
-        error,
-        EcosystemValidationError::EcosystemNotPermitted
-    ));
+    assert_matches!(error, EcosystemValidationError::EcosystemNotPermitted);
     assert_eq!(ErrorCode::BR_0475, error.error_code());
 }
 
@@ -522,10 +520,10 @@ async fn test_selecting_over_an_already_committed_interaction_fails() {
     .await
     .unwrap_err();
 
-    assert!(matches!(
+    assert_matches!(
         error,
         EcosystemValidationError::EcosystemAlreadyCommitted(_)
-    ));
+    );
     assert_eq!(ErrorCode::BR_0477, error.error_code());
 }
 
@@ -1395,7 +1393,7 @@ async fn test_a_revalidation_fails_when_the_committed_ecosystem_rejects() {
     .await
     .unwrap_err();
 
-    assert!(matches!(error, EcosystemValidationError::Rejected { .. }));
+    assert_matches!(error, EcosystemValidationError::Rejected { .. });
 }
 
 #[tokio::test]
@@ -1411,8 +1409,5 @@ async fn test_a_revalidation_fails_when_the_committed_ecosystem_was_deselected()
         .await
         .unwrap_err();
 
-    assert!(matches!(
-        error,
-        EcosystemValidationError::EcosystemNotPermitted
-    ));
+    assert_matches!(error, EcosystemValidationError::EcosystemNotPermitted);
 }

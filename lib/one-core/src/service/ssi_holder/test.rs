@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use std::sync::Arc;
-use std::vec;
+use std::{assert_matches, vec};
 
 use mockall::predicate::{always, eq};
 use regex::Regex;
@@ -2568,10 +2568,10 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
     for (response, id) in grouped.iter().zip(expected_ids) {
         assert_eq!(response.main_credential.credential.common().id, id);
         assert_eq!(response.batch_items.len(), 1);
-        assert!(matches!(
+        assert_matches!(
             &response.batch_items[0].credential,
             Credential::HolderBatchItem { parent, .. } if parent.id() == id
-        ));
+        );
     }
 }
 

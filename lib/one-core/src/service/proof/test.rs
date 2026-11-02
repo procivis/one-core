@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use assert2::let_assert;
@@ -136,7 +137,7 @@ async fn verifier_proof_rejects_unexpected_credential_variants(
         &MockHistoryRepository::new(),
     )
     .await;
-    assert!(matches!(result, Err(ProofServiceError::MappingError(_))));
+    assert_matches!(result, Err(ProofServiceError::MappingError(_)));
 }
 
 #[derive(Default)]
@@ -656,15 +657,15 @@ async fn test_get_proof_with_array(#[case] role: ProofRole) {
     };
 
     assert_eq!(claims[0].path, "key/0");
-    assert!(matches!(
+    assert_matches!(
         &claims[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
-    ));
+    );
     assert_eq!(claims[1].path, "key/1");
-    assert!(matches!(
+    assert_matches!(
         &claims[1].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
-    ));
+    );
 }
 
 #[rstest]
@@ -695,15 +696,15 @@ async fn test_get_proof_with_array_in_object(#[case] role: ProofRole) {
     };
 
     assert_eq!(claims[0].path, "key/address/0");
-    assert!(matches!(
+    assert_matches!(
         &claims[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
-    ));
+    );
     assert_eq!(claims[1].path, "key/address/1");
-    assert!(matches!(
+    assert_matches!(
         &claims[1].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
-    ));
+    );
 }
 
 #[rstest]
@@ -736,10 +737,10 @@ async fn test_get_proof_with_object_array(#[case] role: ProofRole) {
     };
 
     assert_eq!(claim_0[0].path, "key/0/address");
-    assert!(matches!(
+    assert_matches!(
         &claim_0[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
-    ));
+    );
 
     assert_eq!(claims[1].path, "key/1");
     let claim_1 = match &claims[1].value {
@@ -747,10 +748,10 @@ async fn test_get_proof_with_object_array(#[case] role: ProofRole) {
         _ => panic!("not array field"),
     };
     assert_eq!(claim_1[0].path, "key/1/address");
-    assert!(matches!(
+    assert_matches!(
         &claim_1[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1003,10 +1004,10 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
     });
 
     let result = service.create_proof(request).await;
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(ProofServiceError::IncompatibleVerificationIdentifier)
-    ));
+    );
 }
 
 #[tokio::test]
@@ -2039,10 +2040,10 @@ async fn test_create_proof_failed_incompatible_exchange() {
     });
 
     let result = service.create_proof(request).await;
-    assert!(matches!(
+    assert_matches!(
         result.unwrap_err(),
         ProofServiceError::IncompatibleExchangeProtocol
-    ));
+    );
 }
 
 #[tokio::test]
@@ -2337,10 +2338,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
     });
 
     let result = service.create_proof(request).await;
-    assert!(matches!(
-        result,
-        Err(ProofServiceError::IncompatibleKeyStorage)
-    ));
+    assert_matches!(result, Err(ProofServiceError::IncompatibleKeyStorage));
 }
 
 #[tokio::test]
@@ -2369,10 +2367,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             ecosystem: None,
         })
         .await;
-    assert!(matches!(
-        result.unwrap_err(),
-        ProofServiceError::InvalidRedirectUri
-    ));
+    assert_matches!(result.unwrap_err(), ProofServiceError::InvalidRedirectUri);
 }
 
 #[tokio::test]
@@ -2775,7 +2770,7 @@ async fn test_share_proof_invalid_state() {
     let result = service
         .share_proof(&proof_id, ShareProofRequestDTO::default())
         .await;
-    assert!(matches!(result, Err(ProofServiceError::InvalidState(_))));
+    assert_matches!(result, Err(ProofServiceError::InvalidState(_)));
 }
 
 #[tokio::test]
@@ -3008,10 +3003,10 @@ async fn test_delete_proof_fails_for_invalid_state(
 
     let error = service.delete_proof(proof_id).await.unwrap_err();
 
-    assert!(matches!(
+    assert_matches!(
         error,
         ProofServiceError::InvalidState(got_state) if got_state == state
-    ))
+    )
 }
 
 #[tokio::test]

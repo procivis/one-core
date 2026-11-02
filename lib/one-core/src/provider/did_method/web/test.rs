@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -85,7 +86,7 @@ async fn test_did_web_update_rejects_invalid_key_count() {
             None,
         )
         .await;
-    assert!(matches!(result, Err(DidMethodError::InvalidNumberOfKeys)));
+    assert_matches!(result, Err(DidMethodError::InvalidNumberOfKeys));
 }
 
 #[tokio::test]
@@ -98,7 +99,7 @@ async fn test_did_web_update_rejects_unsupported_update_keys() {
     let result = method
         .update(Uuid::new_v4().into(), single_key_set(), keys, None)
         .await;
-    assert!(matches!(result, Err(DidMethodError::UnsupportedKeyType(_))));
+    assert_matches!(result, Err(DidMethodError::UnsupportedKeyType(_)));
 }
 
 #[tokio::test]
@@ -110,7 +111,7 @@ async fn test_did_web_update_rejects_invalid_authentication_key_type() {
     let result = method
         .update(Uuid::new_v4().into(), single_key_set(), keys, None)
         .await;
-    assert!(matches!(result, Err(DidMethodError::Nested(_))));
+    assert_matches!(result, Err(DidMethodError::Nested(_)));
 }
 
 static JSON_DATA: &str = r#"
@@ -244,10 +245,7 @@ async fn test_did_web_create_fail_no_base_url() {
 
     let result = did_web_method.create(id, &None, DidKeys::default()).await;
 
-    assert!(matches!(
-        result,
-        Err(DidMethodError::InitializationError(_))
-    ))
+    assert_matches!(result, Err(DidMethodError::InitializationError(_)))
 }
 
 #[tokio::test]

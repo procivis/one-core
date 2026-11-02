@@ -1,6 +1,8 @@
+use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::rsa::RsaSigner;
@@ -205,7 +207,8 @@ async fn test_generate_fails_on_invalid_params() {
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa, json!({}))
         .await;
 
-    assert!(matches!(result, Err(KeyStorageError::InvalidParams(_))));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyStorageError::InvalidParams(_));
 }
 
 #[test]
@@ -428,7 +431,8 @@ async fn test_dvv_generate_fails_on_ambiguous_credential_list() {
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa, json!({}))
         .await;
 
-    assert!(matches!(result, Err(KeyStorageError::Failed(_))));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyStorageError::Failed(_));
 }
 
 #[tokio::test]

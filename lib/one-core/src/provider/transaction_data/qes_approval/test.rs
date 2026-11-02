@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -139,10 +141,10 @@ async fn test_process_transaction_data_rejects_unsupported_credential_format() {
         )
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(TransactionDataError::UnsupportedCredentialFormat(_))
-    ));
+    );
 }
 
 #[test]
@@ -346,10 +348,7 @@ fn test_validate_transaction_data_rejects_empty_credential_ids() {
 
     let result =
         qes_approval_transaction_data().validate_transaction_data(&encode(transaction_data));
-    assert!(matches!(
-        result,
-        Err(TransactionDataError::InvalidTransactionData(_))
-    ));
+    assert_matches!(result, Err(TransactionDataError::InvalidTransactionData(_)));
 }
 
 #[test]
@@ -362,10 +361,7 @@ fn test_validate_transaction_data_rejects_missing_credential_id_and_qualifier() 
 
     let result =
         qes_approval_transaction_data().validate_transaction_data(&encode(transaction_data));
-    assert!(matches!(
-        result,
-        Err(TransactionDataError::InvalidTransactionData(_))
-    ));
+    assert_matches!(result, Err(TransactionDataError::InvalidTransactionData(_)));
 }
 
 #[test]
@@ -376,7 +372,7 @@ fn test_validate_transaction_data_rejects_unsupported_hash_algorithm() {
 
     let result =
         qes_approval_transaction_data().validate_transaction_data(&encode(transaction_data));
-    assert!(matches!(result, Err(TransactionDataError::Hashing(_))));
+    assert_matches!(result, Err(TransactionDataError::Hashing(_)));
 }
 
 #[test]
@@ -387,13 +383,13 @@ fn test_validate_transaction_data_rejects_unknown_hash_algorithm_oid() {
 
     let result =
         qes_approval_transaction_data().validate_transaction_data(&encode(transaction_data));
-    assert!(matches!(result, Err(TransactionDataError::Parsing(_))));
+    assert_matches!(result, Err(TransactionDataError::Parsing(_)));
 }
 
 #[test]
 fn test_validate_transaction_data_rejects_invalid_base64url() {
     let result = qes_approval_transaction_data().validate_transaction_data("not/valid+base64url");
-    assert!(matches!(result, Err(TransactionDataError::Encoding(_))));
+    assert_matches!(result, Err(TransactionDataError::Encoding(_)));
 }
 
 #[test]
@@ -424,10 +420,7 @@ fn test_prepare_transaction_data_rejects_invalid_content() {
         .prepare_transaction_data(vec!["xyz123".into()], Some(data))
         .unwrap_err();
 
-    assert!(matches!(
-        err,
-        TransactionDataError::InvalidTransactionData(_)
-    ));
+    assert_matches!(err, TransactionDataError::InvalidTransactionData(_));
 }
 
 #[tokio::test]

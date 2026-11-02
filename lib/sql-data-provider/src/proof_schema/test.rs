@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -143,10 +144,7 @@ async fn test_create_proof_schema_invalid_params() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(DataLayerError::IncorrectParameters(_))
-    ));
+    assert_matches!(result, Err(DataLayerError::IncorrectParameters(_)));
 }
 
 #[tokio::test]
@@ -235,7 +233,7 @@ async fn test_create_proof_schema_already_exists() {
         })
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
 }
 
 #[tokio::test]
@@ -423,7 +421,7 @@ async fn test_delete_proof_schema_twice() {
     let result = repository
         .delete_proof_schema(&proof_schema_id, get_dummy_date())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+    assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }
 
 #[tokio::test]
@@ -438,7 +436,7 @@ async fn test_delete_proof_schema_missing() {
     let result = repository
         .delete_proof_schema(&Uuid::new_v4().into(), get_dummy_date())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+    assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }
 
 #[tokio::test]
@@ -451,7 +449,7 @@ async fn test_get_proof_schema_missing() {
     .await;
 
     let result = repository.get_proof_schema(&Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

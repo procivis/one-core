@@ -172,6 +172,8 @@ pub(crate) fn validate_url(url: &str, params: &WebhookNotifyParams) -> Result<()
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use time::Duration;
 
     use super::*;
@@ -198,16 +200,16 @@ mod test {
 
         let http_url = "http://correct.address.com/notify";
         validate_url(http_url, &PARAMS_ALLOW_ALL).unwrap();
-        assert!(matches!(
+        assert_matches!(
             validate_url(http_url, &PARAMS_ALL_HTTPS),
             Err(Error::InvalidUrlScheme(_))
-        ));
+        );
 
         let did_url = "did:unknown:123";
-        assert!(matches!(
+        assert_matches!(
             validate_url(did_url, &PARAMS_ALLOW_ALL),
             Err(Error::InvalidUrlScheme(_))
-        ));
+        );
     }
 
     #[test]
@@ -218,10 +220,10 @@ mod test {
 
         let mqtt_url = "mqtt://broker.example.com/some/topic";
         validate_url(mqtt_url, &PARAMS_ALLOW_ALL).unwrap();
-        assert!(matches!(
+        assert_matches!(
             validate_url(mqtt_url, &PARAMS_ALL_HTTPS),
             Err(Error::InvalidUrlScheme(_))
-        ));
+        );
 
         // Topic with multiple path segments is valid
         let mqtt_nested_topic = "mqtt://broker.example.com/org/events/credential";
@@ -251,15 +253,15 @@ mod test {
         validate_url(allowed_ip_url, &params_with_hosts).unwrap();
 
         let disallowed_domain_url = "https://incorrect.address.com/notify";
-        assert!(matches!(
+        assert_matches!(
             validate_url(disallowed_domain_url, &params_with_hosts),
             Err(Error::InvalidUrlHost(_))
-        ));
+        );
 
         let disallowed_ip_url = "https://44.33.22.11/notify";
-        assert!(matches!(
+        assert_matches!(
             validate_url(disallowed_ip_url, &params_with_hosts),
             Err(Error::InvalidUrlHost(_))
-        ));
+        );
     }
 }

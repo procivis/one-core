@@ -6,6 +6,7 @@ use crate::config::core_config::{ConfigExt, Fields, TransportConfig, TransportTy
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
 use crate::service::error::ValidationError;
 
+#[derive(Debug)]
 pub(crate) enum SelectedTransportType {
     Single(String),
     Multiple(Vec<String>),
@@ -103,6 +104,7 @@ fn validate_transport_type<'a>(
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
     use std::collections::BTreeSet;
 
     use similar_asserts::assert_eq;
@@ -128,9 +130,10 @@ mod test {
         let selected =
             validate_and_select_transport_type(&None, &config.transport, &capabilities).unwrap();
 
-        assert!(matches!(selected,
+        assert_matches!(
+            selected,
             SelectedTransportType::Single(transport) if transport == "BLE"
-        ))
+        )
     }
 
     #[test]
@@ -152,9 +155,10 @@ mod test {
         )
         .unwrap();
 
-        assert!(matches!(selected,
+        assert_matches!(
+            selected,
             SelectedTransportType::Single(transport) if transport == "MQTT"
-        ))
+        )
     }
 
     #[test]
@@ -200,10 +204,10 @@ mod test {
             &capabilities,
         );
 
-        assert!(matches!(
+        assert_matches!(
             selected,
             Err(ValidationError::TransportNotAllowedForExchange)
-        ));
+        );
     }
 
     #[test]
@@ -228,10 +232,10 @@ mod test {
             &capabilities,
         );
 
-        assert!(matches!(
+        assert_matches!(
             selected,
             Err(ValidationError::TransportsCombinationNotAllowed)
-        ));
+        );
     }
 
     fn config(transports: &[&str]) -> CoreConfig {

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use mockall::predicate::eq;
@@ -314,7 +315,7 @@ async fn test_create_duplicate_proof_retains_database_error() {
 
     let error = repository.create_proof(proof).await.unwrap_err();
 
-    assert!(matches!(error, DataLayerError::AlreadyExists(_)));
+    assert_matches!(error, DataLayerError::AlreadyExists(_));
     assert!(
         error
             .to_string()
@@ -510,7 +511,7 @@ async fn test_get_proof_missing() {
     .await;
 
     let result = repository.get_proof(&Uuid::new_v4().into(), None).await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]
@@ -676,7 +677,7 @@ async fn test_get_proof_by_interaction_id_missing() {
     let result = repository
         .get_proof_by_interaction_id(&Uuid::new_v4().into())
         .await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

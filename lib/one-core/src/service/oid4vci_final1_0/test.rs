@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -1563,12 +1564,12 @@ async fn test_create_token_empty_pre_authorized_code() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1633,12 +1634,12 @@ async fn test_create_token_pre_authorized_code_used() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidGrant
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1703,10 +1704,10 @@ async fn test_create_token_wrong_credential_state() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(_))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1764,12 +1765,12 @@ async fn test_create_token_fails_when_related_credential_is_expiring() {
         )
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
             CredentialStateEnum::Expiring
         ))
-    ));
+    );
 }
 
 // const NONCE: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTgyNjU2NDMsImV4cCI6MTk1ODI2NTY0MywiaXNzIjoiaHR0cDovLzEyNy4wLjAuMTozMDAwIiwianRpIjoiYTRiMTQ5NzYtYzQ2MS00OWNkLWEyODItYzBmZjcyMGY3YTYyIiwiY29udGV4dCI6Imlzc3VhbmNlLW9wZW5pZHZjaS1maW5hbC0xLjAtbm9uY2UifQ.Am8B0y5QqsiJluim9Q6Ov-4Po3VLkLcxAg2L0vDXNu8";
@@ -2067,23 +2068,19 @@ async fn test_create_credential_with_instance_attestation(
         )
         .await;
     if !has_wia {
-        assert!(
-            matches!(
-                result,
-                Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidOrMissingProof
-                ))
-            ),
+        assert_matches!(
+            result,
+            Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+                OpenID4VCIError::InvalidOrMissingProof
+            )),
             "{result:?}"
         );
     } else if !matching_issuer {
-        assert!(
-            matches!(
-                result,
-                Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
-                    WalletAttestationError::WiaKaIssuerMismatch
-                ))
-            ),
+        assert_matches!(
+            result,
+            Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
+                WalletAttestationError::WiaKaIssuerMismatch
+            )),
             "{result:?}"
         );
     } else {
@@ -2894,12 +2891,12 @@ async fn test_create_credential_configuration_id_invalid() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::UnsupportedCredentialType
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -2937,12 +2934,12 @@ async fn test_create_credential_format_invalid_bearer_token() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidToken
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -2991,12 +2988,12 @@ async fn test_create_credential_pre_authorized_code_not_used() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidToken
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -3045,12 +3042,12 @@ async fn test_create_credential_interaction_data_invalid() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidToken
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -3107,12 +3104,12 @@ async fn test_create_credential_access_token_expired() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidToken
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -3181,12 +3178,12 @@ async fn test_create_credential_fails_when_credential_is_expiring() {
         )
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
             CredentialStateEnum::Expiring
         ))
-    ));
+    );
 }
 
 #[rstest::rstest]
@@ -3553,12 +3550,12 @@ async fn test_create_credential_nonce_reused() {
         )
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidNonce
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -3888,12 +3885,12 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
             WalletAttestationError::WiaMalformed(_)
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -3946,12 +3943,12 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
             WalletAttestationError::WiaMalformed(_)
         ))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -4003,12 +4000,12 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
             WalletAttestationError::WiaMalformed(_)
         ))
-    ));
+    );
 }
 
 fn issuable_check_config() -> CoreConfig {
@@ -4074,7 +4071,7 @@ fn test_validate_credential_issuable_ok(
 fn test_validate_credential_issuable_mdoc_refresh_too_soon() {
     let credential = credential_in_state(CredentialStateEnum::Accepted, now_utc());
 
-    assert!(matches!(
+    assert_matches!(
         validate_credential_issuable(
             &credential,
             &"MDOC".into(),
@@ -4083,7 +4080,7 @@ fn test_validate_credential_issuable_mdoc_refresh_too_soon() {
             &issuable_check_config(),
         ),
         Err(OID4VCIFinal1_0ServiceError::RefreshTooSoon)
-    ));
+    );
 }
 
 #[test]
@@ -4095,7 +4092,7 @@ fn test_validate_credential_issuable_suspended_mdoc() {
         now_utc() - Duration::days(4),
     );
 
-    assert!(matches!(
+    assert_matches!(
         validate_credential_issuable(
             &credential,
             &"MDOC".into(),
@@ -4104,7 +4101,7 @@ fn test_validate_credential_issuable_suspended_mdoc() {
             &issuable_check_config(),
         ),
         Err(OID4VCIFinal1_0ServiceError::CredentialSuspended)
-    ));
+    );
 }
 
 #[test]
@@ -4133,7 +4130,7 @@ fn test_validate_credential_issuable_accepted_non_mdoc_without_batch() {
 fn test_validate_credential_issuable_invalid_state() {
     let credential = credential_in_state(CredentialStateEnum::Pending, now_utc());
 
-    assert!(matches!(
+    assert_matches!(
         validate_credential_issuable(
             &credential,
             &"JWT".into(),
@@ -4144,5 +4141,5 @@ fn test_validate_credential_issuable_invalid_state() {
         Err(OID4VCIFinal1_0ServiceError::InvalidCredentialState(
             CredentialStateEnum::Pending
         ))
-    ));
+    );
 }

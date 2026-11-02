@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::vec;
+use std::{assert_matches, vec};
 
 use one_core::error::ErrorCode;
 use one_core::model::ecosystem::EcosystemOutcomes;
@@ -176,7 +176,7 @@ async fn test_mark_nonces_as_used_already_used() {
         .provider
         .mark_nonces_as_used(&interaction_id, vec![nonce_id])
         .await;
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
 }
 
 #[tokio::test]
@@ -212,7 +212,7 @@ async fn test_mark_nonces_as_used_already_used_different_interaction() {
         .provider
         .mark_nonces_as_used(&interaction_id, vec![nonce_id])
         .await;
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
 }
 
 #[tokio::test]
@@ -254,7 +254,7 @@ async fn test_delete_interaction() {
 
     let result = get_interaction(&setup.db, &setup.interaction_id).await;
 
-    assert!(matches!(result, Err(DbErr::RecordNotFound(_))));
+    assert_matches!(result, Err(DbErr::RecordNotFound(_)));
 }
 
 #[tokio::test]

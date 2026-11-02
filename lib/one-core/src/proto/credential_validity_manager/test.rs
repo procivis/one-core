@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::{Arc, LazyLock, Mutex};
@@ -1177,16 +1178,16 @@ async fn test_check_revocation_invalid_role() {
         .await;
 
     assert!(issuer_revocation_check_resp.is_err());
-    assert!(matches!(
+    assert_matches!(
         issuer_revocation_check_resp.unwrap_err(),
         Error::InvalidCredentialRole { .. }
-    ));
+    );
 
     assert!(verifier_revocation_check_resp.is_err());
-    assert!(matches!(
+    assert_matches!(
         verifier_revocation_check_resp.unwrap_err(),
         Error::InvalidCredentialRole { .. }
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1390,10 +1391,7 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
         .await
         .unwrap_err();
 
-    assert!(matches!(
-        result,
-        Error::InvalidCredentialStateTransition { .. }
-    ));
+    assert_matches!(result, Error::InvalidCredentialStateTransition { .. });
 }
 
 #[rstest]
@@ -1591,10 +1589,7 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
         .await
         .unwrap_err();
 
-    assert!(matches!(
-        result,
-        Error::InvalidCredentialStateTransition { .. }
-    ));
+    assert_matches!(result, Error::InvalidCredentialStateTransition { .. });
 }
 
 #[tokio::test]
@@ -1626,7 +1621,7 @@ async fn test_revoke_credential_invalid_role() {
         .await
         .unwrap_err();
 
-    assert!(matches!(result, Error::InvalidCredentialRole { .. }));
+    assert_matches!(result, Error::InvalidCredentialRole { .. });
 }
 
 #[tokio::test]

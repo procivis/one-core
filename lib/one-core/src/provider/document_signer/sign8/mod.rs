@@ -292,8 +292,10 @@ impl DocumentSigner for Sign8 {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
     use std::collections::HashMap;
 
+    use assert2::let_assert;
     use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
     use serde_json::json;
     use sha2::{Digest, Sha256};
@@ -383,10 +385,8 @@ mod test {
             signature_format: SignatureFormat::CAdES,
             ..test_params()
         };
-        assert!(matches!(
-            signer_with(params),
-            Err(InitializationError::UnsupportedConfiguration { .. })
-        ));
+        let_assert!(Err(error) = signer_with(params));
+        assert_matches!(error, InitializationError::UnsupportedConfiguration { .. });
     }
 
     #[test]
@@ -396,10 +396,8 @@ mod test {
             hash_algorithm: HashAlgorithm::Sha256,
             ..test_params()
         };
-        assert!(matches!(
-            signer_with(params),
-            Err(InitializationError::UnsupportedConfiguration { .. })
-        ));
+        let_assert!(Err(error) = signer_with(params));
+        assert_matches!(error, InitializationError::UnsupportedConfiguration { .. });
     }
 
     #[test]
@@ -417,7 +415,7 @@ mod test {
         let result = test_signer()
             .get_authorization_request(pdf_request(b"not a pdf"))
             .await;
-        assert!(matches!(result, Err(DocumentSignerError::InvalidDocument)));
+        assert_matches!(result, Err(DocumentSignerError::InvalidDocument));
     }
 
     #[tokio::test]
@@ -430,7 +428,7 @@ mod test {
                 document: b"not a pdf".to_vec(),
             })
             .await;
-        assert!(matches!(result, Err(DocumentSignerError::InvalidDocument)));
+        assert_matches!(result, Err(DocumentSignerError::InvalidDocument));
     }
 
     #[tokio::test]

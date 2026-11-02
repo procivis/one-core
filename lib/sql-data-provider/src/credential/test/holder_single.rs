@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::credential::{HolderBinding, HolderCredentialData, IssuerIdentity};
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, IntoActiveModel};
@@ -101,7 +103,7 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
         .unwrap();
     assert_eq!(listed.values.len(), 1);
     for actual in listed.values.iter().chain([&loaded]) {
-        assert!(matches!(actual, Credential::HolderSingle { .. }));
+        assert_matches!(actual, Credential::HolderSingle { .. });
         let holder = actual.holder().unwrap();
         let binding = holder.data.binding.as_ref();
         assert_eq!(
@@ -183,14 +185,14 @@ async fn invalid_holder_single_rows_return_mapping_errors(
     }
     row.holder_identifier_id = Set(identifier_only.then_some(setup.identifier.id));
     row.update(&setup.db).await.unwrap();
-    assert!(matches!(
+    assert_matches!(
         repository.get_credential(&setup.credential_id).await,
         Err(DataLayerError::MappingError(_))
-    ));
-    assert!(matches!(
+    );
+    assert_matches!(
         repository
             .get_credential_list(CredentialListQuery::default())
             .await,
         Err(DataLayerError::MappingError(_))
-    ));
+    );
 }

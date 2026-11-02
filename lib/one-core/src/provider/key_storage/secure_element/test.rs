@@ -1,5 +1,7 @@
+use std::assert_matches;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use mockall::predicate::eq;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -101,8 +103,6 @@ async fn test_import_failure() {
             }),
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(KeyStorageError::UnsupportedFeature { .. })
-    ));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyStorageError::UnsupportedFeature { .. });
 }

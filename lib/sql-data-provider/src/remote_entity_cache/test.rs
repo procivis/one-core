@@ -1,4 +1,4 @@
-use std::vec;
+use std::{assert_matches, vec};
 
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
@@ -142,10 +142,10 @@ async fn test_get_context_failed_wrong_id() {
 
     let result = setup.provider.get_by_id(&Uuid::new_v4().into()).await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(one_core::repository::error::DataLayerError::EntityNotFound { .. })
-    ));
+    );
 }
 
 #[tokio::test]
@@ -244,9 +244,9 @@ async fn test_delete_oldest_context_success() {
 
     get_json_ld_context(&setup.db, &persistent).await.unwrap();
     let c1 = get_json_ld_context(&setup.db, &expired).await;
-    assert!(matches!(c1, Err(DbErr::RecordNotFound(_))));
+    assert_matches!(c1, Err(DbErr::RecordNotFound(_)));
     let c2 = get_json_ld_context(&setup.db, &used_days_ago).await;
-    assert!(matches!(c2, Err(DbErr::RecordNotFound(_))));
+    assert_matches!(c2, Err(DbErr::RecordNotFound(_)));
     get_json_ld_context(&setup.db, &used_now).await.unwrap();
 }
 

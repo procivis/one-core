@@ -173,6 +173,8 @@ pub(crate) struct OAuthAuthorizationResponse {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use mockall::predicate::eq;
     use reqwest::Method;
     use serde_json::json;
@@ -514,6 +516,6 @@ mod tests {
             .await;
 
         // then
-        assert!(matches!(result, Err(OAuthClientError::IssuerMismatch)));
+        assert_matches!(result, Err(OAuthClientError::IssuerMismatch));
     }
 }

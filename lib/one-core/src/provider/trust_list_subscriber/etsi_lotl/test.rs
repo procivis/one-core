@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -265,10 +266,10 @@ async fn resolve_entries_rejects_unsupported_identifier_type() {
     let err = find_matching_for_identifier(&subscriber, &index, &identifier)
         .await
         .expect_err("Did identifiers are unsupported");
-    assert!(matches!(
+    assert_matches!(
         err,
         crate::provider::trust_list_subscriber::error::TrustListSubscriberError::UnsupportedIdentifierType(_)
-    ));
+    );
 }
 
 fn subscriber_with_delegate(

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
@@ -91,7 +92,7 @@ async fn test_extract_presentation() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Jwk {jwk} if jwk.kid() == Some("doc-signer-05-25-2022")));
+                assert_matches!(params, PublicKeySource::Jwk {jwk} if jwk.kid() == Some("doc-signer-05-25-2022"));
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(

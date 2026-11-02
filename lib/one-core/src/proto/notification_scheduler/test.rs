@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::pin::Pin;
 use std::sync::Mutex;
 
@@ -105,10 +106,10 @@ async fn notification_dispatch_waits_for_commit(
     );
 
     if in_transaction {
-        assert!(matches!(
+        assert_matches!(
             received.try_recv(),
             Err(oneshot::error::TryRecvError::Empty)
-        ));
+        );
         let callback = deferred
             .callback
             .lock()

@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::credential::Clearable;
 use sea_orm::{ActiveModelTrait, IntoActiveModel, ModelTrait};
 use similar_asserts::assert_eq;
@@ -247,8 +249,9 @@ async fn patches_respect_variant_fields(
             assert!(after.redirect_uri.is_none());
             repository.get_credential(&id).await.unwrap();
         } else {
-            assert!(
-                matches!(result, Err(DataLayerError::IncorrectParameters(_))),
+            assert_matches!(
+                result,
+                Err(DataLayerError::IncorrectParameters(_)),
                 "{name}: {result:?}"
             );
             assert_eq!(
@@ -284,7 +287,7 @@ async fn holder_binding_is_validated_after_merging(#[case] kind: CredentialType)
         },
     ] {
         let error = repository.update_credential(id, patch).await.unwrap_err();
-        assert!(matches!(error, DataLayerError::IncorrectParameters(_)));
+        assert_matches!(error, DataLayerError::IncorrectParameters(_));
         assert!(
             error
                 .to_string()
@@ -400,10 +403,7 @@ async fn resulting_model_must_have_required_fields(
             },
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(DataLayerError::IncorrectParameters(_))
-    ));
+    assert_matches!(result, Err(DataLayerError::IncorrectParameters(_)));
     assert_eq!(row(&setup, id).await, before);
 }
 
@@ -476,10 +476,7 @@ async fn patch_participates_in_callers_transaction() {
                     },
                 )
                 .await;
-            assert!(matches!(
-                result,
-                Err(DataLayerError::IncorrectParameters(_))
-            ));
+            assert_matches!(result, Err(DataLayerError::IncorrectParameters(_)));
             repository
                 .update_credential(
                     setup.credential_id,
@@ -514,5 +511,5 @@ async fn patch_missing_credential_returns_record_not_updated() {
     let result = repository
         .update_credential(Uuid::new_v4().into(), UpdateCredentialRequest::default())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+    assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }

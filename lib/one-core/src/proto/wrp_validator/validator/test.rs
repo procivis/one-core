@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -443,8 +444,9 @@ async fn test_qeaa_issuer_rejected_when_x5_reference_missing() {
         )
         .await;
 
-    assert!(
-        matches!(result, Err(WRPValidatorError::IssuerNotTrusted { .. })),
+    assert_matches!(
+        result,
+        Err(WRPValidatorError::IssuerNotTrusted { .. }),
         "a QEAA issuer missing x5u must be rejected"
     );
 }
@@ -495,13 +497,11 @@ async fn test_pid_with_non_qualified_category_still_requires_pid_provider() {
         )
         .await;
 
-    assert!(
-        matches!(
-            result,
-            Err(WRPValidatorError::IssuerNotTrusted {
-                role: "PID provider"
-            })
-        ),
+    assert_matches!(
+        result,
+        Err(WRPValidatorError::IssuerNotTrusted {
+            role: "PID provider"
+        }),
         "an issuer-supplied category must not bypass the PID provider check"
     );
 }
@@ -527,13 +527,11 @@ async fn test_pid_with_qualified_category_still_requires_pid_provider() {
         )
         .await;
 
-    assert!(
-        matches!(
-            result,
-            Err(WRPValidatorError::IssuerNotTrusted {
-                role: "PID provider"
-            })
-        ),
+    assert_matches!(
+        result,
+        Err(WRPValidatorError::IssuerNotTrusted {
+            role: "PID provider"
+        }),
         "a PID must be checked against the PID provider role, not the QEAA role"
     );
 }
@@ -679,12 +677,10 @@ fn test_consistency_name_mismatch_returns_error() {
         .unwrap_err();
 
     // then
-    assert!(
-        matches!(
-            &err,
-            WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
-                if field_name == "name"
-        ),
+    assert_matches!(
+        &err,
+        WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+            if field_name == "name",
         "unexpected error: {err}"
     );
 }
@@ -703,12 +699,10 @@ fn test_consistency_country_mismatch_returns_error() {
         .unwrap_err();
 
     // then
-    assert!(
-        matches!(
-            &err,
-            WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
-                if field_name == "country"
-        ),
+    assert_matches!(
+        &err,
+        WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+            if field_name == "country",
         "unexpected error: {err}"
     );
 }
@@ -727,12 +721,10 @@ fn test_consistency_registry_uri_mismatch_returns_error() {
         .unwrap_err();
 
     // then
-    assert!(
-        matches!(
-            &err,
-            WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
-                if field_name == "registry_uri"
-        ),
+    assert_matches!(
+        &err,
+        WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+            if field_name == "registry_uri",
         "unexpected error: {err}"
     );
 }
@@ -751,12 +743,10 @@ fn test_consistency_support_uri_mismatch_returns_error() {
         .unwrap_err();
 
     // then
-    assert!(
-        matches!(
-            &err,
-            WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
-                if field_name == "support_uri"
-        ),
+    assert_matches!(
+        &err,
+        WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+            if field_name == "support_uri",
         "unexpected error: {err}"
     );
 }
@@ -791,8 +781,9 @@ async fn test_resolve_signing_method_returns_error_when_no_jwks_url_and_no_x5c()
     let result = validator.resolve_signing_method(&token, None).await;
 
     // then
-    assert!(
-        matches!(result, Err(WRPValidatorError::MissingSigningDetails)),
+    assert_matches!(
+        result,
+        Err(WRPValidatorError::MissingSigningDetails),
         "unexpected result: {result:?}"
     );
 }
@@ -811,8 +802,9 @@ async fn test_resolve_signing_method_falls_back_to_x5c_when_no_jwks_url() {
         .unwrap();
 
     // then
-    assert!(
-        matches!(result, PublicKeySource::X5c { x5c: refs } if refs == x5c.as_slice()),
+    assert_matches!(
+        result,
+        PublicKeySource::X5c { x5c: refs } if refs == x5c.as_slice(),
         "expected X5c signing method"
     );
 }
@@ -887,11 +879,9 @@ async fn test_resolve_signing_method_returns_error_when_key_not_found_in_jwks() 
         .await;
 
     // then
-    assert!(
-        matches!(
-            result,
-            Err(WRPValidatorError::MissingRegistryKey(Some(ref kid))) if kid == "requested-key-id"
-        ),
+    assert_matches!(
+        result,
+        Err(WRPValidatorError::MissingRegistryKey(Some(ref kid))) if kid == "requested-key-id",
         "unexpected result: {result:?}"
     );
 }
@@ -909,11 +899,9 @@ fn test_try_from_did_public_key_source_returns_invalid_signing_method() {
     let result: Result<TrustEntityIdentifier<'_>, WRPValidatorError> = source.try_into();
 
     // then
-    assert!(
-        matches!(
-            result,
-            Err(WRPValidatorError::InvalidSigningMethod(ref method)) if method == "DID"
-        ),
+    assert_matches!(
+        result,
+        Err(WRPValidatorError::InvalidSigningMethod(ref method)) if method == "DID",
         "expected InvalidSigningMethod(DID)"
     );
 }
@@ -937,8 +925,9 @@ fn test_try_from_jwk_public_key_source_returns_jwk_identifier() {
     let result: Result<TrustEntityIdentifier<'_>, WRPValidatorError> = source.try_into();
 
     // then
-    assert!(
-        matches!(result, Ok(TrustEntityIdentifier::Jwk(_))),
+    assert_matches!(
+        result,
+        Ok(TrustEntityIdentifier::Jwk(_)),
         "expected TrustEntityIdentifier::Jwk"
     );
 }

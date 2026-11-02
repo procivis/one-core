@@ -249,6 +249,8 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for CredentialManagerError {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use one_core::error::ErrorCode;
     use one_core::model::ecosystem::EcosystemOutcomes;
     use one_core::model::history::HistoryErrorMetadata;
@@ -290,10 +292,7 @@ mod test {
             .and_then(|data| data.ecosystem_errors)
             .expect("the outcomes are carried");
         let outcome = &ecosystem_errors["EUDI"];
-        assert!(matches!(
-            outcome.result,
-            EcosystemTrustResultBindingEnum::NotTrusted
-        ));
+        assert_matches!(outcome.result, EcosystemTrustResultBindingEnum::NotTrusted);
         assert_eq!(
             "BR_0486",
             outcome

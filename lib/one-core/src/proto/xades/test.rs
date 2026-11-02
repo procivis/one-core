@@ -1,5 +1,6 @@
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
+use std::assert_matches;
 use std::sync::Arc;
 
 use asn1_rs::{Integer, SequenceOf, ToDer};
@@ -195,7 +196,7 @@ async fn tampered_document_fails() {
         .await
         .expect_err("verification should fail on tampered document");
 
-    assert!(matches!(err, Error::IncorrectDigest(_)), "{err}");
+    assert_matches!(err, Error::IncorrectDigest(_), "{err}");
 }
 
 #[tokio::test]
@@ -371,7 +372,7 @@ async fn dss_lote_tampered_document_fails() {
         .await
         .expect_err("tampered document should fail verification");
 
-    assert!(matches!(err, Error::IncorrectDigest(_)), "{err}");
+    assert_matches!(err, Error::IncorrectDigest(_), "{err}");
 }
 
 // Real EU member trusted list, signed by EU DSS with inclusive C14N. Verifying

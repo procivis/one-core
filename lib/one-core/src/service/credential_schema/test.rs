@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::vec;
+use std::{assert_matches, vec};
 
 use maplit::btreemap;
 use mockall::predicate::*;
@@ -2178,10 +2178,10 @@ fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
             name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
         },
     }];
-    assert!(matches!(
+    assert_matches!(
         renest_claim_schemas(request),
         Err(CredentialSchemaServiceError::MissingParentClaimSchema { .. })
-    ));
+    );
 }
 
 #[test]

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use one_core::model::identifier::Identifier;
@@ -171,7 +172,7 @@ async fn test_get_trust_entry_missing() {
     let setup = setup().await;
 
     let result = setup.provider.get(Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]
@@ -206,10 +207,7 @@ async fn test_delete_trust_entry() {
     assert!(result.is_ok());
 
     let get_result = setup.provider.get(id).await;
-    assert!(matches!(
-        get_result,
-        Err(DataLayerError::EntityNotFound { .. })
-    ));
+    assert_matches!(get_result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]
@@ -621,7 +619,7 @@ async fn test_update_trust_entry_not_found() {
         )
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+    assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }
 
 #[tokio::test]

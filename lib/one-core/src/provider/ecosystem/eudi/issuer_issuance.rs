@@ -156,6 +156,7 @@ fn status_period_satisfied(
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
     use std::sync::Arc;
 
     use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
@@ -286,10 +287,10 @@ mod test {
             .expect_validate_wallet_provider()
             .once()
             .withf(|key_source, scope| {
-                assert!(matches!(
+                assert_matches!(
                     key_source,
                     PublicKeySource::X5c { x5c } if x5c == &[WALLET_PROVIDER_CERTIFICATE]
-                ));
+                );
                 assert_eq!(EcosystemId::from("EUDI"), scope.ecosystem);
                 true
             })
@@ -431,14 +432,14 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(
                 WalletAttestationRejection::WalletInstanceAttestation(
                     RejectionReason::IssuerUntrusted
                 )
             )
-        ));
+        );
         assert_eq!(ErrorCode::BR_0494, error.error_code());
     }
 
@@ -462,12 +463,12 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
                 RejectionReason::IssuerUntrusted
             ))
-        ));
+        );
         assert_eq!(ErrorCode::BR_0496, error.error_code());
     }
 
@@ -495,12 +496,12 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(
                 WalletAttestationRejection::WalletInstanceAttestation(RejectionReason::Revoked)
             )
-        ));
+        );
         assert_eq!(ErrorCode::BR_0505, error.error_code());
     }
 
@@ -528,12 +529,12 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
                 RejectionReason::Revoked
             ))
-        ));
+        );
         assert_eq!(ErrorCode::BR_0499, error.error_code());
     }
 
@@ -561,12 +562,12 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
                 RejectionReason::StatusPeriod
             ))
-        ));
+        );
         assert_eq!(ErrorCode::BR_0507, error.error_code());
     }
 
@@ -642,14 +643,14 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(
                 WalletAttestationRejection::WalletInstanceAttestation(
                     RejectionReason::StatusPeriod
                 )
             )
-        ));
+        );
         assert_eq!(ErrorCode::BR_0506, error.error_code());
     }
 
@@ -673,14 +674,14 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(
                 WalletAttestationRejection::WalletInstanceAttestation(
                     RejectionReason::StatusPeriod
                 )
             )
-        ));
+        );
     }
 
     #[tokio::test]
@@ -703,12 +704,12 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
                 RejectionReason::StatusPeriod
             ))
-        ));
+        );
         assert_eq!(ErrorCode::BR_0507, error.error_code());
     }
 
@@ -732,11 +733,11 @@ mod test {
             .await
             .unwrap_err();
 
-        assert!(matches!(
+        assert_matches!(
             error,
             EcosystemError::WalletAttestation(WalletAttestationRejection::KeyAttestation(
                 RejectionReason::StatusPeriod
             ))
-        ));
+        );
     }
 }

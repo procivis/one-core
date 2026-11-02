@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use mockall::predicate::*;
@@ -378,10 +379,7 @@ async fn test_update_did_fail_reactivation() {
     );
 
     let result = service.update_did(&did.id, update_request).await;
-    assert!(matches!(
-        result,
-        Err(DidServiceError::CannotBeReactivated { .. })
-    ));
+    assert_matches!(result, Err(DidServiceError::CannotBeReactivated { .. }));
 }
 
 #[tokio::test]

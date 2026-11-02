@@ -176,8 +176,10 @@ impl KeyStorage for CapabilityCheckedKeyStorage {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
     use std::sync::Arc;
 
+    use assert2::let_assert;
     use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
     use uuid::Uuid;
 
@@ -207,10 +209,8 @@ mod test {
                 serde_json::json!({}),
             )
             .await;
-        assert!(matches!(
-            result,
-            Err(KeyStorageError::UnsupportedKeyType { .. })
-        ));
+        let_assert!(Err(error) = result);
+        assert_matches!(error, KeyStorageError::UnsupportedKeyType { .. });
     }
 
     #[tokio::test]
@@ -240,9 +240,7 @@ mod test {
                 }),
             )
             .await;
-        assert!(matches!(
-            result,
-            Err(KeyStorageError::UnsupportedFeature { .. })
-        ));
+        let_assert!(Err(error) = result);
+        assert_matches!(error, KeyStorageError::UnsupportedFeature { .. });
     }
 }

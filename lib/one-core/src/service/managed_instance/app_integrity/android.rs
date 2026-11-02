@@ -244,6 +244,7 @@ impl TryFrom<u32> for SecurityLevel {
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
     use std::collections::HashMap;
     use std::sync::Arc;
 
@@ -430,10 +431,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
         })
         .await;
 
-        assert!(matches!(
-            result,
-            Err(ManagedInstanceError::InsufficientSecurityLevel)
-        ))
+        assert_matches!(result, Err(ManagedInstanceError::InsufficientSecurityLevel))
     }
 
     #[tokio::test]
@@ -498,9 +496,9 @@ w1IdYIg2Wxg7yHcQZemFQg==
         })
         .await;
 
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(ManagedInstanceError::AppIntegrityValidationError(_))
-        ));
+        );
     }
 }

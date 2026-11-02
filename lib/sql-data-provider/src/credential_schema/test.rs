@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use one_core::clock::now_utc;
@@ -278,7 +279,7 @@ async fn test_create_credential_schema_already_exists() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository.create_credential_schema(credential_schema).await;
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
 }
 
 #[tokio::test]
@@ -475,7 +476,7 @@ async fn test_get_credential_schema_not_found() {
     let result = repository
         .get_credential_schema(&Uuid::new_v4().into())
         .await;
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]
@@ -534,7 +535,7 @@ async fn test_delete_credential_schema_not_found() {
             embedded_disclosure_policy: None,
         })
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+    assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }
 
 #[tokio::test]

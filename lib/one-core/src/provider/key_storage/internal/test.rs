@@ -1,5 +1,7 @@
+use std::assert_matches;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use mockall::predicate;
 use mockall::predicate::{always, eq};
 use secrecy::{ExposeSecret, SecretSlice};
@@ -229,8 +231,6 @@ async fn test_internal_import_jwk_invalid_key_type() {
             }),
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(KeyStorageError::InvalidKeyAlgorithm(_))
-    ));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyStorageError::InvalidKeyAlgorithm(_));
 }

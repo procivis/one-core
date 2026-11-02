@@ -1,3 +1,6 @@
+use std::assert_matches;
+
+use assert2::let_assert;
 use rstest::rstest;
 use similar_asserts::assert_eq;
 
@@ -78,11 +81,12 @@ async fn select_key_rejects_deleted_certificates(
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(KeySelectionError::NoMatchingCertificate { identifier_id, .. })
+    let_assert!(Err(error) = result);
+    assert_matches!(
+        error,
+        KeySelectionError::NoMatchingCertificate { identifier_id, .. }
             if identifier_id == identifier.id
-    ));
+    );
 }
 
 #[rstest]
@@ -99,9 +103,10 @@ async fn list_keys_excludes_deleted_certificates(#[values(false, true)] is_ca: b
         .list_keys(None, Some(CertificateFilter::id(Some(deleted.id))))
         .await;
 
-    assert!(matches!(
-        result,
-        Err(KeySelectionError::NoMatchingCertificate { identifier_id, .. })
+    let_assert!(Err(error) = result);
+    assert_matches!(
+        error,
+        KeySelectionError::NoMatchingCertificate { identifier_id, .. }
             if identifier_id == identifier.id
-    ));
+    );
 }

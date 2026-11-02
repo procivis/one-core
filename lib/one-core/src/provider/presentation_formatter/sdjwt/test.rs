@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
@@ -158,7 +159,7 @@ async fn test_format_presentation_with_cnf_missing_nonce_fails() {
         )
         .await;
 
-    assert!(matches!(result, Err(FormatterError::CouldNotFormat(_))));
+    assert_matches!(result, Err(FormatterError::CouldNotFormat(_)));
 }
 
 #[tokio::test]
@@ -190,7 +191,7 @@ async fn test_format_presentation_with_cnf_missing_audience_fails() {
         )
         .await;
 
-    assert!(matches!(result, Err(FormatterError::CouldNotFormat(_))));
+    assert_matches!(result, Err(FormatterError::CouldNotFormat(_)));
 }
 
 #[tokio::test]
@@ -344,7 +345,7 @@ async fn test_extract_presentation() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:holder:123"));
+                assert_matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:holder:123");
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);

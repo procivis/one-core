@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::notification::{
@@ -170,8 +172,8 @@ async fn test_delete_notification() {
 
     let result = provider.get(&notification_id, None).await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(one_core::repository::error::DataLayerError::EntityNotFound { .. })
-    ));
+    );
 }

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -119,10 +120,10 @@ async fn test_create_and_delete_identifier() {
 
     setup.provider.delete(&id).await.unwrap();
 
-    assert!(matches!(
+    assert_matches!(
         setup.provider.create(identifier).await,
         Err(DataLayerError::AlreadyExists(_))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -149,10 +150,10 @@ async fn test_get_identifier() {
     setup.provider.create(identifier.clone()).await.unwrap();
 
     let non_existent_id = Uuid::new_v4().into();
-    assert!(matches!(
+    assert_matches!(
         setup.provider.get(non_existent_id).await,
         Err(DataLayerError::EntityNotFound { .. })
-    ));
+    );
 
     let retrieved = setup.provider.get(id).await.unwrap();
     assert_eq!(retrieved.id, identifier.id);

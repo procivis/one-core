@@ -381,6 +381,8 @@ async fn validate_subscription(
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use super::*;
     use crate::provider::trust_list_subscriber::Feature;
 
@@ -403,10 +405,10 @@ mod test {
             Some(&TrustListRoleEnum::Issuer),
             capabilities(vec![]),
         );
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(TrustCollectionServiceError::InvalidTrustListRole(..))
-        ));
+        );
     }
 
     #[test]
@@ -415,10 +417,10 @@ mod test {
             None,
             capabilities(vec![TrustListRoleEnum::Issuer]),
         );
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(TrustCollectionServiceError::MissingTrustListRole(..))
-        ));
+        );
     }
 
     #[test]
@@ -438,9 +440,9 @@ mod test {
             Some(&TrustListRoleEnum::Verifier),
             capabilities(vec![TrustListRoleEnum::Issuer]),
         );
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(TrustCollectionServiceError::InvalidTrustListRole(..))
-        ));
+        );
     }
 }

@@ -1,5 +1,6 @@
 #![allow(clippy::unimplemented)]
 
+use std::assert_matches;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -428,7 +429,7 @@ async fn test_extract_credentials() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW"));
+                assert_matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW");
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
@@ -662,7 +663,7 @@ async fn test_extract_credentials_swiyu() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() ==  "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527"));
+                assert_matches!(params, PublicKeySource::Did {did, ..} if did.to_string() ==  "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527");
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
@@ -873,7 +874,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         .once()
         .withf(
             move |params, algorithm, token, received_signature| {
-                assert!(matches!(params, PublicKeySource::Jwk {jwk} if jwk.kid() == Some("doc-signer-05-25-2022")));
+                assert_matches!(params, PublicKeySource::Jwk {jwk} if jwk.kid() == Some("doc-signer-05-25-2022"));
                 assert_eq!(KeyAlgorithmType::Ecdsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(

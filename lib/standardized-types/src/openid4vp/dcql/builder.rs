@@ -52,6 +52,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use similar_asserts::assert_eq;
 
     use super::super::*;
@@ -230,22 +232,10 @@ mod tests {
             .build();
 
         assert_eq!(query.credentials.len(), 4);
-        assert!(matches!(
-            query.credentials[0].format,
-            CredentialFormat::MsoMdoc(_)
-        ));
-        assert!(matches!(
-            query.credentials[1].format,
-            CredentialFormat::SdJwtVc(_)
-        ));
-        assert!(matches!(
-            query.credentials[2].format,
-            CredentialFormat::JwtVc(_)
-        ));
-        assert!(matches!(
-            query.credentials[3].format,
-            CredentialFormat::W3cSdJwt(_)
-        ));
+        assert_matches!(query.credentials[0].format, CredentialFormat::MsoMdoc(_));
+        assert_matches!(query.credentials[1].format, CredentialFormat::SdJwtVc(_));
+        assert_matches!(query.credentials[2].format, CredentialFormat::JwtVc(_));
+        assert_matches!(query.credentials[3].format, CredentialFormat::W3cSdJwt(_));
     }
 
     #[test]
@@ -288,10 +278,10 @@ mod tests {
 
         let ta = credential.trusted_authorities.expect("present");
         assert_eq!(ta.len(), 4);
-        assert!(matches!(ta[0], TrustedAuthority::EtsiTl { .. }));
-        assert!(matches!(ta[1], TrustedAuthority::OpenidFederation { .. }));
-        assert!(matches!(ta[2], TrustedAuthority::AuthorityKeyId { .. }));
-        assert!(matches!(ta[3], TrustedAuthority::Custom { .. }));
+        assert_matches!(ta[0], TrustedAuthority::EtsiTl { .. });
+        assert_matches!(ta[1], TrustedAuthority::OpenidFederation { .. });
+        assert_matches!(ta[2], TrustedAuthority::AuthorityKeyId { .. });
+        assert_matches!(ta[3], TrustedAuthority::Custom { .. });
     }
 
     #[test]

@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use core_server::endpoint::credential_schema::dto::{
     CredentialSchemaTransactionCodeRequestRestDTO, TransactionCodeTypeRestEnum,
 };
@@ -373,7 +375,7 @@ async fn test_duplicate_schema() {
         )
         .await;
 
-    assert!(matches!(res, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(res, Err(DataLayerError::AlreadyExists(_)));
 
     let schemas = context.db.credential_schemas.list().await;
     assert_eq!(schemas.len(), 1);

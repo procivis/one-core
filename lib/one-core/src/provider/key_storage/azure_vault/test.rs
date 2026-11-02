@@ -1,5 +1,7 @@
+use std::assert_matches;
 use std::sync::Arc;
 
+use assert2::let_assert;
 use secrecy::SecretString;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -204,10 +206,8 @@ async fn test_azure_vault_generate_failed_unsupported_key_type() {
     let result = vault
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa, json!({}))
         .await;
-    assert!(matches!(
-        result,
-        Err(KeyStorageError::UnsupportedKeyType { .. })
-    ));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyStorageError::UnsupportedKeyType { .. });
 }
 
 #[tokio::test]
@@ -298,10 +298,8 @@ async fn test_azure_vault_import_unsupported_key_type() {
             }),
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(KeyStorageError::UnsupportedKeyType { .. })
-    ));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyStorageError::UnsupportedKeyType { .. });
 }
 
 #[tokio::test]
@@ -327,8 +325,6 @@ async fn test_azure_vault_import_jwk_invalid_key_type() {
             }),
         )
         .await;
-    assert!(matches!(
-        result,
-        Err(KeyStorageError::InvalidKeyAlgorithm(_))
-    ));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyStorageError::InvalidKeyAlgorithm(_));
 }

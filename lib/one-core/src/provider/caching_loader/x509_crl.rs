@@ -82,6 +82,7 @@ impl Resolver for X509CrlResolver {
 #[cfg(test)]
 mod test {
 
+    use std::assert_matches;
     use std::sync::Arc;
 
     use rcgen::{
@@ -116,8 +117,9 @@ mod test {
             .await
             .unwrap();
 
-        assert!(
-            matches!(result, ResolveResult::NewValue { expiry_date: Some(expiry) ,.. } if expiry == next_update)
+        assert_matches!(
+            result,
+            ResolveResult::NewValue { expiry_date: Some(expiry), .. } if expiry == next_update
         );
     }
 

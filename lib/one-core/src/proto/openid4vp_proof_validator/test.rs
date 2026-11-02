@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -206,8 +207,8 @@ async fn test_validate_submission_incompatible_did_method() {
         )
         .await
         .unwrap_err();
-    assert!(
-        matches!(err,OpenID4VCError::ValidationError(e) if e == "Unsupported holder DID method: holder")
+    assert_matches!(
+        err,OpenID4VCError::ValidationError(e) if e == "Unsupported holder DID method: holder"
     );
 }
 
@@ -613,7 +614,7 @@ async fn test_validate_submission_transaction_data_missing_evidence() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(err, OpenID4VCError::ValidationError(_)));
+    assert_matches!(err, OpenID4VCError::ValidationError(_));
 }
 
 #[tokio::test]
@@ -653,8 +654,9 @@ async fn test_validate_submission_transaction_data_duplicate_entries() {
         )
         .await
         .unwrap_err();
-    assert!(
-        matches!(err, OpenID4VCError::ValidationError(e) if e.contains("Duplicate transaction data"))
+    assert_matches!(
+        err,
+        OpenID4VCError::ValidationError(e) if e.contains("Duplicate transaction data")
     );
 }
 
@@ -694,8 +696,9 @@ async fn test_validate_submission_transaction_data_unsolicited_evidence() {
         )
         .await
         .unwrap_err();
-    assert!(
-        matches!(err, OpenID4VCError::ValidationError(e) if e.contains("not matching any requested entry"))
+    assert_matches!(
+        err,
+        OpenID4VCError::ValidationError(e) if e.contains("not matching any requested entry")
     );
 }
 
@@ -794,14 +797,14 @@ fn credential_sets_accept_alternatives_and_require_all_required_inputs() {
         &hashmap! {"c".to_string() => vec!["token".to_string()]},
     )
     .unwrap_err();
-    assert!(matches!(error, OpenID4VCError::ValidationError(message)
-        if message == "Credential set at index 0 is not satisfied; expected one of [[\"a\"], [\"b\"]]"));
+    assert_matches!(error, OpenID4VCError::ValidationError(message)
+        if message == "Credential set at index 0 is not satisfied; expected one of [[\"a\"], [\"b\"]]");
     query.credential_sets = None;
     let error = validate_dcql_submission(&query, &hashmap! {
         "a".to_string() => vec!["token".to_string()], "c".to_string() => vec!["token".to_string()]
     }).unwrap_err();
-    assert!(matches!(error, OpenID4VCError::ValidationError(message)
-        if message == "Missing requested credentials: b, optional"));
+    assert_matches!(error, OpenID4VCError::ValidationError(message)
+        if message == "Missing requested credentials: b, optional");
 }
 
 async fn multiformat_test_data(transaction_data: bool) -> TestData {
@@ -1147,7 +1150,7 @@ async fn two_alternatives_cannot_both_authorize_the_same_transaction_data() {
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
         .await;
-    assert!(matches!(result, Err(OpenID4VCError::ValidationError(_))));
+    assert_matches!(result, Err(OpenID4VCError::ValidationError(_)));
 }
 
 #[tokio::test]
@@ -1171,8 +1174,9 @@ async fn selected_option_cannot_borrow_claims_from_another_format() {
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
         .await;
-    assert!(
-        matches!(result, Err(OpenID4VCError::ValidationError(message)) if message == "Required claim not submitted")
+    assert_matches!(
+        result,
+        Err(OpenID4VCError::ValidationError(message)) if message == "Required claim not submitted"
     );
 }
 

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use similar_asserts::assert_eq;
@@ -149,7 +150,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
             &"did:jkk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJzaWciLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".parse().unwrap())
         .await;
 
-    assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));
+    assert_matches!(result, Err(DidMethodError::ResolutionError(_)));
 }
 
 #[tokio::test]
@@ -158,7 +159,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
 
     let result = provider.resolve(&"did:jwk:eyJrdHk".parse().unwrap()).await;
 
-    assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));
+    assert_matches!(result, Err(DidMethodError::ResolutionError(_)));
 }
 
 #[tokio::test]
@@ -170,7 +171,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
             &"did:jwk:eyJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJzaWciLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".parse().unwrap())
         .await;
 
-    assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));
+    assert_matches!(result, Err(DidMethodError::ResolutionError(_)));
 }
 
 #[tokio::test]

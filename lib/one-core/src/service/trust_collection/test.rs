@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use mockall::predicate::eq;
@@ -192,10 +193,10 @@ async fn test_create_trust_collection_already_exists() {
     let result = service.create_trust_collection(request).await;
 
     // then
-    assert!(matches!(
+    assert_matches!(
         result.unwrap_err(),
         TrustCollectionServiceError::TrustCollectionAlreadyExists
-    ));
+    );
 }
 
 #[tokio::test]

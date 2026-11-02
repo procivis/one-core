@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use one_core::model::certificate::{
@@ -105,10 +106,10 @@ async fn test_get_certificate() {
     setup.provider.create(certificate.clone()).await.unwrap();
 
     let non_existent_id = Uuid::new_v4().into();
-    assert!(matches!(
+    assert_matches!(
         setup.provider.get(non_existent_id).await,
         Err(DataLayerError::EntityNotFound { .. })
-    ));
+    );
 
     let retrieved = setup.provider.get(certificate.id).await.unwrap();
     assert_eq!(retrieved.id, certificate.id);

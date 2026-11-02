@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::repository::DataRepository;
 use one_core::service::test_utilities::CredentialBuilder;
 use sea_orm::{ActiveModelTrait, ColumnTrait, IntoActiveModel, QueryFilter};
@@ -442,7 +444,7 @@ async fn reuse_does_not_hide_conflicting_requested_claim_ids() {
         .get_credential_repository()
         .create_credential(request)
         .await;
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
     assert!(
         credential::Entity::find_by_id(requested_id)
             .one(&setup.db)

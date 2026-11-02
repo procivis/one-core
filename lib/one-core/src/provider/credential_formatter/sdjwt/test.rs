@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashSet;
 use std::string::ToString;
 
@@ -702,8 +703,8 @@ fn verify_x5t_s256_rejects_mismatching_thumbprint() {
 
     let result = super::verify_x5t_s256("not-the-thumbprint", fingerprint);
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(crate::provider::credential_formatter::error::FormatterError::CouldNotExtractCredentials(_))
-    ));
+    );
 }

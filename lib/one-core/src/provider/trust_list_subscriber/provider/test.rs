@@ -1,4 +1,7 @@
+use std::assert_matches;
 use std::sync::Arc;
+
+use assert2::let_assert;
 
 use super::*;
 use crate::config::core_config::{CoreConfig, TrustListSubscriberConfig};
@@ -84,8 +87,6 @@ LOTL_SUBSCRIBER:
     );
 
     let result = build(&mut config);
-    assert!(matches!(
-        result,
-        Err(ConfigValidationError::EntryNotFound(id)) if id == "DOES_NOT_EXIST"
-    ));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, ConfigValidationError::EntryNotFound(id) if id == "DOES_NOT_EXIST");
 }

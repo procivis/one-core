@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -350,13 +351,13 @@ async fn test_get_claim_list() {
     let result = repository
         .get_claim_list(vec![claims[0].id, Uuid::new_v4().into()])
         .await;
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(DataLayerError::IncompleteClaimsList {
             expected: 2,
             got: 1
         })
-    ));
+    );
 }
 
 /// The claim schemas are loaded lazily, but the whole batch of returned claims shares a single
@@ -609,7 +610,7 @@ async fn conflicting_claim_insertion_preserves_existing_associations() {
         .create_claim_list(credential_ids[1], vec![conflicting])
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+    assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
     for credential_id in credential_ids {
         let claims = repositories
             .get_claim_repository()

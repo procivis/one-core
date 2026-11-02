@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use assert2::let_assert;
 use one_core::clock::now_utc;
 use one_core::model::credential::{
@@ -453,13 +455,13 @@ async fn mixed_format_batch_parent_rejection() {
             .await;
         assert_eq!(response.status(), 400);
         assert_eq!(response.error_code().await, error_code);
-        assert!(matches!(
+        assert_matches!(
             context.db.credentials.get(&batch.bbs_item).await,
             Credential::HolderBatchItem {
                 consumed_at: None,
                 ..
             }
-        ));
+        );
     }
 }
 
@@ -661,13 +663,13 @@ impl BatchPresentation {
         // Load by saved IDs so deleted items are checked as well.
         for item in &self.items {
             let stored = self.context.db.credentials.get(&item.common().id).await;
-            assert!(matches!(
+            assert_matches!(
                 stored,
                 Credential::HolderBatchItem {
                     consumed_at: None,
                     ..
                 }
-            ));
+            );
         }
     }
 }
@@ -799,7 +801,7 @@ async fn setup_mixed_format_batch(
         .await
         .unwrap();
     let parent = context.db.credentials.get(&parent.common().id).await;
-    assert!(matches!(parent, Credential::HolderBatchParent { .. }));
+    assert_matches!(parent, Credential::HolderBatchParent { .. });
     MixedFormatBatch {
         parent,
         earliest_expiring_jwt_item: earliest_expiring_jwt.common().id,

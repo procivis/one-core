@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -263,7 +265,7 @@ async fn update_rejects_missing_log() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::CouldNotUpdate(_)));
+    assert_matches!(error, DidMethodError::CouldNotUpdate(_));
 }
 
 #[tokio::test]
@@ -283,7 +285,7 @@ async fn update_rejects_tampered_log() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::ResolutionError(_)));
+    assert_matches!(error, DidMethodError::ResolutionError(_));
 }
 
 #[tokio::test]
@@ -306,7 +308,7 @@ async fn update_rejects_deactivated_did() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::Deactivated));
+    assert_matches!(error, DidMethodError::Deactivated);
 }
 
 #[tokio::test]
@@ -321,7 +323,7 @@ async fn update_rejects_missing_signing_keys() {
         .update(id, keys, replacement_keys(&setup), created.log)
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::CouldNotUpdate(_)));
+    assert_matches!(error, DidMethodError::CouldNotUpdate(_));
 }
 
 #[tokio::test]
@@ -339,7 +341,7 @@ async fn update_rejects_unauthorized_signing_key() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::CouldNotUpdate(_)));
+    assert_matches!(error, DidMethodError::CouldNotUpdate(_));
 }
 
 #[tokio::test]
@@ -379,7 +381,7 @@ async fn update_rejects_invalid_update_key_count(#[case] count: usize) {
         .update(id, did_keys(&setup), new_keys, created.log)
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::CouldNotUpdate(_)));
+    assert_matches!(error, DidMethodError::CouldNotUpdate(_));
 }
 
 #[tokio::test]
@@ -394,7 +396,7 @@ async fn update_rejects_missing_replacement_update_key() {
         .update(id, did_keys(&setup), new_keys, created.log)
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::CouldNotUpdate(_)));
+    assert_matches!(error, DidMethodError::CouldNotUpdate(_));
 }
 
 #[tokio::test]
@@ -409,7 +411,7 @@ async fn update_rejects_non_eddsa_update_key() {
         .update(id, did_keys(&setup), new_keys, created.log)
         .await
         .unwrap_err();
-    assert!(matches!(error, DidMethodError::UnsupportedKeyType(_)));
+    assert_matches!(error, DidMethodError::UnsupportedKeyType(_));
 }
 
 #[tokio::test]
@@ -433,8 +435,9 @@ async fn update_rejects_active_pre_rotation() {
         .update(id, did_keys(&setup), replacement_keys(&setup), Some(log))
         .await
         .unwrap_err();
-    assert!(
-        matches!(error, DidMethodError::CouldNotUpdate(message) if message.contains("pre-rotation"))
+    assert_matches!(
+        error,
+        DidMethodError::CouldNotUpdate(message) if message.contains("pre-rotation")
     );
 }
 
@@ -463,10 +466,10 @@ async fn update_allows_exceeding_resolution_entry_limit() {
             .log
             .unwrap();
         assert_eq!(log.lines().count(), expected_entries);
-        assert!(matches!(
+        assert_matches!(
             setup.method.verify_log(&log, Some(&created.did)).await,
             Err(DidMethodError::ResolutionError(message)) if message.contains("too many entries")
-        ));
+        );
     }
     setup.method.params.max_did_log_entry_check = None;
     setup

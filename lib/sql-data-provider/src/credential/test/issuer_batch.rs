@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::credential::IssuerCredentialData;
 use one_core::model::relation::Related;
 use one_core::repository::DataRepository;
@@ -213,10 +215,7 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
         .get_credential(&setup.credential_id)
         .await
         .unwrap();
-    assert!(matches!(
-        legacy_parent,
-        Credential::IssuerBatchParent { .. }
-    ));
+    assert_matches!(legacy_parent, Credential::IssuerBatchParent { .. });
 }
 
 #[tokio::test]
@@ -257,9 +256,9 @@ async fn issuer_batch_parent_loads_instance_attestation_stored_at_token_endpoint
         .await
         .unwrap();
     assert_eq!(credentials.len(), 1);
-    assert!(matches!(&credentials[0], Credential::IssuerBatchParent {
+    assert_matches!(&credentials[0], Credential::IssuerBatchParent {
         wallet_instance_attestation_blob_id: Some(id), ..
-    } if *id == blob_id));
+    } if *id == blob_id);
 }
 
 #[rstest]
@@ -293,14 +292,14 @@ async fn issuer_batch_rows_require_relations(
         _ => unreachable!(),
     }
     row.update(&setup.db).await.unwrap();
-    assert!(matches!(
+    assert_matches!(
         repository.get_credential(&setup.credential_id).await,
         Err(DataLayerError::MappingError(_))
-    ));
-    assert!(matches!(
+    );
+    assert_matches!(
         repository
             .get_credential_list(CredentialListQuery::default())
             .await,
         Err(DataLayerError::MappingError(_))
-    ));
+    );
 }

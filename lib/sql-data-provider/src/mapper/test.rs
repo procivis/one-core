@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::error::Error;
 
 use one_core::error::{ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
@@ -37,7 +38,7 @@ async fn constraint_errors_retain_details(
     let error = map(original.clone());
 
     if unique {
-        assert!(matches!(error, DataLayerError::AlreadyExists(_)));
+        assert_matches!(error, DataLayerError::AlreadyExists(_));
         assert_eq!(error.error_code(), ErrorCode::BR_0357);
         assert!(
             error
@@ -45,7 +46,7 @@ async fn constraint_errors_retain_details(
                 .contains("UNIQUE constraint failed: child.id")
         );
     } else {
-        assert!(matches!(error, DataLayerError::IncorrectParameters(_)));
+        assert_matches!(error, DataLayerError::IncorrectParameters(_));
         assert_eq!(error.error_code(), ErrorCode::BR_0000);
         assert!(error.to_string().contains("FOREIGN KEY constraint failed"));
     }
@@ -69,7 +70,7 @@ async fn constraint_errors_retain_details(
 fn update_errors_retain_details(#[case] original: DbErr) {
     let error = to_update_data_layer_error(original.clone());
 
-    assert!(matches!(error, DataLayerError::RecordNotUpdated(_)));
+    assert_matches!(error, DataLayerError::RecordNotUpdated(_));
     assert_eq!(error.error_code(), ErrorCode::BR_0000);
     assert!(error.to_string().contains(&original.to_string()));
     assert_eq!(
@@ -89,7 +90,7 @@ fn other_database_errors_retain_details(
 ) {
     let error = map(original.clone());
 
-    assert!(matches!(error, DataLayerError::Db(_)));
+    assert_matches!(error, DataLayerError::Db(_));
     assert_eq!(error.error_code(), ErrorCode::BR_0054);
     assert!(error.to_string().contains(&original.to_string()));
     assert_eq!(

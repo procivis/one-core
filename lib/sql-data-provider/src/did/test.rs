@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use one_core::model::common::SortDirection;
@@ -313,12 +314,9 @@ async fn test_update_did_keys_rolls_back_on_invalid_keys(#[case] duplicate: bool
     let result = setup.provider.update_did_keys(&did_id, keys).await;
 
     if duplicate {
-        assert!(matches!(result, Err(DataLayerError::AlreadyExists(_))));
+        assert_matches!(result, Err(DataLayerError::AlreadyExists(_)));
     } else {
-        assert!(matches!(
-            result,
-            Err(DataLayerError::IncorrectParameters(_))
-        ));
+        assert_matches!(result, Err(DataLayerError::IncorrectParameters(_)));
     }
     assert_eq!(
         did::Entity::find_by_id(did_id)
@@ -341,7 +339,7 @@ async fn test_update_did_keys_missing_did() {
         .provider
         .update_did_keys(&Uuid::new_v4().into(), vec![])
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+    assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }
 
 #[tokio::test]
@@ -422,10 +420,7 @@ async fn test_create_did_invalid_organisation() {
             log: None,
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(DataLayerError::IncorrectParameters(_))
-    ));
+    assert_matches!(result, Err(DataLayerError::IncorrectParameters(_)));
 }
 
 #[tokio::test]
@@ -486,7 +481,7 @@ async fn test_get_did_by_value_lookup_null_organisation() {
 
     let result = provider.get_did_by_value(&did_value, Some(None)).await;
 
-    assert!(matches!(result, Ok(None)));
+    assert_matches!(result, Ok(None));
 }
 
 #[tokio::test]
@@ -497,7 +492,7 @@ async fn test_get_did_by_value_missing() {
         .get_did_by_value(&"did:missing:123".parse().unwrap(), None)
         .await;
 
-    assert!(matches!(result, Ok(None)));
+    assert_matches!(result, Ok(None));
 }
 
 #[tokio::test]
@@ -555,7 +550,7 @@ async fn test_get_did_not_existing() {
 
     let result = provider.get_did(&Uuid::new_v4().into(), None).await;
 
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

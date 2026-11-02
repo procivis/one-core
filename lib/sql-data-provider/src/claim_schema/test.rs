@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -129,11 +131,11 @@ async fn test_get_claim_schema_list() {
     let result = repository
         .get_claim_schema_list(vec![schemas[0].id, Uuid::new_v4().into()])
         .await;
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(DataLayerError::IncompleteClaimsSchemaList {
             expected: 2,
             got: 1
         })
-    ));
+    );
 }

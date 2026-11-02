@@ -1,3 +1,6 @@
+use std::assert_matches;
+
+use assert2::let_assert;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PrivateJwkEc;
 
@@ -232,7 +235,8 @@ async fn test_parse_jwk_invalid_crv() {
     let result = eddsa.parse_private_jwk(private_jwk);
 
     // then
-    assert!(matches!(result, Err(KeyAlgorithmError::NotSupported(msg)) if msg == "crv P-512"));
+    let_assert!(Err(error) = result);
+    assert_matches!(error, KeyAlgorithmError::NotSupported(msg) if msg == "crv P-512");
 }
 
 #[test]

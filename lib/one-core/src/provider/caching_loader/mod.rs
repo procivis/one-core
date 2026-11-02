@@ -112,6 +112,7 @@ impl ErrorCodeMixin for ResolverError {
     }
 }
 
+#[derive(Debug)]
 pub enum ResolveResult {
     NewValue {
         content: Vec<u8>,

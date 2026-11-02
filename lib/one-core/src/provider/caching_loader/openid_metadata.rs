@@ -251,6 +251,8 @@ pub(crate) fn openid_metadata_cache_from_config(
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use mockall::predicate::eq;
     use serde_json::json;
     use similar_asserts::assert_eq;
@@ -390,7 +392,7 @@ mod tests {
             .await;
 
         // then: no second request against the legacy endpoint
-        assert!(matches!(result, Err(CacheError::SerdeJson(_))));
+        assert_matches!(result, Err(CacheError::SerdeJson(_)));
     }
 
     #[tokio::test]

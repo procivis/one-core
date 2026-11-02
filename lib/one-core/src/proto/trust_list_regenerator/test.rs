@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -114,10 +116,10 @@ async fn missing_publisher_is_reported() {
         Arc::new(provider),
     );
 
-    assert!(matches!(
+    assert_matches!(
         proto.regenerate_for_identifier(identifier_id).await,
         Err(Error::MissingPublisher(id)) if id == publisher_id
-    ));
+    );
 }
 
 #[tokio::test]

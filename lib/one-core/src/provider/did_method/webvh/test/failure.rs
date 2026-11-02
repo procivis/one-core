@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use std::fs;
 use std::path::Path;
+use std::{assert_matches, fs};
 
 use similar_asserts::assert_eq;
 
@@ -87,10 +87,7 @@ async fn rejects_failure_vectors() {
         setup.method.did_method_provider = Arc::new(provider);
         let error = setup.method.resolve(&did).await.expect_err(name);
         if name == "deactivated.jsonl" {
-            assert!(
-                matches!(error, DidMethodError::Deactivated),
-                "{name}: {error}"
-            );
+            assert_matches!(error, DidMethodError::Deactivated, "{name}: {error}");
         } else {
             let reason = expected.get(name).expect("Unexpected failure vector");
             assert!(

@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -923,10 +924,10 @@ async fn test_create_identifier_trust_information_fails_when_no_ecosystem_enable
     // then
     let error = result.unwrap_err();
     assert_eq!(error.error_code(), ErrorCode::BR_0416);
-    assert!(matches!(
+    assert_matches!(
         error,
         IdentifierServiceError::NoEcosystemEnabledForTrustInformation
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1411,10 +1412,10 @@ async fn test_create_remote_did_identifier_duplicate_returns_colliding_id() {
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0240);
-    assert!(matches!(
+    assert_matches!(
         err,
         IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == existing_id
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1508,10 +1509,10 @@ async fn test_create_remote_key_identifier_duplicate_returns_colliding_id() {
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0240);
-    assert!(matches!(
+    assert_matches!(
         err,
         IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == existing_id
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1635,10 +1636,10 @@ async fn test_create_remote_certificate_identifier_duplicate_returns_colliding_i
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0240);
-    assert!(matches!(
+    assert_matches!(
         err,
         IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == colliding_id
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1761,10 +1762,10 @@ async fn test_create_remote_ca_identifier_duplicate_returns_colliding_id() {
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0240);
-    assert!(matches!(
+    assert_matches!(
         err,
         IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == colliding_id
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1806,10 +1807,10 @@ async fn test_create_remote_identifier_name_already_taken_returns_colliding_id()
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0240);
-    assert!(matches!(
+    assert_matches!(
         err,
         IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == colliding_id
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1834,7 +1835,7 @@ async fn test_update_identifier_not_found_for_deleted() {
         .await
         .unwrap_err();
 
-    assert!(matches!(err, IdentifierServiceError::NotFound(id) if id == identifier_id));
+    assert_matches!(err, IdentifierServiceError::NotFound(id) if id == identifier_id);
 }
 
 #[tokio::test]
@@ -1896,13 +1897,13 @@ async fn test_update_identifier_key_on_non_key_identifier_fails() {
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0513);
-    assert!(matches!(
+    assert_matches!(
         err,
         IdentifierServiceError::InvalidUpdateForIdentifierType {
             attribute: "key",
             ..
         }
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1946,7 +1947,7 @@ async fn test_update_identifier_remote_key_fails() {
         .unwrap_err();
 
     assert_eq!(err.error_code(), ErrorCode::BR_0076);
-    assert!(matches!(err, IdentifierServiceError::KeyMustNotBeRemote(_)));
+    assert_matches!(err, IdentifierServiceError::KeyMustNotBeRemote(_));
 }
 
 #[tokio::test]
@@ -2919,13 +2920,13 @@ async fn test_update_did_keys_fails_for_non_did_identifier() {
         .unwrap_err();
 
     assert_eq!(error.error_code(), ErrorCode::BR_0513);
-    assert!(matches!(
+    assert_matches!(
         error,
         IdentifierServiceError::InvalidUpdateForIdentifierType {
             attribute: "did",
             ..
         }
-    ));
+    );
 }
 
 #[tokio::test]

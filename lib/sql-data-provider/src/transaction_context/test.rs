@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::mpsc;
 
 use rstest::rstest;
@@ -49,10 +50,10 @@ async fn callback_observes_committed_data() {
                     sender.send(row.try_get::<i32>("", "id").unwrap()).unwrap();
                 });
             }));
-            assert!(matches!(
+            assert_matches!(
                 receiver.try_recv(),
                 Err(oneshot::error::TryRecvError::Empty)
-            ));
+            );
             Ok::<_, DbErr>(())
         })
         .await
@@ -137,10 +138,7 @@ async fn cancelled_transaction_discards_callbacks() {
         _ = transaction => panic!("Transaction should stay pending"),
         _ = ready => {}
     }
-    assert!(matches!(
-        receiver.try_recv(),
-        Err(mpsc::TryRecvError::Disconnected)
-    ));
+    assert_matches!(receiver.try_recv(), Err(mpsc::TryRecvError::Disconnected));
 }
 
 #[tokio::test]
@@ -174,11 +172,8 @@ async fn failed_commit_discards_callbacks() {
         })
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::TransactionError(_))));
-    assert!(matches!(
-        receiver.try_recv(),
-        Err(mpsc::TryRecvError::Disconnected)
-    ));
+    assert_matches!(result, Err(DataLayerError::TransactionError(_)));
+    assert_matches!(receiver.try_recv(), Err(mpsc::TryRecvError::Disconnected));
 }
 
 #[tokio::test]

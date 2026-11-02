@@ -1,6 +1,6 @@
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
-use std::vec;
+use std::{assert_matches, vec};
 
 use one_core::model::common::SortDirection;
 use one_core::model::credential::CredentialStateEnum;
@@ -372,10 +372,7 @@ async fn test_create_credential_entry_fail_without_index() {
         )
         .await;
 
-    assert!(matches!(
-        result,
-        Err(DataLayerError::IncorrectParameters(_))
-    ));
+    assert_matches!(result, Err(DataLayerError::IncorrectParameters(_)));
 }
 
 #[tokio::test]
@@ -510,7 +507,7 @@ async fn test_link_credential_entries_fails_for_linked_or_missing_entry() {
                 (other_entry_id, credential_id),
             ])
             .await;
-        assert!(matches!(result, Err(DataLayerError::RecordNotUpdated(_))));
+        assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
     }
 
     // rolled back, the unlinked entry stays unlinked
@@ -580,10 +577,7 @@ async fn test_create_certificate_entry_fail_with_both_serial_and_index() {
         )
         .await;
 
-    assert!(matches!(
-        result,
-        Err(DataLayerError::IncorrectParameters(_))
-    ));
+    assert_matches!(result, Err(DataLayerError::IncorrectParameters(_)));
 }
 
 #[tokio::test]

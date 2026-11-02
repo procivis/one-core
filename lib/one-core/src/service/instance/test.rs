@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use assert2::check;
@@ -850,8 +851,8 @@ async fn holder_register_already_exists() {
     let result = service.register_instance(request).await;
 
     // then
-    assert!(matches!(
+    assert_matches!(
         result.unwrap_err(),
         HolderInstanceError::InstanceAlreadyExists(_)
-    ));
+    );
 }

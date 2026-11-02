@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use assert2::let_assert;
 use one_core::model::credential::{IssuerIdentity, VerifierCredentialData};
 use one_core::repository::DataRepository;
@@ -88,10 +90,7 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
         })
         .await
         .unwrap();
-    assert!(matches!(
-        listed.values.as_slice(),
-        [Credential::Verifier { .. }]
-    ));
+    assert_matches!(listed.values.as_slice(), [Credential::Verifier { .. }]);
 }
 
 #[rstest]
@@ -125,14 +124,14 @@ async fn invalid_verifier_rows_return_mapping_errors(
     row.format = Set(has_format.then_some(format_id));
     row.update(&setup.db).await.unwrap();
 
-    assert!(matches!(
+    assert_matches!(
         repository.get_credential(&setup.credential_id).await,
         Err(DataLayerError::MappingError(_))
-    ));
-    assert!(matches!(
+    );
+    assert_matches!(
         repository
             .get_credential_list(CredentialListQuery::default())
             .await,
         Err(DataLayerError::MappingError(_))
-    ));
+    );
 }

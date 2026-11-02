@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use assert2::let_assert;
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, IntoActiveModel};
@@ -178,14 +180,14 @@ async fn invalid_issuer_single_rows_return_mapping_errors(
         row.format = Set(None);
     }
     row.update(&setup.db).await.unwrap();
-    assert!(matches!(
+    assert_matches!(
         repository.get_credential(&setup.credential_id).await,
         Err(DataLayerError::MappingError(_))
-    ));
-    assert!(matches!(
+    );
+    assert_matches!(
         repository
             .get_credential_list(CredentialListQuery::default())
             .await,
         Err(DataLayerError::MappingError(_))
-    ));
+    );
 }

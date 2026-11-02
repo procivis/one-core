@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use one_core::model::common::SortDirection;
 use one_core::model::instance::{InstanceRole, InstanceStatus};
 use one_core::model::list_filter::ListFilterValue;
@@ -277,7 +279,7 @@ async fn test_get_wallet_instance_missing() {
 
     let result = provider.get(&Uuid::new_v4().into()).await;
 
-    assert!(matches!(result, Err(DataLayerError::EntityNotFound { .. })));
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
 #[tokio::test]

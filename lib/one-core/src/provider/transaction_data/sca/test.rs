@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -74,10 +76,7 @@ fn test_validate_transaction_data_rejects_empty_credential_ids() {
     let result = provider(TransactionType::LoginRiskTransaction)
         .validate_transaction_data(&encode(transaction_data));
 
-    assert!(matches!(
-        result,
-        Err(TransactionDataError::InvalidTransactionData(_))
-    ));
+    assert_matches!(result, Err(TransactionDataError::InvalidTransactionData(_)));
 }
 
 #[test]
@@ -89,10 +88,10 @@ fn test_validate_transaction_data_rejects_unanswerable_hash_algorithms() {
     let result = provider(TransactionType::LoginRiskTransaction)
         .validate_transaction_data(&encode(transaction_data));
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(TransactionDataError::UnsupportedHashAlgorithm(_))
-    ));
+    );
 }
 
 #[tokio::test]
@@ -257,10 +256,7 @@ fn test_prepare_transaction_data_rejects_an_execution_date_on_a_recurring_paymen
         })),
     );
 
-    assert!(matches!(
-        result,
-        Err(TransactionDataError::InvalidTransactionData(_))
-    ));
+    assert_matches!(result, Err(TransactionDataError::InvalidTransactionData(_)));
 }
 
 #[test]
@@ -278,10 +274,7 @@ fn test_prepare_transaction_data_rejects_an_execution_date_in_the_past() {
     let result = provider(TransactionType::Payment)
         .prepare_transaction_data(vec!["sca".into()], Some(payment(date_in(-1))));
 
-    assert!(matches!(
-        result,
-        Err(TransactionDataError::InvalidTransactionData(_))
-    ));
+    assert_matches!(result, Err(TransactionDataError::InvalidTransactionData(_)));
 
     // a payment executing today has not been missed yet
     provider(TransactionType::Payment)
@@ -299,10 +292,7 @@ fn test_prepare_transaction_data_rejects_a_mandate_without_a_purpose_or_payment(
         })),
     );
 
-    assert!(matches!(
-        result,
-        Err(TransactionDataError::InvalidTransactionData(_))
-    ));
+    assert_matches!(result, Err(TransactionDataError::InvalidTransactionData(_)));
 }
 
 #[tokio::test]

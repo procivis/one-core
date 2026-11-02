@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::future::join_all;
@@ -1564,7 +1566,7 @@ async fn test_create_credential_success_with_multiformat_schema() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert!(matches!(credential, Credential::IssuerBatchParent { .. }));
+    assert_matches!(credential, Credential::IssuerBatchParent { .. });
 }
 
 #[tokio::test]

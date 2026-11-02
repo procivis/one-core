@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
@@ -479,10 +480,10 @@ async fn test_handle_invitation_certificate_verifier() {
     else {
         panic!("expected a holder proof artifact");
     };
-    assert!(matches!(
+    assert_matches!(
         verifier_details.as_ref(),
         Some(IdentifierDetails::Certificate(_))
-    ));
+    );
 }
 
 fn holder_mqtt_client(signed_request: String) -> (MockMqttClient, Url) {

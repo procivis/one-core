@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -267,10 +268,10 @@ async fn test_submit_proof_validator_failure_only_updates_active_proofs(
         .await
         .unwrap_err();
 
-    assert!(matches!(
+    assert_matches!(
         err,
         OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(_))
-    ));
+    );
 }
 
 #[tokio::test]

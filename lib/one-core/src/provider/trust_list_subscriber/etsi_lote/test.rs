@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -126,10 +127,10 @@ async fn resolve_unsupported_identifier_type() {
     })
     .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(TrustListSubscriberError::UnsupportedIdentifierType(_))
-    ));
+    );
 }
 
 #[tokio::test]

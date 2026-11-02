@@ -1,6 +1,6 @@
 use std::ops::Add;
 use std::sync::Arc;
-use std::vec;
+use std::{assert_matches, vec};
 
 use assert2::let_assert;
 use mockall::predicate::*;
@@ -473,10 +473,7 @@ async fn test_delete_credential_incorrect_state() {
     });
 
     let result = service.delete_credential(&credential.common().id).await;
-    assert!(matches!(
-        result,
-        Err(CredentialServiceError::InvalidState(_))
-    ));
+    assert_matches!(result, Err(CredentialServiceError::InvalidState(_)));
 }
 
 #[tokio::test]
@@ -503,10 +500,7 @@ async fn test_delete_credential_invalid_type() {
     });
 
     let result = service.delete_credential(&credential.common().id).await;
-    assert!(matches!(
-        result,
-        Err(CredentialServiceError::InvalidType(_))
-    ));
+    assert_matches!(result, Err(CredentialServiceError::InvalidType(_)));
 }
 
 #[tokio::test]
@@ -1446,10 +1440,10 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
         })
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(CredentialServiceError::IncompatibleIssuanceIdentifier)
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1573,10 +1567,10 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         })
         .await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(CredentialServiceError::IncompatibleIssuanceDidMethod)
-    ));
+    );
 }
 
 #[tokio::test]
@@ -1979,10 +1973,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             ..create_request_template.clone()
         })
         .await;
-    assert!(matches!(
-        result,
-        Err(CredentialServiceError::MissingClaimSchema(_))
-    ));
+    assert_matches!(result, Err(CredentialServiceError::MissingClaimSchema(_)));
 }
 
 #[tokio::test]
@@ -2349,10 +2340,10 @@ async fn test_create_credential_fail_incompatible_format_and_transport_protocol(
 
     let result = setup_service(repositories).create_credential(request).await;
 
-    assert!(matches!(
+    assert_matches!(
         result,
         Err(CredentialServiceError::IncompatibleIssuanceExchangeProtocol)
-    ));
+    );
 }
 
 #[tokio::test]
@@ -2363,10 +2354,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
 
     let result = setup_service(repositories).create_credential(request).await;
 
-    assert!(matches!(
-        result,
-        Err(CredentialServiceError::InvalidRedirectUri)
-    ));
+    assert_matches!(result, Err(CredentialServiceError::InvalidRedirectUri));
 }
 
 #[tokio::test]
@@ -2722,10 +2710,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
         &generic_config().core,
     )
     .await;
-    assert!(matches!(
-        result,
-        Err(CredentialServiceError::MissingClaimSchema(_))
-    ));
+    assert_matches!(result, Err(CredentialServiceError::MissingClaimSchema(_)));
 }
 
 #[tokio::test]
@@ -2821,10 +2806,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
         &generic_config().core,
     )
     .await;
-    assert!(matches!(
-        result,
-        Err(CredentialServiceError::MissingClaimSchema(_))
-    ));
+    assert_matches!(result, Err(CredentialServiceError::MissingClaimSchema(_)));
 
     validate_create_request(
         "OPENID4VCI_FINAL1",
@@ -2942,10 +2924,10 @@ async fn test_get_credential_success_with_non_required_nested_object() {
     assert_eq!(None, result.revocation_date);
     assert_eq!(1, result.claims.len());
     assert_eq!("location", result.claims[0].schema.key);
-    assert!(matches!(
+    assert_matches!(
         result.claims[0].value,
         DetailCredentialClaimValueResponseDTO::Nested(_)
-    ));
+    );
 }
 
 fn generate_claim(claim_schema: &ClaimSchema, value: &str, path: &str) -> Claim {
@@ -4113,10 +4095,7 @@ async fn test_validate_create_request_invalid_enum_value() {
     )
     .await;
 
-    assert!(matches!(
-        result,
-        Err(CredentialServiceError::InvalidDatatype { .. })
-    ));
+    assert_matches!(result, Err(CredentialServiceError::InvalidDatatype { .. }));
 }
 
 /// A history repository that reports `outcomes` as the resolved ecosystems of any entity.

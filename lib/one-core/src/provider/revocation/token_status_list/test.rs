@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use rcgen::{CertificateParams, KeyPair, KeyUsagePurpose};
@@ -226,32 +227,32 @@ fn test_generate_token_status_list() {
     assert_eq!(example.value, token);
 
     let state = vec![(0, RevocationListEntryState::Suspended)];
-    assert!(matches!(
+    assert_matches!(
         generate_token(state, 1, 16),
         Err(TokenError::SuspensionRequiresAtLeastTwoBits)
-    ));
+    );
 }
 
 #[test]
 fn test_generate_token_status_list_index_out_of_bounds() {
     let state = vec![(16, RevocationListEntryState::Revoked)];
-    assert!(matches!(
+    assert_matches!(
         generate_token(state, 1, 16),
         Err(TokenError::IndexOutOfBounds { index: 16 })
-    ));
+    );
 
     let state = vec![(16, RevocationListEntryState::Suspended)];
-    assert!(matches!(
+    assert_matches!(
         generate_token(state, 2, 16),
         Err(TokenError::IndexOutOfBounds { index: 16 })
-    ));
+    );
 
     // capacity not aligned to bytes - index fits in the padding, but is still out of bounds
     let state = vec![(3, RevocationListEntryState::Revoked)];
-    assert!(matches!(
+    assert_matches!(
         generate_token(state, 2, 3),
         Err(TokenError::IndexOutOfBounds { index: 3 })
-    ));
+    );
 }
 
 #[test]

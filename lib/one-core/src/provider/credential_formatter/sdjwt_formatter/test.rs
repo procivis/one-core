@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -513,7 +514,7 @@ async fn test_extract_credentials() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:test"));
+                assert_matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:test");
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
@@ -643,7 +644,7 @@ async fn test_extract_credentials_with_array() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:123"));
+                assert_matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:123");
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
@@ -723,7 +724,7 @@ async fn test_extract_credentials_with_array_stripped() {
         .expect_verify()
         .withf(
             move |params, algorithm, token, signature| {
-                assert!(matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:123"));
+                assert_matches!(params, PublicKeySource::Did {did, ..} if did.to_string() == "did:issuer:123");
                 assert_eq!(KeyAlgorithmType::Eddsa, *algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);

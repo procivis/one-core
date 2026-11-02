@@ -294,6 +294,8 @@ pub(crate) fn assign_entries_to_distinct_credentials<Id: Clone + Eq + Hash>(
 
 #[cfg(test)]
 mod test {
+    use std::assert_matches;
+
     use ct_codecs::Encoder;
     use similar_asserts::assert_eq;
 
@@ -328,10 +330,10 @@ mod test {
             agreed(&[&["sha-256", "sha-512"], &["sha-512"]]).unwrap(),
             iana::HashAlgorithm::Sha512
         );
-        assert!(matches!(
+        assert_matches!(
             agreed(&[&["sha-256"], &["sha-512"]]),
             Err(TransactionDataError::InvalidTransactionData(_))
-        ));
+        );
     }
 
     #[test]

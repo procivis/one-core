@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::sync::Arc;
 
 use mockall::predicate::{self, eq};
@@ -60,7 +61,7 @@ async fn test_did_key_update_is_not_supported() {
                 None,
             )
             .await;
-        assert!(matches!(result, Err(DidMethodError::OperationNotSupported)));
+        assert_matches!(result, Err(DidMethodError::OperationNotSupported));
     }
 }
 
@@ -214,8 +215,9 @@ async fn test_did_key_resolve_jwk_jcs_pub_rejects_non_canonical_payload() {
         .resolve(&format!("did:key:z{multibase}").parse().unwrap())
         .await;
 
-    assert!(
-        matches!(result, Err(DidMethodError::ResolutionError(msg)) if msg.contains("not JCS canonical"))
+    assert_matches!(
+        result,
+        Err(DidMethodError::ResolutionError(msg)) if msg.contains("not JCS canonical")
     );
 }
 

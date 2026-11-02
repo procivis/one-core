@@ -120,10 +120,10 @@ fn transform_did_to_https(did: &str) -> Result<TransformedDid<'_>, DidMethodErro
 
 #[cfg(test)]
 mod test {
-    use std::fs;
     use std::fs::{File, ReadDir};
     use std::io::Read;
     use std::sync::Arc;
+    use std::{assert_matches, fs};
 
     use maplit::hashmap;
     use mockall::predicate::eq;
@@ -380,7 +380,7 @@ mod test {
             },
         )
         .await;
-        assert!(matches!(document, Err(ResolutionError(_))));
+        assert_matches!(document, Err(ResolutionError(_)));
     }
 
     #[tokio::test]
@@ -419,7 +419,7 @@ mod test {
             &Default::default(),
         )
         .await;
-        assert!(matches!(document, Err(ResolutionError(_))));
+        assert_matches!(document, Err(ResolutionError(_)));
     }
 
     /// Test that runs through the files in the success test data folder and checks everything resolves.
