@@ -65,7 +65,7 @@ async fn test_issuance_refresh_without_refresh_token_returns_not_supported() {
     }
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
-    assert!(data["refresh_token"].is_null());
+    assert!(data["state"]["tokens"]["refresh_token"].is_null());
 
     let response = context
         .api
@@ -356,8 +356,11 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     assert_matches!(parent, Credential::HolderBatchParent { .. });
     let stored = context.db.interactions.get(&interaction.id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(stored.data.as_ref().unwrap()).unwrap();
-    assert_eq!(data["batch_size"], json!(offer.batch_size));
-    assert!(!data["refresh_token"].is_null());
+    assert_eq!(
+        data["issuer_metadata"]["batch_credential_issuance"]["batch_size"],
+        json!(offer.batch_size)
+    );
+    assert!(!data["state"]["tokens"]["refresh_token"].is_null());
     let items = context
         .db
         .credentials

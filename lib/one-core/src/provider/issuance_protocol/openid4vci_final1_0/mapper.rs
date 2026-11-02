@@ -273,6 +273,7 @@ pub(crate) fn configuration_to_accepted_key_storage_security(
     configuration: &HolderCredentialConfiguration,
 ) -> Option<Vec<SecurityLevel>> {
     configuration
+        .metadata
         .proof_types_supported
         .as_ref()
         .and_then(|proof_types| {

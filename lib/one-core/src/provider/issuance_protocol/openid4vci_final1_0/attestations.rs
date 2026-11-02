@@ -49,6 +49,7 @@ impl OpenID4VCIFinal1_0 {
 
         // WIA requirements
         let mut token_endpoint_auth_methods = interaction_data
+            .authorization_server_metadata
             .token_endpoint_auth_methods_supported
             .clone();
         if token_endpoint_auth_methods.is_empty() {
@@ -350,6 +351,7 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
     ) -> Result<Vec<KeyAlgorithmType>, IssuanceProtocolError> {
         let alg_values_supported = interaction_data
+            .authorization_server_metadata
             .client_attestation_pop_signing_alg_values_supported
             .as_ref()
             .ok_or(IssuanceProtocolError::InvalidRequest(
@@ -375,15 +377,21 @@ impl OpenID4VCIFinal1_0 {
         wia: &str,
         interaction_data: &HolderInteractionData,
     ) -> Result<String, IssuanceProtocolError> {
-        let challenge = if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
-            Some(self.holder_fetch_challenge(challenge_endpoint).await?)
+        let challenge = if let Some(challenge_endpoint) = &interaction_data
+            .authorization_server_metadata
+            .challenge_endpoint
+        {
+            Some(
+                self.holder_fetch_challenge(challenge_endpoint.as_str())
+                    .await?,
+            )
         } else {
             None
         };
         self.sign_client_attestation_pop(
             client_attestation_key,
             wia,
-            &interaction_data.issuer_url,
+            interaction_data.issuer_url(),
             challenge,
         )
         .await
@@ -405,7 +413,7 @@ impl OpenID4VCIFinal1_0 {
             .sign_client_attestation_pop(
                 &wallet_attestation.client_attestation_key,
                 &wallet_attestation.wallet_attestation,
-                &interaction_data.issuer_url,
+                interaction_data.issuer_url(),
                 Some(challenge),
             )
             .await?;

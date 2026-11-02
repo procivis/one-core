@@ -767,7 +767,7 @@ pub(crate) fn is_batch_parent_expired(
             let data: HolderInteractionData =
                 deserialize_interaction_data(interaction.data.as_ref())
                     .error_while("parsing holder interaction data")?;
-            data.refresh_token_expires_at
+            data.state.tokens.refresh_token_expires_at
         }
         CredentialRole::Issuer => {
             let data: IssuerRefreshTokenInteractionData =

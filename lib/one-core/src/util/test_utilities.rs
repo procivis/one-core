@@ -111,8 +111,10 @@ mod holder_interaction_data {
     use serde::Deserialize;
     use shared_types::{CredentialId, CredentialSchemaFormatId};
     use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
+    use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
     use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
     use standardized_types::openid4vci::{
+        BatchCredentialIssuance, CredentialConfiguration, CredentialIssuerMetadata,
         CredentialMetadata, CredentialRequestEncryption, CredentialResponseEncryption, Grants,
         IssuerDisplay, PreAuthorizedCodeGrant, ProofTypeSupported, SigningAlgValue,
     };
@@ -120,7 +122,8 @@ mod holder_interaction_data {
 
     use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
     use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-        HolderCredentialConfiguration, HolderInteractionData,
+        DpopState, HolderCredentialConfiguration, HolderCredentialConfigurationState,
+        HolderInteractionData, HolderIssuanceState, MetadataSource, TokenGrant, TokenState,
     };
 
     /// Flat test input of a [`HolderInteractionData`]
@@ -215,53 +218,131 @@ mod holder_interaction_data {
     impl From<TestHolderCredentialConfiguration> for HolderCredentialConfiguration {
         fn from(value: TestHolderCredentialConfiguration) -> Self {
             Self {
-                credential_configuration_id: value.credential_configuration_id,
-                format: value.format,
-                cryptographic_binding_methods_supported: value
-                    .cryptographic_binding_methods_supported,
-                credential_signing_alg_values_supported: value
-                    .credential_signing_alg_values_supported,
-                proof_types_supported: value.proof_types_supported,
-                credential_metadata: value.credential_metadata,
-                disclosure_policy: value.disclosure_policy,
-                notification_ids: value.notification_ids,
-                credential_id: value.credential_id,
-                credential_schema_format_id: value.credential_schema_format_id,
+                metadata: CredentialConfiguration {
+                    format: value.format,
+                    cryptographic_binding_methods_supported: value
+                        .cryptographic_binding_methods_supported,
+                    credential_signing_alg_values_supported: value
+                        .credential_signing_alg_values_supported,
+                    proof_types_supported: value.proof_types_supported,
+                    credential_metadata: value.credential_metadata,
+                    disclosure_policy: value.disclosure_policy,
+                    ..Default::default()
+                },
+                state: HolderCredentialConfigurationState {
+                    credential_configuration_id: value.credential_configuration_id,
+                    notification_ids: value.notification_ids,
+                    credential_id: value.credential_id,
+                    credential_schema_format_id: value.credential_schema_format_id,
+                },
             }
         }
     }
 
     impl From<TestHolderInteractionData> for HolderInteractionData {
         fn from(value: TestHolderInteractionData) -> Self {
+            let parse_url = |url: String| url.parse().expect("valid test URL");
+            let (credential_configurations_supported, credential_configurations) = value
+                .credential_configurations
+                .into_iter()
+                .map(|configuration| {
+                    let HolderCredentialConfiguration { metadata, state } = configuration.into();
+                    ((state.credential_configuration_id.clone(), metadata), state)
+                })
+                .unzip();
+            let authorization_server = value
+                .grants
+                .as_ref()
+                .and_then(Grants::authorization_server)
+                .cloned();
+            let (grant, client_id) = match value.grants {
+                Some(Grants::PreAuthorizedCode(grant)) => (
+                    Some(TokenGrant::PreAuthorizedCode {
+                        pre_authorized_code: grant.pre_authorized_code,
+                    }),
+                    None,
+                ),
+                Some(Grants::AuthorizationCode(_)) => match value.continue_issuance {
+                    Some(continue_issuance) => (
+                        Some(TokenGrant::AuthorizationCode {
+                            authorization_code: continue_issuance.authorization_code,
+                            redirect_uri: continue_issuance.redirect_uri,
+                            code_verifier: continue_issuance.code_verifier,
+                        }),
+                        Some(continue_issuance.client_id),
+                    ),
+                    None => (None, None),
+                },
+                None => (None, None),
+            };
+
             Self {
-                issuer_url: value.issuer_url,
-                credential_endpoint: value.credential_endpoint,
-                token_endpoint: value.token_endpoint,
-                notification_endpoint: value.notification_endpoint,
-                nonce_endpoint: value.nonce_endpoint,
-                challenge_endpoint: value.challenge_endpoint,
-                grants: value.grants,
-                continue_issuance: value.continue_issuance,
-                batch_size: value.batch_size,
-                access_token: value.access_token,
-                access_token_expires_at: value.access_token_expires_at,
-                refresh_token: value.refresh_token,
-                refresh_token_expires_at: value.refresh_token_expires_at,
-                token_endpoint_auth_methods_supported: value.token_endpoint_auth_methods_supported,
-                client_attestation_pop_signing_alg_values_supported: value
-                    .client_attestation_pop_signing_alg_values_supported,
-                issuer_display: value.issuer_display,
-                credential_request_encryption: value.credential_request_encryption,
-                credential_response_encryption: value.credential_response_encryption,
-                dpop_signing_alg_values_supported: value.dpop_signing_alg_values_supported,
-                dpop_nonce: value.dpop_nonce,
                 protocol: value.protocol,
-                credential_configurations: value
-                    .credential_configurations
-                    .into_iter()
-                    .map(Into::into)
-                    .collect(),
+                issuer_metadata: CredentialIssuerMetadata {
+                    credential_issuer: value.issuer_url.clone(),
+                    authorization_servers: authorization_server.map(|server| vec![server]),
+                    credential_endpoint: value.credential_endpoint,
+                    nonce_endpoint: value.nonce_endpoint,
+                    notification_endpoint: value.notification_endpoint,
+                    credential_configurations_supported,
+                    display: value.issuer_display,
+                    issuer_info: vec![],
+                    batch_credential_issuance: value
+                        .batch_size
+                        .map(|batch_size| BatchCredentialIssuance { batch_size }),
+                    credential_request_encryption: value.credential_request_encryption,
+                    credential_response_encryption: value.credential_response_encryption,
+                    preferred_client_status_period: None,
+                    profile_version: None,
+                },
+                authorization_server_metadata: AuthorizationServerMetadata {
+                    token_endpoint: value.token_endpoint.map(parse_url),
+                    challenge_endpoint: value.challenge_endpoint.map(parse_url),
+                    token_endpoint_auth_methods_supported: value
+                        .token_endpoint_auth_methods_supported,
+                    client_attestation_pop_signing_alg_values_supported: value
+                        .client_attestation_pop_signing_alg_values_supported,
+                    dpop_signing_alg_values_supported: value.dpop_signing_alg_values_supported,
+                    ..authorization_server_metadata(&value.issuer_url)
+                },
+                metadata_source: MetadataSource::Fetched,
+                state: HolderIssuanceState {
+                    grant,
+                    client_id,
+                    tokens: TokenState {
+                        access_token: value.access_token,
+                        access_token_expires_at: value.access_token_expires_at,
+                        refresh_token: value.refresh_token,
+                        refresh_token_expires_at: value.refresh_token_expires_at,
+                    },
+                    dpop: DpopState {
+                        nonce: value.dpop_nonce,
+                        disabled: false,
+                    },
+                    credential_configurations,
+                },
             }
+        }
+    }
+
+    fn authorization_server_metadata(issuer: &str) -> AuthorizationServerMetadata {
+        AuthorizationServerMetadata {
+            issuer: issuer.to_string(),
+            authorization_endpoint: None,
+            token_endpoint: None,
+            pushed_authorization_request_endpoint: None,
+            jwks_uri: None,
+            code_challenge_methods_supported: vec![],
+            scopes_supported: vec![],
+            response_types_supported: vec![],
+            grant_types_supported: vec![],
+            token_endpoint_auth_methods_supported: vec![],
+            challenge_endpoint: None,
+            client_attestation_signing_alg_values_supported: None,
+            client_attestation_pop_signing_alg_values_supported: None,
+            client_attestation_pop_methods_supported: None,
+            dpop_signing_alg_values_supported: None,
+            signed_metadata: None,
         }
     }
 }

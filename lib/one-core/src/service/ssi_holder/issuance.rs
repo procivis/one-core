@@ -139,17 +139,19 @@ impl SSIHolderService {
         // a configuration the holder binding does not satisfy is skipped, unless none is left
         let mut accepted_configuration_ids = vec![];
         let mut skip_error = None;
-        for configuration in &data.credential_configurations {
+        let configurations = data
+            .configurations()
+            .error_while("reading credential configurations")?;
+        for configuration in &configurations {
             match self
                 .validate_credential_configuration(holder_binding.as_ref(), configuration)
                 .await
             {
-                Ok(()) => accepted_configuration_ids
-                    .push(configuration.credential_configuration_id.clone()),
+                Ok(()) => accepted_configuration_ids.push(configuration.id().to_owned()),
                 Err(error) => {
                     tracing::warn!(
                         "Skipping credential configuration {}: {error}",
-                        configuration.credential_configuration_id
+                        configuration.id()
                     );
                     skip_error = Some(error);
                 }
@@ -194,8 +196,8 @@ impl SSIHolderService {
             return Err(error.error_while("accepting credential").into());
         }
         // a single configuration offer succeeds or fails as a whole
-        let partially_successful = (data.credential_configurations.len() > 1)
-            .then_some(!result.failed.is_empty() || skip_error.is_some());
+        let partially_successful =
+            (configurations.len() > 1).then_some(!result.failed.is_empty() || skip_error.is_some());
 
         // the credentials are the last artifacts of the issuance, so the ecosystem is final here
         let artifacts = result
@@ -368,13 +370,14 @@ impl SSIHolderService {
             .error_while("matching key security")?;
         }
 
-        let format_type = match configuration.format.as_str() {
+        let format_type = match configuration.metadata.format.as_str() {
             "jwt_vc_json" => FormatType::Jwt,
             "dc+sd-jwt" => FormatType::SdJwtVc,
             "vc+sd-jwt" => FormatType::SdJwt,
             "mso_mdoc" => FormatType::Mdoc,
             "ldp_vc" => {
                 if configuration
+                    .metadata
                     .credential_signing_alg_values_supported
                     .as_ref()
                     .is_some_and(|values| {
@@ -391,7 +394,7 @@ impl SSIHolderService {
             _ => {
                 return Err(HolderServiceError::MappingError(format!(
                     "Unknown format: {}",
-                    configuration.format
+                    configuration.metadata.format
                 )));
             }
         };
@@ -471,7 +474,7 @@ impl SSIHolderService {
             deserialize_interaction_data(interaction.data.as_ref())
                 .error_while("parsing holder interaction data")?;
 
-        if data.refresh_token.is_none() {
+        if data.state.tokens.refresh_token.is_none() {
             return Err(HolderServiceError::RefreshNotSupported);
         }
 

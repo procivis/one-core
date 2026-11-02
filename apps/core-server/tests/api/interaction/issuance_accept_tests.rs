@@ -757,8 +757,8 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
 
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
-    assert!(data["batch_size"].is_null());
-    assert!(!data["refresh_token"].is_null());
+    assert!(data["issuer_metadata"]["batch_credential_issuance"].is_null());
+    assert!(!data["state"]["tokens"]["refresh_token"].is_null());
 }
 
 async fn check_multi_configuration_issuance(
@@ -805,9 +805,17 @@ async fn check_multi_configuration_issuance(
     );
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
-    assert_eq!(!data["refresh_token"].is_null(), refreshable);
-    assert_eq!(data["batch_size"].is_null(), !advertised_batch);
-    let configurations = data["credential_configurations"].as_array().unwrap();
+    assert_eq!(
+        !data["state"]["tokens"]["refresh_token"].is_null(),
+        refreshable
+    );
+    assert_eq!(
+        data["issuer_metadata"]["batch_credential_issuance"].is_null(),
+        !advertised_batch
+    );
+    let configurations = data["state"]["credential_configurations"]
+        .as_array()
+        .unwrap();
     assert_eq!(configurations.len(), 2);
 
     let mut all_item_ids = HashSet::new();
@@ -935,7 +943,9 @@ async fn test_issuance_accept_partially_successful() {
     assert_matches!(credential, Credential::HolderSingle { .. });
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
-    let configurations = data["credential_configurations"].as_array().unwrap();
+    let configurations = data["state"]["credential_configurations"]
+        .as_array()
+        .unwrap();
     assert_eq!(configurations[0]["credential_id"], credential_ids[0]);
     assert_eq!(configurations[1]["credential_id"], serde_json::Value::Null);
 }
@@ -2970,10 +2980,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         )
         .await;
 
-    let params = InteractionDataParams {
-        require_tx_code: true,
-        ..Default::default()
-    };
+    let params = InteractionDataParams::default();
     context
         .server_mock
         .issuer_metadata(

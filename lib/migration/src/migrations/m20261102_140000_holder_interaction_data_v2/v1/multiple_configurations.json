@@ -1,0 +1,137 @@
+{
+  "issuer_url": "https://issuer.example.com",
+  "credential_endpoint": "https://issuer.example.com/credential",
+  "token_endpoint": "https://as.example.com/token",
+  "nonce_endpoint": "https://issuer.example.com/nonce",
+  "notification_endpoint": "https://issuer.example.com/notification",
+  "challenge_endpoint": "https://as.example.com/challenge",
+  "grants": {
+    "authorization_code": {
+      "authorization_server": "https://as.example.com"
+    }
+  },
+  "continue_issuance": {
+    "credential_issuer": "https://issuer.example.com",
+    "authorization_code": "code",
+    "client_id": "client",
+    "redirect_uri": "https://wallet.example.com/callback",
+    "scope": [],
+    "credential_configuration_ids": [
+      "jwt",
+      "mdoc"
+    ],
+    "code_verifier": "verifier",
+    "authorization_server": "https://as.example.com"
+  },
+  "batch_size": 3,
+  "access_token": [
+    1,
+    2
+  ],
+  "access_token_expires_at": "2026-10-28T12:00:00Z",
+  "refresh_token": [
+    3,
+    4
+  ],
+  "refresh_token_expires_at": "2026-11-28T12:00:00Z",
+  "token_endpoint_auth_methods_supported": [
+    "attest_jwt_client_auth"
+  ],
+  "client_attestation_pop_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "issuer_display": [
+    {
+      "name": "Issuer",
+      "locale": "en",
+      "logo": {
+        "uri": "data:image/png;base64,aXNzdWVy",
+        "alt_text": "Issuer logo"
+      }
+    }
+  ],
+  "credential_request_encryption": {
+    "jwks": {
+      "keys": []
+    },
+    "enc_values_supported": [
+      "A256GCM"
+    ],
+    "encryption_required": true
+  },
+  "credential_response_encryption": {
+    "alg_values_supported": [
+      "ECDH-ES"
+    ],
+    "enc_values_supported": [
+      "A256GCM"
+    ],
+    "encryption_required": false
+  },
+  "dpop_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "dpop_nonce": "nonce",
+  "protocol": "OPENID4VCI_FINAL1",
+  "credential_configurations": [
+    {
+      "credential_configuration_id": "jwt",
+      "format": "jwt_vc_json",
+      "cryptographic_binding_methods_supported": [
+        "did:key"
+      ],
+      "credential_signing_alg_values_supported": [
+        "ES256"
+      ],
+      "proof_types_supported": {
+        "jwt": {
+          "proof_signing_alg_values_supported": [
+            "ES256"
+          ]
+        }
+      },
+      "credential_metadata": {
+        "display": [
+          {
+            "name": "Credential",
+            "locale": "en",
+            "logo": {
+              "uri": "data:image/png;base64,Y3JlZGVudGlhbA=="
+            },
+            "background_color": "#ffffff"
+          }
+        ],
+        "claims": [
+          {
+            "path": [
+              "name"
+            ],
+            "display": [
+              {
+                "name": "Name",
+                "locale": "en"
+              }
+            ],
+            "mandatory": true
+          }
+        ]
+      },
+      "disclosure_policy": {
+        "id": "policy",
+        "policy": "none"
+      },
+      "notification_ids": [
+        "n1",
+        "n2"
+      ],
+      "credential_id": "6f7c2c8e-7f0e-4c4e-9b0a-6a3f2b1c0d9e",
+      "credential_schema_format_id": "0c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f"
+    },
+    {
+      "credential_configuration_id": "mdoc",
+      "format": "mso_mdoc",
+      "notification_ids": []
+    }
+  ],
+  "trust_resolution": "UNTRUSTED"
+}

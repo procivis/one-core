@@ -17,7 +17,6 @@ pub struct InteractionDataParams {
     pub require_instance_attestation: bool,
     /// issuer supports DPoP combined mode, requires `require_instance_attestation`
     pub dpop_combined_mode: bool,
-    pub require_tx_code: bool,
     pub access_token_expired: bool,
     pub refresh_token_expired: bool,
     /// no refresh token was issued
@@ -150,69 +149,64 @@ pub fn dummy_holder_issuance_interaction_data(
     };
 
     let issuer_url = issuer_url(context, credential_schema);
-    let configurations: Vec<_> = std::iter::once(default_configuration(&params))
+    let configuration_states: Vec<_> = std::iter::once(default_configuration(&params))
         .chain(params.additional_configurations)
-        .map(|configuration| {
-            let mut stored = issuer_metadata["credential_configurations_supported"]
-                [&configuration.credential_configuration_id]
-                .clone();
-            // the display data is taken from the current issuer metadata when accepting
-            stored
-                .as_object_mut()
-                .unwrap()
-                .remove("credential_metadata");
-            for (key, value) in configuration_state(&configuration).as_object().unwrap() {
-                stored[key] = value.clone();
-            }
-            stored
-        })
+        .map(|configuration| configuration_state(&configuration))
         .collect();
 
-    let mut value = json!({
-    "issuer_url": issuer_url,
-    "credential_endpoint": issuer_metadata["credential_endpoint"],
-    "token_endpoint": format!("{}/token", issuer_url),
-    "nonce_endpoint": issuer_metadata["nonce_endpoint"],
-    "grants":{
-        "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-            "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-        }
-    },
-    "access_token": encrypted_token("123"),
-    "access_token_expires_at": at_expiry.format(&format).unwrap(),
-    "refresh_token": encrypted_token("123"),
-    "refresh_token_expires_at": rt_expiry.format(&format).unwrap(),
-    "token_endpoint_auth_methods_supported": [
-        "none"
-    ],
-    "protocol": "OPENID4VCI_FINAL1",
-    "credential_configurations": configurations,
-    });
-    if params.without_refresh_token {
-        value.as_object_mut().unwrap().remove("refresh_token");
-        value
+    // the display data is taken from the current issuer metadata when accepting
+    let mut snapshot = issuer_metadata;
+    snapshot.as_object_mut().unwrap().remove("display");
+    for configuration in snapshot["credential_configurations_supported"]
+        .as_object_mut()
+        .unwrap()
+        .values_mut()
+    {
+        configuration
             .as_object_mut()
             .unwrap()
-            .remove("refresh_token_expires_at");
+            .remove("credential_metadata");
     }
+
+    let mut tokens = json!({
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": at_expiry.format(&format).unwrap(),
+    });
+    if !params.without_refresh_token {
+        tokens["refresh_token"] = json!(encrypted_token("123"));
+        tokens["refresh_token_expires_at"] = json!(rt_expiry.format(&format).unwrap());
+    }
+
+    let mut value = json!({
+        "protocol": "OPENID4VCI_FINAL1",
+        "issuer_metadata": snapshot,
+        "authorization_server_metadata": {
+            "issuer": issuer_url,
+            "token_endpoint": format!("{issuer_url}/token"),
+            "token_endpoint_auth_methods_supported": ["none"],
+        },
+        "metadata_source": "fetched",
+        "state": {
+            "grant": {
+                "type": "pre_authorized_code",
+                "pre_authorized_code": "76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            },
+            "tokens": tokens,
+            "dpop": { "disabled": false },
+            "credential_configurations": configuration_states,
+        },
+    });
+    let authorization_server = &mut value["authorization_server_metadata"];
     if params.require_instance_attestation {
-        value["token_endpoint_auth_methods_supported"] = json!(["attest_jwt_client_auth"]);
-        value["client_attestation_pop_signing_alg_values_supported"] = json!(["ES256"]);
+        authorization_server["token_endpoint_auth_methods_supported"] =
+            json!(["attest_jwt_client_auth"]);
+        authorization_server["client_attestation_pop_signing_alg_values_supported"] =
+            json!(["ES256"]);
     }
     if params.dpop_combined_mode {
-        value["token_endpoint_auth_methods_supported"] =
+        authorization_server["token_endpoint_auth_methods_supported"] =
             json!(["attest_jwt_client_auth", "attest_jwt_client_auth_dpop"]);
-        value["dpop_signing_alg_values_supported"] = json!(["ES256"]);
-    }
-    if params.require_tx_code {
-        value["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["tx_code"] =
-            json!({"input_mode":"numeric","length":5,"description":"code"});
-    }
-    if let Some(notification_endpoint) = issuer_metadata.get("notification_endpoint") {
-        value["notification_endpoint"] = notification_endpoint.clone();
-    }
-    if let Some(batch_size) = params.batch_size {
-        value["batch_size"] = json!(batch_size);
+        authorization_server["dpop_signing_alg_values_supported"] = json!(["ES256"]);
     }
     serde_json::to_vec(&value).unwrap()
 }

@@ -1,0 +1,26 @@
+{
+  "issuer_url": "https://issuer.example.com",
+  "credential_endpoint": "https://issuer.example.com/credential",
+  "grants": {
+    "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+      "pre-authorized_code": "pre-authorized",
+      "tx_code": {
+        "input_mode": "numeric",
+        "length": 5
+      }
+    }
+  },
+  "token_endpoint_auth_methods_supported": [],
+  "protocol": "OPENID4VCI_FINAL1",
+  "credential_configurations": [
+    {
+      "credential_configuration_id": "sd_jwt",
+      "format": "dc+sd-jwt",
+      "notification_ids": [
+        "notification"
+      ],
+      "credential_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "credential_schema_format_id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e"
+    }
+  ]
+}

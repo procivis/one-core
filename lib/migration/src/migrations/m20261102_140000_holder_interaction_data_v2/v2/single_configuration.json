@@ -1,0 +1,36 @@
+{
+  "protocol": "OPENID4VCI_FINAL1",
+  "issuer_metadata": {
+    "credential_issuer": "https://issuer.example.com",
+    "credential_endpoint": "https://issuer.example.com/credential",
+    "credential_configurations_supported": {
+      "sd_jwt": {
+        "format": "dc+sd-jwt"
+      }
+    }
+  },
+  "authorization_server_metadata": {
+    "issuer": "https://issuer.example.com"
+  },
+  "metadata_source": "migrated",
+  "state": {
+    "grant": {
+      "type": "pre_authorized_code",
+      "pre_authorized_code": "pre-authorized"
+    },
+    "tokens": {},
+    "dpop": {
+      "disabled": false
+    },
+    "credential_configurations": [
+      {
+        "credential_configuration_id": "sd_jwt",
+        "notification_ids": [
+          "notification"
+        ],
+        "credential_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+        "credential_schema_format_id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e"
+      }
+    ]
+  }
+}

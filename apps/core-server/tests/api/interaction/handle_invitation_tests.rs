@@ -134,15 +134,22 @@ async fn test_handle_invitation_multi_format_offer() {
         .await
         .unwrap();
     let data: serde_json::Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
-    let configurations = data["credential_configurations"].as_array().unwrap();
+    let configurations = data["state"]["credential_configurations"]
+        .as_array()
+        .unwrap();
     assert_eq!(configurations.len(), 2);
     assert_eq!(configurations[0]["credential_configuration_id"], "doctype");
-    assert_eq!(configurations[0]["format"], "mso_mdoc");
     assert_eq!(configurations[1]["credential_configuration_id"], "vct");
-    assert_eq!(configurations[1]["format"], "dc+sd-jwt");
+    // the stored issuer metadata is limited to the offered configurations
+    let supported = data["issuer_metadata"]["credential_configurations_supported"]
+        .as_object()
+        .unwrap();
+    assert_eq!(supported.len(), 2);
+    assert_eq!(supported["doctype"]["format"], "mso_mdoc");
+    assert_eq!(supported["vct"]["format"], "dc+sd-jwt");
     // the display data is taken from the current issuer metadata when accepting
-    assert!(data["issuer_display"].is_null());
-    assert!(configurations[0]["credential_metadata"].is_null());
+    assert!(data["issuer_metadata"]["display"].is_null());
+    assert!(supported["doctype"]["credential_metadata"].is_null());
 }
 
 #[tokio::test]
@@ -2236,14 +2243,10 @@ async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_autho
         serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
 
     // Verify that token_endpoint_auth_methods_supported was stored in the interaction data
-    assert!(
-        interaction_data
-            .get("token_endpoint_auth_methods_supported")
-            .is_some()
-    );
-    let auth_methods = interaction_data["token_endpoint_auth_methods_supported"]
-        .as_array()
-        .unwrap();
+    let auth_methods =
+        interaction_data["authorization_server_metadata"]["token_endpoint_auth_methods_supported"]
+            .as_array()
+            .unwrap();
     assert_eq!(auth_methods.len(), 1);
     assert_eq!(auth_methods[0], "attest_jwt_client_auth");
 }

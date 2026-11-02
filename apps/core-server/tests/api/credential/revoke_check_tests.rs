@@ -1125,11 +1125,11 @@ async fn test_revoke_check_token_update() {
     let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
     assert_eq!(
         access_token_expires_at,
-        stored_expiry(&data["access_token_expires_at"])
+        stored_expiry(&data["state"]["tokens"]["access_token_expires_at"])
     );
     assert_eq!(
         refresh_token_expires_at,
-        stored_expiry(&data["refresh_token_expires_at"])
+        stored_expiry(&data["state"]["tokens"]["refresh_token_expires_at"])
     );
 }
 

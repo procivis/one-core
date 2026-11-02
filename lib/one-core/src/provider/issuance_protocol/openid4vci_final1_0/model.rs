@@ -8,16 +8,12 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{CredentialId, CredentialSchemaFormatId, SerializedCredential};
-use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
-use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
-use standardized_types::openid4vci::{
-    CredentialConfiguration, CredentialMetadata, CredentialRequestEncryption,
-    CredentialResponseEncryption, Grants, IssuerDisplay, ProofTypeSupported, SigningAlgValue,
-};
+use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
+use standardized_types::openid4vci::{CredentialConfiguration, CredentialIssuerMetadata};
 use time::{Duration, OffsetDateTime};
 
 use super::super::HolderBindingInput;
-use super::super::dto::ContinueIssuanceDTO;
+use super::super::error::IssuanceProtocolError;
 use super::super::model::{CommonParams, OpenID4VCRedirectUriParams, default_issuance_url_scheme};
 use crate::config::core_config::{KeyAlgorithmType, default_true};
 use crate::mapper::params::deserialize_encryption_key;
@@ -171,77 +167,176 @@ pub(super) fn default_5_minutes() -> Duration {
     Duration::minutes(5)
 }
 
-#[skip_serializing_none]
+/// Holder side data of an OpenID4VCI issuance, stored in the interaction.
+///
+/// Persisted: changes must stay compatible with the stored data checked by `test_stored_data`
+/// (or come with a DB migration).
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct HolderInteractionData {
-    pub issuer_url: String,
-    pub credential_endpoint: String,
-    #[serde(default)]
-    pub token_endpoint: Option<String>,
-    #[serde(default)]
-    pub notification_endpoint: Option<String>,
-    #[serde(default)]
-    pub nonce_endpoint: Option<String>,
-    #[serde(default)]
-    pub challenge_endpoint: Option<String>,
-    #[serde(default)]
-    pub grants: Option<Grants>,
-    #[serde(default)]
-    pub continue_issuance: Option<ContinueIssuanceDTO>,
-    #[serde(default)]
-    pub batch_size: Option<u32>,
-    #[serde(default)]
+    /// selected issuance protocol (config identifier)
+    pub protocol: String,
+    /// Credential issuer metadata at the time of the invitation, limited to the offered
+    /// credential configurations. Never modified.
+    ///
+    /// Stored without display data (`display` and the `credential_metadata` of the configurations,
+    /// including logos): accepting the offer takes it from the current issuer metadata.
+    pub issuer_metadata: CredentialIssuerMetadata,
+    /// Metadata of the authorization server used for this issuance. Never modified.
+    pub authorization_server_metadata: AuthorizationServerMetadata,
+    pub metadata_source: MetadataSource,
+    /// Everything written during the issuance and later refreshes
+    pub state: HolderIssuanceState,
+}
+
+/// Origin of the metadata snapshot of a [`HolderInteractionData`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum MetadataSource {
+    /// fetched from the issuer and the authorization server when handling the invitation
+    Fetched,
+    /// Reconstructed by a DB migration from the few metadata fields stored by earlier versions.
+    /// Metadata outside of that subset is unknown, not absent. The authorization server
+    /// `issuer` is the credential issuer.
+    Migrated,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct HolderIssuanceState {
+    /// Grant to redeem at the token endpoint. `None` if unknown: interactions migrated from data
+    /// without grant, which can only refresh tokens.
+    pub grant: Option<TokenGrant>,
+    /// Client ID of the authorization code flow, also the `iss` of credential request proofs
+    pub client_id: Option<String>,
+    pub tokens: TokenState,
+    pub dpop: DpopState,
+    /// offered credential configurations, in the order of the offer
+    pub credential_configurations: Vec<HolderCredentialConfigurationState>,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub(crate) enum TokenGrant {
+    /// the transaction code is supplied when accepting the offer
+    PreAuthorizedCode { pre_authorized_code: String },
+    AuthorizationCode {
+        authorization_code: String,
+        redirect_uri: Option<String>,
+        code_verifier: Option<String>,
+    },
+}
+
+/// Encrypted tokens of the token endpoint
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub(crate) struct TokenState {
     pub access_token: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
-    #[serde(default)]
     pub refresh_token: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub(crate) struct DpopState {
+    pub nonce: Option<String>,
+    /// The issuer answered with a Bearer token: the issuance is not DPoP bound even though the
+    /// authorization server advertises DPoP.
+    pub disabled: bool,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct HolderCredentialConfigurationState {
+    pub credential_configuration_id: String,
+    /// Each notification_id corresponds to one credential response
+    /// For cases where the holder retrieves the batch items in batches
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
-    #[serde(default)]
-    pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
-    /// Not stored anymore: accepting takes the display data from the current issuer metadata
-    #[serde(default)]
-    pub issuer_display: Option<Vec<IssuerDisplay>>,
-    #[serde(default)]
-    pub credential_request_encryption: Option<CredentialRequestEncryption>,
-    #[serde(default)]
-    pub credential_response_encryption: Option<CredentialResponseEncryption>,
-    /// DPoP signing algorithms the authorization server advertises. `None` means the issuance is
-    /// not DPoP bound; otherwise the binding key is generated from this list when the offer is
-    /// accepted.
-    #[serde(default)]
-    pub dpop_signing_alg_values_supported: Option<Vec<String>>,
-    #[serde(default)]
-    pub dpop_nonce: Option<String>,
-
-    /// selected issuance protocol (config identifier)
-    pub protocol: String,
-
-    /// offered credential configurations, in the order of the credential offer
-    pub credential_configurations: Vec<HolderCredentialConfiguration>,
+    pub notification_ids: Vec<String>,
+    /// Top-level credential (single or batch parent) holding the items of this configuration.
+    /// Grouped configurations (same schema, ecosystem and claims, e.g. one credential in several
+    /// formats) share it, different credentials of one offer have different IDs.
+    /// `None` if not issued.
+    pub credential_id: Option<CredentialId>,
+    /// exact format of the issued items, `None` if not issued
+    pub credential_schema_format_id: Option<CredentialSchemaFormatId>,
 }
 
 impl HolderInteractionData {
+    pub fn issuer_url(&self) -> &str {
+        &self.issuer_metadata.credential_issuer
+    }
+
+    pub fn batch_size(&self) -> Option<u32> {
+        self.issuer_metadata
+            .batch_credential_issuance
+            .as_ref()
+            .map(|batch| batch.batch_size)
+    }
+
+    /// DPoP signing algorithms to bind the issuance with, `None` if not DPoP bound
+    pub fn dpop_signing_alg_values_supported(&self) -> Option<&[String]> {
+        if self.state.dpop.disabled {
+            return None;
+        }
+        self.authorization_server_metadata
+            .dpop_signing_alg_values_supported
+            .as_deref()
+    }
+
     /// configurations selected for acceptance, in the order of the offer
     pub fn selected_configurations(
         &self,
         credential_configuration_ids: &[String],
-    ) -> Vec<HolderCredentialConfiguration> {
-        self.credential_configurations
+    ) -> Result<Vec<HolderCredentialConfiguration>, IssuanceProtocolError> {
+        self.state
+            .credential_configurations
             .iter()
             .filter(|c| credential_configuration_ids.contains(&c.credential_configuration_id))
-            .cloned()
+            .map(|state| self.configuration(state))
             .collect()
+    }
+
+    /// all offered configurations, in the order of the offer
+    pub fn configurations(
+        &self,
+    ) -> Result<Vec<HolderCredentialConfiguration>, IssuanceProtocolError> {
+        self.state
+            .credential_configurations
+            .iter()
+            .map(|state| self.configuration(state))
+            .collect()
+    }
+
+    fn configuration(
+        &self,
+        state: &HolderCredentialConfigurationState,
+    ) -> Result<HolderCredentialConfiguration, IssuanceProtocolError> {
+        let metadata = self
+            .issuer_metadata
+            .credential_configurations_supported
+            .get(&state.credential_configuration_id)
+            .ok_or_else(|| {
+                IssuanceProtocolError::Failed(format!(
+                    "Credential configuration {} missing from issuer metadata",
+                    state.credential_configuration_id
+                ))
+            })?;
+        Ok(HolderCredentialConfiguration {
+            metadata: metadata.to_owned(),
+            state: state.to_owned(),
+        })
     }
 
     pub fn configuration_mut(
         &mut self,
         credential_configuration_id: &str,
-    ) -> Option<&mut HolderCredentialConfiguration> {
-        self.credential_configurations
+    ) -> Option<&mut HolderCredentialConfigurationState> {
+        self.state
+            .credential_configurations
             .iter_mut()
             .find(|c| c.credential_configuration_id == credential_configuration_id)
     }
@@ -250,41 +345,27 @@ impl HolderInteractionData {
     pub fn configurations_for_credential(
         &self,
         credential_id: CredentialId,
-    ) -> impl Iterator<Item = &HolderCredentialConfiguration> {
-        self.credential_configurations
+    ) -> Result<Vec<HolderCredentialConfiguration>, IssuanceProtocolError> {
+        self.state
+            .credential_configurations
             .iter()
-            .filter(move |c| c.credential_id == Some(credential_id))
+            .filter(|c| c.credential_id == Some(credential_id))
+            .map(|state| self.configuration(state))
+            .collect()
     }
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/// An offered credential configuration: its issuer metadata and its issuance state
+#[derive(Debug, Clone)]
 pub(crate) struct HolderCredentialConfiguration {
-    pub credential_configuration_id: String,
-    /// OpenID4VCI credential format
-    pub format: String,
-    #[serde(default)]
-    pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    #[serde(default)]
-    pub credential_signing_alg_values_supported: Option<Vec<SigningAlgValue>>,
-    #[serde(default)]
-    pub proof_types_supported: Option<IndexMap<String, ProofTypeSupported>>,
-    /// Not stored anymore: accepting takes the display data from the current issuer metadata
-    #[serde(default)]
-    pub credential_metadata: Option<CredentialMetadata>,
-    #[serde(default)]
-    pub disclosure_policy: Option<DisclosurePolicy>,
-    /// Each notification_id corresponds to one credential response
-    /// For cases where the holder retrieves the batch items in batches
-    #[serde(default)]
-    pub notification_ids: Vec<String>,
-    /// Top-level credential (single or batch parent) holding the items of this configuration,
-    /// `None` if not issued
-    #[serde(default)]
-    pub credential_id: Option<CredentialId>,
-    /// Exact format of the issued items, `None` if not issued
-    #[serde(default)]
-    pub credential_schema_format_id: Option<CredentialSchemaFormatId>,
+    pub metadata: CredentialConfiguration,
+    pub state: HolderCredentialConfigurationState,
+}
+
+impl HolderCredentialConfiguration {
+    pub fn id(&self) -> &str {
+        &self.state.credential_configuration_id
+    }
 }
 
 // procivis extension under CredentialDisplay

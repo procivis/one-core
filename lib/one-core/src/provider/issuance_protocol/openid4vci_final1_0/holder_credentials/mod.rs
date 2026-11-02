@@ -66,7 +66,7 @@ impl OpenID4VCIFinal1_0 {
         interaction: &Interaction,
     ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
         let format_type = map_from_oidc_format_to_core_detailed(
-            &configuration.format,
+            &configuration.metadata.format,
             issuer_response
                 .credentials
                 .first()
@@ -82,6 +82,7 @@ impl OpenID4VCIFinal1_0 {
             })?;
 
         let disclosure_policy = configuration
+            .metadata
             .disclosure_policy
             .as_ref()
             .map(serde_json::to_string)
@@ -126,7 +127,7 @@ impl OpenID4VCIFinal1_0 {
                 &mut schema,
                 item.credential.holder_mut()?,
                 None,
-                configuration.credential_metadata.as_ref(),
+                configuration.metadata.credential_metadata.as_ref(),
             )
             .await?;
         }
@@ -136,7 +137,7 @@ impl OpenID4VCIFinal1_0 {
         let main_credential = credentials.remove(0);
 
         Ok(IssuanceAcceptResponse {
-            credential_configuration_id: configuration.credential_configuration_id.to_owned(),
+            credential_configuration_id: configuration.id().to_owned(),
             main_credential,
             batch_items: credentials,
         })
@@ -175,18 +176,19 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
         let CredentialViewMut { common, data } = credential;
         let parsed_format = data.format.as_ref().await?.to_owned();
-        let issuer_claim_metadata = if let Some(metadata) = &configuration.credential_metadata {
-            let schema = common.schema.as_ref().await?;
-            map_issuer_claim_metadata(
-                &schema,
-                metadata,
-                &parsed_format,
-                self.formatter_provider.as_ref(),
-            )
-            .await?
-        } else {
-            vec![]
-        };
+        let issuer_claim_metadata =
+            if let Some(metadata) = &configuration.metadata.credential_metadata {
+                let schema = common.schema.as_ref().await?;
+                map_issuer_claim_metadata(
+                    &schema,
+                    metadata,
+                    &parsed_format,
+                    self.formatter_provider.as_ref(),
+                )
+                .await?
+            } else {
+                vec![]
+            };
         self.enrich_credential_schema(
             common.schema.as_mut().await?.as_mut(),
             interaction_data,
@@ -216,7 +218,7 @@ impl OpenID4VCIFinal1_0 {
             &mut schema,
             CredentialViewMut { common, data },
             new_format,
-            configuration.credential_metadata.as_ref(),
+            configuration.metadata.credential_metadata.as_ref(),
         )
         .await?;
         Ok(schema)
@@ -372,7 +374,7 @@ impl OpenID4VCIFinal1_0 {
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
-        let parent_id = configuration.credential_id.as_ref().ok_or_else(|| {
+        let parent_id = configuration.state.credential_id.as_ref().ok_or_else(|| {
             IssuanceProtocolError::Failed("Missing credential ID for batch refresh".to_string())
         })?;
         let batch_parent = self
@@ -386,7 +388,7 @@ impl OpenID4VCIFinal1_0 {
         let mut schema = batch_parent.common().schema.as_ref().await?.to_owned();
 
         let format_type = map_from_oidc_format_to_core_detailed(
-            &configuration.format,
+            &configuration.metadata.format,
             issuer_response
                 .credentials
                 .first()
@@ -402,6 +404,7 @@ impl OpenID4VCIFinal1_0 {
             .get_credential_formatter(&config_schema_format.format)?;
 
         let disclosure_policy = configuration
+            .metadata
             .disclosure_policy
             .as_ref()
             .map(serde_json::to_string)
@@ -668,14 +671,15 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<(), IssuanceProtocolError> {
         apply_issuer_metadata_to_schema(
             schema,
-            configuration.credential_metadata.as_ref(),
+            configuration.metadata.credential_metadata.as_ref(),
             &self.config.global_settings.default_language,
             issuer_claim_metadata,
         )
         .await?;
-        schema.batch_size = interaction_data.batch_size.map(|size| size as _);
+        schema.batch_size = interaction_data.batch_size().map(|size| size as _);
         schema.organisation = organisation.to_owned().into();
         schema.wallet_attestation.key_storage_security_level = configuration
+            .metadata
             .proof_types_supported
             .as_ref()
             .and_then(|map| map.get("jwt"))
