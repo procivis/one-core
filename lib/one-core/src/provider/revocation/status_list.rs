@@ -5,6 +5,7 @@ use std::future::Future;
 
 use futures::FutureExt;
 use one_crypto::utilities::get_rng;
+use rand::seq::SliceRandom;
 use rand::{CryptoRng, RngExt};
 use serde::{Deserialize, Serialize};
 use shared_types::{
@@ -12,7 +13,7 @@ use shared_types::{
 };
 
 use super::RevocationError;
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::revocation_list::{
@@ -137,7 +138,7 @@ where
         revocation_list_repository,
     };
 
-    let mut list = select_status_list(
+    let list = select_status_list(
         &list_lookup,
         transaction_manager,
         revocation_list_repository,
@@ -147,53 +148,109 @@ where
     .await?;
 
     let mut rng = get_rng();
-    let available_index = match pick_available_block_index(
+    {
+        let available_indices = get_available_block_indices(
+            list.id,
+            get_list_size_params(&list)?,
+            revocation_list_repository,
+            &mut rng,
+        )
+        .await?;
+
+        if let Some(allocated_index) = try_allocate_index(
+            &entity_id,
+            list.id,
+            &available_indices,
+            revocation_list_repository,
+            transaction_manager,
+        )
+        .await?
+        {
+            return Ok(allocated_index);
+        }
+    }
+
+    // There is either no available index on the current list, or all available have been populated in parallel
+    // Try again with a fresh list
+    let list = select_status_list(
+        &list_lookup,
+        transaction_manager,
+        revocation_list_repository,
+        &prepare_empty_list,
+        // increment sequence_number
+        Some(list.sequence_number + 1),
+    )
+    .await?;
+
+    let available_indices = get_available_block_indices(
         list.id,
         get_list_size_params(&list)?,
         revocation_list_repository,
         &mut rng,
     )
-    .await?
-    {
-        Some(index) => index,
-        None => {
-            // the previous list is full, a new one needs to be created
-            list = select_status_list(
-                &list_lookup,
-                transaction_manager,
-                revocation_list_repository,
-                &prepare_empty_list,
-                // increment sequence_number
-                Some(list.sequence_number + 1),
-            )
-            .await?;
+    .await?;
 
-            pick_available_block_index(
-                list.id,
-                get_list_size_params(&list)?,
-                revocation_list_repository,
-                &mut rng,
-            )
-            .await?
-            .ok_or(
-                // even after fresh list creation no indices found, fail here
-                RevocationError::MappingError(
-                    "No available indices after retry with fresh list".to_string(),
-                ),
-            )?
-        }
+    let Some(allocated_index) = try_allocate_index(
+        &entity_id,
+        list.id,
+        &available_indices,
+        revocation_list_repository,
+        transaction_manager,
+    )
+    .await?
+    else {
+        return Err(RevocationError::MappingError(format!(
+            "All available indices failed, num indices: {}",
+            available_indices.len()
+        )));
     };
 
-    let entry_id = revocation_list_repository
-        .create_entry(list.id, entity_id, Some(available_index))
-        .await
-        .error_while("creating revocation list entry")?;
+    Ok(allocated_index)
+}
 
-    Ok(AllocatedIndexEntry {
-        list_id: list.id,
-        entry_id,
-        index: available_index,
-    })
+/// Tries to allocate one of the `available_indices`
+/// - returns `Some(AllocatedIndexEntry)` when an allocation succeeds
+/// - returns `None` when none of the `available_indices` is free
+/// - returns error otherwise
+async fn try_allocate_index(
+    entity_id: &RevocationListEntityId,
+    list_id: RevocationListId,
+    available_indices: &[usize],
+    revocation_list_repository: &dyn RevocationListRepository,
+    transaction_manager: &dyn TransactionManager,
+) -> Result<Option<AllocatedIndexEntry>, RevocationError> {
+    for available_index in available_indices {
+        let maybe_entry_id = transaction_manager
+            .tx(async {
+                revocation_list_repository
+                    .create_entry(list_id, entity_id.clone(), Some(*available_index))
+                    .await
+            }
+            .boxed())
+            .await
+            .flatten();
+
+        match maybe_entry_id {
+            Ok(entry_id) => {
+                return Ok(Some(AllocatedIndexEntry {
+                    list_id,
+                    entry_id,
+                    index: *available_index,
+                }));
+            }
+            Err(error) if error.error_code() == ErrorCode::BR_0357 => {
+                tracing::debug!(%error, "Inserting at index({available_index}) failed with conflict, list: {list_id}");
+                // this means the transaction failed, and the index was taken in parallel
+                // try with another available index
+                continue;
+            }
+            Err(e) => {
+                return Err(e.error_while("creating revocation list entry").into());
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
@@ -234,7 +291,7 @@ where
             return Ok(new_list);
         }
         Err(error) if error.error_code() == ErrorCode::BR_0357 => {
-            tracing::debug!(%error, "First list creation failure, another task already created a list");
+            tracing::debug!(%error, "List creation failure with the sequence_number: {}", new_list.sequence_number);
             // this means the transaction failed, and a new list was created in parallel
             // fetch the newly created list instead
             let fresh_list = list_lookup
@@ -268,14 +325,14 @@ where
     }
 }
 
-/// Picks a randomized index on the list.
-/// Returns `None` if the list is considered full (i.e. a selected block is full)
-async fn pick_available_block_index<const MINIMUM_CAPACITY: usize>(
+/// Picks a randomized block on the list.
+/// Returns unoccupied indices from the selected block (randomly shuffled)
+async fn get_available_block_indices<const MINIMUM_CAPACITY: usize>(
     list_id: RevocationListId,
     list_size_params: StatusListSizeParams<MINIMUM_CAPACITY>,
     revocation_list_repository: &dyn RevocationListRepository,
     rng: &mut impl CryptoRng,
-) -> Result<Option<usize>, RevocationError> {
+) -> Result<Vec<usize>, RevocationError> {
     let block_size = list_size_params.block_size;
     let num_blocks = list_size_params.capacity / block_size;
 
@@ -303,17 +360,16 @@ async fn pick_available_block_index<const MINIMUM_CAPACITY: usize>(
     if occupied_indices.len() >= block_size {
         // the block is full
         tracing::debug!("A full block found: {selected_block} on list: {list_id}");
-        return Ok(None);
+        return Ok(vec![]);
     }
 
-    // select a random available index inside the selected block
-    let available_indices: Vec<_> = block_range
+    let mut available_indices: Vec<_> = block_range
         .filter(|index| !occupied_indices.contains(index))
         .collect();
     tracing::trace!("Available indices: {}", available_indices.len());
 
-    let picked_item = rng.random_range(0..available_indices.len());
-    Ok(available_indices.get(picked_item).cloned())
+    available_indices.shuffle(rng);
+    Ok(available_indices)
 }
 
 /// Utility wrapper for looking-up the latest status list of certain issuer
