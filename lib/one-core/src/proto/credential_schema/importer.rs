@@ -88,7 +88,9 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
 
         for existing in &conflicting_credential_schemas {
             if existing.matches_schema_id(&schema_ids).await? {
-                return Err(Error::AlreadyExists);
+                return Err(Error::AlreadyExists {
+                    conflicting: Some(Box::new(existing.to_owned())),
+                });
             }
         }
 
@@ -112,7 +114,7 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             .await
             .map_err(|e| {
                 if matches!(e, DataLayerError::AlreadyExists(_)) {
-                    Error::AlreadyExists
+                    Error::AlreadyExists { conflicting: None }
                 } else {
                     e.error_while("creating credential schema").into()
                 }

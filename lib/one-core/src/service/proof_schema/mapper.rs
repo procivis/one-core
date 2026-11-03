@@ -6,11 +6,12 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
-    ProofInputSchemaResponseDTO, ProofSchemaFilterParamsDTO, ProofSchemaFilterValue,
+    CreateProofSchemaRequestDTO, ExportProofInputSchemaResponseDTO, ExportProofSchemaResponseDTO,
+    GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
+    ProofSchemaFilterParamsDTO, ProofSchemaFilterValue,
 };
 use super::error::ProofSchemaServiceError;
-use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::claim_schema::ClaimSchema;
@@ -24,7 +25,9 @@ use crate::model::proof_schema::{
     ExactProofSchemaFilterColumn, ProofInputClaimSchema, ProofInputSchema, ProofSchema,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::service::credential_schema::mapper::to_credential_schema_list_response;
+use crate::service::credential_schema::mapper::{
+    schema_to_detail_v2_response_dto, to_credential_schema_list_response,
+};
 use crate::validator::proof_schema::resolve_proof_input_formats;
 
 pub(super) async fn convert_proof_schema_to_response(
@@ -85,6 +88,59 @@ async fn convert_input_schema_to_response(
             formatter_provider,
         )
         .await?,
+    })
+}
+
+pub(super) async fn proof_schema_to_export_response(
+    value: ProofSchema,
+    config: &CoreConfig,
+) -> Result<ExportProofSchemaResponseDTO, ProofSchemaServiceError> {
+    let mut proof_input_schemas = vec![];
+
+    let input_schemas = value.input_schemas.as_ref().await?;
+    for input_schema in &input_schemas {
+        proof_input_schemas
+            .push(convert_input_schema_to_export_response(input_schema, config).await?);
+    }
+
+    Ok(ExportProofSchemaResponseDTO {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        imported_source_url: value.imported_source_url,
+        expire_duration: value.expire_duration,
+        proof_input_schemas,
+        ecosystem: value.ecosystem,
+    })
+}
+
+async fn convert_input_schema_to_export_response(
+    value: &ProofInputSchema,
+    config: &CoreConfig,
+) -> Result<ExportProofInputSchemaResponseDTO, ProofSchemaServiceError> {
+    let credential_schema = value.credential_schema.as_ref().await?.to_owned();
+
+    let claim_schemas = {
+        let claim_schemas = value.claim_schemas.as_ref().await?.to_owned();
+
+        let credential_schema_claims = credential_schema.claim_schemas.as_ref().await?;
+        nest_claim_schemas(
+            append_object_claim_schemas(
+                convert_inner(claim_schemas),
+                &credential_schema_claims,
+                &config.datatype,
+            )?,
+            &config.datatype,
+        )?
+    };
+
+    Ok(ExportProofInputSchemaResponseDTO {
+        formats: value.formats.clone(),
+        claim_schemas,
+        credential_schema: schema_to_detail_v2_response_dto(credential_schema, None, config)
+            .await
+            .error_while("converting credential schema detail")?,
     })
 }
 

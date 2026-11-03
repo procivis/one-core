@@ -5,12 +5,15 @@ use uuid::Uuid;
 
 use super::ProofSchemaService;
 use super::dto::{
-    CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
-    ImportProofSchemaRequestDTO, ImportProofSchemaResponseDTO, ProofSchemaFilterParamsDTO,
-    ProofSchemaShareResponseDTO,
+    CreateProofSchemaRequestDTO, ExportProofSchemaResponseDTO, GetProofSchemaListResponseDTO,
+    GetProofSchemaResponseDTO, ImportProofSchemaRequestDTO, ImportProofSchemaResponseDTO,
+    ProofSchemaFilterParamsDTO, ProofSchemaShareResponseDTO,
 };
 use super::error::ProofSchemaServiceError;
-use super::mapper::{convert_proof_schema_to_response, proof_schema_from_create_request};
+use super::mapper::{
+    convert_proof_schema_to_response, proof_schema_from_create_request,
+    proof_schema_to_export_response,
+};
 use super::validator::{extract_claims_from_credential_schema, validate_create_request};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
@@ -236,6 +239,23 @@ impl ProofSchemaService {
         };
 
         Ok(ProofSchemaShareResponseDTO { url })
+    }
+
+    pub async fn export_proof_schema(
+        &self,
+        id: &ProofSchemaId,
+    ) -> Result<ExportProofSchemaResponseDTO, ProofSchemaServiceError> {
+        let result = self
+            .proof_schema_repository
+            .get_proof_schema(id)
+            .await
+            .error_while("getting proof schema")?;
+
+        if result.deleted_at.is_some() {
+            return Err(ProofSchemaServiceError::NotFound(*id));
+        }
+
+        proof_schema_to_export_response(result, &self.config).await
     }
 
     pub async fn import_proof_schema(

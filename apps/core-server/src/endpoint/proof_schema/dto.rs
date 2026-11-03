@@ -1,11 +1,12 @@
 use one_core::model::proof_schema::ExactProofSchemaFilterColumn;
 use one_core::service::error::ServiceError;
 use one_core::service::proof_schema::dto::{
-    CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
-    GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
-    ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO,
-    ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
-    ProofInputSchemaResponseDTO, ProofSchemaFilterParamsDTO, ProofSchemaShareResponseDTO,
+    CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO,
+    ExportProofInputSchemaResponseDTO, ExportProofSchemaResponseDTO, GetProofSchemaListItemDTO,
+    GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
+    ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO,
+    ProofInputSchemaRequestDTO, ProofInputSchemaResponseDTO, ProofSchemaFilterParamsDTO,
+    ProofSchemaShareResponseDTO,
 };
 use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -21,9 +22,8 @@ use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::credential_schema::dto::{
-    CredentialClaimSchemaTranslationsRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
-    CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO,
-    KeyStorageSecurityRestEnum,
+    CredentialSchemaListItemResponseRestDTO, CredentialSchemaV2ResponseRestDTO,
+    ImportCredentialSchemaV2RequestSchemaRestDTO,
 };
 use crate::serialize::{front_time, front_time_option};
 
@@ -121,8 +121,6 @@ pub(crate) struct ImportProofSchemaRestDTO {
     #[try_into(infallible)]
     pub imported_source_url: String,
     #[try_into(infallible)]
-    pub organisation_id: OrganisationId,
-    #[try_into(infallible)]
     pub expire_duration: u32,
     #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaRestDTO>,
@@ -143,7 +141,7 @@ pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
     pub formats: Option<Vec<String>>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
-    pub credential_schema: ImportProofSchemaCredentialSchemaRestDTO,
+    pub credential_schema: ImportCredentialSchemaV2RequestSchemaRestDTO,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -161,59 +159,6 @@ pub(crate) struct ImportProofSchemaClaimSchemaRestDTO {
     #[schema(no_recursion)]
     pub claims: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub array: bool,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
-#[try_into(T=ImportProofSchemaCredentialSchemaDTO, Error=ServiceError)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
-    #[try_into(infallible)]
-    pub id: Uuid,
-    #[schema(example = "2023-06-09T14:19:57.000Z")]
-    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
-    #[try_into(infallible)]
-    pub created_date: OffsetDateTime,
-    #[schema(example = "2023-06-09T14:19:57.000Z")]
-    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
-    #[try_into(infallible)]
-    pub last_modified: OffsetDateTime,
-    #[serde(
-        default,
-        deserialize_with = "time::serde::rfc3339::option::deserialize"
-    )]
-    #[try_into(infallible)]
-    pub deleted_at: Option<OffsetDateTime>,
-    #[try_into(infallible)]
-    pub name: String,
-    #[try_into(infallible)]
-    pub format: String,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub revocation_method: Option<String>,
-    #[try_into(infallible)]
-    pub imported_source_url: String,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
-    #[try_into(infallible)]
-    pub schema_id: String,
-    /// kept for backwards compatibility
-    #[serde(default)]
-    #[schema(ignore)]
-    #[try_into(skip)]
-    #[deprecated]
-    #[expect(unused)]
-    pub layout_type: Option<CredentialSchemaLayoutType>,
-    #[try_into(with_fn = try_convert_inner)]
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
-    #[try_into(infallible)]
-    pub allow_suspension: Option<bool>,
-    #[try_into(infallible)]
-    pub requires_wallet_instance_attestation: Option<bool>,
-    #[allow(unused)]
-    #[try_into(skip)]
-    pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
-    #[try_into(infallible)]
-    pub ecosystem: Option<EcosystemId>,
 }
 
 // list endpoint
@@ -375,28 +320,67 @@ pub(crate) struct ProofSchemaShareResponseRestDTO {
     pub url: String,
 }
 
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(ExportProofSchemaResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ExportProofSchemaResponseRestDTO {
+    pub id: ProofSchemaId,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub expire_duration: u32,
+    pub imported_source_url: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub proof_input_schemas: Vec<ExportProofInputSchemaResponseRestDTO>,
+    pub ecosystem: Option<EcosystemId>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(ExportProofInputSchemaResponseDTO)]
+pub(crate) struct ExportProofInputSchemaResponseRestDTO {
+    /// Formatter provider names saved for this proof input.
+    #[from(with_fn = convert_inner)]
+    #[schema(min_items = 1, example = json!(["SD_JWT_VC"]))]
+    pub formats: Vec<String>,
+    /// Defines the set of attributes being requested when making proof requests using this schema.
+    #[from(with_fn = convert_inner)]
+    pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
+    pub credential_schema: CredentialSchemaV2ResponseRestDTO,
+}
+
 #[cfg(test)]
 mod test {
+    use shared_types::i18n::I18nString;
     use similar_asserts::assert_eq;
 
     use super::*;
     use crate::endpoint::credential_schema::dto::{
+        CredentialClaimSchemaTranslationsRestDTO, CredentialClaimSchemaV2ResponseRestDTO,
         CredentialSchemaBackgroundPropertiesRestDTO, CredentialSchemaCodePropertiesRestDTO,
-        CredentialSchemaCodeTypeRestEnum, CredentialSchemaLogoPropertiesRestDTO,
+        CredentialSchemaCodeTypeRestEnum, CredentialSchemaFormatResponseRestDTO,
+        CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLogoPropertiesRestDTO,
+        CredentialSchemaTranslationsRestDTO, CredentialSchemaWalletAttestationRestDTO,
+        KeyStorageSecurityRestEnum,
     };
 
     #[test]
     fn test_shared_schema_deserializes_into_import_schema() {
-        let shared = GetProofSchemaResponseRestDTO {
-            id: Uuid::new_v4(),
+        let shared = ExportProofSchemaResponseRestDTO {
+            id: Uuid::new_v4().into(),
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),
             name: "name".to_string(),
             expire_duration: 42,
             imported_source_url: Some("imported_source_url".to_string()),
-            organisation_id: Uuid::new_v4().into(),
             ecosystem: Some("EUDI".into()),
-            proof_input_schemas: vec![ProofInputSchemaResponseRestDTO {
+            proof_input_schemas: vec![ExportProofInputSchemaResponseRestDTO {
                 formats: vec!["format".into()],
                 claim_schemas: vec![ProofClaimSchemaResponseRestDTO {
                     id: Uuid::new_v4(),
@@ -407,16 +391,16 @@ mod test {
                     claims: vec![],
                     array: true,
                 }],
-                credential_schema: CredentialSchemaListItemResponseRestDTO {
-                    id: Uuid::new_v4(),
+                credential_schema: CredentialSchemaV2ResponseRestDTO {
+                    id: Uuid::new_v4().into(),
                     created_date: one_core::clock::now_utc(),
                     last_modified: one_core::clock::now_utc(),
-                    deleted_at: Some(one_core::clock::now_utc()),
                     name: "name".to_string(),
-                    format: "format".into(),
-                    revocation_method: Some("method".into()),
-                    key_storage_security: Some(KeyStorageSecurityRestEnum::Basic),
-                    schema_id: "schema_id".to_string(),
+                    formats: vec![CredentialSchemaFormatResponseRestDTO {
+                        format: "format".into(),
+                        ecosystem_schema_id: "schema_id".to_string(),
+                        dcql: None,
+                    }],
                     imported_source_url: "imported_source_url".to_string(),
                     layout_properties: Some(CredentialSchemaLayoutPropertiesRestDTO {
                         background: Some(CredentialSchemaBackgroundPropertiesRestDTO {
@@ -437,9 +421,44 @@ mod test {
                         }),
                     }),
                     allow_suspension: true,
-                    requires_wallet_instance_attestation: true,
-                    translations: None,
+                    allow_revocation: Some(true),
+                    translations: CredentialSchemaTranslationsRestDTO {
+                        name: I18nString(std::collections::BTreeMap::from([(
+                            "en".to_string(),
+                            "name".to_string(),
+                        )])),
+                        description: None,
+                    },
                     ecosystem: Some("EUDI".into()),
+                    organisation_id: Uuid::new_v4().into(),
+                    claims: vec![CredentialClaimSchemaV2ResponseRestDTO {
+                        id: Uuid::new_v4().into(),
+                        created_date: one_core::clock::now_utc(),
+                        last_modified: one_core::clock::now_utc(),
+                        key: "attribute".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        array: false,
+                        claims: vec![],
+                        mappings: None,
+                        translations: CredentialClaimSchemaTranslationsRestDTO {
+                            name: I18nString(std::collections::BTreeMap::from([(
+                                "en".to_string(),
+                                "attribute".to_string(),
+                            )])),
+                        },
+                    }],
+                    wallet_attestation: CredentialSchemaWalletAttestationRestDTO {
+                        require_instance_attestation: true,
+                        key_storage_security_level: Some(KeyStorageSecurityRestEnum::Basic),
+                        preferred_key_storage_attestation_lifetime: None,
+                        preferred_instance_attestation_lifetime: None,
+                        monitor_credential_lifetime: false,
+                    },
+                    batch_size: None,
+                    transaction_code: None,
+                    embedded_disclosure_policy: None,
+                    expiration: None,
                 },
             }],
         };

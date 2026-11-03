@@ -50,7 +50,6 @@ async fn test_get_proof_schema_success() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&proof_schema.id);
-    resp["organisationId"].assert_eq(&organisation.id);
     assert_eq!(resp["name"], "test");
     assert_eq!(resp["proofInputSchemas"].as_array().unwrap().len(), 1);
 

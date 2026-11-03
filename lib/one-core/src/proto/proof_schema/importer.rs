@@ -8,24 +8,21 @@ use super::mapper::proof_input_from_import_request;
 use super::validator::{proof_schema_name_already_exists, validate_imported_proof_schema};
 use super::{Error, ProofSchemaImporter};
 use crate::config::core_config::CoreConfig;
-use crate::error::ContextWithErrorCode;
-use crate::model::credential_schema::CredentialSchemaListQuery;
-use crate::model::list_filter::{ListFilterValue, StringMatch};
-use crate::model::list_query::ListPagination;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
-use crate::proto::credential_schema::url_importer::CredentialSchemaUrlImporter;
+use crate::proto::credential_schema::dto::ImportCredentialSchemaV2RequestDTO;
+use crate::proto::credential_schema::importer::CredentialSchemaImporter;
+use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::proto::http_client::HttpClient;
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
-use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::proof_schema::dto::ImportProofSchemaDTO;
 use crate::validator::schema::validate_imported_source_url;
 
 pub(crate) struct ProofSchemaImporterProto {
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-    credential_schema_url_importer: Arc<dyn CredentialSchemaUrlImporter>,
+    credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
+    credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     client: Arc<dyn HttpClient>,
     config: Arc<CoreConfig>,
     base_url: Option<String>,
@@ -34,16 +31,16 @@ pub(crate) struct ProofSchemaImporterProto {
 impl ProofSchemaImporterProto {
     pub(crate) fn new(
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-        credential_schema_url_importer: Arc<dyn CredentialSchemaUrlImporter>,
+        credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
+        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
         client: Arc<dyn HttpClient>,
         config: Arc<CoreConfig>,
         base_url: Option<String>,
     ) -> Self {
         Self {
             proof_schema_repository,
-            credential_schema_repository,
-            credential_schema_url_importer,
+            credential_schema_import_parser,
+            credential_schema_importer,
             client,
             config,
             base_url,
@@ -80,56 +77,35 @@ impl ProofSchemaImporter for ProofSchemaImporterProto {
         .await?;
 
         let now = crate::clock::now_utc();
-        let input_schemas = schema
-            .proof_input_schemas
-            .into_iter()
-            .map(|request_input_schema| {
-                async move {
-                    // check if the credential schema already exists
-                    let maybe_credential_schema = self
-                        .credential_schema_repository
-                        .get_credential_schema_list(CredentialSchemaListQuery {
-                            include_count: false,
-                            pagination: Some(ListPagination {
-                                page: 0,
-                                page_size: 1,
-                            }),
-                            filtering: Some(
-                                CredentialSchemaFilterValue::OrganisationId(organisation.id)
-                                    .condition()
-                                    & CredentialSchemaFilterValue::EcosystemSchemaId(
-                                        StringMatch::equals(
-                                            &request_input_schema.credential_schema.schema_id,
-                                        ),
-                                    )
-                                    .condition(),
-                            ),
-                            ..Default::default()
+        let input_schemas =
+            schema
+                .proof_input_schemas
+                .into_iter()
+                .map(|request_input_schema| async move {
+                    let credential_schema = self
+                        .credential_schema_import_parser
+                        .parse_import_credential_schema_v2(ImportCredentialSchemaV2RequestDTO {
+                            organisation: organisation.to_owned(),
+                            schema: request_input_schema.credential_schema.clone().into(),
                         })
-                        .await
-                        .error_while("getting credential schema")?
-                        .values
-                        .into_iter()
-                        .next();
+                        .error_while("parsing credential schema")?;
 
-                    let credential_schema =
-                        // if not exists (or deleted) create new credential schema
-                        if let Some(credential_schema) = maybe_credential_schema
-                            && credential_schema.deleted_at.is_none() {
-                            credential_schema
-                        } else {
-                            self.credential_schema_url_importer
-                                .import_credential_schema_from_url(
-                                    &request_input_schema.credential_schema.imported_source_url,
-                                    organisation.to_owned(),
-                                )
-                                .await
-                                .error_while("importing referenced credential schema")?
-                        };
+                    let credential_schema = match self
+                        .credential_schema_importer
+                        .import_credential_schema(credential_schema)
+                        .await
+                    {
+                        Ok(schema) => schema,
+                        Err(crate::proto::credential_schema::Error::AlreadyExists {
+                            conflicting: Some(schema),
+                        }) => *schema,
+                        Err(err) => {
+                            return Err(err.error_while("importing credential schema").into());
+                        }
+                    };
 
                     proof_input_from_import_request(request_input_schema, credential_schema).await
-                }
-            });
+                });
 
         let input_schemas: Vec<ProofInputSchema> = future::try_join_all(input_schemas).await?;
 

@@ -105,35 +105,6 @@ async fn test_import_proof_schema_ok() {
         .await
         .unwrap();
 
-    context
-        .server_mock
-        .ssi_credential_schema_endpoint(
-            original_credential_schema_id,
-            json!({
-              "createdDate": now,
-              "lastModified": now,
-              "format": original_credential_schema.single_format().await.format,
-              "id": original_credential_schema_id,
-              "importedSourceUrl": original_credential_schema.imported_source_url,
-              "name": original_credential_schema.name,
-              "organisationId": source_organisation.id,
-              "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
-              "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
-              "allowSuspension": original_credential_schema.allow_suspension,
-              "ecosystem": "EUDI",
-              "claims": claim_schemas.iter().map(|schema| json!({
-                  "array": schema.array,
-                  "createdDate": now,
-                  "lastModified": now,
-                  "datatype": schema.data_type,
-                  "id": schema.id,
-                  "key": schema.key,
-                  "required": schema.required
-              })).collect::<Vec<_>>()
-            }),
-        )
-        .await;
-
     let requested_claim_schema = claim_schemas.first().unwrap();
 
     let target_organisation = context.db.organisations.create().await;
@@ -145,7 +116,6 @@ async fn test_import_proof_schema_ok() {
         "createdDate": now,
         "lastModified": now,
         "name": "test-proof-schema",
-        "organisationId": Uuid::new_v4(),
         "importedSourceUrl": "https://source.example/proof-schema",
         "expireDuration": 1000,
         "ecosystem": "EUDI",
@@ -163,13 +133,22 @@ async fn test_import_proof_schema_ok() {
                     "id": Uuid::new_v4(),
                     "createdDate": now,
                     "lastModified": now,
-                    "importedSourceUrl": original_credential_schema.imported_source_url,
+                    "importedSourceUrl": "https://source.example/schema",
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.single_format().await.format,
-                    "revocationMethod": original_credential_schema.single_format().await.format,
-                    "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
+                    "formats": [{
+                        "format": original_credential_schema.single_format().await.format,
+                        "ecosystemSchemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
+                    }],
                     "ecosystem": "EUDI",
+                    "organisationId": Uuid::new_v4(),
+                    "claims": [{
+                        "id": requested_claim_schema.id,
+                        "createdDate": now,
+                        "lastModified": now,
+                        "required": requested_claim_schema.required,
+                        "key": requested_claim_schema.key,
+                        "datatype": requested_claim_schema.data_type,
+                    }]
                 }
             }
         ]
@@ -235,7 +214,6 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
         "lastModified": now,
         "name": "test-proof-schema",
         "importedSourceUrl": "https://source.example/proof-schema",
-        "organisationId": organisation.id,
         "expireDuration": 1000,
         "proofInputSchemas": [
             {
@@ -252,12 +230,21 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
                     "id": credential_schema.id,
                     "createdDate": now,
                     "lastModified": now,
-                    "importedSourceUrl": "invalid_should_not_be_needed",
+                    "importedSourceUrl": "https://source.example/schema",
                     "name": credential_schema.name,
-                    "format": credential_schema.single_format().await.format,
-                    "revocationMethod": credential_schema.single_format().await.format,
-                    "keyStorageSecurity": credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": credential_schema.single_format().await.ecosystem_schema_id,
+                    "formats": [{
+                        "format": credential_schema.single_format().await.format,
+                        "ecosystemSchemaId": credential_schema.single_format().await.ecosystem_schema_id,
+                    }],
+                    "organisationId": organisation.id,
+                    "claims": [{
+                        "id": requested_claim_schema.id,
+                        "createdDate": now,
+                        "lastModified": now,
+                        "required": requested_claim_schema.required,
+                        "key": requested_claim_schema.key,
+                        "datatype": requested_claim_schema.data_type,
+                    }]
                 }
             }
         ]
@@ -303,7 +290,6 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         "lastModified": now,
         "name": "test-proof-schema",
         "importedSourceUrl": "https://source.example/proof-schema",
-        "organisationId": Uuid::new_v4(),
         "expireDuration": 1000,
         "proofInputSchemas": [
             {
@@ -320,12 +306,21 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
                     "id": original_credential_schema.id,
                     "createdDate": now,
                     "lastModified": now,
-                    "importedSourceUrl": "invalid_should_not_be_needed",
+                    "importedSourceUrl": "https://source.example/schema",
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.single_format().await.format,
-                    "revocationMethod": original_credential_schema.single_format().await.format,
-                    "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
+                    "formats": [{
+                        "format": original_credential_schema.single_format().await.format,
+                        "ecosystemSchemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
+                    }],
+                    "organisationId": Uuid::new_v4(),
+                    "claims": [{
+                        "id": requested_claim_schema.id,
+                        "createdDate": now,
+                        "lastModified": now,
+                        "required": requested_claim_schema.required,
+                        "key": requested_claim_schema.key,
+                        "datatype": requested_claim_schema.data_type,
+                    }]
                 }
             }
         ]
@@ -431,7 +426,6 @@ async fn test_import_proof_schema_nested_array() {
         "lastModified": now,
         "name": "test-proof-schema",
         "importedSourceUrl": "https://source.example/proof-schema",
-        "organisationId": Uuid::new_v4(),
         "expireDuration": 1000,
         "proofInputSchemas": [
             {
@@ -455,12 +449,31 @@ async fn test_import_proof_schema_nested_array() {
                     "id": original_credential_schema.id,
                     "createdDate": now,
                     "lastModified": now,
-                    "importedSourceUrl": "invalid_should_not_be_needed",
+                    "importedSourceUrl": "https://source.example/schema",
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.single_format().await.format,
-                    "revocationMethod": original_credential_schema.single_format().await.format,
-                    "keyStorageSecurity": original_credential_schema.wallet_attestation.key_storage_security_level,
-                    "schemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
+                    "formats": [{
+                        "format": original_credential_schema.single_format().await.format,
+                        "ecosystemSchemaId": original_credential_schema.single_format().await.ecosystem_schema_id,
+                    }],
+                    "organisationId": Uuid::new_v4(),
+                    "claims": [{
+                        "id": requested_claim_schema.id,
+                        "createdDate": now,
+                        "lastModified": now,
+                        "required": requested_claim_schema.required,
+                        "key": requested_claim_schema.key,
+                        "datatype": requested_claim_schema.data_type,
+                        "array": true,
+                        "claims": [{
+                            "id": "06155d27-ea07-4be4-b5e3-c057c741d959",
+                            "createdDate": now,
+                            "lastModified": now,
+                            "required": true,
+                            "key": "field",
+                            "datatype": "STRING",
+                            "array": false
+                        }],
+                    }]
                 }
             }
         ]

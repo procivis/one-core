@@ -2,9 +2,8 @@ use one_core::model::proof_schema::{ExactProofSchemaFilterColumn, SortableProofS
 use one_core::service::error::ServiceError;
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
-    ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO,
-    ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
-    ProofSchemaShareResponseDTO,
+    ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO,
+    ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
 use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -13,13 +12,11 @@ use shared_types::ProofSchemaId;
 
 use super::OneCore;
 use super::common::SortDirection;
-use super::credential_schema::{
-    CredentialSchemaLayoutPropertiesBindingDTO, KeyStorageSecurityBindingEnum,
-};
+use super::credential_schema::ImportCredentialSchemaV2RequestSchemaBindingDTO;
 use super::mapper::optional_time;
 use crate::binding::credential::CredentialSchemaBindingDTO;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
-use crate::utils::{TimestampFormat, into_id, into_timestamp, into_timestamp_opt};
+use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
@@ -154,9 +151,6 @@ pub struct ImportProofSchemaBindingDTO {
     pub last_modified: String,
     #[try_into(infallible)]
     pub name: String,
-    /// Specifies the organizational context for this operation.
-    #[try_into(with_fn_ref = into_id)]
-    pub organisation_id: String,
     /// Defines how long the system will store data received from wallets. After
     /// the defined duration, the received proof and its data are deleted from
     /// the system. If 0, proofs received when using this schema will not be
@@ -223,41 +217,7 @@ pub struct ImportProofSchemaInputSchemaBindingDTO {
     pub formats: Option<Vec<String>>,
     #[try_into(with_fn = try_convert_inner)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaBindingDTO>,
-    pub credential_schema: ImportProofSchemaCredentialSchemaBindingDTO,
-}
-
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = ImportProofSchemaCredentialSchemaDTO, Error = ErrorResponseBindingDTO)]
-#[uniffi(name = "ImportProofSchemaCredentialSchema")]
-pub struct ImportProofSchemaCredentialSchemaBindingDTO {
-    #[try_into(with_fn_ref = into_id)]
-    pub id: String,
-    #[try_into(with_fn_ref = into_timestamp)]
-    pub created_date: String,
-    #[try_into(with_fn_ref = into_timestamp)]
-    pub last_modified: String,
-    #[try_into(with_fn = into_timestamp_opt)]
-    pub deleted_at: Option<String>,
-    #[try_into(infallible)]
-    pub name: String,
-    #[try_into(infallible)]
-    pub format: String,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub revocation_method: Option<String>,
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
-    #[try_into(infallible)]
-    pub schema_id: String,
-    #[try_into(infallible)]
-    pub imported_source_url: String,
-    #[try_into(with_fn = try_convert_inner)]
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
-    #[try_into(infallible)]
-    pub allow_suspension: Option<bool>,
-    #[try_into(infallible)]
-    pub requires_wallet_instance_attestation: Option<bool>,
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub ecosystem: Option<String>,
+    pub credential_schema: ImportCredentialSchemaV2RequestSchemaBindingDTO,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

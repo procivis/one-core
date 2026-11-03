@@ -1,4 +1,5 @@
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::model::credential_schema::CredentialSchema;
 
 pub(crate) mod dto;
 pub(crate) mod importer;
@@ -12,7 +13,9 @@ mod test;
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum Error {
     #[error("Credential schema already exists")]
-    AlreadyExists,
+    AlreadyExists {
+        conflicting: Option<Box<CredentialSchema>>,
+    },
     #[error("Revocation method not compatible with selected format")]
     RevocationMethodNotCompatibleWithSelectedFormat,
     #[error("Suspension not supported for revocation method")]
@@ -72,7 +75,7 @@ pub(crate) enum Error {
 impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::AlreadyExists => ErrorCode::BR_0007,
+            Self::AlreadyExists { .. } => ErrorCode::BR_0007,
             Self::MissingClaims => ErrorCode::BR_0008,
             Self::MissingNamespace => ErrorCode::BR_0438,
             Self::RevocationMethodNotCompatibleWithSelectedFormat => ErrorCode::BR_0110,

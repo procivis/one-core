@@ -35,11 +35,12 @@ pub(super) fn validate_imported_proof_schema(
         if let Some(formats) = &schema.formats {
             validate_proof_input_formats(formats).error_while("validating proof input formats")?;
         }
-        let format = &schema.credential_schema.format;
-        config
-            .format
-            .get_if_enabled(format)
-            .map_err(|_| Error::UnsupportedFormat(format.to_owned()))?;
+        for format in &schema.credential_schema.formats {
+            config
+                .format
+                .get_if_enabled(&format.format)
+                .map_err(|_| Error::UnsupportedFormat(format.format.to_owned()))?;
+        }
 
         validate_imported_proof_schema_data_types(&schema.claim_schemas, config)?;
     }

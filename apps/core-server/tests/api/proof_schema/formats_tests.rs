@@ -27,6 +27,7 @@ async fn multiformat_schema(
                 ]),
                 allow_revocation: Some(false),
                 allow_suspension: Some(false),
+                imported_source_url: Some("https://import.example.com".to_string()),
                 ..Default::default()
             },
         )
@@ -263,7 +264,7 @@ async fn import_rejects_invalid_formats_with_existing_credential_schema() {
 }
 
 #[tokio::test]
-async fn import_resolves_formats_from_downloaded_multiformat_schema() {
+async fn import_resolves_formats_from_credential_schema() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
     let schema = multiformat_schema(&context, &organisation).await;
     let export = export(
@@ -273,48 +274,17 @@ async fn import_resolves_formats_from_downloaded_multiformat_schema() {
         json!(["SD_JWT_VC", "JWT"]),
     )
     .await;
-    let mut credential_export = context
-        .api
-        .ssi
-        .get_credential_schema_v2(schema.id)
-        .await
-        .json_value()
-        .await;
-    let mock = wiremock::MockServer::start().await;
-    let path = format!("/ssi/schema/v2/{}", schema.id);
-    let source_url = format!("{}{path}", mock.uri());
-    credential_export["importedSourceUrl"] = json!(source_url);
-    wiremock::Mock::given(wiremock::matchers::path(path))
-        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(credential_export))
-        .expect(2)
-        .mount(&mock)
-        .await;
 
-    for legacy in [false, true] {
-        let destination = context.db.organisations.create().await;
-        let mut exported = export.clone();
-        exported["proofInputSchemas"][0]["credentialSchema"]["importedSourceUrl"] =
-            json!(source_url);
-        if legacy {
-            exported["proofInputSchemas"][0]
-                .as_object_mut()
-                .unwrap()
-                .remove("formats");
-        }
-        let response = context
-            .api
-            .proof_schemas
-            .import(exported, destination.id)
-            .await;
-        assert_eq!(response.status(), 201);
-        let id: ProofSchemaId =
-            serde_json::from_value(response.json_value().await["id"].clone()).unwrap();
-        let details = context.api.proof_schemas.get(id).await.json_value().await;
-        let expected = if legacy {
-            json!(["JWT", "SD_JWT_VC"])
-        } else {
-            json!(["SD_JWT_VC", "JWT"])
-        };
-        assert_eq!(details["proofInputSchemas"][0]["formats"], expected);
-    }
+    let destination = context.db.organisations.create().await;
+    let response = context
+        .api
+        .proof_schemas
+        .import(export, destination.id)
+        .await;
+    assert_eq!(response.status(), 201);
+    let id: ProofSchemaId =
+        serde_json::from_value(response.json_value().await["id"].clone()).unwrap();
+    let details = context.api.proof_schemas.get(id).await.json_value().await;
+    let expected = json!(["SD_JWT_VC", "JWT"]);
+    assert_eq!(details["proofInputSchemas"][0]["formats"], expected);
 }

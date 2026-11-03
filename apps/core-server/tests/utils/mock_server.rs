@@ -286,6 +286,7 @@ impl MockServer {
             .await;
     }
 
+    #[expect(unused)]
     pub async fn ssi_credential_schema_endpoint(&self, id: impl Display, body: serde_json::Value) {
         Mock::given(method(Method::GET))
             .and(path(format!("/ssi/schema/v1/{id}")))

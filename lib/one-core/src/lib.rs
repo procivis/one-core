@@ -553,8 +553,8 @@ impl OneCore {
 
         let proof_schema_importer = Arc::new(ProofSchemaImporterProto::new(
             data_provider.get_proof_schema_repository(),
-            data_provider.get_credential_schema_repository(),
-            credential_schema_url_importer.clone(),
+            credential_schema_import_parser.clone(),
+            credential_schema_importer.clone(),
             client.clone(),
             config.clone(),
             core_base_url.clone(),

@@ -1,17 +1,16 @@
 use one_dto_mapper::From;
 use serde::Deserialize;
 use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId,
-    ProofSchemaId, RevocationMethodId,
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId, ProofSchemaId,
 };
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::proof_schema::{ExactProofSchemaFilterColumn, ProofSchema};
 use crate::service::credential_schema::dto::{
-    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListItemResponseDTO,
+    CredentialSchemaDetailV2ResponseDTO, CredentialSchemaListItemResponseDTO,
+    ImportCredentialSchemaV2RequestSchemaDTO,
 };
 
 pub type GetProofSchemaListResponseDTO = GetListResponse<GetProofSchemaListItemDTO>;
@@ -89,6 +88,25 @@ pub struct GetProofSchemaListItemDTO {
 }
 
 #[derive(Clone, Debug)]
+pub struct ExportProofSchemaResponseDTO {
+    pub id: ProofSchemaId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub imported_source_url: Option<String>,
+    pub name: String,
+    pub expire_duration: u32,
+    pub proof_input_schemas: Vec<ExportProofInputSchemaResponseDTO>,
+    pub ecosystem: Option<EcosystemId>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ExportProofInputSchemaResponseDTO {
+    pub formats: Vec<CredentialFormat>,
+    pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
+    pub credential_schema: CredentialSchemaDetailV2ResponseDTO,
+}
+
+#[derive(Clone, Debug)]
 pub struct CreateProofSchemaClaimRequestDTO {
     pub id: ClaimSchemaId,
     pub required: bool,
@@ -130,7 +148,6 @@ pub struct ImportProofSchemaDTO {
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub organisation_id: OrganisationId,
     pub expire_duration: u32,
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaDTO>,
     pub imported_source_url: String,
@@ -143,7 +160,7 @@ pub struct ImportProofSchemaInputSchemaDTO {
     pub formats: Option<Vec<CredentialFormat>>,
     #[serde(default)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaDTO>,
-    pub credential_schema: ImportProofSchemaCredentialSchemaDTO,
+    pub credential_schema: ImportCredentialSchemaV2RequestSchemaDTO,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -157,31 +174,6 @@ pub struct ImportProofSchemaClaimSchemaDTO {
     #[serde(default)]
     pub claims: Vec<ImportProofSchemaClaimSchemaDTO>,
     pub array: bool,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportProofSchemaCredentialSchemaDTO {
-    pub id: CredentialSchemaId,
-    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
-    pub created_date: OffsetDateTime,
-    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
-    pub last_modified: OffsetDateTime,
-    #[serde(
-        default,
-        deserialize_with = "time::serde::rfc3339::option::deserialize"
-    )]
-    pub deleted_at: Option<OffsetDateTime>,
-    pub name: String,
-    pub format: CredentialFormat,
-    pub revocation_method: Option<RevocationMethodId>,
-    pub key_storage_security: Option<KeyStorageSecurity>,
-    pub schema_id: String,
-    pub imported_source_url: String,
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
-    pub allow_suspension: Option<bool>,
-    pub requires_wallet_instance_attestation: Option<bool>,
-    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug)]

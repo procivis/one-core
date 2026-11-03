@@ -24,7 +24,7 @@ use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaResponseRestDTO, CredentialSchemaV2ResponseRestDTO,
 };
-use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
+use crate::endpoint::proof_schema::dto::ExportProofSchemaResponseRestDTO;
 use crate::endpoint::ssi::dto::TrustCollectionResponseRestDTO;
 use crate::extractor::Accept;
 use crate::headers::{
@@ -440,7 +440,7 @@ pub(crate) async fn ssi_get_credential_schema_by_format_v2(
         ("id" = ProofSchemaId, Path, description = "Proof schema id")
     ),
     responses(
-        (status = 200, description = "OK", body = GetProofSchemaResponseRestDTO),
+        (status = 200, description = "OK", body = ExportProofSchemaResponseRestDTO),
         (status = 404, description = "Proof schema not found"),
         (status = 500, description = "Server error"),
     ),
@@ -453,9 +453,13 @@ pub(crate) async fn ssi_get_credential_schema_by_format_v2(
 pub(crate) async fn ssi_get_proof_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<GetProofSchemaResponseRestDTO> {
-    let result = state.core.proof_schema_service.get_proof_schema(&id).await;
-    OkOrErrorResponse::from_result(result, state, "getting proof schema")
+) -> OkOrErrorResponse<ExportProofSchemaResponseRestDTO> {
+    let result = state
+        .core
+        .proof_schema_service
+        .export_proof_schema(&id)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "getting proof schema export")
 }
 
 #[endpoint(

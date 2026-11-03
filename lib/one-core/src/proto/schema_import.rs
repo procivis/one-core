@@ -100,7 +100,7 @@ mod test {
             .expect_import_credential_schema_from_url()
             .once()
             .with(eq("https://provider.org/known-credential"), always())
-            .returning(|_, _| Err(CredentialSchemaError::AlreadyExists));
+            .returning(|_, _| Err(CredentialSchemaError::AlreadyExists { conflicting: None }));
         credential_schema_importer
             .expect_import_credential_schema_from_url()
             .once()

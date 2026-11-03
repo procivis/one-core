@@ -101,11 +101,6 @@ async fn test_openapi_schema_regressions() {
     );
 
     for (schema, property, nullable) in [
-        (
-            "ImportProofSchemaCredentialSchemaRestDTO",
-            "deletedAt",
-            false,
-        ),
         ("CredentialListItemResponseRestDTO", "issuanceDate", false),
         ("PatchIdentifierRequestRestDTO", "logo", true),
         ("PatchIdentifierRequestRestDTO", "translations", true),
