@@ -3,6 +3,7 @@ use std::sync::Arc;
 use serde::Deserialize;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk};
+use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{
     AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, ClientMetadata,
     ResponseMode,
@@ -26,13 +27,12 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 
 pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
+    dcql_query: &DcqlQuery,
     key_agreement_key: Option<PublicJwk>,
     supported_encryption_algorithms: Vec<EncryptionAlgorithm>,
 ) -> Result<ClientMetadata, VerificationProtocolError> {
-    let vp_formats_supported = generate_vp_formats_supported();
-
     let mut metadata = ClientMetadata {
-        vp_formats_supported,
+        vp_formats_supported: generate_vp_formats_supported(dcql_query),
         ..Default::default()
     };
 

@@ -145,6 +145,7 @@ impl OID4VPFinal1_0Service {
             response_uri.clone(),
             &interaction.id,
             create_open_id_for_vp_client_metadata_final1_0(
+                &dcql_query,
                 key_handle,
                 self.supported_encryption_algorithms(&proof.protocol)?,
             )
@@ -222,6 +223,21 @@ impl OID4VPFinal1_0Service {
         )
         .error_while("validating protocol type")?;
 
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(OID4VPFinal1_0ServiceError::MissingInteractionData)?
+            .as_ref()
+            .await?;
+        let interaction_data = interaction
+            .data
+            .as_ref()
+            .ok_or(OID4VPFinal1_0ServiceError::MissingInteractionData)?;
+        let OpenID4VPVerifierInteractionContent { dcql_query, .. } =
+            serde_json::from_slice(interaction_data)
+                .map_err(OID4VPFinal1_0ServiceError::from)
+                .error_while("parsing interaction data")?;
+
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
             self.swiyu_mode(&proof.protocol)?,
@@ -232,6 +248,7 @@ impl OID4VPFinal1_0Service {
         .error_while("selecting agreement key")?;
 
         Ok(create_open_id_for_vp_client_metadata_final1_0(
+            &dcql_query,
             key_handle,
             self.supported_encryption_algorithms(&proof.protocol)?,
         )

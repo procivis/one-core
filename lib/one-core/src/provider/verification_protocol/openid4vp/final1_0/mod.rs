@@ -1029,7 +1029,14 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         )
         .await?;
 
+        let dcql_query = create_dcql_query(
+            &proof_schema,
+            self.config.as_ref(),
+            &*self.credential_formatter_provider,
+        )
+        .await?;
         let client_metadata = create_open_id_for_vp_client_metadata_final1_0(
+            &dcql_query,
             key_agreement_key,
             self.get_capabilities().supported_encryption_algorithms,
         )?;
@@ -1041,12 +1048,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 
         let authorization_request = generate_authorization_request_params_final1_0(
             nonce.clone(),
-            create_dcql_query(
-                &proof_schema,
-                self.config.as_ref(),
-                &*self.credential_formatter_provider,
-            )
-            .await?,
+            dcql_query,
             vec![],
             encode_client_id_with_scheme(client_id_without_prefix.clone(), client_id_scheme),
             response_uri.clone(),

@@ -1,6 +1,6 @@
 use shared_types::InteractionId;
 use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vp::dcql::DcqlQuery;
+use standardized_types::openid4vp::dcql::{CredentialFormat, DcqlQuery};
 use standardized_types::openid4vp::{
     AuthorizationRequest, ClientMetadata, MdocAlgs, ResponseMode, SdJwtVcAlgs, VPFormatsSupported,
     VerifierInfoAttestation, W3CJwtAlgs, W3CLdpAlgs,
@@ -49,31 +49,43 @@ fn determine_response_mode_final1_0(metadata: &ClientMetadata) -> ResponseMode {
         ResponseMode::DirectPost
     }
 }
-pub(crate) fn generate_vp_formats_supported() -> VPFormatsSupported {
+pub(crate) fn generate_vp_formats_supported(dcql_query: &DcqlQuery) -> VPFormatsSupported {
     let jose_algs = vec!["EdDSA".to_owned(), "ES256".to_owned()];
     let cose_algs = vec![-7, -8, -9, -19];
 
-    VPFormatsSupported {
-        jwt_vc_json: Some(W3CJwtAlgs {
-            alg_values: jose_algs.to_owned(),
-        }),
-        ldp_vc: Some(W3CLdpAlgs {
-            proof_type_values: vec!["DataIntegrityProof".to_string()],
-            cryptosuite_values: vec![
-                "bbs-2023".to_string(),
-                "ecdsa-rdfc-2019".to_string(),
-                "eddsa-rdfc-2022".to_string(),
-            ],
-        }),
-        mso_mdoc: Some(MdocAlgs {
-            issuerauth_alg_values: cose_algs.to_owned(),
-            deviceauth_alg_values: cose_algs,
-        }),
-        dc_sd_jwt: Some(SdJwtVcAlgs {
-            sd_jwt_alg_values: jose_algs.to_owned(),
-            kb_jwt_alg_values: jose_algs,
-        }),
+    let mut formats = VPFormatsSupported::default();
+    for credential in &dcql_query.credentials {
+        match credential.format {
+            CredentialFormat::JwtVc(_) | CredentialFormat::W3cSdJwt(_) => {
+                formats.jwt_vc_json = Some(W3CJwtAlgs {
+                    alg_values: jose_algs.to_owned(),
+                })
+            }
+            CredentialFormat::LdpVc(_) => {
+                formats.ldp_vc = Some(W3CLdpAlgs {
+                    proof_type_values: vec!["DataIntegrityProof".to_string()],
+                    cryptosuite_values: vec![
+                        "bbs-2023".to_string(),
+                        "ecdsa-rdfc-2019".to_string(),
+                        "eddsa-rdfc-2022".to_string(),
+                    ],
+                })
+            }
+            CredentialFormat::MsoMdoc(_) => {
+                formats.mso_mdoc = Some(MdocAlgs {
+                    issuerauth_alg_values: cose_algs.to_owned(),
+                    deviceauth_alg_values: cose_algs.to_owned(),
+                })
+            }
+            CredentialFormat::SdJwtVc(_) => {
+                formats.dc_sd_jwt = Some(SdJwtVcAlgs {
+                    sd_jwt_alg_values: jose_algs.to_owned(),
+                    kb_jwt_alg_values: jose_algs.to_owned(),
+                })
+            }
+        }
     }
+    formats
 }
 
 /// Selects the JWK the verifier advertises for ECDH-ES key agreement, preferring the key the

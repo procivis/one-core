@@ -10,8 +10,8 @@ use similar_asserts::assert_eq;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, Jwks, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::{
-    ClientIdPrefix, ClientMetadata, DirectPostResponse, MdocAlgs, SdJwtVcAlgs, VPFormatsSupported,
-    VpTokenResponse, W3CJwtAlgs, W3CLdpAlgs,
+    ClientIdPrefix, ClientMetadata, DirectPostResponse, VPFormatsSupported, VpTokenResponse,
+    W3CJwtAlgs,
 };
 use uuid::Uuid;
 
@@ -585,7 +585,33 @@ async fn test_get_client_metadata_success() {
         ),
         verifier_key: Some(verifier_key.into()),
         verifier_certificate: None,
-        interaction: None,
+        interaction: Some(
+            Interaction {
+                dpop_key: None,
+                client_attestation_key: None,
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                data: Some(
+                    serde_json::to_vec(&OpenID4VPVerifierInteractionContent {
+                        nonce: "nonce".to_string(),
+                        encryption_key: None,
+                        dcql_query: dummy_dcql_query(true),
+                        client_id: "client_id".to_string(),
+                        client_id_scheme: Some(ClientIdPrefix::RedirectUri),
+                        response_uri: None,
+                        common: Default::default(),
+                    })
+                    .unwrap(),
+                ),
+                organisation: dummy_organisation(None).into(),
+                interaction_type: InteractionType::Verification,
+                expires_at: None,
+                ecosystem: None,
+                ecosystem_data: Default::default(),
+            }
+            .into(),
+        ),
         profile: None,
         proof_blob_id: None,
         engagement: None,
@@ -691,25 +717,10 @@ async fn test_get_client_metadata_success() {
                 }),]
             }),
             vp_formats_supported: VPFormatsSupported {
-                ldp_vc: Some(W3CLdpAlgs {
-                    proof_type_values: vec!["DataIntegrityProof".to_string()],
-                    cryptosuite_values: vec![
-                        "bbs-2023".to_string(),
-                        "ecdsa-rdfc-2019".to_string(),
-                        "eddsa-rdfc-2022".to_string(),
-                    ],
-                }),
-                mso_mdoc: Some(MdocAlgs {
-                    issuerauth_alg_values: vec![-7, -8, -9, -19],
-                    deviceauth_alg_values: vec![-7, -8, -9, -19],
-                }),
-                dc_sd_jwt: Some(SdJwtVcAlgs {
-                    sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
-                    kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
-                }),
                 jwt_vc_json: Some(W3CJwtAlgs {
                     alg_values: vec!["EdDSA".to_string(), "ES256".to_string()]
-                })
+                }),
+                ..Default::default()
             },
             encrypted_response_enc_values_supported: Some(vec![
                 EncryptionAlgorithm::A128GCM,
