@@ -178,11 +178,11 @@ where
     pub async fn build_from_token(
         token: &str,
         verification: Option<&VerificationFn>,
-        issuer_did: Option<DidValue>,
+        issuer_did: Option<&DidValue>,
     ) -> Result<Self, TokenError> {
         let token = Jwt::decompose_token(token)?;
 
-        if let (Some(issuer), Some(issuer_did)) = (&token.payload.issuer, &issuer_did)
+        if let (Some(issuer), Some(issuer_did)) = (&token.payload.issuer, issuer_did)
             && issuer != issuer_did.as_str()
         {
             return Err(TokenError::ValidationFailed(format!(
@@ -193,7 +193,7 @@ where
         if let Some(token_verifier) = verification {
             let public_key_source =
                 token.public_key_source(issuer_did.map(|did| PublicKeySource::Did {
-                    did: Cow::Owned(did),
+                    did: Cow::Borrowed(did),
                     key_id: token.header.key_id.as_deref(),
                 }))?;
             token

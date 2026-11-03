@@ -63,7 +63,7 @@ use crate::provider::credential_formatter::mdoc_formatter::util::{
     StatusListEncoded, extract_certificate_from_x5chain_header,
 };
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, IdentifierDetails, TokenStatus, TokenVerifier,
+    CertificateDetails, CredentialStatus, IdentifierDetails, TokenStatus, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -730,18 +730,11 @@ impl TokenStatusList {
 
     async fn extract_info_from_list_credential_jwt(
         &self,
-        jwt: &str,
+        jwt_token: &str,
         issuer_details: &IdentifierDetails,
         uri: &Url,
     ) -> Result<TokenStatusListSubject, RevocationError> {
-        let key_verification: Box<dyn TokenVerifier> = Box::new(KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-            certificate_validator: self.certificate_validator.clone(),
-        });
-
-        // TODO: ONE-6158 validate issuer certificate/CA of status-list is trusted
+        let key_verification: Box<dyn TokenVerifier> = Box::new(self.key_verification());
 
         let issuer_did = if let IdentifierDetails::Did(issuer_did) = issuer_details {
             Some(issuer_did.to_owned())
@@ -750,7 +743,7 @@ impl TokenStatusList {
         };
 
         let jwt: Jwt<TokenStatusListContent> =
-            Jwt::build_from_token(jwt, Some(&key_verification), issuer_did)
+            Jwt::build_from_token(jwt_token, Some(&key_verification), issuer_did.as_ref())
                 .await
                 .error_while("validating token status list")?;
 
@@ -774,6 +767,66 @@ impl TokenStatusList {
             )));
         }
 
+        // validate issuer matches referenced credential issuer
+        match issuer_details {
+            IdentifierDetails::Did(did) => {
+                if jwt
+                    .payload
+                    .issuer
+                    .is_none_or(|issuer| issuer != did.as_str())
+                {
+                    return Err(RevocationError::ValidationError(
+                        "Issuer did mismatch".to_string(),
+                    ));
+                }
+            }
+            IdentifierDetails::Key(credential_issuer_key) => {
+                let jwt_key = match jwt.header.jwk {
+                    Some(key) => key,
+                    None => {
+                        // key can be represented differently in the JWT token
+                        let token = Jwt::<TokenStatusListContent>::decompose_token(jwt_token)
+                            .error_while("parsing JWT")?;
+                        let key_source = token
+                            .public_key_source(None)
+                            .error_while("extracting JWT key")?;
+
+                        let (algorithm, _) = self
+                            .key_algorithm_provider
+                            .key_algorithm_from_jose_alg(&token.header.algorithm)
+                            .ok_or_else(|| {
+                                RevocationError::ValidationError(format!(
+                                    "Invalid algorithm: {}",
+                                    token.header.algorithm
+                                ))
+                            })?;
+                        let key = self
+                            .key_verification()
+                            .key_from_key_source(key_source, algorithm)
+                            .await
+                            .error_while("extracting JWT key")?;
+                        key.public_key_as_jwk().error_while("extracting JWK")?
+                    }
+                };
+
+                if credential_issuer_key.thumbprint()? != jwt_key.thumbprint()? {
+                    return Err(RevocationError::ValidationError(
+                        "Issuer key mismatch".to_string(),
+                    ));
+                }
+            }
+            IdentifierDetails::Certificate(issuer_details) => {
+                let Some(x5c) = jwt.header.x5c else {
+                    return Err(RevocationError::ValidationError(
+                        "Missing x5c on the status list JWT".to_string(),
+                    ));
+                };
+
+                self.validate_certificate_issuer_consistency(x5c, issuer_details, None)
+                    .await?;
+            }
+        };
+
         Ok(jwt.payload.custom.status_list)
     }
 
@@ -795,62 +848,25 @@ impl TokenStatusList {
         .await
         .error_while("extracting certificate")?;
 
-        let key_verification = KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-            certificate_validator: self.certificate_validator.clone(),
-        };
-
         let x5c = pem_chain_into_x5c(&cwt_certificate_details.chain)
             .error_while("converting PEM chain")?;
-        try_verify_cose_sign1(&cose_sign1, &x5c, &key_verification)
+        try_verify_cose_sign1(&cose_sign1, &x5c, &self.key_verification())
             .await
             .error_while("verifying cwt")?;
 
-        let ca_pem_chain = if let Some(ca_certificate) = ca_certificate {
-            Some(ca_certificate)
-        } else {
-            let IdentifierDetails::Certificate(credential_issuer_certificate) =
-                credential_issuer_details
-            else {
-                return Err(RevocationError::ValidationError(
-                    "invalid issuer type".to_string(),
-                ));
-            };
-
-            if credential_issuer_certificate.chain == cwt_certificate_details.chain {
-                // CWT issued by the same certificate, skipping consistency check
-                None
-            } else {
-                let mut x5c = pem_chain_into_x5c(&credential_issuer_certificate.chain)
-                    .error_while("converting PEM chain")?;
-                if x5c.len() < 2 {
-                    // this is a valid case, the IACA certificate is not contained in the MDOC credential
-                    // but then we cannot validate consistency of the CWT issuer
-                    tracing::warn!("missing CA certificate in chain");
-                    None
-                } else {
-                    // remove the leaf certificate and keep the rest of the CA chain
-                    x5c.remove(0);
-                    Some(x5c_into_pem_chain(&x5c).error_while("converting x5c")?)
-                }
-            }
+        let IdentifierDetails::Certificate(credential_issuer_certificate) =
+            credential_issuer_details
+        else {
+            return Err(RevocationError::ValidationError(
+                "invalid issuer type".to_string(),
+            ));
         };
-        if let Some(ca_pem_chain) = ca_pem_chain {
-            self.certificate_validator
-                .validate_chain_against_ca_chain(
-                    &cwt_certificate_details.chain,
-                    &ca_pem_chain,
-                    CertificateValidationOptions::signature_and_revocation(Some(vec![
-                        EnforceKeyUsage::DigitalSignature,
-                    ]))
-                    .with_purpose(CertificatePurpose::Issuer),
-                    CertSelection::Leaf,
-                )
-                .await
-                .error_while("checking CA chain")?;
-        }
+        self.validate_certificate_issuer_consistency(
+            x5c,
+            credential_issuer_certificate,
+            ca_certificate,
+        )
+        .await?;
 
         let payload = cose_sign1
             .0
@@ -900,6 +916,67 @@ impl TokenStatusList {
             bits: status_list.bits as _,
             value: Base64UrlSafeNoPadding::encode_to_string(status_list.list.0)?,
         })
+    }
+
+    /// Checks that the certificate issuer of the status list is matching the issuer of the credential
+    async fn validate_certificate_issuer_consistency(
+        &self,
+        status_list_issuer_x5c: Vec<String>,
+        credential_issuer_certificate: &CertificateDetails,
+        ca_certificate: Option<String>,
+    ) -> Result<(), RevocationError> {
+        let status_list_issuer_pem_chain =
+            x5c_into_pem_chain(&status_list_issuer_x5c).error_while("converting x5c")?;
+
+        let ca_pem_chain = if let Some(ca_certificate) = ca_certificate {
+            Some(ca_certificate)
+        } else {
+            let mut credential_issuer_x5c =
+                pem_chain_into_x5c(&credential_issuer_certificate.chain)
+                    .error_while("converting PEM chain")?;
+
+            if credential_issuer_x5c.first() == status_list_issuer_x5c.first() {
+                // JWT/CWT issued by the same certificate, skipping consistency check
+                None
+            } else {
+                if credential_issuer_x5c.len() < 2 {
+                    // this is a valid case, the IACA certificate is not contained in the MDOC credential
+                    // but then we cannot validate consistency of the CWT issuer
+                    tracing::warn!("missing CA certificate in chain");
+                    None
+                } else {
+                    // remove the leaf certificate and keep the rest of the CA chain
+                    credential_issuer_x5c.remove(0);
+                    Some(x5c_into_pem_chain(&credential_issuer_x5c).error_while("converting x5c")?)
+                }
+            }
+        };
+
+        if let Some(ca_pem_chain) = ca_pem_chain {
+            self.certificate_validator
+                .validate_chain_against_ca_chain(
+                    &status_list_issuer_pem_chain,
+                    &ca_pem_chain,
+                    CertificateValidationOptions::signature_and_revocation(Some(vec![
+                        EnforceKeyUsage::DigitalSignature,
+                    ]))
+                    .with_purpose(CertificatePurpose::Issuer),
+                    CertSelection::Leaf,
+                )
+                .await
+                .error_while("checking CA chain")?;
+        }
+
+        Ok(())
+    }
+
+    fn key_verification(&self) -> KeyVerification {
+        KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        }
     }
 }
 

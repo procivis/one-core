@@ -89,6 +89,25 @@ impl KeyVerification {
             .error_while("parsing PEM chain")?;
         Ok(public_key)
     }
+
+    pub(crate) async fn key_from_key_source<'a>(
+        &self,
+        public_key_source: PublicKeySource<'a>,
+        algorithm: KeyAlgorithmType,
+    ) -> Result<KeyHandle, TokenError> {
+        Ok(match public_key_source {
+            PublicKeySource::Did { did, key_id } => {
+                self.public_key_from_did(&did, key_id, algorithm).await?
+            }
+            PublicKeySource::X5c { x5c, .. } => self.public_key_from_cert(x5c).await?,
+            PublicKeySource::Jwk { jwk } => {
+                let alg = self
+                    .key_algorithm_provider
+                    .key_algorithm_from_type(algorithm)?;
+                alg.parse_jwk(&jwk).error_while("parsing JWK")?
+            }
+        })
+    }
 }
 
 #[async_trait]
@@ -100,18 +119,9 @@ impl TokenVerifier for KeyVerification {
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), TokenError> {
-        let public_key = match public_key_source {
-            PublicKeySource::Did { did, key_id } => {
-                self.public_key_from_did(&did, key_id, algorithm).await?
-            }
-            PublicKeySource::X5c { x5c, .. } => self.public_key_from_cert(x5c).await?,
-            PublicKeySource::Jwk { jwk } => {
-                let alg = self
-                    .key_algorithm_provider
-                    .key_algorithm_from_type(algorithm)?;
-                alg.parse_jwk(&jwk).error_while("parsing JWK")?
-            }
-        };
+        let public_key = self
+            .key_from_key_source(public_key_source, algorithm)
+            .await?;
         Ok(public_key
             .verify(token, signature)
             .error_while("verifying signature")?)
