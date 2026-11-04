@@ -735,19 +735,20 @@ impl OpenID4VCIFinal1_0 {
             )
             .await?;
 
-        if response.status.is_client_error() && has_sent_tx_code {
-            match serde_json::from_slice::<TokenErrorResponse>(&response.body).map(|r| r.error) {
-                Ok(TokenErrorCode::InvalidGrant) => {
-                    return Err(TxCodeError::IncorrectCode
-                        .error_while("checking TX response")
-                        .into());
-                }
-                Ok(TokenErrorCode::InvalidRequest) => {
-                    return Err(TxCodeError::InvalidCodeUse
-                        .error_while("checking TX response")
-                        .into());
-                }
-                Ok(_) | Err(_) => {}
+        if response.status.is_client_error()
+            && has_sent_tx_code
+            && let Ok(response_body) = str::from_utf8(&response.body)
+        {
+            let tx_error =
+                match serde_json::from_str::<TokenErrorResponse>(response_body).map(|r| r.error) {
+                    Ok(TokenErrorCode::InvalidGrant) => Some(TxCodeError::IncorrectCode),
+                    Ok(TokenErrorCode::InvalidRequest) => Some(TxCodeError::InvalidCodeUse),
+                    Ok(_) | Err(_) => None,
+                };
+
+            if let Some(tx_error) = tx_error {
+                tracing::info!("TX error response: `{response_body}`");
+                return Err(tx_error.error_while("checking TX response").into());
             }
         }
 
