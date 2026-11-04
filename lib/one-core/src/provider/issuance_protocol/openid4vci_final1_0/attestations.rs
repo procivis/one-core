@@ -59,24 +59,15 @@ impl OpenID4VCIFinal1_0 {
             token_endpoint_auth_methods.push(TokenEndpointAuthMethod::None);
         }
 
-        let wallet_attestation_supported = token_endpoint_auth_methods
-            .iter()
-            .any(|method| method.requires_attestation());
-        let wallet_attestation_required = requires_wia(&token_endpoint_auth_methods);
+        let use_wallet_attestation = attestation_types
+            .contains(&AttestationType::WalletInstanceAttestation)
+            && requires_wia(&token_endpoint_auth_methods);
 
-        if attestation_types.contains(&AttestationType::WalletInstanceAttestation)
-            && wallet_attestation_required
-            && !wallet_unit_provided
-        {
+        if use_wallet_attestation && !wallet_unit_provided {
             return Err(IssuanceProtocolError::Failed(
                 "Active holder wallet unit id is required".to_string(),
             ));
         }
-
-        let use_wallet_attestation = attestation_types
-            .contains(&AttestationType::WalletInstanceAttestation)
-            && (wallet_attestation_required
-                || (wallet_attestation_supported && wallet_unit_provided));
 
         // WUA requirements, per credential configuration
         let required_levels: Vec<Option<_>> =
