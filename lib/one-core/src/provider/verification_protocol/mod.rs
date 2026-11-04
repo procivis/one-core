@@ -19,7 +19,7 @@ mod decorators;
 pub mod dto;
 pub mod error;
 pub mod iso_mdl;
-mod mapper;
+pub(crate) mod mapper;
 pub(crate) mod model;
 pub mod openid4vp;
 

@@ -7,11 +7,15 @@ use one_crypto::utilities;
 use serde::Serialize;
 use shared_types::{DidValue, InteractionId, ProofId};
 use standardized_types::openid4vp::dcql::DcqlQuery;
-use standardized_types::openid4vp::{AuthorizationRequest, ClientIdPrefix, VpTokenResponse};
+use standardized_types::openid4vp::{
+    AuthorizationRequest, ClientIdPrefix, VerifierInfoAttestation, VpTokenResponse,
+};
 use time::Duration;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
+use super::dto::{ProtocolVersion, WithProtocolVersion};
+use super::key_agreement_key::KeyAgreementKey;
 use crate::config::core_config::TransportType;
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
@@ -22,13 +26,11 @@ use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::mapper::gather_registration_certificates;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::encode_client_id_with_scheme;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
-    ProtocolVersion, WithProtocolVersion,
-};
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::key_agreement_key::KeyAgreementKey;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -125,6 +127,7 @@ pub(super) struct AsyncVerifierFlowParams {
     pub interaction_id: InteractionId,
     pub proof_repository: Arc<dyn ProofRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
+    pub blob_storage_provider: Arc<dyn BlobStorageProvider>,
     pub key_agreement: KeyAgreementKey,
     pub cancellation_token: CancellationToken,
 }
@@ -273,6 +276,27 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
     Ok(FlowState::Finished)
 }
 
+async fn get_verifier_info(
+    params: &AsyncVerifierFlowParams,
+) -> Result<Vec<VerifierInfoAttestation>, VerificationProtocolError> {
+    let proof = params
+        .proof_repository
+        .get_proof(&params.proof_id, None)
+        .await
+        .error_while("getting proof")?;
+    let Some(verifier_identifier) = proof.verifier_identifier else {
+        return Ok(vec![]);
+    };
+
+    let verifier_identifier = verifier_identifier.as_ref().await?;
+    Ok(
+        gather_registration_certificates(&verifier_identifier, &*params.blob_storage_provider)
+            .await?
+            .into_iter()
+            .map(|(_, attestation)| attestation)
+            .collect(),
+    )
+}
 async fn get_request_v2(
     nonce: String,
     params: &AsyncVerifierFlowParams,
@@ -286,7 +310,7 @@ async fn get_request_v2(
         client_id: params.verifier.client_id(),
         dcql_query: params.dcql_query.clone(),
         redirect_uri: None,
-        verifier_info: vec![],
+        verifier_info: get_verifier_info(params).await?,
         state: None,
         client_metadata: None,
         transaction_data: vec![],

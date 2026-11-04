@@ -516,6 +516,7 @@ impl OneCore {
             nfc_hce.clone(),
             wrp_validator,
             ecosystem_provider.clone(),
+            blob_storage_provider.clone(),
             transaction_data_provider.clone(),
         )?;
 

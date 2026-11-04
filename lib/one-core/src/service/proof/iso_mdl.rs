@@ -73,6 +73,7 @@ impl ProofService {
             handover,
             verifier.as_ref(),
             self.key_algorithm_provider.as_ref(),
+            self.blob_storage_provider.as_ref(),
         )
         .await
         .error_while("setting up verifier session")?;

@@ -5,8 +5,7 @@ use one_crypto::jwe::extract_jwe_header;
 use shared_types::{BlobId, EcosystemId, KeyId, ProofId};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::{
-    ClientIdPrefix, ClientMetadata, DirectPostResponse, EncryptedResponse, VerifierInfoAttestation,
-    VerifierInfoAttestationFormat,
+    ClientIdPrefix, ClientMetadata, DirectPostResponse, EncryptedResponse,
 };
 use tracing::warn;
 
@@ -15,18 +14,16 @@ use super::error::OID4VPFinal1_0ServiceError;
 use super::proof_request::{
     generate_authorization_request_params_final1_0, select_key_agreement_key_from_proof,
 };
-use crate::clock::now_utc;
 use crate::config::core_config::{BlobStorageType, VerificationProtocolType};
 use crate::error::ErrorCode::BR_0000;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::identifier::Identifier;
-use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::provider::ecosystem::model::ProtocolArtifact;
+use crate::provider::verification_protocol::mapper::gather_registration_certificates;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
     create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
@@ -125,9 +122,12 @@ impl OID4VPFinal1_0Service {
                     ))?
                     .as_ref()
                     .await?;
-                self.resolve_verifier_info(&verifier_identifier)
+                gather_registration_certificates(&verifier_identifier, &*self.blob_storage_provider)
                     .await
                     .error_while("generating verifier_info object")?
+                    .into_iter()
+                    .map(|(_, attestation)| attestation)
+                    .collect()
             }
             _ => vec![],
         };
@@ -594,74 +594,5 @@ impl OID4VPFinal1_0Service {
             .error_while("getting verification protocol")?
             .get_capabilities()
             .supported_encryption_algorithms)
-    }
-
-    /// Resolves all IdentifierTrustInformation entries for an identifier
-    /// A VerifierInfoAttestation struct with the resolved registration certificate
-    /// is returned for each valid entry
-    async fn resolve_verifier_info(
-        &self,
-        identifier: &Identifier,
-    ) -> Result<Vec<VerifierInfoAttestation>, OID4VPFinal1_0ServiceError> {
-        let trust_information = identifier.trust_information.as_ref().await?;
-
-        let now = now_utc();
-        let valid_registration_certificates: Vec<&IdentifierTrustInformation> = trust_information
-            .iter()
-            .filter(|entry| {
-                if entry.allowed_verification_types.is_empty() {
-                    return false;
-                }
-
-                if let Some(valid_from) = entry.valid_from
-                    && valid_from > now
-                {
-                    return false;
-                }
-
-                if let Some(valid_to) = entry.valid_to
-                    && valid_to < now
-                {
-                    return false;
-                }
-
-                true
-            })
-            .collect();
-
-        if valid_registration_certificates.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)?;
-
-        let mut verifier_info = vec![];
-
-        for entry in valid_registration_certificates {
-            let certificate = blob_storage
-                .get(&entry.blob_id)
-                .await
-                .error_while("resolving trust_information blob")?
-                .ok_or(OID4VPFinal1_0ServiceError::TrustInformationError(
-                    "Missing registration certificate".to_string(),
-                ))?;
-
-            if certificate.r#type != BlobType::RegistrationCertificate {
-                return Err(OID4VPFinal1_0ServiceError::TrustInformationError(format!(
-                    "Invalid trust information data, expected registration certificate, got {:?}",
-                    certificate.r#type
-                )));
-            }
-
-            verifier_info.push(VerifierInfoAttestation {
-                format: VerifierInfoAttestationFormat::RegistrationCert,
-                data: String::from_utf8(certificate.value)?,
-                credential_ids: vec![],
-            })
-        }
-
-        Ok(verifier_info)
     }
 }

@@ -9,11 +9,12 @@ use shared_types::{ClaimSchemaId, TransactionDataId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::error::OpenID4VCError;
 use super::model::{
     OpenID4VCVerifierAttestationPayload, OpenID4VPVerifierInteractionContent, ProvedCredential,
     ValidatedHolderTxData, VpSubmissionData,
 };
-use super::{JWTSigner, get_jwt_signer};
+use super::{JWTSigner, VerificationProtocolError, get_jwt_signer};
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::value_to_model_claims;
@@ -34,8 +35,6 @@ use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, PresentationDefinitionTransactionDataDTO,
 };
-use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(crate) fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>

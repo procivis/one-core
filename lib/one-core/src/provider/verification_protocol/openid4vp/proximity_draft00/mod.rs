@@ -49,6 +49,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::wrp_validator::WRPValidator;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -126,6 +127,7 @@ pub struct OpenID4VPProximityDraft00 {
     wrp_validator: Arc<dyn WRPValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
     config: Arc<CoreConfig>,
     params: OpenID4VPProximityDraft00Params,
 }
@@ -150,6 +152,7 @@ impl OpenID4VPProximityDraft00 {
         wrp_validator: Arc<dyn WRPValidator>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
         ble: Option<BleWaiter>,
     ) -> Result<Self, InitializationError> {
         let params: OpenID4VPProximityDraft00Params =
@@ -194,6 +197,7 @@ impl OpenID4VPProximityDraft00 {
             wrp_validator,
             identifier_creator,
             ecosystem_provider,
+            blob_storage_provider,
             config,
             params,
         })
@@ -424,6 +428,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             interaction_id,
             proof_repository: self.proof_repository.clone(),
             interaction_repository: self.interaction_repository.clone(),
+            blob_storage_provider: self.blob_storage_provider.clone(),
             key_agreement: key_agreement.clone(),
             // notification to cancel the other flow (if any) when one is selected
             cancellation_token: Default::default(),

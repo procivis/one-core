@@ -20,6 +20,7 @@ use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::swiyu_http_client;
 use crate::proto::wrp_validator::WRPValidator;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
@@ -99,6 +100,7 @@ fn initialize_provider(
     nfc_hce: &Option<Arc<dyn NfcHce>>,
     wrp_validator: &Arc<dyn WRPValidator>,
     ecosystem_provider: &Arc<dyn EcosystemDirectory>,
+    blob_storage_provider: &Arc<dyn BlobStorageProvider>,
     transaction_data_provider: &Arc<dyn TransactionDataProvider>,
 ) -> Result<Arc<dyn VerificationProtocol>, InitializationError> {
     let protocol: Arc<dyn VerificationProtocol> = match fields.r#type {
@@ -177,6 +179,7 @@ fn initialize_provider(
                 wrp_validator.clone(),
                 identifier_creator.clone(),
                 ecosystem_provider.clone(),
+                blob_storage_provider.clone(),
                 ble.clone(),
             )?)
         }
@@ -223,6 +226,7 @@ pub(crate) fn verification_protocol_provider_from_config(
     nfc_hce: Option<Arc<dyn NfcHce>>,
     wrp_validator: Arc<dyn WRPValidator>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
 ) -> Result<Arc<dyn VerificationProtocolProvider>, ConfigValidationError> {
     let core_config = Arc::new(config.to_owned());
@@ -252,6 +256,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                 &nfc_hce,
                 &wrp_validator,
                 &ecosystem_provider,
+                &blob_storage_provider,
                 &transaction_data_provider,
             )?;
 

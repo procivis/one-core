@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use coset::iana::HeaderParameter;
 use coset::{HeaderBuilder, ProtectedHeader};
+use standardized_types::openid4vp::VerifierInfoAttestation;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -16,6 +17,7 @@ use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64url};
 use crate::model::certificate::Certificate;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
+use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum, UpdateProofRequest};
@@ -29,6 +31,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
     Bstr, EmbeddedCbor, build_algorithm_header_value,
 };
@@ -55,6 +58,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptionsV1, DeviceEngagement,
 };
 use crate::provider::verification_protocol::iso_mdl::session::{SessionData, SessionEstablishment};
+use crate::provider::verification_protocol::mapper::gather_registration_certificates;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -80,6 +84,7 @@ pub(crate) async fn setup_verifier_session(
     handover: Handover,
     verifier: Option<&IsoMdlVerifier>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    blob_storage_provider: &dyn BlobStorageProvider,
 ) -> Result<VerifierSession, VerificationProtocolError> {
     let e_device_key_bytes = device_engagement.inner().security.e_device_key_bytes();
     let e_device_key = e_device_key_bytes.inner();
@@ -104,6 +109,12 @@ pub(crate) async fn setup_verifier_session(
         .await
         .error_while("deriving session keys")?;
 
+    let registration_certificates = if let Some(verifier) = &verifier {
+        gather_registration_certificates(&verifier.identifier, blob_storage_provider).await?
+    } else {
+        vec![]
+    };
+
     let mut doc_requests = vec![];
     let input_schemas = schema.input_schemas.as_ref().await?;
     for input_schema in &input_schemas {
@@ -112,6 +123,7 @@ pub(crate) async fn setup_verifier_session(
                 input_schema,
                 session_transcript_bytes.inner(),
                 verifier,
+                &registration_certificates,
             )
             .await?,
         );
@@ -579,6 +591,7 @@ async fn proof_input_schema_to_doc_request(
     input: &ProofInputSchema,
     session_transcript: &SessionTranscript,
     verifier: Option<&IsoMdlVerifier>,
+    registration_certificates: &[(IdentifierTrustInformation, VerifierInfoAttestation)],
 ) -> Result<DocRequest, VerificationProtocolError> {
     let proof_claim_schemas = input.claim_schemas.as_ref().await?;
     let credential_schema = input.credential_schema.as_ref().await?;
@@ -624,10 +637,25 @@ async fn proof_input_schema_to_doc_request(
             .insert(element_identifier.to_owned(), true);
     }
 
+    let doc_type = format.ecosystem_schema_id.to_owned();
+    let request_info = registration_certificates
+        .iter()
+        .find(|(info, _)| {
+            info.allowed_verification_types.iter().any(|verification| {
+                verification.format == "mso_mdoc" && verification.schema_id == doc_type
+            })
+        })
+        .map(|(_, attestation)| {
+            HashMap::from([(
+                "eUWrprc".to_string(),
+                ciborium::Value::Text(attestation.data.to_owned()),
+            )])
+        });
+
     let items_request = EmbeddedCbor::new(ItemsRequest {
-        doc_type: format.ecosystem_schema_id.to_owned(),
+        doc_type,
         name_spaces,
-        request_info: None,
+        request_info,
     })?;
 
     let reader_auth = match verifier {

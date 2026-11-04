@@ -16,8 +16,6 @@ pub enum OID4VPFinal1_0ServiceError {
     MissingInteractionData,
     #[error("JSON error: `{0}`")]
     JsonError(#[from] serde_json::Error),
-    #[error("Invalid trust information: `{0}`")]
-    TrustInformationError(String),
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] FromUtf8Error),
 
@@ -36,8 +34,7 @@ impl ErrorCodeMixin for OID4VPFinal1_0ServiceError {
             Self::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::OpenID4VCError(_) => ErrorCode::BR_0048,
-            Self::TrustInformationError(_)
-            | Self::MappingError(_)
+            Self::MappingError(_)
             | Self::MissingInteractionData
             | Self::FromUtf8Error(_)
             | Self::JsonError(_) => ErrorCode::BR_0047,

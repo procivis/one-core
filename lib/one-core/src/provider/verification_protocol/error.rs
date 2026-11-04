@@ -23,6 +23,8 @@ pub enum VerificationProtocolError {
     InvalidTransactionDataAssignment(String),
     #[error("Encryption failure: `{0}`")]
     EncryptionError(String),
+    #[error("Invalid trust information: `{0}`")]
+    TrustInformationError(String),
 
     #[error("DCQL error: `{0}`")]
     DcqlError(#[from] DcqlError),
@@ -47,6 +49,7 @@ impl ErrorCodeMixin for VerificationProtocolError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::Failed(_)
+            | Self::TrustInformationError(_)
             | Self::Json(_)
             | Self::URLEncoded(_)
             | Self::OperationNotSupported
