@@ -4,6 +4,7 @@ use one_dto_mapper::convert_inner;
 use shared_types::{DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+use x509_parser::oid_registry::OID_X509_EXT_KEY_USAGE;
 
 use super::creator::IdentifierCreatorProto;
 use super::{CreateLocalIdentifierRequestParams, Error, IdentifierCreator, IdentifierTranslations};
@@ -28,7 +29,7 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::signer::dto::{CreateSignatureRequest, Issuer};
 use crate::provider::signer::x509_certificate;
 use crate::repository::error::DataLayerError;
-use crate::service::certificate::dto::CreateCertificateRequestDTO;
+use crate::service::certificate::dto::{CertificateX509AttributesDTO, CreateCertificateRequestDTO};
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 use crate::service::did::error::DidServiceError;
 use crate::service::did::mapper::{did_from_did_request, related_keys_from_did_keys};
@@ -584,6 +585,7 @@ impl IdentifierCreatorProto {
             .error_while("parsing PEM chain")?;
 
         validate_subject_public_key(&public_key, &key)?;
+        validate_key_usage(&attributes, &["digitalSignature"])?;
 
         let name = match request.name {
             Some(name) => name,
@@ -681,6 +683,7 @@ impl IdentifierCreatorProto {
             .error_while("parsing PEM chain")?;
 
         validate_subject_public_key(&public_key, &key)?;
+        validate_key_usage(&attributes, &["keyCertSign", "crlSign"])?;
 
         let name = match request.name {
             Some(name) => name,
@@ -834,6 +837,32 @@ fn validate_subject_public_key(
     let subject_raw_public_key = subject_public_key.public_key_as_raw();
     if expected_key.public_key != subject_raw_public_key {
         return Err(Error::CertificateKeyNotMatching);
+    }
+
+    Ok(())
+}
+
+fn validate_key_usage(
+    attributes: &CertificateX509AttributesDTO,
+    usages: &[&str],
+) -> Result<(), Error> {
+    let key_usage_oid = OID_X509_EXT_KEY_USAGE.to_id_string();
+    let Some(key_usage) = attributes
+        .extensions
+        .iter()
+        .find(|extension| extension.oid == key_usage_oid)
+    else {
+        return Err(Error::InvalidCertificate(
+            "Missing KeyUsage extension".to_string(),
+        ));
+    };
+
+    for usage in usages {
+        if !key_usage.value.contains(usage) {
+            return Err(Error::InvalidCertificate(format!(
+                "KeyUsage extension without {usage}"
+            )));
+        }
     }
 
     Ok(())

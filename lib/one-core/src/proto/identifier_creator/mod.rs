@@ -185,6 +185,8 @@ pub(crate) enum Error {
     EmptyCertificateRoles,
     #[error("DID cannot be updated: {0}")]
     DidCannotBeUpdated(String),
+    #[error("Invalid Certificate: `{0}`")]
+    InvalidCertificate(String),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -202,7 +204,7 @@ impl ErrorCodeMixin for Error {
             Self::InvalidCertificateInput => ErrorCode::BR_0331,
             Self::InvalidSignerType(_) => ErrorCode::BR_0381,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
-            Self::MissingCertificateCommonName => ErrorCode::BR_0224,
+            Self::MissingCertificateCommonName | Self::InvalidCertificate(_) => ErrorCode::BR_0224,
             Self::InvalidIdentifierType(_) => ErrorCode::BR_0330,
             Self::OrganisationMismatch => ErrorCode::BR_0285,
             Self::InvalidCSRProfile => ErrorCode::BR_0323,
