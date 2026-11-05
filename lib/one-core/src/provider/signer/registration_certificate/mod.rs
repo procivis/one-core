@@ -11,7 +11,6 @@ use serde_with::{DurationSeconds, serde_as};
 use shared_types::{Permission, RevocationMethodId, SignerId};
 use standardized_types::etsi_119_475::registration_certificate::Status;
 use time::Duration;
-use url::Url;
 use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
@@ -44,7 +43,6 @@ use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, Sel
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub payload: PayloadParams,
     /// Maximum validity period of Registration Certificates issued
     /// by this signer. Also applied when a request sets no `validityEnd`.
     /// Cannot exceed 365 days (ETSI TS 119 475 GEN-5.2.4-08), or
@@ -57,14 +55,6 @@ pub struct Params {
     /// reference an enabled revocation method of type `TOKENSTATUSLIST`,
     /// or initialization fails.
     pub revocation_method: RevocationMethodId,
-}
-
-/// `payload` settings of a `REGISTRATION_CERTIFICATE` signer.
-#[derive(Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PayloadParams {
-    pub issuer: Option<Url>,
-    pub audience: Option<Vec<String>>,
 }
 
 #[derive(Provider)]
@@ -185,7 +175,7 @@ impl Signer for RegistrationCertificate {
             expires_at: Some(end),
             issuer: None,
             subject: Some(payload.get_subject_id().to_owned()),
-            audience: self.params.payload.audience.clone(),
+            audience: None,
             jwt_id: Some(jwt_id.to_string()),
             proof_of_possession_key: None,
             custom: payload_from_request_data(payload, status),
@@ -245,7 +235,7 @@ impl TryFrom<Option<&crate::config::core_config::Params>> for Params {
     fn try_from(params: Option<&crate::config::core_config::Params>) -> Result<Self, Self::Error> {
         let result = match params.and_then(|inner| inner.merge()) {
             Some(merged) => serde_json::from_value::<Self>(merged)?,
-            None => return Err(Error::missing_field("payload.duration")),
+            None => return Err(Error::missing_field("max_validity_duration_seconds")),
         };
 
         // GEN-5.2.4-08: The `exp` field in the WRPRC payload shall indicate a time not later than
