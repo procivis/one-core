@@ -26,35 +26,53 @@ impl CredentialValidityManagerImpl {
             });
         }
 
-        let interaction = common
-            .interaction
-            .as_ref()
-            .ok_or(Error::MappingError("Missing interaction".to_string()))?
-            .as_ref()
-            .await?;
-
-        let protocol = self
+        let new_state = match self
             .issuance_protocol_provider
-            .get_protocol(&common.protocol)?;
-
-        let new_state = match protocol
-            .holder_refresh_credential(&interaction, Some(common.id))
-            .await
+            .get_protocol(&common.protocol)
         {
-            Ok(_) => CredentialStateEnum::Accepted,
-            Err(IssuanceProtocolError::RefreshNotPossible)
-                if credential_expired(&detail_credential) =>
-            {
-                CredentialStateEnum::Expired
-            }
             Err(err) => {
-                tracing::warn!(%err, "Credential refresh failure");
+                // The credential was issued via a protocol that is no longer configured/supported
+                // -> the MSO cannot be refreshed, skip the refresh.
+                tracing::warn!(
+                    %err,
+                    credential_id = %common.id,
+                    protocol = common.protocol,
+                    "Skipping mdoc refresh: issuance protocol not available"
+                );
                 if credential_expired(&detail_credential) {
-                    CredentialStateEnum::Suspended {
-                        suspend_end_date: None,
-                    }
+                    CredentialStateEnum::Expired
                 } else {
                     CredentialStateEnum::Accepted
+                }
+            }
+            Ok(protocol) => {
+                let interaction = common
+                    .interaction
+                    .as_ref()
+                    .ok_or(Error::MappingError("Missing interaction".to_string()))?
+                    .as_ref()
+                    .await?;
+
+                match protocol
+                    .holder_refresh_credential(&interaction, Some(common.id))
+                    .await
+                {
+                    Ok(_) => CredentialStateEnum::Accepted,
+                    Err(IssuanceProtocolError::RefreshNotPossible)
+                        if credential_expired(&detail_credential) =>
+                    {
+                        CredentialStateEnum::Expired
+                    }
+                    Err(err) => {
+                        tracing::warn!(%err, "Credential refresh failure");
+                        if credential_expired(&detail_credential) {
+                            CredentialStateEnum::Suspended {
+                                suspend_end_date: None,
+                            }
+                        } else {
+                            CredentialStateEnum::Accepted
+                        }
+                    }
                 }
             }
         };

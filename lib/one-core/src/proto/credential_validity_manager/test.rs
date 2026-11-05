@@ -40,6 +40,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderInteractionData;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
+use crate::provider::provider_directory::ProviderError;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::RevocationState;
@@ -3188,4 +3189,124 @@ fn holder_interaction_data(refresh_token_expires_at: OffsetDateTime) -> Vec<u8> 
         ..Default::default()
     }))
     .unwrap()
+}
+
+#[rstest]
+#[case::mso_expired(
+    Some(crate::clock::now_utc().sub(Duration::days(1))),
+    None,
+    CredentialStateEnum::Expired
+)]
+#[case::mso_update_due_but_valid(
+    Some(crate::clock::now_utc().add(Duration::days(1))),
+    Some(crate::clock::now_utc().sub(Duration::days(1))),
+    CredentialStateEnum::Accepted
+)]
+#[tokio::test]
+async fn test_check_validity_mdoc_refresh_skipped_for_unknown_protocol(
+    #[case] valid_until: Option<OffsetDateTime>,
+    #[case] update_at: Option<OffsetDateTime>,
+    #[case] expected_state: CredentialStateEnum,
+) {
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_extract_credentials_unverified()
+        .returning(move |_, _| {
+            Ok(DetailCredential {
+                issuance_date: None,
+                valid_from: None,
+                valid_until,
+                update_at,
+                invalid_before: None,
+                issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
+                subject: None,
+                claims: Default::default(),
+                status: None,
+            })
+        });
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Ok(formatter.clone()));
+
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .once()
+        .with(eq("OPENID4VCI_DRAFT13"))
+        .returning(|protocol| {
+            Err(ProviderError::MissingProvider {
+                config_key: protocol.to_string(),
+                provider_type: "dyn IssuanceProtocol".to_string(),
+            }
+            .into())
+        });
+
+    let credential_blob_id = Uuid::new_v4().into();
+    let credential = {
+        let mut credential = generic_credential();
+        credential.common_mut().state = CredentialStateEnum::Accepted;
+        let credential_schema_id = credential.common().schema.id();
+        let holder = credential.holder_mut().unwrap();
+        holder.data.credential_blob_id = Some(credential_blob_id);
+        holder.data.format = CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "MDOC".into(),
+            ecosystem_schema_id: "CredentialSchemaId".to_owned(),
+            claim_mappings: Default::default(),
+        }
+        .into();
+        credential
+    };
+    credential_repository.expect_get_credential().returning({
+        let credential = credential.clone();
+        move |_| Ok(credential.clone())
+    });
+    if expected_state == CredentialStateEnum::Accepted {
+        // state unchanged -> no update
+        credential_repository.expect_update_credential().never();
+    } else {
+        let credential_id = credential.common().id;
+        credential_repository
+            .expect_update_credential()
+            .once()
+            .withf(move |id, request| *id == credential_id && request.state == Some(expected_state))
+            .returning(|_, _| Ok(()));
+    }
+
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .returning(move |_| {
+            let mut blob_storage = MockBlobStorage::new();
+            blob_storage
+                .expect_get()
+                .with(eq(credential_blob_id))
+                .returning(|_| Ok(Some(dummy_blob())));
+            Ok(Arc::new(blob_storage))
+        });
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        formatter_provider,
+        issuance_protocol_provider,
+        blob_storage_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = validity_manager
+        .check_holder_credential_validity(credential.common().id, true)
+        .await
+        .unwrap();
+
+    assert_eq!(result.credential_id, credential.common().id);
+    assert!(result.success);
+    assert_eq!(result.status, expected_state);
 }
