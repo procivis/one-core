@@ -23,6 +23,13 @@ tokio::task_local! {
     static COMMIT_CALLBACKS: RefCell<Vec<Box<dyn FnOnce() + Send>>>;
 }
 
+/// Isolation level for transactions that do not request one. READ COMMITTED avoids InnoDB gap
+/// locks, which cause deadlocks during parallel inserts. It is set as session default on every
+/// connection (see `db_conn`) instead of per transaction: on MySQL, `SET TRANSACTION` fails if
+/// the connection unexpectedly still has an open transaction, and it costs a round trip.
+pub(crate) const DEFAULT_ISOLATION_LEVEL: sea_orm::IsolationLevel =
+    sea_orm::IsolationLevel::ReadCommitted;
+
 #[derive(Clone)]
 pub struct TransactionManagerImpl {
     db: DbConn,
@@ -116,12 +123,15 @@ impl TransactionManager for TransactionManagerImpl {
     ) -> Result<Result<(), anyhow::Error>, DataLayerError> {
         // SQLite does not support isolation levels, ignore them
         let supports_isolation = self.get_database_backend() != DbBackend::Sqlite;
-        let mut requested_isolation = isolation_level
+        let explicit_isolation = isolation_level
             .filter(|_| supports_isolation)
             .map(map_isolation_level);
-        let access_mode = access_mode.map(map_access_mode);
+        let mut requested_isolation = explicit_isolation;
+        let mut access_mode = access_mode.map(map_access_mode);
         // Check if we are already in a transaction. If we are, we need to nest deeper on the existing one.
-        let new_tx = if let Ok((tx, parent_isolation, _)) = TX_CONTEXT.try_with(|v| v.clone()) {
+        let new_tx = if let Ok((tx, parent_isolation, parent_access_mode)) =
+            TX_CONTEXT.try_with(|v| v.clone())
+        {
             tracing::trace!(
                 "Nested transaction, isolation_level:{requested_isolation:?}, access_mode:{access_mode:?}"
             );
@@ -142,19 +152,39 @@ impl TransactionManager for TransactionManagerImpl {
                 }
             };
 
-            tx.begin_with_config(None, access_mode).await
+            // A nested transaction is a SAVEPOINT and runs in the access mode of the outermost
+            // transaction. Passing one would make MySQL issue `SET TRANSACTION` inside the open
+            // transaction, which fails with error 1568.
+            // A nested begin must not be cancelled on its own, see `TransactionManager` and
+            // https://github.com/transact-rs/sqlx/issues/4445.
+            access_mode = parent_access_mode;
+
+            tx.begin_with_config(None, None).await
         } else {
             if supports_isolation && requested_isolation.is_none() {
-                // READ COMMITTED is the default: it avoids InnoDB gap locks, which cause deadlocks
-                // during parallel inserts
-                requested_isolation = Some(sea_orm::IsolationLevel::ReadCommitted);
+                // Connections are opened with DEFAULT_ISOLATION_LEVEL as session default (see
+                // `db_conn`), so it is not sent per transaction. It is recorded so nested
+                // transactions explicitly requesting it are accepted.
+                requested_isolation = Some(DEFAULT_ISOLATION_LEVEL);
             }
             tracing::trace!(
                 "Non-nested transaction, isolation_level:{requested_isolation:?}, access_mode:{access_mode:?}"
             );
-            self.db
-                .begin_with_config(requested_isolation, access_mode)
+            // sqlx only records a transaction as started after the server acknowledged BEGIN.
+            // If this future were cancelled while BEGIN is in flight, the connection would go back
+            // to the pool with an open server-side transaction that is never rolled back. Running
+            // BEGIN in a separate task lets it complete; a transaction whose caller is gone is
+            // then rolled back when dropped.
+            // Upstream: https://github.com/transact-rs/sqlx/issues/4467, fixed for MySQL by
+            // https://github.com/transact-rs/sqlx/pull/4468 and for Postgres by
+            // https://github.com/transact-rs/sqlx/pull/4394. The spawn can be
+            // removed once a sqlx release containing both is used.
+            let db = self.db.clone();
+            tokio::spawn(async move { db.begin_with_config(explicit_isolation, access_mode).await })
                 .await
+                .map_err(|e| {
+                    DataLayerError::TransactionError(format!("Failed to start transaction: {e}"))
+                })?
         };
         let transaction = new_tx.map_err(|e| {
             DataLayerError::TransactionError(format!("Failed to start transaction: {e}"))

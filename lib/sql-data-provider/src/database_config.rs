@@ -4,6 +4,9 @@ use log::LevelFilter;
 use sea_orm::ConnectOptions;
 use serde::{Deserialize, Serialize};
 
+#[cfg(any(feature = "mysql", feature = "postgres"))]
+use crate::transaction_context::DEFAULT_ISOLATION_LEVEL;
+
 /// Optional overrides for SeaORM's connection options. Unset fields retain
 /// the defaults of the SeaORM/SQLx versions used by this build.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -135,6 +138,35 @@ impl DatabasePoolConfig {
 
         Ok(options)
     }
+}
+
+/// Makes `DEFAULT_ISOLATION_LEVEL` the session default of every pooled connection, so
+/// transactions do not need to set it.
+pub(crate) fn set_default_isolation_level(options: &mut ConnectOptions) {
+    #[cfg(feature = "mysql")]
+    options.map_sqlx_mysql_pool_opts(|pool_options| {
+        pool_options.after_connect(|conn, _meta| {
+            Box::pin(async move {
+                sea_orm::sqlx::Executor::execute(
+                    conn,
+                    sea_orm::sqlx::AssertSqlSafe(format!(
+                        "SET SESSION TRANSACTION ISOLATION LEVEL {DEFAULT_ISOLATION_LEVEL}"
+                    )),
+                )
+                .await
+                .map(|_| ())
+            })
+        })
+    });
+    #[cfg(feature = "postgres")]
+    options.map_sqlx_postgres_opts(|connect_options| {
+        connect_options.options([(
+            "default_transaction_isolation",
+            DEFAULT_ISOLATION_LEVEL.to_string().to_lowercase(),
+        )])
+    });
+    #[cfg(not(any(feature = "mysql", feature = "postgres")))]
+    let _ = options;
 }
 
 fn is_in_memory_sqlite(database_url: &str) -> bool {

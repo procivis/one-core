@@ -5,6 +5,17 @@ use futures::FutureExt;
 
 use crate::repository::error::DataLayerError;
 
+/// Runs futures in database transactions. A transaction started while another one is active on
+/// the same task is nested: it becomes a savepoint of the outer transaction, uses its isolation
+/// level and ignores the requested access mode.
+///
+/// Do not cancel a nested transaction on its own, e.g. by wrapping it in `tokio::time::timeout`
+/// or `select!` inside an outer transaction. If it is cancelled while its savepoint is being
+/// created, the rollback on drop ends the outer transaction instead of the savepoint: the outer
+/// transaction's writes are lost and its later statements are committed one by one. Cancelling
+/// the outermost transaction (e.g. a dropped request) is safe.
+/// Upstream: <https://github.com/transact-rs/sqlx/issues/4445>. SeaORM's `DatabaseTransaction`
+/// has the same flaw, so a sqlx fix alone is not sufficient.
 #[async_trait]
 pub trait TransactionManager: Send + Sync {
     /// Run a callback after the outermost transaction commits successfully.

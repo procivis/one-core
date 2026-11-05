@@ -509,7 +509,9 @@ pub async fn db_conn(
     database_url: impl Into<ConnectOptions>,
     with_migration: bool,
 ) -> Result<DatabaseConnection, DatabaseSetupError> {
-    let db = sea_orm::Database::connect(database_url)
+    let mut options = database_url.into();
+    database_config::set_default_isolation_level(&mut options);
+    let db = sea_orm::Database::connect(options)
         .await
         .map_err(DatabaseSetupError::Connect)?;
 
