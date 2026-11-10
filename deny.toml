@@ -32,6 +32,8 @@ ignore = [
     { id = "RUSTSEC-2026-0248", reason = "`im` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0251", reason = "`sized-chunks` crate unmaintained, dependency of json-ld" },
     { id = "RUSTSEC-2026-0374", reason = "`basic-toml` crate unmaintained, no safe upgrade available" },
+    # update sqlx once https://github.com/transact-rs/sqlx/pull/4517 is released
+    { id = "RUSTSEC-2026-0459", reason = "`libsqlite3-sys` needs update, waiting for sqlx release" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
