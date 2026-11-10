@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -327,7 +328,7 @@ fn log_details(kind: &str, method: &str, url: &str, bytes: &Bytes, headers: &Hea
     } else {
         format!(
             "\n{}",
-            String::from_utf8(bytes.to_vec()).unwrap_or("Unable to parse UTF-8".to_string())
+            str::from_utf8(bytes.deref()).unwrap_or("Unable to parse UTF-8")
         )
     };
 

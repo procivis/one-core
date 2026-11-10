@@ -1222,9 +1222,9 @@ impl OpenID4VCIFinal1_0 {
                     "Requested encrypted response (application/jwt), but got `{content_type}`"
                 )));
             };
-            let jwe = String::from_utf8(response.body)?;
+            let jwe = str::from_utf8(&response.body)?;
             let decrypted = decrypt_jwe_payload(
-                &jwe,
+                jwe,
                 key_agreement
                     .private()
                     .ok_or(IssuanceProtocolError::Failed(

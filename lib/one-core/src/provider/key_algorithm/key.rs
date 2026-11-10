@@ -1,3 +1,4 @@
+use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 use std::sync::Arc;
 
@@ -35,6 +36,8 @@ pub enum KeyHandleError {
     EncodingError(#[from] ct_codecs::Error),
     #[error("UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] FromUtf8Error),
+    #[error("UTF-8 error: `{0}`")]
+    Utf8Error(#[from] Utf8Error),
 
     #[error(transparent)]
     Nested(#[from] NestedError),

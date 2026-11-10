@@ -161,7 +161,7 @@ impl Response {
             } else {
                 let length = self.body.len();
                 if length < 2048
-                    && let Ok(content) = String::from_utf8(self.body)
+                    && let Ok(content) = str::from_utf8(&self.body)
                 {
                     format!("`{content}`")
                 } else {

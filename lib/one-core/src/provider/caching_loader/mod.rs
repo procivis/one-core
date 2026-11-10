@@ -54,6 +54,8 @@ pub enum CacheError {
     SerdeJson(#[from] serde_json::Error),
     #[error("Failed cached value serialization: {0}")]
     FromUtf8Error(#[from] FromUtf8Error),
+    #[error("Failed cached value serialization: `{0}`")]
+    Utf8Error(#[from] Utf8Error),
     #[error("Failed cached value serialization: {0}")]
     TokenError(#[from] TokenError),
 

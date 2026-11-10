@@ -106,7 +106,7 @@ pub fn decrypt_string(
 ) -> Result<SecretString, EncryptionError> {
     let decrypted = decrypt_data(data, encryption_key)?;
     Ok(SecretString::from(
-        String::from_utf8(decrypted.expose_secret().to_vec()).map_err(|err| {
+        str::from_utf8(decrypted.expose_secret()).map_err(|err| {
             EncryptionError::Crypto(format!("failed to decrypt string data: {err:?}"))
         })?,
     ))

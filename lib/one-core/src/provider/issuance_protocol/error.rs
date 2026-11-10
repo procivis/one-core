@@ -1,3 +1,4 @@
+use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 
 use one_crypto::encryption::EncryptionError;
@@ -58,6 +59,8 @@ pub enum IssuanceProtocolError {
 
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] FromUtf8Error),
+    #[error("UTF-8 error: `{0}`")]
+    Utf8Error(#[from] Utf8Error),
 }
 
 impl ErrorCodeMixin for IssuanceProtocolError {
@@ -80,7 +83,9 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::RejectionNotSupported => ErrorCode::BR_0237,
             Self::DisallowedCredentialConfiguration => ErrorCode::BR_0490,
             Self::RefreshNotPossible => ErrorCode::BR_0238,
-            Self::FromUtf8Error(_) | Self::TrustInformationError(_) => ErrorCode::BR_0047,
+            Self::FromUtf8Error(_) | Self::Utf8Error(_) | Self::TrustInformationError(_) => {
+                ErrorCode::BR_0047
+            }
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,
             Self::RefreshNotSupported => ErrorCode::BR_0452,
             Self::Nested(nested) => nested.error_code(),

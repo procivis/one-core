@@ -34,8 +34,8 @@ impl<'a> dyn OpenIDMetadataFetcher + 'a {
         url: &str,
     ) -> Result<DecomposedJwt<CustomPayload>, CacheError> {
         let content = self.get(url, "application/jwt").await?;
-        let jwt = String::from_utf8(content)?;
-        Ok(Jwt::decompose_token(&jwt)?)
+        let jwt = str::from_utf8(&content)?;
+        Ok(Jwt::decompose_token(jwt)?)
     }
 
     /// Fetches JSON metadata from the `.well-known/{well_known_path}` endpoint of `issuer_url`,

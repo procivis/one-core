@@ -320,9 +320,9 @@ impl RevocationMethod for TokenStatusList {
             )
             .await?
         } else {
-            let response_content = String::from_utf8(response.content)?;
+            let response_content = str::from_utf8(&response.content)?;
             self.extract_info_from_list_credential_jwt(
-                &response_content,
+                response_content,
                 issuer_details,
                 &status.uri,
             )

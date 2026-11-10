@@ -193,11 +193,11 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         }
         .await
         .error_while("fetching swiyu request")?;
-        let token = String::from_utf8(response.body).map_err(|e| {
+        let token = str::from_utf8(&response.body).map_err(|e| {
             VerificationProtocolError::Failed(format!("Invalid request object: {e}"))
         })?;
         let params: DecomposedJwt<AuthorizationRequest> =
-            Jwt::decompose_token(&token).error_while("parsing request JWT")?;
+            Jwt::decompose_token(token).error_while("parsing request JWT")?;
         let request_params = AuthorizationRequestQueryParams {
             client_id: params.payload.custom.client_id,
             request_uri: Some(url.to_string()),

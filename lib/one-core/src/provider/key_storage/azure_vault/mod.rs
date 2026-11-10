@@ -265,13 +265,12 @@ impl SignaturePrivateKeyHandle for AzureVaultKeyHandle {
             .key_reference
             .as_ref()
             .ok_or(KeyStorageError::MissingKeyReference)
-            .error_while("getting key reference")?
-            .to_owned();
-        let key_reference = String::from_utf8(key_reference)?;
+            .error_while("getting key reference")?;
+        let key_reference = str::from_utf8(key_reference)?;
 
         let sign_request = create_sign_request(message)?;
 
-        let response = self.azure_client.sign(&key_reference, sign_request).await?;
+        let response = self.azure_client.sign(key_reference, sign_request).await?;
 
         let decoded = Base64UrlSafeNoPadding::decode_to_vec(response.value, None)?;
 

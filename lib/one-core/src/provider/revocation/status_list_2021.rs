@@ -209,7 +209,7 @@ impl StatusList2021 {
             .error_for_status()
             .error_while("downloading StatusList2021")?;
 
-        let token = String::from_utf8(response.body)
+        let token = str::from_utf8(&response.body)
             .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
 
         let key_verification = Box::new(KeyVerification {
@@ -220,7 +220,7 @@ impl StatusList2021 {
         });
 
         let encoded_list =
-            StatusList2021JWTFormatter::parse_status_list(&token, issuer_did, key_verification)
+            StatusList2021JWTFormatter::parse_status_list(token, issuer_did, key_verification)
                 .await
                 .error_while("parsing status list")?;
 
