@@ -19,6 +19,7 @@ use crate::hasher::sha512::SHA512;
 
 pub mod encryption;
 pub mod hasher;
+pub mod hpke;
 pub mod jwe;
 pub mod rand08;
 pub mod signer;

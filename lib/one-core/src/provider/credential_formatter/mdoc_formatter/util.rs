@@ -37,7 +37,7 @@ pub type ValueDigests = IndexMap<Namespace, DigestIDs>;
 pub type DigestIDs = IndexMap<u64, Bstr>; // latter is the sha result
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuerSigned {
     pub name_spaces: Option<Namespaces>,

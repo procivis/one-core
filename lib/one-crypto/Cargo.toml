@@ -23,6 +23,7 @@ concat-kdf                   = { version = "0.1" }
 ct-codecs.workspace          = true
 ed25519-compact              = { version = "2.4", default-features = false, features = ["pem", "std", "x25519"] }
 flate2.workspace             = true
+hkdf.workspace               = true
 hmac                         = { version = "0.13" }
 ml-dsa                       = { version = "0.1", default-features = false, features = ["rand_core", "zeroize"] }
 mockall                      = { workspace = true, optional = true }

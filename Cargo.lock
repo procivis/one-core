@@ -4223,6 +4223,7 @@ dependencies = [
  "flate2",
  "hex",
  "hex-literal",
+ "hkdf",
  "hmac 0.13.0",
  "ml-dsa",
  "mockall",

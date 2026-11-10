@@ -20,7 +20,7 @@ pub type Errors = IndexMap<Namespace, ErrorItems>;
 pub type ErrorItems = IndexMap<DataElementIdentifier, ErrorCode>;
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceResponse {
     pub version: MDLVersion<1, 0>,
@@ -30,7 +30,7 @@ pub struct DeviceResponse {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Document {
     pub doc_type: DocType,
@@ -39,7 +39,7 @@ pub struct Document {
     pub errors: Option<Errors>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceSigned {
     pub name_spaces: EmbeddedCbor<DeviceNamespaces>,
@@ -47,7 +47,7 @@ pub struct DeviceSigned {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceAuth {
     pub device_signature: Option<CoseSign1>,

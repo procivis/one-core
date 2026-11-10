@@ -37,6 +37,7 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, IdentifierDetails, PublicKeySource, SignatureProvider, TokenVerifier,
     VerificationFn,
 };
+use crate::provider::key_algorithm::key::KeyAgreementHandle;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
@@ -47,6 +48,9 @@ use crate::provider::transaction_data::processed_transaction_data::ProcessedTran
 
 pub(crate) mod model;
 pub(crate) mod session_transcript;
+
+#[cfg(test)]
+mod test;
 
 #[serde_as]
 #[derive(Deserialize)]
@@ -534,7 +538,7 @@ pub(crate) fn try_build_dcapi_response(
         .error_while("converting recipient key")?;
     let pk_recip = <hpke::kem::DhP256HkdfSha256 as hpke::Kem>::PublicKey::from_bytes(&sec1)?;
 
-    let (enc, ct) = hpke::single_shot_seal_with_rng::<
+    let (encapped_key, cipher_text) = hpke::single_shot_seal_with_rng::<
         hpke::aead::AesGcm128,
         hpke::kdf::HkdfSha256,
         hpke::kem::DhP256HkdfSha256,
@@ -549,8 +553,36 @@ pub(crate) fn try_build_dcapi_response(
 
     Ok(dcapi::EncryptedResponse {
         data: dcapi::EncryptedResponseData {
-            enc: Bstr(enc.to_bytes().as_slice().to_vec()),
-            cipher_text: Bstr(ct),
+            enc: Bstr(encapped_key.to_bytes().as_slice().to_vec()),
+            cipher_text: Bstr(cipher_text),
         },
     })
+}
+
+/// ISO 18013-7, C.4
+#[allow(unused)]
+pub(crate) async fn try_decrypt_dcapi_response(
+    response: dcapi::EncryptedResponse,
+    recipient_key: &KeyAgreementHandle,
+    session_transcript: SessionTranscript,
+) -> Result<DeviceResponse, FormatterError> {
+    let info = cbor!(session_transcript)?.to_vec()?;
+
+    let decrypted = one_crypto::hpke::open_p256_sha256_aes128gcm(
+        recipient_key
+            .private()
+            .ok_or(FormatterError::CouldNotExtractPresentation(
+                "No private key".to_string(),
+            ))?
+            .as_ref(),
+        &recipient_key.public().as_raw(),
+        &response.data.enc.0,
+        &info,
+        &[],
+        &response.data.cipher_text.0,
+    )
+    .await
+    .error_while("decrypting DC-API response")?;
+
+    Ok(ciborium::from_reader(decrypted.as_slice())?)
 }
