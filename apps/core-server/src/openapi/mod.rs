@@ -266,7 +266,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             create_tag("task", "Tasks",
                 indoc::indoc! {"Trigger configured maintenance and operational tasks.
                 Tasks can also be run from the CLI or scheduled as cron
-                jobs. See [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#regular-tasks)
+                jobs. See [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#tasks)
                 for supported task types and their parameters."}
             ),
             create_tag("cache", "Cache",

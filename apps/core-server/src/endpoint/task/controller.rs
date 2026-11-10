@@ -22,7 +22,7 @@ use crate::router::AppState;
     description = indoc::formatdoc! {"
         Triggers a configured task by name. Tasks can also be run from
         the CLI after starting `core-server`. See 
-        [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#regular-tasks)
+        [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#tasks)
         for supported task types and their parameters.
     "},
 )]
