@@ -74,6 +74,7 @@ use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::presentation_formatter::mso_mdoc::try_verify_cose_sign1;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::key_selection::SelectedKey;
@@ -395,9 +396,15 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         token: &SerializedCredential,
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
-        _verification: VerificationFn,
+        verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(&*self.certificate_validator, &*self.client, token, true).await
+        extract_credentials_internal(
+            &*self.certificate_validator,
+            &*self.client,
+            token,
+            Some(&*verification),
+        )
+        .await
     }
 
     async fn extract_credentials_unverified<'a>(
@@ -405,8 +412,7 @@ impl CredentialFormatter for MdocFormatter {
         token: &SerializedCredential,
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(&*self.certificate_validator, &*self.client, token, false)
-            .await
+        extract_credentials_internal(&*self.certificate_validator, &*self.client, token, None).await
     }
 
     // Extract issuer_signed, keep only the claims that the verifier asked for, re-encode issuer_signed that back to the same format
@@ -566,7 +572,7 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         credential: &SerializedCredential,
         organisation: Organisation,
-        _verification: Box<dyn TokenVerifier>,
+        verification: Box<dyn TokenVerifier>,
     ) -> Result<ParsedCredential, FormatterError> {
         let issuer_signed: IssuerSigned = decode_cbor_base64url(credential.as_ref())?;
         let issuer_certificate = extract_certificate_from_x5chain_header(
@@ -583,6 +589,12 @@ impl CredentialFormatter for MdocFormatter {
                 "IssuerSigned object is missing namespaces".to_owned(),
             ));
         };
+        verify_issuer_auth(
+            &issuer_signed.issuer_auth,
+            &issuer_certificate.chain,
+            &*verification,
+        )
+        .await?;
         verify_digests(&mso, &namespaces)?;
 
         let now = crate::clock::now_utc();
@@ -722,14 +734,14 @@ async fn extract_credentials_internal(
     certificate_validator: &dyn CertificateValidator,
     http_client: &dyn HttpClient,
     token: &SerializedCredential,
-    verify: bool,
+    verification: Option<&dyn TokenVerifier>,
 ) -> Result<DetailCredential, FormatterError> {
     let issuer_signed: IssuerSigned = decode_cbor_base64url(token.as_ref())?;
     let issuer_cert = extract_certificate_from_x5chain_header(
         certificate_validator,
         http_client,
         &issuer_signed.issuer_auth,
-        verify,
+        verification.is_some(),
     )
     .await?;
     let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
@@ -742,7 +754,8 @@ async fn extract_credentials_internal(
     let issuer_auth = &issuer_signed.issuer_auth;
     let holder_jwk = try_extract_holder_public_key(issuer_auth)?;
 
-    if verify {
+    if let Some(verification) = verification {
+        verify_issuer_auth(issuer_auth, &issuer_cert.chain, verification).await?;
         verify_digests(&mso, &namespaces)?;
     }
 
@@ -770,6 +783,18 @@ async fn extract_credentials_internal(
         claims,
         status: try_convert_inner(mso.status)?,
     })
+}
+
+async fn verify_issuer_auth(
+    issuer_auth: &CoseSign1,
+    issuer_chain: &str,
+    verification: &dyn TokenVerifier,
+) -> Result<(), FormatterError> {
+    let x5c = pem_chain_into_x5c(issuer_chain).error_while("parsing PEM chain")?;
+    try_verify_cose_sign1(issuer_auth, &x5c, verification)
+        .await
+        .error_while("verifying issuerAuth")?;
+    Ok(())
 }
 
 fn verify_digests(

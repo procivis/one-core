@@ -2028,24 +2028,33 @@ impl OpenID4VCIFinal1_0 {
             .await
             .error_while("fetching signed issuer metadata");
 
-        if !trust_mandatory && let Err(err) = &jwt_result {
+        let metadata = if !trust_mandatory && let Err(err) = &jwt_result {
             tracing::warn!(
                 "Failed to fetch signed issuer metadata, falling back to unsigned metadata: {err}"
             );
-            return Ok(IssuerMetadataRepresentation::Unsigned(
+            IssuerMetadataRepresentation::Unsigned(
                 self.metadata_cache
                     .fetch_json_well_known(&credential_issuer_endpoint, "openid-credential-issuer")
                     .await
                     .error_while("fetching issuer metadata")?,
-            ));
+            )
+        } else {
+            let jwt = jwt_result?;
+            self.validate_jwt(&jwt)
+                .await
+                .error_while("validating issuer metadata JWT")?;
+            IssuerMetadataRepresentation::Signed(jwt)
+        };
+
+        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.1
+        let metadata_issuer = &metadata.metadata().credential_issuer;
+        if metadata_issuer != credential_issuer {
+            return Err(IssuanceProtocolError::InvalidRequest(format!(
+                "Credential issuer mismatch metadata: `{metadata_issuer}`, offer: `{credential_issuer}`"
+            )));
         }
 
-        let jwt = jwt_result?;
-        self.validate_jwt(&jwt)
-            .await
-            .error_while("validating issuer metadata JWT")?;
-
-        Ok(IssuerMetadataRepresentation::Signed(jwt))
+        Ok(metadata)
     }
 
     /// Whether the issuer advertises the swiss profile, which is what tells a swiyu issuer apart
@@ -2392,7 +2401,7 @@ impl OpenID4VCIFinal1_0 {
 
     pub(super) async fn prepare_issuer_metadata(
         &self,
-        credential_schema_id: &CredentialSchemaId,
+        schema: CredentialSchema,
     ) -> Result<PreparedMetadata, IssuanceProtocolError> {
         let protocol_base_url =
             self.protocol_base_url
@@ -2400,12 +2409,6 @@ impl OpenID4VCIFinal1_0 {
                 .ok_or(IssuanceProtocolError::Failed(
                     "Host URL not specified".to_string(),
                 ))?;
-
-        let schema = self
-            .credential_schema_repository
-            .get_credential_schema(credential_schema_id)
-            .await
-            .error_while("getting credential schema")?;
 
         let mut credential_configurations_supported: IndexMap<String, CredentialConfiguration> =
             Default::default();
@@ -3222,9 +3225,21 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         credential_schema_id: &CredentialSchemaId,
         issuer_identifier: &Identifier,
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
+        let credential_schema = self
+            .credential_schema_repository
+            .get_credential_schema(credential_schema_id)
+            .await
+            .error_while("getting credential schema")?;
+
+        if issuer_identifier.organisation.id_ref() != credential_schema.organisation.id_ref() {
+            return Err(IssuanceProtocolError::InvalidRequest(
+                "issuer-credentialSchema mismatch".to_string(),
+            ));
+        }
+
         let enc_values_supported = self.get_capabilities().supported_encryption_algorithms;
 
-        let prepared_metadata = self.prepare_issuer_metadata(credential_schema_id).await?;
+        let prepared_metadata = self.prepare_issuer_metadata(credential_schema).await?;
         let issuer_info = self
             .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
             .await?;

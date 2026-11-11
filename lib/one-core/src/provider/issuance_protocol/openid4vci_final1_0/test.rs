@@ -3741,6 +3741,147 @@ async fn test_handle_invitation_signed_metadata() {
 }
 
 #[tokio::test]
+async fn test_handle_invitation_rejects_unsigned_metadata_of_other_issuer() {
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+    metadata_cache
+        .expect_get()
+        .with(
+            eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
+            eq("application/jwt"),
+        )
+        .once()
+        .returning(|_, _| {
+            Err(serde_json::from_slice::<Value>(b"not a jwt")
+                .unwrap_err()
+                .into())
+        });
+
+    let other_issuer_metadata = json!({
+        "credential_endpoint": "http://other.url/issuer/credential",
+        "credential_issuer": "http://other.url/issuer",
+        "credential_configurations_supported": {}
+    });
+
+    metadata_cache
+        .expect_get()
+        .with(
+            eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
+            eq("application/json"),
+        )
+        .once()
+        .returning(move |_, _| Ok(other_issuer_metadata.to_string().into_bytes()));
+
+    // rejected before the authorization server metadata is fetched or an interaction is created
+    let protocol = setup_protocol(TestInputs {
+        metadata_cache,
+        ..Default::default()
+    });
+
+    let result = protocol
+        .holder_handle_invitation(
+            unsigned_metadata_offer_url(),
+            dummy_organisation(None),
+            None,
+        )
+        .await;
+    assert_matches!(result, Err(IssuanceProtocolError::InvalidRequest(_)));
+}
+
+#[tokio::test]
+async fn test_handle_invitation_rejects_signed_metadata_of_other_issuer() {
+    let other_issuer_metadata = json!({
+        "credential_endpoint": "http://other.url/issuer/credential",
+        "credential_issuer": "http://other.url/issuer",
+        "credential_configurations_supported": {}
+    });
+
+    let jwt = {
+        let header = json!({
+            "typ": "openidvci-issuer-metadata+jwt",
+            "alg": "ES256",
+            "x5c": ["Y2VydGlmaWNhdGU="]
+        });
+        let header =
+            Base64UrlSafeNoPadding::encode_to_string(header.to_string().as_bytes()).unwrap();
+        let payload =
+            Base64UrlSafeNoPadding::encode_to_string(other_issuer_metadata.to_string().as_bytes())
+                .unwrap();
+        format!("{header}.{payload}.c2lnbmF0dXJl")
+    };
+
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+    metadata_cache
+        .expect_get()
+        .with(
+            eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
+            eq("application/jwt"),
+        )
+        .once()
+        .return_once(move |_, _| Ok(jwt.into_bytes()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("ES256"))
+        .once()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .once()
+                .return_const(KeyAlgorithmType::Ecdsa);
+            Some((KeyAlgorithmType::Ecdsa, Arc::new(key_algorithm)))
+        });
+
+    // the signature of the metadata verifies against the key the JWT names
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
+        .once()
+        .return_once(|_, _| {
+            let mut signature_handle = MockSignaturePublicKeyHandle::new();
+            signature_handle
+                .expect_verify()
+                .once()
+                .return_once(|_, _| Ok(()));
+
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "test".to_string(),
+                    not_before: crate::clock::now_utc(),
+                    not_after: crate::clock::now_utc(),
+                    issuer: "Test Issuer".to_string(),
+                    subject: "Test Subject".to_string(),
+                    fingerprint: "test".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("Test".to_string()),
+                subject_key_identifier: None,
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    signature_handle,
+                ))),
+            })
+        });
+
+    // rejected before the authorization server metadata is fetched or an interaction is created
+    let protocol = setup_protocol(TestInputs {
+        metadata_cache,
+        key_algorithm_provider,
+        certificate_validator,
+        ..Default::default()
+    });
+
+    let result = protocol
+        .holder_handle_invitation(
+            unsigned_metadata_offer_url(),
+            dummy_organisation(None),
+            None,
+        )
+        .await;
+    assert_matches!(result, Err(IssuanceProtocolError::InvalidRequest(_)));
+}
+
+#[tokio::test]
 async fn test_continue_issuance_with_scope_success() {
     inner_continue_issuance_test(true, false, None).await;
 }

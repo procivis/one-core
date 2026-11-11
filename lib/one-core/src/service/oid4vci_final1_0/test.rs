@@ -715,7 +715,10 @@ async fn test_get_issuer_metadata_jwt() {
         ..Default::default()
     });
 
-    let identifier = dummy_identifier();
+    let identifier = Identifier {
+        organisation: schema.organisation.clone(),
+        ..dummy_identifier()
+    };
     let identifier_id = identifier.id;
 
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -862,7 +865,10 @@ async fn test_get_issuer_metadata_sd_jwt() {
         ..Default::default()
     });
 
-    let identifier = dummy_identifier();
+    let identifier = Identifier {
+        organisation: schema.organisation.clone(),
+        ..dummy_identifier()
+    };
     let identifier_id = identifier.id;
 
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -1032,7 +1038,10 @@ async fn test_get_issuer_metadata_mdoc() {
         ..Default::default()
     });
 
-    let identifier = dummy_identifier();
+    let identifier = Identifier {
+        organisation: schema.organisation.clone(),
+        ..dummy_identifier()
+    };
     let identifier_id = identifier.id;
 
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -1193,7 +1202,10 @@ async fn test_get_issuer_metadata_includes_schema_translations() {
         ..Default::default()
     });
 
-    let identifier = dummy_identifier();
+    let identifier = Identifier {
+        organisation: schema.organisation.clone(),
+        ..dummy_identifier()
+    };
     let identifier_id = identifier.id;
 
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -1355,7 +1367,10 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
         ..Default::default()
     });
 
-    let identifier = dummy_identifier();
+    let identifier = Identifier {
+        organisation: schema.organisation.clone(),
+        ..dummy_identifier()
+    };
     let identifier_id = identifier.id;
 
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -4004,6 +4019,66 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
         result,
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(
             WalletAttestationError::WiaMalformed(_)
+        ))
+    );
+}
+
+#[rstest::rstest]
+#[case::pre_authorized_code(TokenRequest::PreAuthorizedCode {
+    pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+    tx_code: None,
+})]
+#[case::refresh_token(TokenRequest::RefreshToken {
+    refresh_token: "c62f4237-3c74-42f2-a5ff-c72489e025f7.AAAAA".to_string(),
+})]
+#[tokio::test]
+async fn test_create_token_fails_credential_schema_mismatch(#[case] request: TokenRequest) {
+    let interaction_schema = generic_credential_schema();
+    let credential = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Pending,
+        false,
+        interaction_schema,
+        CredentialType::Single,
+    );
+
+    let endpoint_schema = generic_credential_schema();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .once()
+        .with(eq(endpoint_schema.id))
+        .return_once({
+            let schema = endpoint_schema.clone();
+            move |_| Ok(schema)
+        });
+
+    let interaction_id: InteractionId = Uuid::from_str("c62f4237-3c74-42f2-a5ff-c72489e025f7")
+        .unwrap()
+        .into();
+    let mut credential_repository = MockCredentialRepository::default();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .with(eq(interaction_id))
+        .return_once(|_| Ok(vec![credential]));
+
+    // rejected before the interaction is loaded, so no token is issued and no credential is updated
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_token(&endpoint_schema.id, request, None, None, None)
+        .await;
+
+    assert_matches!(
+        result,
+        Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidGrant
         ))
     );
 }

@@ -367,6 +367,10 @@ impl SSIIssuerService {
         let identifier = self.fetch_identifier(identifier_id).await?;
         let credential_schema = self.fetch_credential_schema(credential_schema_id).await?;
 
+        if identifier.organisation.id_ref() != credential_schema.organisation.id_ref() {
+            return Err(IssuerServiceError::InvalidInput);
+        }
+
         let issuer = if let IdentifierData::Did(issuer_did) = &identifier.data {
             issuer_did.as_ref().await?.did.as_str().to_string()
         } else {

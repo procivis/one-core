@@ -58,7 +58,7 @@ pub struct IssuerSignedItem {
 pub enum DigestAlgorithm {
     #[serde(rename = "SHA-256")]
     Sha256,
-    #[serde(rename = "SHA-348")]
+    #[serde(rename = "SHA-384")]
     Sha384,
     #[serde(rename = "SHA-512")]
     Sha512,

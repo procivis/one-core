@@ -95,8 +95,9 @@ pub mod ecdsa {
     #[async_trait]
     #[allow(clippy::unimplemented)]
     impl SignatureProvider for Key {
+        // JOSE and COSE signatures are raw r||s, unlike the ASN.1 encoding of X.509
         async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
-            Ok(Self::sign(message))
+            Ok(Self::sign_jwt(message))
         }
 
         fn get_key_id(&self) -> Option<String> {

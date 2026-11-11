@@ -64,6 +64,7 @@ fn issuer_metadata_fixtures() -> (
 
     let mut credential_schema = dummy_credential_schema();
     credential_schema.id = credential_schema_id;
+    credential_schema.organisation = identifier.organisation.clone();
 
     (
         protocol_id,

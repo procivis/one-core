@@ -12,6 +12,7 @@ use standardized_types::jwk::PublicJwkEc;
 use time::macros::datetime;
 use uuid::Uuid;
 
+use super::util::cose_header;
 use super::*;
 use crate::clock::run_with_mocked_time_async;
 use crate::model::certificate::{Certificate, CertificateState};
@@ -986,10 +987,10 @@ async fn test_parse_object_array_preserves_element_type() {
     assert_eq!(array_mapping.namespace.as_deref(), Some("namespace"));
 }
 
+const ISSUED_MDOC: &str = "ompuYW1lU3BhY2VzompuYW1lc3BhY2UxgtgYWGSkaGRpZ2VzdElEAGZyYW5kb21YIMWtCKe0UpTNc-Som7lMdasvokELGUYt1G6w_S7OPpy8cWVsZW1lbnRJZGVudGlmaWVyY29iamxlbGVtZW50VmFsdWWhaW5lc3RlZFN0cmFu2BhYWaRoZGlnZXN0SUQBZnJhbmRvbVggaVSHtwEJdYhB_UNz0MvoyMmUIQZoj31cvTLyKRfdUKZxZWxlbWVudElkZW50aWZpZXJjc3RybGVsZW1lbnRWYWx1ZWFzam5hbWVzcGFjZTKB2BhYXqRoZGlnZXN0SUQCZnJhbmRvbVggLaV6XEY6vAQWrmoGLk9k4KwhuXKslxhYGQWUQ4CvRi1xZWxlbWVudElkZW50aWZpZXJjYXJybGVsZW1lbnRWYWx1ZYJiYTFiYTJqaXNzdWVyQXV0aIRDoQEmoRghWQNGMIIDQjCCAuegAwIBAgIUJ1lFCR_rFo-SnmIFQI_2spfZ8U0wCgYIKoZIzj0EAwIwgYwxEjAQBgNVBAMMCWxvY2FsaG9zdDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTEPMA0GA1UEBwwGWnVyaWNoMQswCQYDVQQGEwJDSDEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5jaDAeFw0yNTA3MjkxMzEzMDBaFw0yNjA3MjkwMDAwMDBaMBExDzANBgNVBAMMBnNkZ2RmaDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYXmT8MpwCuYqSJ5gCiDhZE_GcW6K_95Yxh5eUi-Mx6TlNSFf0hmG4l8lUc4VBbW-F3aPaJloS-5KxWgrDbmGyjggGfMIIBmzAfBgNVHSMEGDAWgBTt9O0P3c2e__llFNrZnB8VGciUSzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBTpNlM0fkAOmVL_cghB0sc1pEKkdTCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAGGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL29jc3AvMkU4NjI5NzVGRDA5MEUxRjM1QTY3NENFQUE0RTZDNTZFNUI2Nzc0OC9jZXJ0LzBaBggrBgEFBQcwAoZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vaXNzdWVyLzJFODYyOTc1RkQwOTBFMUYzNUE2NzRDRUFBNEU2QzU2RTVCNjc3NDguZGVyMFkGA1UdHwRSMFAwTqBMoEqGSGh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8yRTg2Mjk3NUZEMDkwRTFGMzVBNjc0Q0VBQTRFNkM1NkU1QjY3NzQ4LzAVBgNVHSUBAf8ECzAJBgcogYxdBQECMA4GA1UdDwEB_wQEAwIHgDAKBggqhkjOPQQDAgNJADBGAiEA1tdLIzHjsFse_1f3G2pB5hlaP0jZJFIWSVMOrq1AL98CIQCviw63vxlUhoWLwG7Y7fxVffGYYRejF_5bO1hI7KH9U1kBydgYWQHEpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiam5hbWVzcGFjZTGiAFggQbhGiPKR2NS_inPDZW5z1ccREMUkmN6J6kj-5HJe7i4BWCDeAcugZ1WThbFnW5ksTwT5349mVLOwcr4tS_ooBu_w_2puYW1lc3BhY2UyoQJYIKTvsv_kcCp3YmIJ1YFX66idSdQ62z3LkJ2Xn_q5lgz5bWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggWnxj014us6_1nQAqd_kI_3r4mFJqyJWyMwRNrqDtHNMiWCCh53efzDuA5jGknqv3WG_czqFVUwOHla5v2c8pPxkCG2dkb2NUeXBlcnBhdmVsLjc1NDUuc3RyaW5nc2x2YWxpZGl0eUluZm-kZnNpZ25lZMB0MjAyNS0xMC0xNVQwODo1ODoxM1ppdmFsaWRGcm9twHQyMDI1LTEwLTE1VDA4OjU4OjEzWmp2YWxpZFVudGlswHQyMDI1LTEwLTE4VDA4OjU4OjEzWm5leHBlY3RlZFVwZGF0ZcB0MjAyNS0xMC0xNlQwODo1ODoxM1pYQL1m2H0lKYlNRbxmo4fhtTG7-rwi1NPiggmQQFejt8G6kIJghGsJ0aVbvTgPtogN4z67KWv2xK3IUCWjxR4rNUo";
+
 #[tokio::test]
 async fn test_parse_credential() {
-    const ISSUED_MDOC: &str = "ompuYW1lU3BhY2VzompuYW1lc3BhY2UxgtgYWGSkaGRpZ2VzdElEAGZyYW5kb21YIMWtCKe0UpTNc-Som7lMdasvokELGUYt1G6w_S7OPpy8cWVsZW1lbnRJZGVudGlmaWVyY29iamxlbGVtZW50VmFsdWWhaW5lc3RlZFN0cmFu2BhYWaRoZGlnZXN0SUQBZnJhbmRvbVggaVSHtwEJdYhB_UNz0MvoyMmUIQZoj31cvTLyKRfdUKZxZWxlbWVudElkZW50aWZpZXJjc3RybGVsZW1lbnRWYWx1ZWFzam5hbWVzcGFjZTKB2BhYXqRoZGlnZXN0SUQCZnJhbmRvbVggLaV6XEY6vAQWrmoGLk9k4KwhuXKslxhYGQWUQ4CvRi1xZWxlbWVudElkZW50aWZpZXJjYXJybGVsZW1lbnRWYWx1ZYJiYTFiYTJqaXNzdWVyQXV0aIRDoQEmoRghWQNGMIIDQjCCAuegAwIBAgIUJ1lFCR_rFo-SnmIFQI_2spfZ8U0wCgYIKoZIzj0EAwIwgYwxEjAQBgNVBAMMCWxvY2FsaG9zdDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTEPMA0GA1UEBwwGWnVyaWNoMQswCQYDVQQGEwJDSDEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5jaDAeFw0yNTA3MjkxMzEzMDBaFw0yNjA3MjkwMDAwMDBaMBExDzANBgNVBAMMBnNkZ2RmaDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYXmT8MpwCuYqSJ5gCiDhZE_GcW6K_95Yxh5eUi-Mx6TlNSFf0hmG4l8lUc4VBbW-F3aPaJloS-5KxWgrDbmGyjggGfMIIBmzAfBgNVHSMEGDAWgBTt9O0P3c2e__llFNrZnB8VGciUSzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBTpNlM0fkAOmVL_cghB0sc1pEKkdTCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAGGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL29jc3AvMkU4NjI5NzVGRDA5MEUxRjM1QTY3NENFQUE0RTZDNTZFNUI2Nzc0OC9jZXJ0LzBaBggrBgEFBQcwAoZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vaXNzdWVyLzJFODYyOTc1RkQwOTBFMUYzNUE2NzRDRUFBNEU2QzU2RTVCNjc3NDguZGVyMFkGA1UdHwRSMFAwTqBMoEqGSGh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8yRTg2Mjk3NUZEMDkwRTFGMzVBNjc0Q0VBQTRFNkM1NkU1QjY3NzQ4LzAVBgNVHSUBAf8ECzAJBgcogYxdBQECMA4GA1UdDwEB_wQEAwIHgDAKBggqhkjOPQQDAgNJADBGAiEA1tdLIzHjsFse_1f3G2pB5hlaP0jZJFIWSVMOrq1AL98CIQCviw63vxlUhoWLwG7Y7fxVffGYYRejF_5bO1hI7KH9U1kBydgYWQHEpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiam5hbWVzcGFjZTGiAFggQbhGiPKR2NS_inPDZW5z1ccREMUkmN6J6kj-5HJe7i4BWCDeAcugZ1WThbFnW5ksTwT5349mVLOwcr4tS_ooBu_w_2puYW1lc3BhY2UyoQJYIKTvsv_kcCp3YmIJ1YFX66idSdQ62z3LkJ2Xn_q5lgz5bWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggWnxj014us6_1nQAqd_kI_3r4mFJqyJWyMwRNrqDtHNMiWCCh53efzDuA5jGknqv3WG_czqFVUwOHla5v2c8pPxkCG2dkb2NUeXBlcnBhdmVsLjc1NDUuc3RyaW5nc2x2YWxpZGl0eUluZm-kZnNpZ25lZMB0MjAyNS0xMC0xNVQwODo1ODoxM1ppdmFsaWRGcm9twHQyMDI1LTEwLTE1VDA4OjU4OjEzWmp2YWxpZFVudGlswHQyMDI1LTEwLTE4VDA4OjU4OjEzWm5leHBlY3RlZFVwZGF0ZcB0MjAyNS0xMC0xNlQwODo1ODoxM1pYQL1m2H0lKYlNRbxmo4fhtTG7-rwi1NPiggmQQFejt8G6kIJghGsJ0aVbvTgPtogN4z67KWv2xK3IUCWjxR4rNUo";
-
     let params = json!({
         "expirationSeconds": 10,
         "msoExpectedUpdateInSeconds": 10,
@@ -1064,7 +1065,10 @@ async fn test_parse_credential() {
     )
     .unwrap();
     let mut verify_mock = MockTokenVerifier::new();
-    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
+    verify_mock
+        .expect_verify()
+        .once()
+        .return_once(|_, _, _, _| Ok(()));
 
     let credential = formatter
         .parse_credential(
@@ -1211,6 +1215,105 @@ async fn test_parse_credential() {
         get_mapping_keys(&|mapping| mapping.namespace == Some("namespace2".to_string())),
         hashset! { "arr" }
     );
+}
+
+/// Formatter for `ISSUED_MDOC`, accepting its issuer certificate
+fn issued_mdoc_formatter() -> MdocFormatter {
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
+        .once()
+        .returning(|_, _| {
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "".to_string(),
+                    not_before: crate::clock::now_utc() - Duration::days(1),
+                    not_after: crate::clock::now_utc() + Duration::days(1),
+                    issuer: "Some issuer".to_string(),
+                    subject: "Some subject".to_string(),
+                    fingerprint: hex::encode("testfoo"),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("common name".to_string()),
+                subject_key_identifier: None,
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                ))),
+            })
+        });
+
+    MdocFormatter::new(
+        Some("core-base".into()),
+        "MDOC".into(),
+        json!({
+            "expirationSeconds": 10,
+            "msoExpectedUpdateInSeconds": 10,
+            "msoMinimumRefreshSeconds": 10,
+            "leewaySeconds": 60
+        }),
+        Arc::new(certificate_validator),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockDataTypeProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockHttpClient::new()),
+    )
+    .unwrap()
+}
+
+/// Verifier expecting a single check of the `ISSUED_MDOC` issuer signature against its issuer
+/// certificate, which fails as if the MSO was forged
+fn invalid_issuer_signature_verifier() -> MockTokenVerifier {
+    let issuer_signed: IssuerSigned = decode_cbor_base64url(ISSUED_MDOC).unwrap();
+    let Some(ciborium::Value::Bytes(issuer_certificate)) =
+        cose_header(&issuer_signed.issuer_auth.0, iana::HeaderParameter::X5Chain)
+    else {
+        panic!("missing x5chain");
+    };
+    let issuer_x5c = vec![Base64::encode_to_string(issuer_certificate).unwrap()];
+
+    let mut verifier = MockTokenVerifier::new();
+    verifier
+        .expect_verify()
+        .once()
+        .withf(move |source, algorithm, _, _| {
+            assert!(
+                matches!(source, PublicKeySource::X5c { x5c } if *x5c == issuer_x5c.as_slice())
+            );
+            assert_eq!(KeyAlgorithmType::Ecdsa, *algorithm);
+            true
+        })
+        .return_once(|_, _, _, _| {
+            Err(TokenError::ValidationFailed(
+                "invalid signature".to_string(),
+            ))
+        });
+    verifier
+}
+
+#[tokio::test]
+async fn test_parse_credential_invalid_issuer_signature() {
+    let result = issued_mdoc_formatter()
+        .parse_credential(
+            &ISSUED_MDOC.into(),
+            dummy_organisation(None),
+            Box::new(invalid_issuer_signature_verifier()),
+        )
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_extract_credentials_invalid_issuer_signature() {
+    let result = issued_mdoc_formatter()
+        .extract_credentials(
+            &ISSUED_MDOC.into(),
+            None,
+            Box::new(invalid_issuer_signature_verifier()),
+        )
+        .await;
+
+    assert!(result.is_err());
 }
 
 #[tokio::test]

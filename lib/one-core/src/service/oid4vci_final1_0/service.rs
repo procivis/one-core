@@ -1459,6 +1459,17 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credentials")?;
 
+        // check credential_schema_id matches the parsed interaction
+        if credentials
+            .iter()
+            .any(|credential| credential.common().schema.id_ref() != credential_schema_id)
+        {
+            tracing::info!(
+                "Rejecting token request: interaction {interaction_id} does not match credential schema {credential_schema_id}"
+            );
+            return Err(OpenID4VCIError::InvalidGrant.into());
+        }
+
         // only batch_parent can be in state `Expiring`,
         // if it's the case, then any other credential related to specified interaction cannot be issued, or token cannot be refreshed
         if credentials
