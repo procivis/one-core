@@ -473,34 +473,52 @@ sdk:upload_artifacts:
     IOS_BUILD_FILE: "deploy.zip"
   script:
     # https://learn.microsoft.com/en-us/cli/azure/storage/blob?view=azure-cli-latest#az-storage-blob-download
-    - ANDROID_CONTAINER_PATH_DEBUG=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_DEBUG_FILE}
-    - ANDROID_CONTAINER_PATH_RELEASE=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_RELEASE_FILE}
+    - ANDROID_UPLOAD_PATH_DEBUG=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_DEBUG_FILE}
+    - ANDROID_UPLOAD_PATH_RELEASE=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_RELEASE_FILE}
     - ANDROID_CONTAINER_DOCS_UPLOAD_PATH=${AZURE_CONTAINER_NAME}/${ANDROID_CONTAINER_PATH}/docs
-    - IOS_CONTAINER_PATH=${IOS_CONTAINER_PATH}/${IOS_BUILD_FILE}
+    - IOS_UPLOAD_PATH=${IOS_CONTAINER_PATH}/${IOS_BUILD_FILE}
+    - IOS_CORE_UPLOAD_PATH=${IOS_CONTAINER_PATH}/ProcivisOneCore.xcframework.zip
+    - IOS_FFI_UPLOAD_PATH=${IOS_CONTAINER_PATH}/ProcivisOneCoreFFI.xcframework.zip
     # Upload Android debug file
-    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${ANDROID_CONTAINER_PATH_DEBUG} -f ${ANDROID_BUILD_SOURCE_PATH}/${ANDROID_SDK_DEBUG_FILE}
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${ANDROID_UPLOAD_PATH_DEBUG} -f ${ANDROID_BUILD_SOURCE_PATH}/${ANDROID_SDK_DEBUG_FILE}
     # Upload Android release file
-    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${ANDROID_CONTAINER_PATH_RELEASE} -f ${ANDROID_BUILD_SOURCE_PATH}/${ANDROID_SDK_RELEASE_FILE}
-    # Upload IOS zip file
-    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${IOS_CONTAINER_PATH} -f ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE}
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${ANDROID_UPLOAD_PATH_RELEASE} -f ${ANDROID_BUILD_SOURCE_PATH}/${ANDROID_SDK_RELEASE_FILE}
+    # Upload iOS zip file
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${IOS_UPLOAD_PATH} -f ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE}
+
+    # Unzip iOS zip file
+    - unzip -q ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE}
+
+    # Upload iOS ProcivisOneCore zip file
+    - (cd ios && zip -qr ProcivisOneCore.xcframework.zip ProcivisOneCore.xcframework)
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${IOS_CORE_UPLOAD_PATH} -f ios/ProcivisOneCore.xcframework.zip
+
+    # Upload iOS ProcivisOneCoreFFI zip file
+    - (cd ios && zip -qr ProcivisOneCoreFFI.xcframework.zip ProcivisOneCoreFFI.xcframework)
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${IOS_FFI_UPLOAD_PATH} -f ios/ProcivisOneCoreFFI.xcframework.zip
 
     # Upload Android docs files
     - (cd ${ANDROID_BUILD_SOURCE_PATH}/html && zip -qr ${CI_PROJECT_DIR}/android-docs.zip .)
     - az storage blob upload --only-show-errors -c ${DOCS_CONTAINER_NAME} -n ${CI_PIPELINE_ID}/android-docs.zip -f android-docs.zip
 
     # Upload iOS docs files
-    - unzip -q ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE} "ios/htmldoc/*" -d ios-htmldoc
-    - (cd ios-htmldoc/ios/htmldoc && zip -qr ${CI_PROJECT_DIR}/ios-docs.zip .)
+    - (cd ios/htmldoc && zip -qr ${CI_PROJECT_DIR}/ios-docs.zip .)
     - az storage blob upload --only-show-errors -c ${DOCS_CONTAINER_NAME} -n ${CI_PIPELINE_ID}/ios-docs.zip -f ios-docs.zip
 
     # Prepare variables
     - |
-      ANDROID_DEBUG_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$ANDROID_CONTAINER_PATH_DEBUG
+      ANDROID_DEBUG_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$ANDROID_UPLOAD_PATH_DEBUG
       ANDROID_DEBUG_SHA1=$(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE | cut -d " " -f1)
-      ANDROID_RELEASE_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$ANDROID_CONTAINER_PATH_RELEASE
+      ANDROID_RELEASE_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$ANDROID_UPLOAD_PATH_RELEASE
       ANDROID_RELEASE_SHA1=$(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE | cut -d " " -f1)
-      IOS_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$IOS_CONTAINER_PATH
+      IOS_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$IOS_UPLOAD_PATH
       IOS_SHA1=$(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
+      IOS_CORE_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$IOS_CORE_UPLOAD_PATH
+      IOS_CORE_SHA1=$(sha1sum -b ios/ProcivisOneCore.xcframework.zip | cut -d " " -f1)
+      IOS_CORE_SHA256=$(sha256sum -b ios/ProcivisOneCore.xcframework.zip | cut -d " " -f1)
+      IOS_FFI_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$IOS_FFI_UPLOAD_PATH
+      IOS_FFI_SHA1=$(sha1sum -b ios/ProcivisOneCoreFFI.xcframework.zip | cut -d " " -f1)
+      IOS_FFI_SHA256=$(sha256sum -b ios/ProcivisOneCoreFFI.xcframework.zip | cut -d " " -f1)
     - >
       cat <<-EOM
         =========================
@@ -514,6 +532,14 @@ sdk:upload_artifacts:
         -------------------------
         iOS: ${IOS_LINK}
         SHA-1: ${IOS_SHA1}
+        -------------------------
+        iOS Core: ${IOS_CORE_LINK}
+        SHA-1: ${IOS_CORE_SHA1}
+        SHA-256: ${IOS_CORE_SHA256}
+        -------------------------
+        iOS FFI: ${IOS_FFI_LINK}
+        SHA-1: ${IOS_FFI_SHA1}
+        SHA-256: ${IOS_FFI_SHA256}
         =========================
       EOM
     - |
@@ -523,6 +549,12 @@ sdk:upload_artifacts:
       echo "ANDROID_RELEASE_SHA1=${ANDROID_RELEASE_SHA1}" >> sdk_env_variables.env
       echo "IOS_LINK=${IOS_LINK}" >> sdk_env_variables.env
       echo "IOS_SHA1=${IOS_SHA1}" >> sdk_env_variables.env
+      echo "IOS_CORE_LINK=${IOS_CORE_LINK}" >> sdk_env_variables.env
+      echo "IOS_CORE_SHA1=${IOS_CORE_SHA1}" >> sdk_env_variables.env
+      echo "IOS_CORE_SHA256=${IOS_CORE_SHA256}" >> sdk_env_variables.env
+      echo "IOS_FFI_LINK=${IOS_FFI_LINK}" >> sdk_env_variables.env
+      echo "IOS_FFI_SHA1=${IOS_FFI_SHA1}" >> sdk_env_variables.env
+      echo "IOS_FFI_SHA256=${IOS_FFI_SHA256}" >> sdk_env_variables.env
   artifacts:
     paths:
       - sdk_env_variables.env
