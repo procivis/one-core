@@ -1,4 +1,5 @@
 use std::assert_matches;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use similar_asserts::assert_eq;
@@ -12,7 +13,7 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::identifier::IdentifierData;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::ProofStateEnum;
-use crate::model::proof_schema::ProofInputSchema;
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::identifier_creator::{
@@ -20,6 +21,7 @@ use crate::proto::identifier_creator::{
 };
 use crate::proto::session_provider::NoSessionProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::credential_formatter::mdoc_formatter::DOCTYPE_METADATA_CLAIM_KEY;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialStatus, DetailCredential, IdentifierDetails,
     TokenStatus,
@@ -101,7 +103,15 @@ async fn validate_proof_with_credential_status(
                 invalid_before: None,
                 issuer: IdentifierDetails::Did(dummy_did().did),
                 subject: Some(holder),
-                claims: Default::default(),
+                // doctype must match the requested schema's ecosystem_schema_id
+                claims: HashMap::from([(
+                    DOCTYPE_METADATA_CLAIM_KEY.to_string(),
+                    CredentialClaim {
+                        selectively_disclosable: false,
+                        metadata: true,
+                        value: CredentialClaimValue::String("CredentialSchemaId".to_string()),
+                    },
+                )]),
                 status: Some(CredentialStatus::TokenStatusList(TokenStatus {
                     index: 1,
                     uri: "https://status.example/list".parse().unwrap(),
@@ -173,6 +183,140 @@ async fn test_validate_proof_accepts_valid_credential() {
         .unwrap();
 
     assert_eq!(credentials.len(), 1);
+}
+
+#[tokio::test]
+async fn test_validate_proof_rejects_mismatching_doctype() {
+    let holder = IdentifierDetails::Key(dummy_jwk());
+
+    let claim_schema = dummy_claim_schema();
+    let mut credential_schema = dummy_credential_schema_with_format("MDOC");
+    let mut formats = credential_schema.formats.as_ref().await.unwrap().to_vec();
+    formats[0].claim_mappings = vec![CredentialSchemaFormatClaimSchema {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_format_id: formats[0].id,
+        claim_schema_id: claim_schema.id,
+        technical_key: "family_name".to_string(),
+        namespace: Some("org.iso.18013.5.1".to_string()),
+    }]
+    .into();
+    credential_schema.formats = formats.into();
+
+    let mut proof_schema = dummy_proof_schema();
+    proof_schema.input_schemas = vec![ProofInputSchema {
+        formats: vec!["MDOC".into()],
+        claim_schemas: vec![ProofInputClaimSchema {
+            schema: claim_schema,
+            required: true,
+            order: 0,
+        }]
+        .into(),
+        credential_schema: credential_schema.into(),
+    }]
+    .into();
+
+    let mut presentation_formatter = MockPresentationFormatter::new();
+    presentation_formatter
+        .expect_extract_presentation()
+        .once()
+        .return_once({
+            let holder = holder.clone();
+            move |_, _, _| {
+                Ok(ExtractedPresentation {
+                    id: None,
+                    issued_at: None,
+                    expires_at: None,
+                    issuer: Some(holder),
+                    nonce: None,
+                    credentials: vec!["mdoc".into()],
+                    transaction_data: None,
+                })
+            }
+        });
+    presentation_formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(60));
+    let mut presentation_formatter_provider = MockPresentationFormatterProvider::new();
+    presentation_formatter_provider
+        .expect_get_presentation_formatter()
+        .return_once(move |_| Some(Arc::new(presentation_formatter)));
+
+    // The presented credential DOES contain the requested `family_name`
+    // element, but carries a different doctype.
+    let mut credential_formatter = MockCredentialFormatter::new();
+    credential_formatter
+        .expect_extract_credentials()
+        .once()
+        .return_once(move |_, _, _| {
+            Ok(DetailCredential {
+                issuance_date: None,
+                valid_from: None,
+                valid_until: None,
+                update_at: None,
+                invalid_before: None,
+                issuer: IdentifierDetails::Did(dummy_did().did),
+                subject: Some(holder),
+                claims: HashMap::from([
+                    (
+                        "org.iso.18013.5.1".to_string(),
+                        CredentialClaim {
+                            selectively_disclosable: true,
+                            metadata: false,
+                            value: CredentialClaimValue::Object(HashMap::from([(
+                                "family_name".to_string(),
+                                CredentialClaim {
+                                    selectively_disclosable: true,
+                                    metadata: false,
+                                    value: CredentialClaimValue::String("Doe".to_string()),
+                                },
+                            )])),
+                        },
+                    ),
+                    (
+                        DOCTYPE_METADATA_CLAIM_KEY.to_string(),
+                        CredentialClaim {
+                            selectively_disclosable: false,
+                            metadata: true,
+                            value: CredentialClaimValue::String("different.doctype".to_string()),
+                        },
+                    ),
+                ]),
+                status: None,
+            })
+        });
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
+    credential_formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(move |_| Ok(Arc::new(credential_formatter)));
+
+    // Revocation must never be reached: schema matching fails first.
+    let revocation_method_provider = MockRevocationMethodProvider::new();
+
+    let error = validate_proof(
+        &proof_schema,
+        "presentation",
+        SessionTranscript {
+            device_engagement_bytes: None,
+            e_reader_key_bytes: None,
+            handover: Handover::QrCode(QRHandover),
+        },
+        &credential_formatter_provider,
+        &presentation_formatter_provider,
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockCertificateValidator::new()),
+        &revocation_method_provider,
+    )
+    .await
+    .unwrap_err();
+
+    assert_matches!(
+        error,
+        ServiceError::ValidationError(message)
+            if message == "Could not find matching requested credential schema"
+    );
 }
 
 #[tokio::test]

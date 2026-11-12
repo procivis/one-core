@@ -18,6 +18,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::proto::key_verification::KeyVerification;
+use crate::provider::credential_formatter::mdoc_formatter::DOCTYPE_METADATA_CLAIM_KEY;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -119,6 +120,7 @@ pub(super) async fn validate_proof(
     }
 
     let mut remaining_requested_claims_with_mapping = HashMap::new();
+    let mut expected_doctypes = HashMap::new();
     let mut proof_inputs = HashMap::new();
     for input_schema in &input_schemas {
         let input_claims = input_schema.claim_schemas.as_ref().await?;
@@ -142,6 +144,7 @@ pub(super) async fn validate_proof(
             claims_with_mapping.push((input_claim_schema.to_owned(), mapping.to_owned()));
         }
         remaining_requested_claims_with_mapping.insert(credential_schema.id, claims_with_mapping);
+        expected_doctypes.insert(credential_schema.id, format.ecosystem_schema_id.clone());
         proof_inputs.insert(credential_schema.id, input_schema);
     }
 
@@ -161,6 +164,7 @@ pub(super) async fn validate_proof(
         let (credential_schema_id, requested_proof_claims) = extract_matching_requested_schema(
             &received_credential,
             &remaining_requested_claims_with_mapping,
+            &expected_doctypes,
         )?;
         remaining_requested_claims_with_mapping.remove(&credential_schema_id);
 
@@ -270,6 +274,7 @@ fn extract_matching_requested_schema(
         CredentialSchemaId,
         Vec<(ProofInputClaimSchema, CredentialSchemaFormatClaimSchema)>,
     >,
+    expected_doctypes: &HashMap<CredentialSchemaId, String>,
 ) -> Result<
     (
         CredentialSchemaId,
@@ -277,23 +282,36 @@ fn extract_matching_requested_schema(
     ),
     ServiceError,
 > {
+    let received_doctype = received_credential
+        .claims
+        .get(DOCTYPE_METADATA_CLAIM_KEY)
+        .ok_or(ServiceError::MappingError("doctype not parsed".to_string()))?
+        .value
+        .as_str()
+        .ok_or(ServiceError::MappingError("invalid doctype".to_string()))?;
+
     let (matching_credential_schema_id, matching_claim_schemas) = remaining_requested_claims
         .iter()
-        .find(|(_, requested)| {
-            requested
-                .iter()
-                .filter(|(schema, _)| schema.required)
-                .all(|(_, mapping)| {
-                    received_credential
-                        .claims
-                        .iter()
-                        .any(|(namespace, element_value)| {
-                            mapping.namespace.as_ref().is_some_and(|n| n == namespace)
-                                && element_value.value.as_object().is_some_and(|value| {
-                                    value.keys().any(|key| key == &mapping.technical_key)
-                                })
-                        })
-                })
+        .find(|(credential_schema_id, requested)| {
+            let doctype_matches = expected_doctypes
+                .get(*credential_schema_id)
+                .is_some_and(|expected| expected == received_doctype);
+
+            doctype_matches
+                && requested
+                    .iter()
+                    .filter(|(schema, _)| schema.required)
+                    .all(|(_, mapping)| {
+                        received_credential
+                            .claims
+                            .iter()
+                            .any(|(namespace, element_value)| {
+                                mapping.namespace.as_ref().is_some_and(|n| n == namespace)
+                                    && element_value.value.as_object().is_some_and(|value| {
+                                        value.keys().any(|key| key == &mapping.technical_key)
+                                    })
+                            })
+                    })
         })
         .ok_or(ServiceError::ValidationError(
             "Could not find matching requested credential schema".to_owned(),

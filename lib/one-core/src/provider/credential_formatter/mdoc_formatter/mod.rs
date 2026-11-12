@@ -85,6 +85,7 @@ pub(crate) mod util;
 mod test;
 
 const FULL_DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
+pub(crate) const DOCTYPE_METADATA_CLAIM_KEY: &str = "doctype";
 
 #[derive(Provider)]
 pub struct MdocFormatter {
@@ -527,7 +528,7 @@ impl CredentialFormatter for MdocFormatter {
                 "EAA_CATEGORY".to_string(),
             ],
             forbidden_claim_technical_keys: vec![],
-            forbidden_root_claim_technical_keys: vec!["doctype".to_string()],
+            forbidden_root_claim_technical_keys: vec![DOCTYPE_METADATA_CLAIM_KEY.to_string()],
             issuance_identifier_types: vec![IdentifierType::Certificate],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],
@@ -557,7 +558,7 @@ impl CredentialFormatter for MdocFormatter {
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
         vec![MetadataClaimSchema {
-            key: "doctype".to_string(),
+            key: DOCTYPE_METADATA_CLAIM_KEY.to_string(),
             data_type: "STRING".to_string(),
             array: false,
             required: true,
@@ -613,13 +614,13 @@ impl CredentialFormatter for MdocFormatter {
             created_date: now,
             last_modified: now,
             value: Some(doctype.to_owned()),
-            path: "doctype".to_string(),
+            path: DOCTYPE_METADATA_CLAIM_KEY.to_string(),
             selectively_disclosable: false,
             schema: ClaimSchema {
                 id: doctype_schema_id,
                 created_date: now,
                 last_modified: now,
-                key: "doctype".to_string(),
+                key: DOCTYPE_METADATA_CLAIM_KEY.to_string(),
                 data_type: "STRING".to_owned(),
                 array: false,
                 metadata: true,
@@ -634,7 +635,7 @@ impl CredentialFormatter for MdocFormatter {
             last_modified: now,
             credential_schema_format_id: credential_format_id,
             claim_schema_id: doctype_schema_id,
-            technical_key: "doctype".to_string(),
+            technical_key: DOCTYPE_METADATA_CLAIM_KEY.to_string(),
             namespace: None,
         };
         mappings.push(doctype_mapping);
@@ -761,7 +762,7 @@ async fn extract_credentials_internal(
 
     let mut claims = extract_claims(namespaces)?;
     claims.insert(
-        "doctype".to_string(),
+        DOCTYPE_METADATA_CLAIM_KEY.to_string(),
         CredentialClaim {
             selectively_disclosable: false,
             metadata: true,
