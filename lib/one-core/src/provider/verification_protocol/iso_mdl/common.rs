@@ -348,7 +348,7 @@ pub(crate) fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, VerificationPr
     Ok(buff)
 }
 
-pub(super) async fn set_proof_to_error(
+pub(crate) async fn set_proof_to_error(
     proof_repository: &dyn ProofRepository,
     proof_id: &ProofId,
     error_metadata: HistoryErrorMetadata,

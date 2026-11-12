@@ -82,7 +82,7 @@ use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub(crate) mod ble;
 pub(crate) mod common;
-mod dcapi;
+pub(crate) mod dcapi;
 pub(crate) mod device_engagement;
 mod holder_trust;
 mod mapper;
@@ -730,8 +730,10 @@ impl VerificationProtocol for IsoMdl {
         };
 
         let interaction_id = Uuid::new_v4().into();
+        let session_transcript_bytes = EmbeddedCbor::new(session_transcript)?;
         let interaction_content = MdocDcApiVerifierInteractionData {
             encryption_key: key_id,
+            session_transcript_bytes: session_transcript_bytes.bytes().to_vec(),
         };
 
         let expires_at = params

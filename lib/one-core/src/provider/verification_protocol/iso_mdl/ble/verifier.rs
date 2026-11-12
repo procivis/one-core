@@ -8,13 +8,9 @@ use super::common::{
 };
 use super::{ISO_MDL_FLOW, central, central_client_mode, peripheral, peripheral_server_mode};
 use crate::error::ContextWithErrorCode;
-use crate::error::ErrorCode::BR_0000;
-use crate::mapper::encode_cbor_base64url;
-use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
-use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
@@ -27,7 +23,6 @@ use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, Embedded
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
 };
@@ -43,7 +38,9 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptionsV1, DeviceEngagement,
 };
 use crate::provider::verification_protocol::iso_mdl::session::{SessionData, SessionEstablishment};
-use crate::provider::verification_protocol::iso_mdl::verifier::create_device_request;
+use crate::provider::verification_protocol::iso_mdl::verifier::{
+    create_device_request, process_device_response,
+};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -340,125 +337,25 @@ async fn process_proof(
             ))?
             .0,
     )?;
-    let device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
+    let device_response = ciborium::from_reader(&decrypted[..])?;
 
-    let empty_documents = device_response
-        .documents
-        .as_ref()
-        .is_some_and(|documents| documents.is_empty());
-    let has_errors = device_response
-        .document_errors
-        .as_ref()
-        .is_some_and(|errors| !errors.is_empty());
-
-    if !empty_documents && has_errors {
-        let error_metadata = HistoryErrorMetadata {
-            error_code: BR_0000,
-            message: format!(
-                "Response received with documents and document errors: {device_response:?}"
-            ),
-        };
-        set_proof_to_error(&*proof_repository, &proof.id, error_metadata).await;
-        return Ok(());
-    }
-
-    if empty_documents {
-        if has_errors {
-            proof_repository
-                .update_proof(
-                    &proof.id,
-                    UpdateProofRequest {
-                        state: Some(ProofStateEnum::Rejected),
-                        ..Default::default()
-                    },
-                    None,
-                )
-                .await
-                .error_while("updating proof")?;
-        } else {
-            let error_metadata = HistoryErrorMetadata {
-                error_code: BR_0000,
-                message: "Response documents are empty but no errors are provided".to_string(),
-            };
-            set_proof_to_error(&*proof_repository, &proof.id, error_metadata).await;
-        }
-
-        return Ok(());
-    }
-
-    if let Err(error) = fill_proof_claims_and_credentials(
+    process_device_response(
         device_response,
+        verifier_session.session_transcript,
         proof,
         interaction,
-        verifier_session.session_transcript,
-        &*credential_formatter_provider,
-        &*presentation_formatter_provider,
+        credential_formatter_provider.as_ref(),
+        presentation_formatter_provider.as_ref(),
         did_method_provider,
         key_algorithm_provider,
-        &*credential_repository,
-        &*proof_repository,
+        credential_repository.as_ref(),
+        proof_repository.as_ref(),
         certificate_validator,
         identifier_creator,
-        &*ecosystem_resolver,
-        &*revocation_method_provider,
+        ecosystem_resolver.as_ref(),
+        revocation_method_provider.as_ref(),
     )
-    .await
-    {
-        tracing::info!(%error, "mDL proof parsing failure");
-        set_proof_to_error(&*proof_repository, &proof.id, (&error).into()).await;
-    }
-
-    Ok(())
-}
-
-#[expect(clippy::too_many_arguments)]
-async fn fill_proof_claims_and_credentials(
-    device_response: DeviceResponse,
-    proof: &Proof,
-    interaction: &Interaction,
-    session_transcript: SessionTranscript,
-    credential_formatter_provider: &dyn CredentialFormatterProvider,
-    presentation_formatter_provider: &dyn PresentationFormatterProvider,
-    did_method_provider: Arc<dyn DidMethodProvider>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    credential_repository: &dyn CredentialRepository,
-    proof_repository: &dyn ProofRepository,
-    certificate_validator: Arc<dyn CertificateValidator>,
-    identifier_creator: Arc<dyn IdentifierCreator>,
-    ecosystem_resolver: &dyn EcosystemResolver,
-    revocation_method_provider: &dyn RevocationMethodProvider,
-) -> Result<(), VerificationProtocolError> {
-    let proof_schema = proof.schema.as_required_ref().await?;
-
-    let encoded =
-        encode_cbor_base64url(&device_response).error_while("encoding device response")?;
-
-    let proved_credentials =
-        crate::provider::verification_protocol::iso_mdl::verify_proof::validate_proof(
-            &proof_schema,
-            &encoded,
-            session_transcript,
-            credential_formatter_provider,
-            presentation_formatter_provider,
-            key_algorithm_provider,
-            did_method_provider,
-            certificate_validator,
-            revocation_method_provider,
-        )
-        .await
-        .error_while("validating proof")?;
-
-    crate::provider::verification_protocol::iso_mdl::verify_proof::accept_proof(
-        proof,
-        interaction,
-        proved_credentials,
-        credential_repository,
-        proof_repository,
-        identifier_creator.as_ref(),
-        ecosystem_resolver,
-    )
-    .await
-    .error_while("accepting proof")?;
+    .await?;
 
     Ok(())
 }

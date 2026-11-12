@@ -9,6 +9,7 @@ pub(super) struct MdocDcApiHolderInteractionData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) struct MdocDcApiVerifierInteractionData {
+pub(crate) struct MdocDcApiVerifierInteractionData {
     pub encryption_key: KeyId,
+    pub session_transcript_bytes: Vec<u8>,
 }

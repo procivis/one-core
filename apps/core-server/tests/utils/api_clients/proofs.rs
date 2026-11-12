@@ -221,6 +221,13 @@ impl ProofsApi {
         self.client.post(&url, body).await
     }
 
+    pub async fn submit_dc_api_response(&self, proof_id: impl Display, response: &str) -> Response {
+        let url = format!("/api/proof-request/v1/{proof_id}/dc-api-response");
+        self.client
+            .post(&url, json!({ "response": response }))
+            .await
+    }
+
     pub async fn delete_proof_claims(&self, id: impl Display) -> Response {
         let url = format!("/api/proof-request/v1/{id}/claims");
         self.client.delete(&url).await

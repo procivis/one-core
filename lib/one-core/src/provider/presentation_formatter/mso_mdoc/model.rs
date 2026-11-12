@@ -167,9 +167,26 @@ pub mod dcapi {
                 .serialize(serializer)
         }
     }
+    impl<'a> Deserialize<'a> for EncryptedResponse {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'a>,
+        {
+            let (fixed_id, data): (String, EncryptedResponseData) =
+                ciborium::Value::deserialize(deserializer)?
+                    .deserialized()
+                    .map_err(de::Error::custom)?;
+
+            if fixed_id != "dcapi" {
+                return Err(de::Error::custom(format!("Invalid identifier: {fixed_id}")));
+            }
+
+            Ok(Self { data })
+        }
+    }
 
     /// ISO 18013-7, C.3
-    #[derive(Debug, Clone, Serialize)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub(crate) struct EncryptedResponseData {
         pub enc: Bstr,

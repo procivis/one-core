@@ -54,6 +54,8 @@ pub enum ProofServiceError {
     MissingDid(DidId),
     #[error("BBS not supported")]
     BBSNotSupported,
+    #[error("Invalid proof submission: {0}")]
+    InvalidSubmission(String),
 
     #[error("Duplicit transaction data")]
     DuplicitTransactionData,
@@ -98,6 +100,7 @@ impl ErrorCodeMixin for ProofServiceError {
             Self::NotificationsNotAllowed { .. } => ErrorCode::BR_0372,
             Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
             Self::BBSNotSupported => ErrorCode::BR_0091,
+            Self::InvalidSubmission(_) => ErrorCode::BR_0528,
             Self::InvalidExchangeType { .. } => ErrorCode::BR_0052,
             Self::ProofSchemaDeleted(_) => ErrorCode::BR_0019,
             Self::MissingProofSchema(_) => ErrorCode::BR_0020,

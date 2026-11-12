@@ -9,3 +9,4 @@ mod get_proof_trust_detail;
 mod list_proof_tests;
 mod share_proof_dcql_tests;
 mod share_proof_tests;
+mod submit_dc_api_response_tests;

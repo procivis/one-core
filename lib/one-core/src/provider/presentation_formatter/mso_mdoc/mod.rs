@@ -560,7 +560,6 @@ pub(crate) fn try_build_dcapi_response(
 }
 
 /// ISO 18013-7, C.4
-#[allow(unused)]
 pub(crate) async fn try_decrypt_dcapi_response(
     response: dcapi::EncryptedResponse,
     recipient_key: &KeyAgreementHandle,

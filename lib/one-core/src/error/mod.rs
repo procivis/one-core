@@ -1175,6 +1175,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Wallet instance required")]
     BR_0525,
+
+    #[strum(message = "Invalid proof submission")]
+    BR_0528,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

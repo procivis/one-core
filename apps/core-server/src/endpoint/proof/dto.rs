@@ -693,3 +693,10 @@ pub(crate) struct ProofTrustInformationDetailResponseRestDTO {
     /// One entry per ecosystem provider that rejected the verifier.
     pub ecosystem_errors: EcosystemErrorsRestDTO,
 }
+
+#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DcApiProofSubmitRequestRestDTO {
+    /// JSON serialized response from the `navigator.credentials.get` call
+    pub response: String,
+}

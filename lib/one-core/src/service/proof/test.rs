@@ -83,6 +83,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
@@ -152,6 +153,7 @@ struct Repositories {
     pub credential_repository: MockCredentialRepository,
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
+    pub key_repository: MockKeyRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub presentation_formatter_provider: MockPresentationFormatterProvider,
     pub protocol_provider: MockVerificationProtocolProvider,
@@ -193,6 +195,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.credential_repository),
         history_repository,
         interaction_repository,
+        Arc::new(repositories.key_repository),
         Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.presentation_formatter_provider),
         Arc::new(repositories.protocol_provider),

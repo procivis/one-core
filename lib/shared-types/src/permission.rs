@@ -56,6 +56,7 @@ pub enum Permission {
     ProofSchemaList,
     ProofSchemaShare,
     ProofShare,
+    ProofSubmitResponse,
     RegistrationCertificateCreate,
     RegistrationCertificateRevoke,
     RegistrationCertificateSign,

@@ -8,10 +8,10 @@ use proc_macros::endpoint;
 use shared_types::{Permission, ProofId, TransactionDataId};
 
 use super::dto::{
-    CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionV2ResponseRestDTO,
-    ProofDetailResponseRestDTO, ProofTransactionDataResponseRestDTO,
-    ProofTrustInformationDetailResponseRestDTO, ShareProofRequestRestDTO,
-    ShareProofResponseRestDTO,
+    CreateProofRequestRestDTO, DcApiProofSubmitRequestRestDTO, GetProofQuery,
+    PresentationDefinitionV2ResponseRestDTO, ProofDetailResponseRestDTO,
+    ProofTransactionDataResponseRestDTO, ProofTrustInformationDetailResponseRestDTO,
+    ShareProofRequestRestDTO, ShareProofResponseRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -316,4 +316,37 @@ pub(crate) async fn get_proof_trust_detail(
         .await
         .error_while("getting proof trust information");
     OkOrErrorResponse::from_result(result, state, "getting proof trust information")
+}
+
+#[endpoint(
+    permissions = [Permission::ProofSubmitResponse],
+    post,
+    path = "/api/proof-request/v1/{proofId}/dc-api-response",
+    request_body = DcApiProofSubmitRequestRestDTO,
+    params(
+        ("proofId" = ProofId, Path, description = "Proof id")
+    ),
+    tag = "proof_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Submit DC-API response",
+)]
+pub(crate) async fn post_dc_api_response(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<DcApiProofSubmitRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = async {
+        state
+            .core
+            .proof_service
+            .submit_dc_api_response(id, request.try_into().error_while("converting response")?)
+            .await
+    }
+    .await;
+    EmptyOrErrorResponse::from_result(result, state, "submitting DC-API response")
 }

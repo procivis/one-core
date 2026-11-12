@@ -312,6 +312,7 @@ fn get_management_endpoints(config: &ServerConfig) -> OpenApiRouter<AppState> {
         .routes(routes!(proof::controller::get_proof_transaction_data))
         .routes(routes!(proof::controller::delete_proof_claims))
         .routes(routes!(proof::controller::get_proof_trust_detail))
+        .routes(routes!(proof::controller::post_dc_api_response))
         .routes(routes!(
             organisation::controller::get_organisations,
             organisation::controller::post_organisation

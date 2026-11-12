@@ -785,6 +785,7 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_interaction_repository(),
+                data_provider.get_key_repository(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 verification_provider.clone(),

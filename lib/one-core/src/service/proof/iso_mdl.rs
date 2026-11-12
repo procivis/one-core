@@ -1,21 +1,33 @@
 use shared_types::{EcosystemId, ProofId};
+use standardized_types::openid4vp::dc_api::IsoMdocResponse;
 use uuid::Uuid;
 
 use super::ProofService;
 use super::error::ProofServiceError;
 use crate::config::core_config::{TransportType, VerificationEngagement};
 use crate::error::ContextWithErrorCode;
+use crate::mapper::decode_cbor_base64url;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
+use crate::model::relation::OptionalRelatedExt;
+use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
+    Handover, SessionTranscript,
+};
+use crate::provider::presentation_formatter::mso_mdoc::try_decrypt_dcapi_response;
+use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::iso_mdl::ble::verifier::{
     handle_ble_verifier, setup_verifier_session,
 };
+use crate::provider::verification_protocol::iso_mdl::common::set_proof_to_error;
+use crate::provider::verification_protocol::iso_mdl::dcapi::MdocDcApiVerifierInteractionData;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, DeviceRetrievalMethod,
 };
-use crate::provider::verification_protocol::iso_mdl::verifier::IsoMdlVerifier;
+use crate::provider::verification_protocol::iso_mdl::verifier::{
+    IsoMdlVerifier, process_device_response,
+};
 
 impl ProofService {
     #[expect(clippy::too_many_arguments)]
@@ -160,5 +172,89 @@ impl ProofService {
         .error_while("starting client")?;
 
         Ok(proof_id)
+    }
+
+    pub(super) async fn handle_iso_dc_api_response(
+        &self,
+        proof: &Proof,
+        response: IsoMdocResponse,
+    ) -> Result<(), ProofServiceError> {
+        let interaction = proof.interaction.as_required_ref().await?;
+        let interaction_data: MdocDcApiVerifierInteractionData =
+            deserialize_interaction_data(interaction.data.as_ref())
+                .error_while("parsing interaction data")?;
+        let encryption_key = self
+            .key_repository
+            .get_key(&interaction_data.encryption_key)
+            .await
+            .error_while("loading encryption key")?;
+
+        let encryption_key = self
+            .key_provider
+            .get_key_storage(&encryption_key.storage_type)?
+            .key_handle(&encryption_key)
+            .error_while("getting issuer key handle")?;
+
+        let encryption_key =
+            encryption_key
+                .key_agreement()
+                .ok_or(ProofServiceError::MappingError(
+                    "Invalid encryption key".to_string(),
+                ))?;
+
+        let session_transcript_bytes: EmbeddedCbor<SessionTranscript> =
+            ciborium::from_reader(interaction_data.session_transcript_bytes.as_slice())
+                .map_err(|e| ProofServiceError::MappingError(e.to_string()))?;
+        let session_transcript = session_transcript_bytes.into_inner();
+
+        let response_processing_result = async {
+            let encrypted_response =
+                decode_cbor_base64url(&response.response).error_while("parsing response")?;
+            let device_response = try_decrypt_dcapi_response(
+                encrypted_response,
+                encryption_key,
+                session_transcript.clone(),
+            )
+            .await
+            .error_while("decrypting response")?;
+
+            process_device_response(
+                device_response,
+                session_transcript,
+                proof,
+                &interaction,
+                self.credential_formatter_provider.as_ref(),
+                self.presentation_formatter_provider.as_ref(),
+                self.did_method_provider.clone(),
+                self.key_algorithm_provider.clone(),
+                self.credential_repository.as_ref(),
+                self.proof_repository.as_ref(),
+                self.certificate_validator.clone(),
+                self.identifier_creator.clone(),
+                self.ecosystem_resolver.as_ref(),
+                self.revocation_method_provider.as_ref(),
+            )
+            .await
+            .error_while("processing device response")?;
+
+            Ok::<_, ProofServiceError>(())
+        }
+        .await;
+
+        if let Err(error) = self
+            .key_repository
+            .hard_delete(&interaction_data.encryption_key)
+            .await
+        {
+            tracing::warn!(%error, "Failed to delete encryption key");
+        }
+
+        if let Err(error) = response_processing_result {
+            tracing::info!(%error, "DC-API response processing failure");
+            set_proof_to_error(self.proof_repository.as_ref(), &proof.id, (&error).into()).await;
+            return Err(ProofServiceError::InvalidSubmission(error.to_string()));
+        }
+
+        Ok(())
     }
 }

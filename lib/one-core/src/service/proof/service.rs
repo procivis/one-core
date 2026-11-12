@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use shared_types::{ProofId, TransactionDataId};
+use standardized_types::openid4vp::dc_api::DigitalCredential;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use uuid::Uuid;
 
@@ -79,7 +80,7 @@ use crate::validator::ecosystem::{
     SelectionRole, validate_ecosystem_selection_allow_not_set, validate_ecosystem_selection_final,
 };
 use crate::validator::proof_schema::resolve_proof_input_schema_formats;
-use crate::validator::throw_if_org_id_not_matching_session;
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_proof_state_not_in};
 
 const DEFAULT_ENGAGEMENT: &str = "QR_CODE";
 
@@ -161,7 +162,12 @@ impl ProofService {
         &self,
         id: &ProofId,
     ) -> Result<PresentationDefinitionV2ResponseDTO, ProofServiceError> {
-        let proof = self.load_proof_for_presentation_definition(id).await?;
+        let proof = self
+            .proof_repository
+            .get_proof(id, None)
+            .await
+            .error_while("getting proof")?;
+
         let exchange = self.protocol_provider.get_protocol(&proof.protocol)?;
         validate_proof_for_proof_definition(
             &proof,
@@ -176,17 +182,6 @@ impl ProofService {
             .error_while("getting presentation definition V2")?)
     }
 
-    async fn load_proof_for_presentation_definition(
-        &self,
-        id: &ProofId,
-    ) -> Result<Proof, ProofServiceError> {
-        self.proof_repository
-            .get_proof(id, None)
-            .await
-            .error_while("getting proof")
-            .map_err(Into::into)
-    }
-
     /// Returns the details of a single (holder-side) transaction data entry of a proof request.
     pub async fn holder_transaction_data_details(
         &self,
@@ -194,8 +189,11 @@ impl ProofService {
         transaction_data_id: &TransactionDataId,
     ) -> Result<ProofTransactionDataResponseDTO, ProofServiceError> {
         let proof = self
-            .load_proof_for_presentation_definition(proof_id)
-            .await?;
+            .proof_repository
+            .get_proof(proof_id, None)
+            .await
+            .error_while("getting proof")?;
+
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
         if proof.role != ProofRole::Holder {
             return Err(ProofServiceError::InvalidRole(proof.role));
@@ -1131,6 +1129,51 @@ impl ProofService {
         }
 
         Ok(result)
+    }
+
+    pub async fn submit_dc_api_response(
+        &self,
+        proof_id: ProofId,
+        response: DigitalCredential,
+    ) -> Result<(), ProofServiceError> {
+        let proof = self
+            .proof_repository
+            .get_proof(&proof_id, None)
+            .await
+            .error_while("getting proof")?;
+
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider).await?;
+        if proof.role != ProofRole::Verifier {
+            return Err(ProofServiceError::InvalidRole(proof.role));
+        }
+        throw_if_proof_state_not_in(
+            &proof,
+            &[ProofStateEnum::Pending, ProofStateEnum::Requested],
+        )
+        .error_while("checking proof state")?;
+
+        let transport_type = self
+            .config
+            .transport
+            .get_type(&proof.transport)
+            .error_while("getting transport type")?;
+        if transport_type != TransportType::DcApi {
+            return Err(ProofServiceError::Other(format!(
+                "Invalid transport: {}",
+                proof.transport
+            )));
+        }
+
+        let DigitalCredential::OrgIsoMdoc(response) = response else {
+            return Err(ProofServiceError::Other(
+                "Invalid response type".to_string(),
+            ));
+        };
+
+        self.handle_iso_dc_api_response(&proof, response).await?;
+
+        tracing::info!("DC-API submission complete for proof {proof_id}");
+        Ok(())
     }
 
     // ============ Private methods

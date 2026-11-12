@@ -8,11 +8,13 @@ use one_core::service::proof::dto::{
     TransactionDataResponseDTO,
 };
 use one_dto_mapper::{convert_inner, try_convert_inner};
+use standardized_types::openid4vp::dc_api::DigitalCredential;
 
 use super::dto::{
-    ApplicableCredentialOrFailureHintRestEnum, PresentationDefinitionTransactionDataRestDTO,
-    ProofTransactionDataResponseRestDTO, ProofTrustInformationDetailResponseRestDTO,
-    ShareProofResponseRestDTO, TransactionDataResponseRestDTO,
+    ApplicableCredentialOrFailureHintRestEnum, DcApiProofSubmitRequestRestDTO,
+    PresentationDefinitionTransactionDataRestDTO, ProofTransactionDataResponseRestDTO,
+    ProofTrustInformationDetailResponseRestDTO, ShareProofResponseRestDTO,
+    TransactionDataResponseRestDTO,
 };
 use crate::dto::common::trust_detail::TrustInformationDetailResponseRestEnum;
 use crate::mapper::MapperError;
@@ -136,5 +138,13 @@ impl TryFrom<ShareProofResponseDTO> for ShareProofResponseRestDTO {
         };
 
         Ok(result)
+    }
+}
+
+impl TryFrom<DcApiProofSubmitRequestRestDTO> for DigitalCredential {
+    type Error = ServiceError;
+
+    fn try_from(value: DcApiProofSubmitRequestRestDTO) -> Result<Self, Self::Error> {
+        serde_json::from_str(&value.response).map_err(|e| ServiceError::MappingError(e.to_string()))
     }
 }

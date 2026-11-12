@@ -1,18 +1,26 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use coset::iana::HeaderParameter;
 use coset::{HeaderBuilder, ProtectedHeader};
 use standardized_types::openid4vp::VerifierInfoAttestation;
 
 use super::common::{DeviceRequest, DocRequest, ItemsRequest};
-use crate::error::ContextWithErrorCode;
-use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::error::{ContextWithErrorCode, ErrorCode};
+use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64url};
 use crate::model::certificate::Certificate;
+use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::Identifier;
 use crate::model::identifier_trust_information::IdentifierTrustInformation;
+use crate::model::interaction::Interaction;
 use crate::model::key::Key;
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::model::relation::OptionalRelatedExt;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
+use crate::proto::ecosystem_resolver::EcosystemResolver;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
     EmbeddedCbor, build_algorithm_header_value,
@@ -21,10 +29,20 @@ use crate::provider::credential_formatter::mdoc_formatter::{
     HeaderBuilderExt, build_x5chain_header_value,
 };
 use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::presentation_formatter::mso_mdoc::model::ReaderAuthentication;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::presentation_formatter::mso_mdoc::model::{
+    DeviceResponse, ReaderAuthentication,
+};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
+use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::iso_mdl::common::set_proof_to_error;
 use crate::provider::verification_protocol::mapper::gather_registration_certificates;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::proof_repository::ProofRepository;
 
 pub(crate) struct IsoMdlVerifier {
     pub identifier: Identifier,
@@ -201,4 +219,141 @@ pub(super) async fn prepare_reader_auth(
         .build();
 
     Ok(cose_sign1.into())
+}
+
+#[expect(clippy::too_many_arguments)]
+pub(crate) async fn process_device_response(
+    device_response: DeviceResponse,
+    session_transcript: SessionTranscript,
+    proof: &Proof,
+    interaction: &Interaction,
+    credential_formatter_provider: &dyn CredentialFormatterProvider,
+    presentation_formatter_provider: &dyn PresentationFormatterProvider,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    credential_repository: &dyn CredentialRepository,
+    proof_repository: &dyn ProofRepository,
+    certificate_validator: Arc<dyn CertificateValidator>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
+    ecosystem_resolver: &dyn EcosystemResolver,
+    revocation_method_provider: &dyn RevocationMethodProvider,
+) -> Result<(), VerificationProtocolError> {
+    let empty_documents = device_response
+        .documents
+        .as_ref()
+        .is_some_and(|documents| documents.is_empty());
+    let has_errors = device_response
+        .document_errors
+        .as_ref()
+        .is_some_and(|errors| !errors.is_empty());
+
+    if !empty_documents && has_errors {
+        let error_metadata = HistoryErrorMetadata {
+            error_code: ErrorCode::BR_0000,
+            message: format!(
+                "Response received with documents and document errors: {device_response:?}"
+            ),
+        };
+        set_proof_to_error(proof_repository, &proof.id, error_metadata).await;
+        return Ok(());
+    }
+
+    if empty_documents {
+        if has_errors {
+            proof_repository
+                .update_proof(
+                    &proof.id,
+                    UpdateProofRequest {
+                        state: Some(ProofStateEnum::Rejected),
+                        ..Default::default()
+                    },
+                    None,
+                )
+                .await
+                .error_while("updating proof")?;
+        } else {
+            let error_metadata = HistoryErrorMetadata {
+                error_code: ErrorCode::BR_0000,
+                message: "Response documents are empty but no errors are provided".to_string(),
+            };
+            set_proof_to_error(proof_repository, &proof.id, error_metadata).await;
+        }
+
+        return Ok(());
+    }
+
+    if let Err(error) = fill_proof_claims_and_credentials(
+        device_response,
+        proof,
+        interaction,
+        session_transcript,
+        credential_formatter_provider,
+        presentation_formatter_provider,
+        did_method_provider,
+        key_algorithm_provider,
+        credential_repository,
+        proof_repository,
+        certificate_validator,
+        identifier_creator,
+        ecosystem_resolver,
+        revocation_method_provider,
+    )
+    .await
+    {
+        tracing::info!(%error, "mDL proof parsing failure");
+        set_proof_to_error(proof_repository, &proof.id, (&error).into()).await;
+    }
+
+    Ok(())
+}
+
+#[expect(clippy::too_many_arguments)]
+async fn fill_proof_claims_and_credentials(
+    device_response: DeviceResponse,
+    proof: &Proof,
+    interaction: &Interaction,
+    session_transcript: SessionTranscript,
+    credential_formatter_provider: &dyn CredentialFormatterProvider,
+    presentation_formatter_provider: &dyn PresentationFormatterProvider,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    credential_repository: &dyn CredentialRepository,
+    proof_repository: &dyn ProofRepository,
+    certificate_validator: Arc<dyn CertificateValidator>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
+    ecosystem_resolver: &dyn EcosystemResolver,
+    revocation_method_provider: &dyn RevocationMethodProvider,
+) -> Result<(), VerificationProtocolError> {
+    let proof_schema = proof.schema.as_required_ref().await?;
+
+    let encoded =
+        encode_cbor_base64url(&device_response).error_while("encoding device response")?;
+
+    let proved_credentials = super::verify_proof::validate_proof(
+        &proof_schema,
+        &encoded,
+        session_transcript,
+        credential_formatter_provider,
+        presentation_formatter_provider,
+        key_algorithm_provider,
+        did_method_provider,
+        certificate_validator,
+        revocation_method_provider,
+    )
+    .await
+    .error_while("validating proof")?;
+
+    super::verify_proof::accept_proof(
+        proof,
+        interaction,
+        proved_credentials,
+        credential_repository,
+        proof_repository,
+        identifier_creator.as_ref(),
+        ecosystem_resolver,
+    )
+    .await
+    .error_while("accepting proof")?;
+
+    Ok(())
 }
