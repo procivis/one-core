@@ -48,6 +48,12 @@ pub struct CreateProofTestParams {
     pub transaction_data: Option<Value>,
 }
 
+#[derive(Debug, Default)]
+pub struct ShareProofTestParams {
+    pub client_id_scheme: Option<ClientIdSchemeRestEnum>,
+    pub dc_api_origin: Option<&'static str>,
+}
+
 impl ProofsApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
@@ -200,20 +206,18 @@ impl ProofsApi {
         self.client.get(&url).await
     }
 
-    pub async fn share(
-        &self,
-        id: impl Display,
-        client_id_scheme: Option<ClientIdSchemeRestEnum>,
-    ) -> Response {
+    pub async fn share(&self, id: impl Display, params: ShareProofTestParams) -> Response {
         let url = format!("/api/proof-request/v1/{id}/share");
 
-        let body = client_id_scheme.map(|scheme| {
-            json!({
-              "params": {
-                "clientIdScheme": scheme
-              }
-            })
-        });
+        let mut body_params = serde_json::Map::new();
+        if let Some(client_id_scheme) = params.client_id_scheme {
+            body_params.insert("clientIdScheme".to_string(), json!(client_id_scheme));
+        }
+        if let Some(dc_api_origin) = params.dc_api_origin {
+            body_params.insert("dcApiOrigin".to_string(), dc_api_origin.into());
+        }
+
+        let body = (!body_params.is_empty()).then(|| json!({ "params": body_params }));
         self.client.post(&url, body).await
     }
 

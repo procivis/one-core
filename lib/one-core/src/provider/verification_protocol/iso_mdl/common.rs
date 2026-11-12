@@ -23,6 +23,7 @@ use crate::proto::cose::CoseSign1;
 use crate::provider::credential_formatter::mdoc_formatter::util::{EmbeddedCbor, MDLVersion};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::key::PublicKeyAgreementHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
@@ -125,6 +126,12 @@ impl EphemeralSessionKey {
         sec1.extend_from_slice(y);
 
         Ok(sec1)
+    }
+
+    pub(crate) fn from_key(
+        key: &dyn PublicKeyAgreementHandle,
+    ) -> Result<Self, VerificationProtocolError> {
+        Ok(Self(key.as_cose().error_while("converting key")?))
     }
 }
 

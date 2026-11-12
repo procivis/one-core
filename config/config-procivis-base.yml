@@ -231,6 +231,10 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
+  ISO_MDL:
+    type: "ISO_MDL"
+    display: "exchange.isoMdl"
+    order: 7
 transport:
   HTTP:
     type: "HTTP"
@@ -238,6 +242,11 @@ transport:
     enabled: true
     order: 0
     params: {}
+  DC_API:
+    type: "DC_API"
+    display: "transport.dcApi"
+    enabled: true
+    order: 3
 revocation:
   BITSTRINGSTATUSLIST:
     display: "revocation.bitStringStatusList"

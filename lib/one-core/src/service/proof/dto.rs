@@ -1,9 +1,11 @@
+use one_dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, EcosystemId, IdentifierId, InteractionId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TransactionDataId, TransactionDataType,
 };
 use standardized_types::openid4vp::ClientIdPrefix;
+use standardized_types::openid4vp::dc_api::DigitalCredentialGetRequest;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use time::OffsetDateTime;
 
@@ -11,6 +13,7 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::proof::{ExactProofFilterColumn, ProofRole, ProofStateEnum};
 use crate::provider::transaction_data::TransactionDataDisplayValue;
+use crate::provider::verification_protocol::dto::ShareResponseData;
 use crate::provider::verification_protocol::openid4vp::model::CommonVerifierInteractionContent;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential::dto::{
@@ -213,6 +216,7 @@ pub struct ShareProofRequestDTO {
 #[derive(Clone, Debug, Default)]
 pub struct ShareProofRequestParamsDTO {
     pub client_id_scheme: Option<ClientIdPrefix>,
+    pub dc_api_origin: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -226,6 +230,13 @@ pub struct ProposeProofRequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct ShareProofResponseDTO {
-    pub url: String,
+    pub data: ShareProofResponseData,
     pub expires_at: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(ShareResponseData)]
+pub enum ShareProofResponseData {
+    Url(String),
+    DcApi(DigitalCredentialGetRequest),
 }

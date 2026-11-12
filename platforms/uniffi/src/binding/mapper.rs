@@ -40,7 +40,8 @@ use one_core::service::organisation::dto::{
 };
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimValueDTO,
-    ProofDetailResponseDTO, ProofFilterParamsDTO, TransactionDataResponseDTO,
+    ProofDetailResponseDTO, ProofFilterParamsDTO, ShareProofRequestParamsDTO,
+    ShareProofResponseDTO, ShareProofResponseData, TransactionDataResponseDTO,
 };
 use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterParamsDTO,
@@ -91,7 +92,8 @@ use super::proof::{
     PresentationDefinitionV2CredentialDetailBindingDTO,
     PresentationSubmitV2CredentialRequestBindingDTO, ProofListQueryBindingDTO,
     ProofRequestClaimValueBindingDTO, ProofRequestTransactionDataBindingDTO,
-    ProofResponseBindingDTO, TransactionDataResponseBindingDTO,
+    ProofResponseBindingDTO, ShareProofRequestParamsBindingDTO, ShareProofResponseBindingDTO,
+    TransactionDataResponseBindingDTO,
 };
 use super::proof_schema::{
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
@@ -1229,6 +1231,35 @@ impl From<TrustInformationDetailResponseEnum> for TrustInformationDetailResponse
     fn from(value: TrustInformationDetailResponseEnum) -> Self {
         match value {
             TrustInformationDetailResponseEnum::Eudi(data) => Self::Eudi(data.into()),
+        }
+    }
+}
+
+impl TryFrom<ShareProofResponseDTO> for ShareProofResponseBindingDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: ShareProofResponseDTO) -> Result<Self, Self::Error> {
+        let url = match value.data {
+            ShareProofResponseData::Url(url) => url,
+            ShareProofResponseData::DcApi(_) => {
+                return Err(ServiceError::MappingError(
+                    "Invalid shared data".to_string(),
+                ))?;
+            }
+        };
+
+        Ok(Self {
+            url,
+            expires_at: optional_time(value.expires_at),
+        })
+    }
+}
+
+impl From<ShareProofRequestParamsBindingDTO> for ShareProofRequestParamsDTO {
+    fn from(value: ShareProofRequestParamsBindingDTO) -> Self {
+        Self {
+            client_id_scheme: convert_inner(value.client_id_scheme),
+            ..Default::default()
         }
     }
 }

@@ -1080,7 +1080,15 @@ async fn test_create_proof_with_transaction_data_success() {
     assert_eq!(data["transaction_data"][0]["data"], tx_data);
 
     // and it lands in the verifier interaction content when the proof is shared
-    assert_eq!(201, context.api.proofs.share(proof_id, None).await.status());
+    assert_eq!(
+        201,
+        context
+            .api
+            .proofs
+            .share(proof_id, Default::default())
+            .await
+            .status()
+    );
     let proof = context.db.proofs.get(&proof_id).await;
     let data: Value = serde_json::from_slice(
         proof

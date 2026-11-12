@@ -333,6 +333,7 @@ pub type TransportConfig = ConfigBlock<String, TransportType>;
     Debug,
     Copy,
     Clone,
+    Hash,
     Display,
     EnumString,
     PartialEq,

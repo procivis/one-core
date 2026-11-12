@@ -11,9 +11,9 @@ use uuid::Uuid;
 
 use super::ble::common::{ConnectedPeer, PeerInfo};
 use super::ble::holder::{MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData};
-use super::ble::verifier::{IsoMdlVerifier, prepare_reader_auth};
 use super::common::{DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor};
-use super::{BleMode, IsoMdl};
+use super::verifier::{IsoMdlVerifier, prepare_reader_auth};
+use super::{BleMode, IsoMdl, MdocDcApiHolderInteractionData};
 use crate::config::core_config::{
     CoreConfig, Fields, KeyAlgorithmType, TransportType, VerificationEngagement,
 };
@@ -38,6 +38,7 @@ use crate::proto::bluetooth_low_energy::low_level::dto::ConnectionEvent;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::native_credential_manager::MockNativeDcApiResponseHandler;
 use crate::proto::wrp_validator::MockWRPValidator;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
@@ -57,10 +58,10 @@ use crate::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, FormattedCredentialPresentation, InvitationRequest,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::iso_mdl::MdocDcApiHolderInteractionData;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::service::test_utilities::{
     CredentialBuilder, dummy_certificate, dummy_identifier, dummy_key, dummy_organisation,
     generic_config,
@@ -129,12 +130,14 @@ async fn test_presentation_reject_ble() {
         Arc::new(config_with_ble()),
         Arc::new(MockCredentialRepository::new()),
         Arc::new(MockInteractionRepository::new()),
+        Arc::new(MockKeyRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockBlobStorageProvider::new()),
         Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockWRPValidator::new()),
@@ -308,12 +311,14 @@ async fn test_presentation_reject_dc_api() {
         Arc::new(config_with_dc_api()),
         Arc::new(MockCredentialRepository::new()),
         Arc::new(interaction_repository),
+        Arc::new(MockKeyRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockBlobStorageProvider::new()),
         Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockWRPValidator::new()),
@@ -426,12 +431,14 @@ async fn test_presentation_submit_dc_api() {
         Arc::new(config_with_dc_api()),
         Arc::new(MockCredentialRepository::new()),
         Arc::new(interaction_repository),
+        Arc::new(MockKeyRepository::new()),
         Arc::new(presentation_formatter_provider),
         Arc::new(key_provider),
         Arc::new(key_algorithm_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockBlobStorageProvider::new()),
         Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockWRPValidator::new()),
@@ -915,12 +922,14 @@ async fn test_get_presentation_definition_v2(
         Arc::new(config),
         Arc::new(credential_repository),
         Arc::new(MockInteractionRepository::new()),
+        Arc::new(MockKeyRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
+        Arc::new(MockBlobStorageProvider::new()),
         Arc::new(MockEcosystemDirectory::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockWRPValidator::new()),

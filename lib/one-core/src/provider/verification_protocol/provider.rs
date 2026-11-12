@@ -32,6 +32,7 @@ use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -86,6 +87,7 @@ fn initialize_provider(
     credential_repository: &Arc<dyn CredentialRepository>,
     credential_schema_repository: &Arc<dyn CredentialSchemaRepository>,
     interaction_repository: &Arc<dyn InteractionRepository>,
+    key_repository: &Arc<dyn KeyRepository>,
     proof_repository: &Arc<dyn ProofRepository>,
     credential_formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: &Arc<dyn PresentationFormatterProvider>,
@@ -189,12 +191,14 @@ fn initialize_provider(
             core_config.clone(),
             credential_repository.clone(),
             interaction_repository.clone(),
+            key_repository.clone(),
             presentation_formatter_provider.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
             certificate_validator.clone(),
             credential_schema_repository.clone(),
             credential_formatter_provider.clone(),
+            blob_storage_provider.clone(),
             ecosystem_provider.clone(),
             did_method_provider.clone(),
             wrp_validator.clone(),
@@ -212,6 +216,7 @@ pub(crate) fn verification_protocol_provider_from_config(
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    key_repository: Arc<dyn KeyRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -242,6 +247,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                 &credential_repository,
                 &credential_schema_repository,
                 &interaction_repository,
+                &key_repository,
                 &proof_repository,
                 &credential_formatter_provider,
                 &presentation_formatter_provider,

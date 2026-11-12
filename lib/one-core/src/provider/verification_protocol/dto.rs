@@ -5,6 +5,7 @@ use serde::Serialize;
 use shared_types::i18n::I18nString;
 use shared_types::{CredentialId, InteractionId, TransactionDataId, TransactionDataType};
 use standardized_types::iana::EncryptionAlgorithm;
+use standardized_types::openid4vp::dc_api::DigitalCredentialGetRequest;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
@@ -84,10 +85,16 @@ pub(crate) struct FormattedCredentialPresentation {
 
 #[derive(Clone, Debug)]
 pub(crate) struct ShareResponse {
-    pub url: String,
+    pub data: ShareResponseData,
     pub interaction_id: InteractionId,
     pub interaction_data: Option<Vec<u8>>,
     pub expires_at: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum ShareResponseData {
+    Url(String),
+    DcApi(DigitalCredentialGetRequest),
 }
 
 #[derive(Clone, Debug)]

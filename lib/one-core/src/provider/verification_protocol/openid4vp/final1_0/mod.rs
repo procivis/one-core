@@ -77,7 +77,7 @@ use crate::provider::transaction_data::{
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    VerificationProtocolCapabilities,
+    ShareResponseData, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -516,6 +516,11 @@ impl OpenID4VPFinal1_0 {
                     verifier_details,
                 }
             }
+            DigitalCredentialGetRequest::OrgIsoMdoc(_) => {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "ISO mdoc request".to_string(),
+                ));
+            }
         };
 
         if !matches!(
@@ -605,6 +610,9 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                         return false;
                     };
                     request.payload.custom.common.response_mode
+                }
+                DigitalCredentialGetRequest::OrgIsoMdoc(_) => {
+                    return false;
                 }
             };
 
@@ -925,6 +933,18 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
+        let transport_type = self
+            .config
+            .transport
+            .get_type(&proof.transport)
+            .error_while("parsing transport")?;
+        if transport_type != TransportType::Http {
+            return Err(VerificationProtocolError::Failed(format!(
+                "Unsupported transport: {}",
+                proof.transport
+            )));
+        }
+
         let interaction_id = Uuid::new_v4().into();
 
         let Some(base_url) = &self.base_url else {
@@ -933,14 +953,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let response_uri = format!("{base_url}/ssi/openid4vp/final-1.0/response");
         let nonce = utilities::generate_alphanumeric(32);
 
-        let verifier_identifier = proof
-            .verifier_identifier
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "Missing verifier identifier".to_string(),
-            ))?
-            .as_ref()
-            .await?;
+        let verifier_identifier = proof.verifier_identifier.as_required_ref().await?;
 
         let client_id_scheme = get_client_id_scheme(
             params,
@@ -1088,11 +1101,12 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .interaction_expires_in_seconds
             .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in);
 
+        let url = format!(
+            "{}://?{encoded_authorization_request}",
+            self.params.url_scheme
+        );
         Ok(ShareResponse {
-            url: format!(
-                "{}://?{encoded_authorization_request}",
-                self.params.url_scheme
-            ),
+            data: ShareResponseData::Url(url),
             interaction_id,
             interaction_data: Some(serialize_interaction_data(&interaction_content)?),
             expires_at,

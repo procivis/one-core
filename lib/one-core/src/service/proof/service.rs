@@ -60,12 +60,12 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::iso_mdl::ble::holder::{
     MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_holder,
 };
-use crate::provider::verification_protocol::iso_mdl::ble::verifier::IsoMdlVerifier;
 use crate::provider::verification_protocol::iso_mdl::common::KeyAgreementKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, DeviceRetrievalMethod, Security,
 };
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
+use crate::provider::verification_protocol::iso_mdl::verifier::IsoMdlVerifier;
 use crate::provider::verification_protocol::openid4vp::model::{
     CommonVerifierInteractionContent, OpenID4VPHolderInteractionData, TransactionDataRequest,
 };
@@ -431,7 +431,25 @@ impl ProofService {
             }
         };
 
-        if exchange_type == VerificationProtocolType::IsoMdl {
+        let transport = validate_and_select_transport_type(
+            &request.transport,
+            &self.config.transport,
+            &exchange_protocol_capabilities,
+        )
+        .error_while("validating transport")?;
+        let transport_type = match &transport {
+            SelectedTransportType::Single(transport) => Some(
+                self.config
+                    .transport
+                    .get_type(transport)
+                    .error_while("parsing transport")?,
+            ),
+            SelectedTransportType::Multiple(_) => None,
+        };
+
+        if exchange_type == VerificationProtocolType::IsoMdl
+            && transport_type == Some(TransportType::Ble)
+        {
             let iso_mdl_engagement = request
                 .iso_mdl_engagement
                 .ok_or(ProofServiceError::InvalidMdlParameters)?;
@@ -457,7 +475,7 @@ impl ProofService {
             });
 
             return self
-                .handle_iso_mdl_verifier(
+                .handle_iso_mdl_ble_verifier(
                     proof_schema,
                     request.protocol,
                     iso_mdl_engagement,
@@ -493,13 +511,6 @@ impl ProofService {
             &self.config.identifier,
         )
         .error_while("validating identifier")?;
-
-        let transport = validate_and_select_transport_type(
-            &request.transport,
-            &self.config.transport,
-            &exchange_protocol_capabilities,
-        )
-        .error_while("validating transport")?;
 
         validate_transaction_data(
             &request.transaction_data,
@@ -702,7 +713,7 @@ impl ProofService {
         let on_submission_callback = Some(self.get_on_submission_ble_mqtt_callback(*id));
 
         let ShareResponse {
-            url,
+            data,
             interaction_id,
             interaction_data,
             expires_at,
@@ -744,7 +755,10 @@ impl ProofService {
         .await
         .error_while("clearing interaction")?;
         tracing::info!("Shared proof request {}", proof.id);
-        Ok(ShareProofResponseDTO { url, expires_at })
+        Ok(ShareProofResponseDTO {
+            data: data.into(),
+            expires_at,
+        })
     }
 
     pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ProofServiceError> {
@@ -851,6 +865,12 @@ impl ProofService {
             .verification_protocol
             .get(&request.protocol)
             .error_while("getting protocol")?;
+        let Some(protocol_params) = protocol_params.holder else {
+            return Err(ProofServiceError::InvalidExchangeType {
+                value: request.protocol,
+                source: anyhow::anyhow!("holder params not configured"),
+            });
+        };
 
         let organisation = self
             .organisation_repository
@@ -878,13 +898,13 @@ impl ProofService {
 
         let now = crate::clock::now_utc();
 
-        let ble_session = start_mdl_holder(ble, protocol_params.holder.ble_mode)
+        let ble_session = start_mdl_holder(ble, protocol_params.ble_mode)
             .await
             .error_while("starting mDL session")?;
 
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_type(protocol_params.holder.session_encryption_algorithm)?;
+            .key_algorithm_from_type(protocol_params.session_encryption_algorithm)?;
         let device_key =
             KeyAgreementKey::generate(key_algorithm.as_ref()).error_while("creating EDeviceKey")?;
         let device_engagement = DeviceEngagement {
@@ -964,7 +984,7 @@ impl ProofService {
             service_uuid: ble_session.service_uuid,
             continuation_task_id: ble_session.task_id,
             session: None,
-            mode: protocol_params.holder.ble_mode,
+            mode: protocol_params.ble_mode,
             engagement,
         })
         .map_err(|e| ProofServiceError::MappingError(e.to_string()))?;

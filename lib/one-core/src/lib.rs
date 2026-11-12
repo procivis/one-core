@@ -502,6 +502,7 @@ impl OneCore {
             data_provider.get_credential_repository(),
             data_provider.get_credential_schema_repository(),
             data_provider.get_interaction_repository(),
+            data_provider.get_key_repository(),
             data_provider.get_proof_repository(),
             credential_formatter_provider.clone(),
             presentation_formatter_provider.clone(),

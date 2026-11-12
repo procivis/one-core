@@ -41,6 +41,8 @@ pub struct TestingCreateSchemaParams {
     pub ecosystem: Option<EcosystemId>,
     /// (format, ecosystem_schema_id) pairs, overrides `format` and `schema_id`
     pub formats: Option<Vec<(CredentialFormat, String)>>,
+    /// namespace set on all claim mappings (e.g. for MDOC)
+    pub claim_namespace: Option<String>,
 }
 
 fn claim_name_translation(id: ClaimSchemaId, key: &str) -> LocalizedText {
@@ -128,7 +130,7 @@ impl CredentialSchemasDB {
                                 .get(&cs.key)
                                 .unwrap_or(&cs.key)
                                 .to_owned(),
-                            namespace: None,
+                            namespace: params.claim_namespace.to_owned(),
                         })
                         .collect::<Vec<_>>()
                         .into(),

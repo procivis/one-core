@@ -11,6 +11,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures;
+use crate::utils::api_clients::proofs::ShareProofTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::identifier_trust_information::TestingIdentifierTrustInformationParams;
@@ -102,7 +103,17 @@ async fn setup_final1_certificate_proof(
         .await;
 
     // Share the proof to create the interaction
-    let resp = context.api.proofs.share(proof.id, client_id_scheme).await;
+    let resp = context
+        .api
+        .proofs
+        .share(
+            proof.id,
+            ShareProofTestParams {
+                client_id_scheme,
+                ..Default::default()
+            },
+        )
+        .await;
     assert_eq!(resp.status(), 201);
 
     // Attach registration certificate blobs via trust_information
@@ -208,7 +219,10 @@ async fn test_get_client_request_final1_did_scheme_no_verifier_info() {
         .proofs
         .share(
             proof.id,
-            Some(ClientIdSchemeRestEnum::DecentralizedIdentifier),
+            ShareProofTestParams {
+                client_id_scheme: Some(ClientIdSchemeRestEnum::DecentralizedIdentifier),
+                ..Default::default()
+            },
         )
         .await;
     assert_eq!(resp.status(), 201);

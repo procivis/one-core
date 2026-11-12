@@ -23,7 +23,7 @@ use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    VerificationProtocolCapabilities,
+    ShareResponseData, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
@@ -268,7 +268,14 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         interaction_data.response_uri = Some(response_url.to_string());
 
         response.interaction_data = Some(serialize_interaction_data(&interaction_data)?);
-        response.url = response.url.replace("final-1.0", "final-1.0-swiyu");
+
+        let ShareResponseData::Url(url) = &response.data else {
+            return Err(VerificationProtocolError::Failed(
+                "Invalid shared content".to_string(),
+            ));
+        };
+        response.data =
+            ShareResponseData::Url(url.to_owned().replace("final-1.0", "final-1.0-swiyu"));
         Ok(response)
     }
 

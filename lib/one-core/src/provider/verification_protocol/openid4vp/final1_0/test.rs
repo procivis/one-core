@@ -60,7 +60,7 @@ use crate::provider::transaction_data::{
     Features, MockTransactionData, TransactionDataCapabilities,
 };
 use crate::provider::verification_protocol::dto::{
-    FormattedCredentialPresentation, InvitationRequest, ShareResponse,
+    FormattedCredentialPresentation, InvitationRequest, ShareResponse, ShareResponseData,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -463,7 +463,7 @@ async fn test_share_proof_direct_post() {
     let proof = test_verifier_proof("JWT".into(), None);
 
     let ShareResponse {
-        url,
+        data,
         interaction_id,
         ..
     } = protocol
@@ -472,11 +472,13 @@ async fn test_share_proof_direct_post() {
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdPrefix::RedirectUri),
+                ..Default::default()
             }),
         )
         .await
         .unwrap();
 
+    let_assert!(ShareResponseData::Url(url) = data);
     let url: Url = url.parse().unwrap();
     let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
 
@@ -565,17 +567,19 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
 
     let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
 
-    let ShareResponse { url, .. } = protocol
+    let ShareResponse { data, .. } = protocol
         .verifier_share_proof(
             &proof,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdPrefix::RedirectUri),
+                ..Default::default()
             }),
         )
         .await
         .unwrap();
 
+    let_assert!(ShareResponseData::Url(url) = data);
     let url: Url = url.parse().unwrap();
     let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
 
@@ -644,17 +648,19 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
 
     let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
 
-    let ShareResponse { url, .. } = protocol
+    let ShareResponse { data, .. } = protocol
         .verifier_share_proof(
             &proof,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdPrefix::RedirectUri),
+                ..Default::default()
             }),
         )
         .await
         .unwrap();
 
+    let_assert!(ShareResponseData::Url(url) = data);
     let url: Url = url.parse().unwrap();
     let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
 

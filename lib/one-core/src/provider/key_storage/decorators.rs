@@ -28,7 +28,9 @@ impl<T: KeyStorage + Display + ?Sized> KeyStorage for DisabledProvider<T> {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         let mut capabilities = self.inner().get_capabilities();
         // drop features related to generating new keys
-        capabilities.features.retain(|f| f == &Features::Exportable);
+        capabilities
+            .features
+            .retain(|f| !matches!(f, Features::Importable | Features::Attestation));
         capabilities
     }
 

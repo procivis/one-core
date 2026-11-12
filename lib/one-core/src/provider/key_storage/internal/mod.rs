@@ -66,7 +66,11 @@ impl KeyStorage for InternalKeyProvider {
                 KeyAlgorithmType::MlDsa,
                 KeyAlgorithmType::BbsPlus,
             ],
-            features: vec![Features::Exportable, Features::Importable],
+            features: vec![
+                Features::Exportable,
+                Features::Importable,
+                Features::KeyAgreement,
+            ],
         }
     }
     fn config_name(&self) -> String {

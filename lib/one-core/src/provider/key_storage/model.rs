@@ -22,6 +22,8 @@ pub enum Features {
     Attestation,
     #[strum(serialize = "REQUIRES_CREDENTIAL_ID")]
     RequiresCredentialId,
+    #[strum(serialize = "KEY_AGREEMENT")]
+    KeyAgreement,
 }
 
 pub struct StorageGeneratedKey {

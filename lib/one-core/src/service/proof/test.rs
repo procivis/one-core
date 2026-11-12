@@ -16,7 +16,7 @@ use uuid::Uuid;
 use super::ProofService;
 use super::dto::{
     CreateProofRequestDTO, ProofClaimValueDTO, ProofFilterParamsDTO, ProposeProofRequestDTO,
-    ShareProofRequestDTO,
+    ShareProofRequestDTO, ShareProofResponseData,
 };
 use super::error::ProofServiceError;
 use crate::config::core_config::{
@@ -71,7 +71,7 @@ use crate::provider::transaction_data::provider::MockTransactionDataProvider;
 use crate::provider::transaction_data::{MockTransactionData, TransactionDataCapabilities};
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
-    ShareResponse, VerificationProtocolCapabilities,
+    ShareResponse, ShareResponseData, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::BLEPeer;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::{
@@ -2575,7 +2575,7 @@ async fn test_share_proof_created_success() {
         .once()
         .returning(move |_, _, _| {
             Ok(ShareResponse {
-                url: expected_url.to_owned(),
+                data: ShareResponseData::Url(expected_url.to_owned()),
                 interaction_id,
                 interaction_data: None,
                 expires_at: Some(expires_at),
@@ -2637,7 +2637,8 @@ async fn test_share_proof_created_success() {
         .await
         .unwrap();
 
-    assert_eq!(result.url, expected_url);
+    let_assert!(ShareProofResponseData::Url(url) = result.data);
+    assert_eq!(url, expected_url);
     assert_eq!(result.expires_at.unwrap(), expires_at);
 }
 
@@ -2681,7 +2682,7 @@ async fn test_share_proof_pending_success() {
         .once()
         .returning(move |_, _, _| {
             Ok(ShareResponse {
-                url: expected_url.to_owned(),
+                data: ShareResponseData::Url(expected_url.to_owned()),
                 interaction_id,
                 interaction_data: None,
                 expires_at: Some(expires_at),
@@ -2793,7 +2794,7 @@ async fn test_share_proof_interaction_expired_success() {
         .once()
         .returning(move |_, _, _| {
             Ok(ShareResponse {
-                url: expected_url.to_owned(),
+                data: ShareResponseData::Url(expected_url.to_owned()),
                 interaction_id,
                 interaction_data: None,
                 expires_at: Some(expires_at),

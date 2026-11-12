@@ -2,13 +2,17 @@ use one_core::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, PresentationDefinitionTransactionDataDTO,
 };
 use one_core::service::common_dto::TrustInformationDetailResponseDTO;
-use one_core::service::proof::dto::{ProofTransactionDataResponseDTO, TransactionDataResponseDTO};
+use one_core::service::error::ServiceError;
+use one_core::service::proof::dto::{
+    ProofTransactionDataResponseDTO, ShareProofResponseDTO, ShareProofResponseData,
+    TransactionDataResponseDTO,
+};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 
 use super::dto::{
     ApplicableCredentialOrFailureHintRestEnum, PresentationDefinitionTransactionDataRestDTO,
     ProofTransactionDataResponseRestDTO, ProofTrustInformationDetailResponseRestDTO,
-    TransactionDataResponseRestDTO,
+    ShareProofResponseRestDTO, TransactionDataResponseRestDTO,
 };
 use crate::dto::common::trust_detail::TrustInformationDetailResponseRestEnum;
 use crate::mapper::MapperError;
@@ -106,5 +110,31 @@ impl From<TrustInformationDetailResponseDTO> for ProofTrustInformationDetailResp
             verifier,
             ecosystem_errors: value.ecosystem_outcomes.into(),
         }
+    }
+}
+
+impl TryFrom<ShareProofResponseDTO> for ShareProofResponseRestDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: ShareProofResponseDTO) -> Result<Self, Self::Error> {
+        let mut result = Self {
+            url: None,
+            request_json: None,
+            expires_at: value.expires_at,
+        };
+
+        match value.data {
+            ShareProofResponseData::Url(url) => {
+                result.url = Some(url);
+            }
+            ShareProofResponseData::DcApi(request) => {
+                result.request_json = Some(
+                    serde_json::to_string(&request)
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+                );
+            }
+        };
+
+        Ok(result)
     }
 }

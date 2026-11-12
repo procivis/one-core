@@ -184,6 +184,13 @@ issuanceProtocol:
           leewaySeconds: 60
           signingAlgorithms:
             - ECDSA
+verificationProtocol:
+  ISO_MDL:
+    params:
+      public:
+        dcApiVerifier:
+          encryptionKeyStorage: "INTERNAL"
+          interactionExpiresInSeconds: 3600
 verifierProvider:
   PROCIVIS_ONE:
     type: PROCIVIS_ONE

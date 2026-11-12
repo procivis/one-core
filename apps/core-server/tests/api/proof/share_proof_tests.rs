@@ -15,7 +15,9 @@ use uuid::Uuid;
 
 use crate::fixtures::{self, TestingDidParams, TestingIdentifierParams, assert_history_count};
 use crate::utils::api_clients::Response;
+use crate::utils::api_clients::proofs::ShareProofTestParams;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::{ecdsa_testing_params, ecdsa_testing_params_2};
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::db_clients::proofs::TestingProofParams;
@@ -67,7 +69,7 @@ async fn test_share_proof_success() {
     .await;
 
     // WHEN
-    let resp = context.api.proofs.share(proof.id, None).await;
+    let resp = context.api.proofs.share(proof.id, Default::default()).await;
 
     // THEN
     assert_eq!(resp.status(), 201);
@@ -135,7 +137,7 @@ async fn test_share_proof_key_storage_disabled_success() {
         .await;
 
         // WHEN
-        let resp = context.api.proofs.share(proof.id, None).await;
+        let resp = context.api.proofs.share(proof.id, Default::default()).await;
 
         // THEN
         assert_eq!(resp.status(), 201);
@@ -193,8 +195,8 @@ async fn test_share_proof_twice() {
     .await;
 
     // WHEN
-    let resp_1 = context.api.proofs.share(proof.id, None).await;
-    let resp_2 = context.api.proofs.share(proof.id, None).await;
+    let resp_1 = context.api.proofs.share(proof.id, Default::default()).await;
+    let resp_2 = context.api.proofs.share(proof.id, Default::default()).await;
 
     // THEN
     assert_eq!(resp_1.status(), 201);
@@ -319,7 +321,15 @@ async fn test_share_proof_success_with_separate_encryption_key() {
         )
         .await;
 
-    assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
+    assert_eq!(
+        201,
+        context
+            .api
+            .proofs
+            .share(proof.id, Default::default())
+            .await
+            .status()
+    );
 
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
@@ -405,7 +415,15 @@ async fn test_share_proof_success_mdoc() {
         )
         .await;
 
-    assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
+    assert_eq!(
+        201,
+        context
+            .api
+            .proofs
+            .share(proof.id, Default::default())
+            .await
+            .status()
+    );
 
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
@@ -517,7 +535,15 @@ async fn test_share_proof_success_jsonld() {
         )
         .await;
 
-    assert_eq!(201, context.api.proofs.share(proof.id, None).await.status());
+    assert_eq!(
+        201,
+        context
+            .api
+            .proofs
+            .share(proof.id, Default::default())
+            .await
+            .status()
+    );
 
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
@@ -666,7 +692,13 @@ async fn test_share_proof_client_id_scheme_redirect_uri_openid4vp_final1_0() {
     let resp = context
         .api
         .proofs
-        .share(proof.id, Some(ClientIdSchemeRestEnum::RedirectUri))
+        .share(
+            proof.id,
+            ShareProofTestParams {
+                client_id_scheme: Some(ClientIdSchemeRestEnum::RedirectUri),
+                ..Default::default()
+            },
+        )
         .await;
 
     // THEN
@@ -691,7 +723,13 @@ async fn test_share_proof_client_id_scheme_verifier_attestation_openid4vp_final1
     let resp = context
         .api
         .proofs
-        .share(proof.id, Some(ClientIdSchemeRestEnum::VerifierAttestation))
+        .share(
+            proof.id,
+            ShareProofTestParams {
+                client_id_scheme: Some(ClientIdSchemeRestEnum::VerifierAttestation),
+                ..Default::default()
+            },
+        )
         .await;
 
     // THEN
@@ -718,7 +756,10 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_final1_0() {
         .proofs
         .share(
             proof.id,
-            Some(ClientIdSchemeRestEnum::DecentralizedIdentifier),
+            ShareProofTestParams {
+                client_id_scheme: Some(ClientIdSchemeRestEnum::DecentralizedIdentifier),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -762,7 +803,13 @@ async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
     let resp = context
         .api
         .proofs
-        .share(proof.id, Some(ClientIdSchemeRestEnum::X509Hash))
+        .share(
+            proof.id,
+            ShareProofTestParams {
+                client_id_scheme: Some(ClientIdSchemeRestEnum::X509Hash),
+                ..Default::default()
+            },
+        )
         .await;
 
     // THEN
@@ -779,7 +826,7 @@ async fn test_share_proof_openid4vp_final1_haip_defaults_to_x509_hash() {
         prepare_created_certificate_openid4vp_proof("OPENID4VP_FINAL1_HAIP").await;
 
     // WHEN
-    let resp = context.api.proofs.share(proof.id, None).await;
+    let resp = context.api.proofs.share(proof.id, Default::default()).await;
 
     // THEN
     let client_id = extract_client_id(resp).await;
@@ -835,7 +882,7 @@ async fn test_share_proof_fails_when_nfc_engagement_is_set_on_proof() {
     .await;
 
     // WHEN
-    let resp = context.api.proofs.share(proof.id, None).await;
+    let resp = context.api.proofs.share(proof.id, Default::default()).await;
 
     // THEN
     assert_eq!(resp.status(), 400);
@@ -845,4 +892,96 @@ async fn test_share_proof_fails_when_nfc_engagement_is_set_on_proof() {
         &resp["message"],
         "Sharing not possible with non QR_CODE engagement"
     );
+}
+
+#[tokio::test]
+async fn test_share_proof_iso_mdl_dc_api() {
+    // GIVEN
+    let (context, organisation, identifier, certificate, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                format: Some("MDOC".into()),
+                schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
+                claim_namespace: Some("org.iso.18013.5.1".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+            }],
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            ProofStateEnum::Created,
+            "ISO_MDL",
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_certificate: Some(certificate),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                transport: Some("DC_API".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .share(
+            proof.id,
+            ShareProofTestParams {
+                dc_api_origin: Some("https://verifier.example.com"),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json::<Value>().await;
+    assert!(resp.get("url").is_none());
+
+    let request_json = resp["requestJson"].as_str().unwrap();
+    let request: Value = serde_json::from_str(request_json).unwrap();
+    assert_eq!(request["protocol"], "org-iso-mdoc");
+    assert!(request["data"]["deviceRequest"].is_string());
+    assert!(request["data"]["encryptionInfo"].is_string());
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }

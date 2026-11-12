@@ -17,7 +17,7 @@ use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     GetProofListResponseDTO, ProofClaimDTO, ProofInputDTO, ProofListItemResponseDTO,
     ProofTransactionDataResponseDTO, ProposeProofRequestDTO, ProposeProofResponseDTO,
-    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
+    ShareProofRequestDTO,
 };
 use one_core::service::ssi_holder::dto::PresentationSubmitV2RequestDTO;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner_of_inner};
@@ -182,7 +182,7 @@ impl OneCore {
         let id = into_id(&proof_id)?;
         let core = self.use_core().await?;
         let response = core.proof_service.share_proof(&id, params.into()).await?;
-        Ok(ShareProofResponseBindingDTO::from(response))
+        Ok(response.try_into()?)
     }
 
     /// Deletes the claim data shared by the wallet holder for a proof
@@ -646,14 +646,12 @@ pub struct ShareProofRequestBindingDTO {
     pub params: Option<ShareProofRequestParamsBindingDTO>,
 }
 
-#[derive(Into, uniffi::Record)]
-#[into(ShareProofRequestParamsDTO)]
+#[derive(uniffi::Record)]
 #[uniffi(name = "ShareProofRequestParams")]
 pub struct ShareProofRequestParamsBindingDTO {
     /// For requests made with OpenID4VC, a Client ID Scheme can be
     /// specified here. If no scheme is specified the default scheme
     /// from the configuration is used.
-    #[into(with_fn = "convert_inner")]
     pub client_id_scheme: Option<ClientIdSchemeBindingEnum>,
 }
 
@@ -667,12 +665,10 @@ pub enum ClientIdSchemeBindingEnum {
     X509SanDns,
 }
 
-#[derive(From, uniffi::Record)]
-#[from(ShareProofResponseDTO)]
+#[derive(uniffi::Record)]
 #[uniffi(name = "ShareProofResponse")]
 pub struct ShareProofResponseBindingDTO {
     pub url: String,
-    #[from(with_fn = optional_time)]
     pub expires_at: Option<String>,
 }
 

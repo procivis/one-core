@@ -221,10 +221,7 @@ pub(crate) async fn post_proof(
     permissions = [Permission::ProofShare],
     post,
     path = "/api/proof-request/v1/{id}/share",
-    request_body(
-        content((Option<ShareProofRequestRestDTO>)),
-        example = json!({ "params": { "clientIdScheme": "redirect_uri" } }),
-    ),
+    request_body = Option<ShareProofRequestRestDTO>,
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -256,11 +253,16 @@ pub(crate) async fn share_proof(
         );
     }
 
-    let result = state
-        .core
-        .proof_service
-        .share_proof(&id, request.unwrap_or_default().0.into())
-        .await;
+    let result: Result<ShareProofResponseRestDTO, _> = async {
+        state
+            .core
+            .proof_service
+            .share_proof(&id, request.unwrap_or_default().0.into())
+            .await
+            .error_while("sharing proof")?
+            .try_into()
+    }
+    .await;
     CreatedOrErrorResponse::from_result(result, state, "sharing proof")
 }
 

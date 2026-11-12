@@ -94,7 +94,7 @@ async fn share_proof_and_extract_dcql(
     context: &TestContext,
     proof_id: shared_types::ProofId,
 ) -> (Value, Value) {
-    let resp = context.api.proofs.share(proof_id, None).await;
+    let resp = context.api.proofs.share(proof_id, Default::default()).await;
     assert_eq!(resp.status(), 201);
 
     let proof = context.db.proofs.get(&proof_id).await;

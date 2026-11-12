@@ -1,9 +1,5 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use coset::iana::HeaderParameter;
-use coset::{HeaderBuilder, ProtectedHeader};
-use standardized_types::openid4vp::VerifierInfoAttestation;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -13,53 +9,41 @@ use super::common::{
 use super::{ISO_MDL_FLOW, central, central_client_mode, peripheral, peripheral_server_mode};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
-use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64url};
-use crate::model::certificate::Certificate;
+use crate::mapper::encode_cbor_base64url;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::identifier::Identifier;
-use crate::model::identifier_trust_information::IdentifierTrustInformation;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum, UpdateProofRequest};
-use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::model::proof_schema::ProofSchema;
 use crate::model::relation::OptionalRelatedExt;
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::ServiceDescription;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
-use crate::provider::credential_formatter::mdoc_formatter::util::{
-    Bstr, EmbeddedCbor, build_algorithm_header_value,
-};
-use crate::provider::credential_formatter::mdoc_formatter::{
-    HeaderBuilderExt, build_x5chain_header_value,
-};
-use crate::provider::credential_formatter::model::AuthenticationFn;
+use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::presentation_formatter::mso_mdoc::model::{
-    DeviceResponse, ReaderAuthentication,
-};
+use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::iso_mdl::IsoMdlVerifier;
 use crate::provider::verification_protocol::iso_mdl::common::{
-    DeviceRequest, DocRequest, EphemeralSessionKey, ItemsRequest, KeyAgreementKey, SkDevice,
-    create_session_transcript_bytes, set_proof_to_error, to_cbor,
+    EphemeralSessionKey, KeyAgreementKey, SkDevice, create_session_transcript_bytes,
+    set_proof_to_error, to_cbor,
 };
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptionsV1, DeviceEngagement,
 };
 use crate::provider::verification_protocol::iso_mdl::session::{SessionData, SessionEstablishment};
-use crate::provider::verification_protocol::mapper::gather_registration_certificates;
+use crate::provider::verification_protocol::iso_mdl::verifier::create_device_request;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -70,13 +54,6 @@ pub(crate) struct VerifierSession {
     session_transcript: SessionTranscript,
     device_request_encrypted: Vec<u8>,
     sk_device: SkDevice,
-}
-
-pub(crate) struct IsoMdlVerifier {
-    pub identifier: Identifier,
-    pub key: Key,
-    pub certificate: Certificate,
-    pub auth_fn: AuthenticationFn,
 }
 
 pub(crate) async fn setup_verifier_session(
@@ -110,30 +87,13 @@ pub(crate) async fn setup_verifier_session(
         .await
         .error_while("deriving session keys")?;
 
-    let registration_certificates = if let Some(verifier) = &verifier {
-        gather_registration_certificates(&verifier.identifier, blob_storage_provider).await?
-    } else {
-        vec![]
-    };
-
-    let mut doc_requests = vec![];
-    let input_schemas = schema.input_schemas.as_ref().await?;
-    for input_schema in &input_schemas {
-        doc_requests.push(
-            proof_input_schema_to_doc_request(
-                input_schema,
-                session_transcript_bytes.inner(),
-                verifier,
-                &registration_certificates,
-            )
-            .await?,
-        );
-    }
-
-    let device_request = DeviceRequest {
-        version: Default::default(),
-        doc_requests,
-    };
+    let device_request = create_device_request(
+        schema,
+        verifier,
+        session_transcript_bytes.inner(),
+        blob_storage_provider,
+    )
+    .await?;
 
     let device_request_bytes = to_cbor(&device_request)?;
 
@@ -594,142 +554,4 @@ async fn connect_based_on_options(
 
     tracing::debug!("Connected to: {connected_holder:?}");
     Ok(connected_holder)
-}
-
-async fn proof_input_schema_to_doc_request(
-    input: &ProofInputSchema,
-    session_transcript: &SessionTranscript,
-    verifier: Option<&IsoMdlVerifier>,
-    registration_certificates: &[(IdentifierTrustInformation, VerifierInfoAttestation)],
-) -> Result<DocRequest, VerificationProtocolError> {
-    let proof_claim_schemas = input.claim_schemas.as_ref().await?;
-    let credential_schema = input.credential_schema.as_ref().await?;
-    let formats = credential_schema.formats.as_ref().await?;
-    let format = formats
-        .iter()
-        .find(|format| input.formats.contains(&format.format))
-        .ok_or(VerificationProtocolError::Failed(
-            "proof input has no format of its credential schema".to_string(),
-        ))?;
-    let mappings = format.claim_mappings.as_ref().await?;
-    let mappings_by_schema_id: HashMap<_, _> = mappings
-        .into_iter()
-        .map(|m| (m.claim_schema_id, m))
-        .collect();
-
-    let mut name_spaces = HashMap::new();
-    for proof_claim_schema in &proof_claim_schemas {
-        let mapping = mappings_by_schema_id
-            .get(&proof_claim_schema.schema.id)
-            .ok_or_else(|| {
-                VerificationProtocolError::Failed(format!(
-                    "no mapping found for schema {} and format {}",
-                    proof_claim_schema.schema.id, format.id
-                ))
-            })?;
-        let Some(namespace) = &mapping.namespace else {
-            return Err(VerificationProtocolError::Failed(format!(
-                "mapping {} has no namespace",
-                proof_claim_schema.schema.id
-            )));
-        };
-        let element_identifier =
-            if let Some((root, _)) = mapping.technical_key.rsplit_once(NESTED_CLAIM_MARKER) {
-                root
-            } else {
-                &mapping.technical_key
-            };
-
-        name_spaces
-            .entry(namespace.to_owned())
-            .or_insert_with(HashMap::new)
-            .insert(element_identifier.to_owned(), true);
-    }
-
-    let doc_type = format.ecosystem_schema_id.to_owned();
-    let request_info = registration_certificates
-        .iter()
-        .find(|(info, _)| {
-            info.allowed_verification_types.iter().any(|verification| {
-                verification.format == "mso_mdoc" && verification.schema_id == doc_type
-            })
-        })
-        .map(|(_, attestation)| {
-            HashMap::from([(
-                "eUWrprc".to_string(),
-                ciborium::Value::Text(attestation.data.to_owned()),
-            )])
-        });
-
-    let items_request = EmbeddedCbor::new(ItemsRequest {
-        doc_type,
-        name_spaces,
-        request_info,
-    })?;
-
-    let reader_auth = match verifier {
-        None => None,
-        Some(verifier) => Some(
-            prepare_reader_auth(
-                session_transcript.to_owned(),
-                items_request.clone(),
-                verifier,
-            )
-            .await?,
-        ),
-    };
-
-    Ok(DocRequest {
-        items_request,
-        reader_auth,
-    })
-}
-
-pub(crate) async fn prepare_reader_auth(
-    session_transcript: SessionTranscript,
-    items_request: EmbeddedCbor<ItemsRequest>,
-    verifier: &IsoMdlVerifier,
-) -> Result<CoseSign1, VerificationProtocolError> {
-    let algorithm = verifier
-        .auth_fn
-        .get_key_algorithm()
-        .error_while("getting key algorithm")?;
-
-    let reader_authentication = ReaderAuthentication {
-        session_transcript,
-        items_request,
-    };
-    let reader_authentication_bytes = EmbeddedCbor::new(reader_authentication)?.into_bytes();
-
-    let protected_headers = HeaderBuilder::new()
-        .algorithm(
-            build_algorithm_header_value(algorithm).error_while("creating algorithm header")?,
-        )
-        .build();
-
-    let unprotected_headers = HeaderBuilder::new()
-        .add_header(
-            HeaderParameter::X5Chain,
-            build_x5chain_header_value(&verifier.certificate.chain, None)
-                .await
-                .error_while("creating x5chain")?,
-        )
-        .build();
-
-    let cose_sign1 = CoseSign1Builder::new()
-        .protected(ProtectedHeader {
-            original_data: None,
-            header: protected_headers,
-        })
-        .unprotected(unprotected_headers)
-        .try_create_detached_signature_with_provider(
-            &reader_authentication_bytes,
-            &[],
-            verifier.auth_fn.as_ref(),
-        )
-        .await
-        .error_while("creating signature")?
-        .build();
-
-    Ok(cose_sign1.into())
 }

@@ -51,6 +51,14 @@ pub struct JWSCompactSerialized {
     pub request: String,
 }
 
+/// ISO 18013-7, C.2
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IsoMdocRequest {
+    pub device_request: String,
+    pub encryption_info: String,
+}
+
 /// <https://www.w3.org/TR/digital-credentials/#the-digitalcredentialgetrequest-dictionary>
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "protocol", content = "data")]
@@ -61,15 +69,21 @@ pub enum DigitalCredentialGetRequest {
     OpenID4VpV1Signed(JWSCompactSerialized),
     // currently not supported:
     //  #[serde(rename = "openid4vp-v1-multisigned")]
-    //  OpenID4VpV1Multisigned(JWSJsonSerialized),
-    //  #[serde(rename = "org-iso-mdoc")]
-    //  OrgIsoMdoc(...),
+    //  OpenID4VpV1Multisigned(...),
+    #[serde(rename = "org-iso-mdoc")]
+    OrgIsoMdoc(IsoMdocRequest),
 }
 
 /// <https://www.w3.org/TR/digital-credentials/#the-digitalcredentialrequestoptions-dictionary>
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DigitalCredentialRequestOptions {
     pub requests: Vec<DigitalCredentialGetRequest>,
+}
+
+/// ISO 18013-7, C.3
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IsoMdocResponse {
+    pub response: String,
 }
 
 /// <https://www.w3.org/TR/digital-credentials/#the-digitalcredential-interface>
@@ -82,9 +96,9 @@ pub enum DigitalCredential {
     OpenID4VpV1Signed(serde_json::Value),
     // currently not supported:
     //  #[serde(rename = "openid4vp-v1-multisigned")]
-    //  OpenID4VpV1Multisigned(JWSJsonSerialized),
-    //  #[serde(rename = "org-iso-mdoc")]
-    //  OrgIsoMdoc(...),
+    //  OpenID4VpV1Multisigned(...),
+    #[serde(rename = "org-iso-mdoc")]
+    OrgIsoMdoc(IsoMdocResponse),
 }
 
 #[cfg(test)]

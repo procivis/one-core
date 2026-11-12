@@ -1,36 +1,47 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
 use ble::holder::{MdocBleHolderInteractionData, send_device_response};
 use common::{DeviceRequest, to_cbor};
-use dcapi::MdocDcApiHolderInteractionData;
+use dcapi::{MdocDcApiHolderInteractionData, MdocDcApiVerifierInteractionData};
 use futures::future::BoxFuture;
 use mapper::{device_request_to_dcql_query, holder_proof_for_dc_api, interaction_with_data};
+use one_crypto::utilities::generate_random_bytes;
 use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::ProofId;
+use standardized_types::openid4vp::dc_api::{DigitalCredentialGetRequest, IsoMdocRequest};
+use time::Duration;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use super::dto::{
     FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    VerificationProtocolCapabilities,
+    ShareResponseData, VerificationProtocolCapabilities,
 };
+use super::iso_mdl::common::EphemeralSessionKey;
+use super::iso_mdl::verifier::{IsoMdlVerifier, create_device_request};
 use super::openid4vp::dcql::get_presentation_definition_v2;
 use super::openid4vp::mapper::format_to_type;
-use super::{VerificationProtocol, VerificationProtocolError, deserialize_interaction_data};
+use super::{
+    VerificationProtocol, VerificationProtocolError, deserialize_interaction_data,
+    serialize_interaction_data,
+};
+use crate::clock::now_utc;
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, KeyAlgorithmType, TransportType, VerificationEngagement,
 };
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{decode_cbor_base64url, encode_cbor_base64url};
 use crate::model::did::KeyRole;
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::relation::OptionalRelatedExt;
@@ -41,7 +52,8 @@ use crate::proto::native_credential_manager::NativeDcApiResponseHandler;
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::wrp_validator::WRPValidator;
-use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
+use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -51,7 +63,9 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, FormatPresentationCtx, FormattedPresentation,
 };
-use crate::provider::presentation_formatter::mso_mdoc::model::dcapi::EncryptionInfo;
+use crate::provider::presentation_formatter::mso_mdoc::model::dcapi::{
+    EncryptionInfo, EncryptionParameters,
+};
 use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, DocumentError};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_dc_api::Iso18013DcApiHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
@@ -63,6 +77,7 @@ use crate::provider::provider_directory::InitializationError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub(crate) mod ble;
@@ -75,12 +90,14 @@ pub(crate) mod nfc;
 mod session;
 #[cfg(test)]
 mod test;
+pub(crate) mod verifier;
 mod verify_proof;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Params {
-    pub holder: HolderParams,
+    pub holder: Option<HolderParams>,
+    pub dc_api_verifier: Option<DcApiVerifierParams>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -88,6 +105,16 @@ pub(crate) struct Params {
 pub(crate) struct HolderParams {
     pub session_encryption_algorithm: KeyAlgorithmType,
     pub ble_mode: BleMode,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DcApiVerifierParams {
+    pub encryption_key_storage: String,
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
+    pub interaction_expires_in_seconds: Option<Duration>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -101,17 +128,18 @@ pub(crate) enum BleMode {
 #[derive(Provider)]
 pub(crate) struct IsoMdl {
     config_id: String,
-    #[expect(unused)]
     params: Params,
     config: Arc<CoreConfig>,
     credential_repository: Arc<dyn CredentialRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    key_repository: Arc<dyn KeyRepository>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     wrp_validator: Arc<dyn WRPValidator>,
@@ -130,12 +158,14 @@ impl IsoMdl {
         config: Arc<CoreConfig>,
         credential_repository: Arc<dyn CredentialRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
+        key_repository: Arc<dyn KeyRepository>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         wrp_validator: Arc<dyn WRPValidator>,
@@ -148,19 +178,48 @@ impl IsoMdl {
                 source: err,
             })?;
 
-        if !key_algorithm_provider
-            .key_algorithm_from_type(params.holder.session_encryption_algorithm)?
-            .get_capabilities()
-            .features
-            .contains(&crate::provider::key_algorithm::model::Features::KeyAgreement)
+        if let Some(holder_params) = &params.holder
+            && !key_algorithm_provider
+                .key_algorithm_from_type(holder_params.session_encryption_algorithm)?
+                .get_capabilities()
+                .features
+                .contains(&crate::provider::key_algorithm::model::Features::KeyAgreement)
         {
             return Err(InitializationError::UnsupportedConfiguration {
                 key: config_id,
                 detail: format!(
                     "Key algorithm `{}` does not support key agreement",
-                    params.holder.session_encryption_algorithm
+                    holder_params.session_encryption_algorithm
                 ),
             });
+        }
+
+        if let Some(dc_api_verifier_params) = &params.dc_api_verifier {
+            let capabilities = key_provider
+                .get_key_storage(&dc_api_verifier_params.encryption_key_storage)?
+                .get_capabilities();
+
+            if !capabilities
+                .features
+                .contains(&crate::provider::key_storage::model::Features::KeyAgreement)
+            {
+                return Err(InitializationError::UnsupportedConfiguration {
+                    key: config_id,
+                    detail: format!(
+                        "Key storage `{}` does not support key agreement",
+                        dc_api_verifier_params.encryption_key_storage
+                    ),
+                });
+            }
+            if !capabilities.algorithms.contains(&KeyAlgorithmType::Ecdsa) {
+                return Err(InitializationError::UnsupportedConfiguration {
+                    key: config_id,
+                    detail: format!(
+                        "Key storage `{}` does not support ECDSA",
+                        dc_api_verifier_params.encryption_key_storage
+                    ),
+                });
+            }
         }
 
         Ok(Self {
@@ -169,12 +228,14 @@ impl IsoMdl {
             config,
             credential_repository,
             interaction_repository,
+            key_repository,
             presentation_formatter_provider,
             key_provider,
             key_algorithm_provider,
             certificate_validator,
             credential_schema_repository,
             credential_formatter_provider,
+            blob_storage_provider,
             ecosystem_provider,
             did_method_provider,
             wrp_validator,
@@ -536,11 +597,153 @@ impl VerificationProtocol for IsoMdl {
 
     async fn verifier_share_proof(
         &self,
-        _proof: &Proof,
+        proof: &Proof,
         _callback: Option<BoxFuture<'static, ()>>,
-        _params: Option<ShareProofRequestParamsDTO>,
+        params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
-        Err(VerificationProtocolError::OperationNotSupported)
+        if TransportType::DcApi != self.get_transport_type(&proof.transport)? {
+            return Err(VerificationProtocolError::Failed(
+                "Invalid transport".to_string(),
+            ));
+        }
+
+        let Some(ShareProofRequestParamsDTO {
+            dc_api_origin: Some(origin),
+            ..
+        }) = params
+        else {
+            return Err(VerificationProtocolError::Failed(
+                "Missing origin".to_string(),
+            ));
+        };
+
+        let Some(params) = &self.params.dc_api_verifier else {
+            return Err(VerificationProtocolError::Failed(
+                "Missing DC-API params".to_string(),
+            ));
+        };
+
+        let proof_schema = proof.schema.as_required_ref().await?;
+
+        if let Some(previous_interaction) = &proof.interaction
+            && let Ok(interaction) = previous_interaction
+                .as_ref()
+                .await
+                .inspect_err(|error| tracing::warn!(%error, "Failed to load previous interaction"))
+            && let Ok(data) = deserialize_interaction_data::<MdocDcApiVerifierInteractionData>(
+                interaction.data.as_ref(),
+            )
+            .inspect_err(|error| tracing::warn!(%error, "Failed to parse previous interaction"))
+            && let Err(error) = self.key_repository.hard_delete(&data.encryption_key).await
+        {
+            tracing::warn!(%error, "Failed to remove previous encryption key");
+        }
+
+        let key_storage = self
+            .key_provider
+            .get_key_storage(&params.encryption_key_storage)?;
+        let key_id = Uuid::new_v4().into();
+        let generated_key = key_storage
+            .generate(key_id, KeyAlgorithmType::Ecdsa, Default::default())
+            .await
+            .error_while("generating encryption key")?;
+        let key = Key {
+            id: key_id,
+            created_date: now_utc(),
+            last_modified: now_utc(),
+            public_key: generated_key.public_key,
+            name: key_id.to_string(),
+            key_reference: generated_key.key_reference,
+            storage_type: key_storage.config_name(),
+            key_type: KeyAlgorithmType::Ecdsa.to_string(),
+            autogenerated: true,
+            organisation: proof_schema.organisation.to_owned(),
+        };
+        let key_handle = key_storage
+            .key_handle(&key)
+            .error_while("getting key handle")?;
+
+        self.key_repository
+            .create_key(key)
+            .await
+            .error_while("creating key")?;
+
+        let encryption_info = EncryptionInfo {
+            parameters: EncryptionParameters {
+                nonce: Bstr(generate_random_bytes::<16>().into()),
+                recipient_public_key: EphemeralSessionKey::from_key(
+                    key_handle
+                        .key_agreement()
+                        .ok_or(VerificationProtocolError::Failed(
+                            "Invalid key handle".to_string(),
+                        ))?
+                        .public()
+                        .as_ref(),
+                )?,
+            },
+        };
+        let encryption_info =
+            encode_cbor_base64url(encryption_info).error_while("encoding EncryptionInfo")?;
+
+        let session_transcript = SessionTranscript {
+            device_engagement_bytes: None,
+            e_reader_key_bytes: None,
+            handover: Handover::Iso18013DcApi(
+                Iso18013DcApiHandover::compute(&origin, &encryption_info)
+                    .error_while("computing handover")?,
+            ),
+        };
+
+        let verifier = match (
+            &proof.verifier_identifier,
+            &proof.verifier_certificate,
+            &proof.verifier_key,
+        ) {
+            (Some(identifier), Some(certificate), Some(key)) => {
+                let key = key.as_ref().await?;
+                Some(IsoMdlVerifier {
+                    identifier: identifier.as_ref().await?.to_owned(),
+                    certificate: certificate.as_ref().await?.to_owned(),
+                    key: key.to_owned(),
+                    auth_fn: self.key_provider.get_signature_provider(
+                        &key,
+                        None,
+                        self.key_algorithm_provider.clone(),
+                    )?,
+                })
+            }
+            _ => None,
+        };
+
+        let device_request = create_device_request(
+            &proof_schema,
+            verifier.as_ref(),
+            &session_transcript,
+            self.blob_storage_provider.as_ref(),
+        )
+        .await?;
+
+        let request = IsoMdocRequest {
+            device_request: encode_cbor_base64url(device_request)
+                .error_while("encoding DeviceRequest")?,
+            encryption_info,
+        };
+
+        let interaction_id = Uuid::new_v4().into();
+        let interaction_content = MdocDcApiVerifierInteractionData {
+            encryption_key: key_id,
+        };
+
+        let expires_at = params
+            .interaction_expires_in_seconds
+            .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in);
+
+        Ok(ShareResponse {
+            data: ShareResponseData::DcApi(DigitalCredentialGetRequest::OrgIsoMdoc(request)),
+            interaction_id,
+            interaction_data: Some(serialize_interaction_data(&interaction_content)?),
+            expires_at,
+        })
     }
 
     async fn holder_get_presentation_definition_v2(
@@ -597,9 +800,17 @@ impl VerificationProtocol for IsoMdl {
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
+        let mut supported_transports = HashSet::new();
+        if self.params.holder.is_some() {
+            supported_transports.extend([TransportType::Ble, TransportType::DcApi]);
+        }
+        if self.params.dc_api_verifier.is_some() {
+            supported_transports.insert(TransportType::DcApi);
+        }
+
         VerificationProtocolCapabilities {
             features: vec![],
-            supported_transports: vec![TransportType::Ble, TransportType::DcApi],
+            supported_transports: supported_transports.into_iter().collect(),
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web],
             verifier_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V2],

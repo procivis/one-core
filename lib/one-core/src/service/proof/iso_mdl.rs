@@ -10,15 +10,16 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::verification_protocol::iso_mdl::ble::verifier::{
-    IsoMdlVerifier, handle_ble_verifier, setup_verifier_session,
+    handle_ble_verifier, setup_verifier_session,
 };
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, DeviceRetrievalMethod,
 };
+use crate::provider::verification_protocol::iso_mdl::verifier::IsoMdlVerifier;
 
 impl ProofService {
     #[expect(clippy::too_many_arguments)]
-    pub(super) async fn handle_iso_mdl_verifier(
+    pub(super) async fn handle_iso_mdl_ble_verifier(
         &self,
         schema: ProofSchema,
         exchange: String,

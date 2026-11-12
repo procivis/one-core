@@ -64,7 +64,7 @@ use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    VerificationProtocolCapabilities,
+    ShareResponseData, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
@@ -463,7 +463,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 )
                 .await
                 .map(|url| ShareResponse {
-                    url: url.to_string(),
+                    data: ShareResponseData::Url(url.to_string()),
                     interaction_id,
                     interaction_data: None,
                     expires_at,
@@ -493,7 +493,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 )
                 .await
                 .map(|url| ShareResponse {
-                    url: url.to_string(),
+                    data: ShareResponseData::Url(url.to_string()),
                     interaction_id,
                     interaction_data: None,
                     expires_at,
@@ -543,7 +543,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
 
                 let url = merge_query_params(mqtt_url, ble_url);
                 Ok(ShareResponse {
-                    url: format!("{url}"),
+                    data: ShareResponseData::Url(url.to_string()),
                     interaction_id,
                     interaction_data: Some(serialize_interaction_data(
                         &CreateProofInteractionData {

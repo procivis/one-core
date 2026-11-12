@@ -114,6 +114,17 @@ pub mod dcapi {
         pub parameters: EncryptionParameters,
     }
 
+    impl Serialize for EncryptionInfo {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            cbor!(["dcapi", self.parameters])
+                .map_err(ser::Error::custom)?
+                .serialize(serializer)
+        }
+    }
+
     impl<'a> Deserialize<'a> for EncryptionInfo {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
@@ -133,10 +144,9 @@ pub mod dcapi {
     }
 
     /// ISO 18013-7, C.2
-    #[derive(Debug, Clone, Deserialize)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub(crate) struct EncryptionParameters {
-        #[allow(unused)]
         pub nonce: Bstr,
         pub recipient_public_key: EphemeralSessionKey,
     }

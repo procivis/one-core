@@ -163,6 +163,12 @@ verificationProtocol:
       public:
         verifier:
           interactionExpiresInSeconds: 3600
+  ISO_MDL:
+    params:
+      public:
+        dcApiVerifier:
+          encryptionKeyStorage: "INTERNAL"
+          interactionExpiresInSeconds: 3600
 keyStorage:
   INTERNAL:
     params:

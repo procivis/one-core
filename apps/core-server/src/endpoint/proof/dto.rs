@@ -16,7 +16,7 @@ use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimDTO, ProofClaimValueDTO,
     ProofDetailResponseDTO, ProofFilterParamsDTO, ProofInputDTO, ProofListItemResponseDTO,
-    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
+    ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
 use one_dto_mapper::{
     From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -494,6 +494,9 @@ pub(crate) struct ShareProofRequestParamsRestDTO {
     #[into(with_fn = "convert_inner")]
     #[serde(default)]
     pub client_id_scheme: Option<ClientIdSchemeRestEnum>,
+
+    /// Required for DC-API
+    pub dc_api_origin: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
@@ -654,14 +657,15 @@ pub(crate) struct CredentialSetResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(ShareProofResponseDTO)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShareProofResponseRestDTO {
     /// Share URL, typically encoded as a QR code.
-    pub url: String,
-    /// URL becomes unusable by wallet holder at this time. Call the share
-    /// endpoint again to get a new URL.
+    pub url: Option<String>,
+    /// DC-API specific
+    pub request_json: Option<String>,
+    /// Invitation becomes unusable by wallet holder at this time. Call the share
+    /// endpoint again to renew.
     #[serde(serialize_with = "front_time_option")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub expires_at: Option<OffsetDateTime>,

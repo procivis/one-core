@@ -29,21 +29,12 @@ transport:
     params:
       private:
         brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
-  DC_API:
-    type: "DC_API"
-    display: "transport.dcApi"
-    enabled: true
-    order: 3
 verificationProtocol:
   OPENID4VP_PROXIMITY_DRAFT00:
     display: "exchange.openid00_proximity"
     order: 5
     type: "OPENID4VP_PROXIMITY_DRAFT00"
-    params: {}
   ISO_MDL:
-    type: "ISO_MDL"
-    display: "exchange.isoMdl"
-    order: 7
     params:
       public:
         holder:
