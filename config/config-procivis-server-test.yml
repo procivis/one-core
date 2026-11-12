@@ -19,8 +19,6 @@ walletProvider:
             enforceProductionBuild: false
         appVersion:
           minimum: "v1.50.0"
-        eudiWalletInfo:
-          providerName: "Procivis One Test"
         featureFlags:
           ecosystemsEnabled: true
           refreshCredentialBatchEnabled: true

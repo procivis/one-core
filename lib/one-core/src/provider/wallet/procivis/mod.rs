@@ -33,7 +33,6 @@ use crate::service::managed_instance::ecosystem_metadata::{
 use crate::service::managed_instance::mapper::params_into_display_names;
 
 mod attestation;
-mod mapper;
 mod model;
 mod validator;
 

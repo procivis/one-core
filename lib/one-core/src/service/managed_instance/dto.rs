@@ -151,16 +151,6 @@ pub(crate) struct TokenValidationParams {
     pub jwks_uri: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum WscdType {
-    Remote,
-    LocalExternal,
-    LocalInternal,
-    LocalNative,
-    Hybrid,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppVersionDTO {
@@ -385,7 +375,6 @@ pub struct WalletInstanceAttestationClaims {
     pub wallet_link: Option<String>,
     pub wallet_version: Option<String>,
     pub wallet_solution_certification_information: Option<serde_json::Value>,
-    pub eudi_wallet_info: Option<EudiWalletInfo>,
     pub client_status: Option<AttestationStatus>,
 }
 
@@ -394,7 +383,6 @@ pub struct WalletInstanceAttestationClaims {
 pub struct WalletUnitAttestationClaims {
     pub key_storage: Vec<SecurityLevel>,
     pub attested_keys: Vec<PublicJwk>,
-    pub eudi_wallet_info: Option<EudiWalletInfo>,
     pub key_storage_status: Option<AttestationStatus>,
     pub certification: Option<serde_json::Value>,
 
@@ -432,26 +420,6 @@ pub struct AttestationStatus {
 
     #[serde(rename = "exp", with = "crate::mapper::timestamp")]
     pub expires_at: OffsetDateTime,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct EudiWalletInfo {
-    pub general_info: EudiWalletGeneralInfo,
-    pub wscd_info: Option<WscdInfo>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct EudiWalletGeneralInfo {
-    pub wallet_provider_name: String,
-    pub wallet_solution_id: String,
-    pub wallet_solution_version: String,
-    #[serde(default)] // for backward compatibilty, treat as null if missing
-    pub wallet_solution_certification_information: serde_json::Value,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct WscdInfo {
-    pub wscd_type: WscdType,
 }
 
 /// Registration/activation parameters normalized across wallet and verifier providers.

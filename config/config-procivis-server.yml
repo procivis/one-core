@@ -157,11 +157,6 @@ walletProvider:
               ]
         walletCertification: "https://procivis.ch"
         signerIdentifierTypes: ["CERTIFICATE"]
-        eudiWalletInfo:
-          solutionId: "PROCIVIS_ONE"
-          solutionVersion: "1"
-          solutionCertificationInformation: "https://procivis.ch"
-          wscdType: HYBRID
         deviceAuthLeewaySeconds: 60
         documentSigners:
           - SIGN8

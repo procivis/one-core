@@ -1,6 +1,5 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use shared_types::IdentifierId;
 use standardized_types::jwk::PublicJwk;
@@ -121,7 +120,6 @@ impl ProcivisWalletProvider {
                         certification: Some(self.params.wallet_certification.to_owned()),
                         key_storage: vec![wua_request.security_level],
                         attested_keys: vec![holder_jwk],
-                        eudi_wallet_info: convert_inner(self.params.eudi_wallet_info.to_owned()),
                         key_storage_status: status.map(|status| AttestationStatus {
                             status,
                             expires_at: status_expiration_date,
@@ -241,7 +239,6 @@ impl ProcivisWalletProvider {
                         wallet_solution_certification_information: Some(
                             self.params.wallet_certification.to_owned(),
                         ),
-                        eudi_wallet_info: convert_inner(self.params.eudi_wallet_info.clone()),
                         client_status: status.map(|status| AttestationStatus {
                             status,
                             expires_at: status_expiration_date,

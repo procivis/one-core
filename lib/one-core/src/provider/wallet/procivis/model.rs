@@ -5,7 +5,7 @@ use time::Duration;
 
 use crate::config::core_config::IdentifierType;
 use crate::service::managed_instance::dto::{
-    AppVersionDTO, IntegrityCheck, UserAuthenticationParams, WscdType,
+    AppVersionDTO, IntegrityCheck, UserAuthenticationParams,
 };
 
 #[serde_as]
@@ -25,7 +25,6 @@ pub(super) struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub device_auth_leeway_seconds: Duration,
     pub app_version: Option<AppVersionDTO>,
-    pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
     #[serde(default)]
     pub document_signers: Vec<String>,
     pub feature_flags: FeatureFlagsParams,
@@ -67,16 +66,6 @@ pub(super) struct WalletUnitAttestationParams {
 
 fn default_31_days() -> Duration {
     Duration::days(31)
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct EudiWalletInfoConfig {
-    pub provider_name: String,
-    pub solution_id: String,
-    pub solution_version: String,
-    pub solution_certification_information: serde_json::Value,
-    pub wscd_type: WscdType,
 }
 
 #[derive(Clone, Debug, Deserialize)]
