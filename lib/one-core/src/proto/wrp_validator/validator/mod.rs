@@ -11,7 +11,7 @@ use super::model::{
     AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, RegistryKeys,
     TrustScope, WRPPayload,
 };
-use super::{QUALIFIED_EAA_CATEGORY, WRPValidator};
+use super::{QUALIFIED_EAA_CATEGORY, WRPValidator, relying_party_candidates};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -105,16 +105,7 @@ impl WRPValidator for WRPValidatorImpl {
                 .await
                 .error_while("building registration certificate token")?;
 
-        match token.payload.subject.as_ref() {
-            Some(subject) if subject == expected_rp_id => {}
-            other => {
-                return Err(WRPValidatorError::AccessRegistrationCertificateMismatch {
-                    field: "subject",
-                    expected: expected_rp_id.to_string(),
-                    actual: other.cloned().unwrap_or_default(),
-                });
-            }
-        }
+        validate_relying_party_binding(&token.payload, expected_rp_id)?;
 
         let issuer = token.header.x5c.ok_or(WRPValidatorError::MissingIssuer)?;
         let issuer_chain = x5c_into_pem_chain(&issuer).error_while("converting chain")?;
@@ -603,6 +594,35 @@ impl<'a> TryFrom<PublicKeySource<'a>> for TrustEntityIdentifier<'a> {
             PublicKeySource::Jwk { jwk } => Ok(Self::Jwk(jwk)),
         }
     }
+}
+
+fn validate_relying_party_binding(
+    payload: &JWTPayload<Payload>,
+    expected_rp_id: &str,
+) -> Result<(), WRPValidatorError> {
+    let subject = payload.subject.as_deref();
+    let intermediary = payload.custom.intermediary.as_ref();
+
+    if relying_party_candidates(subject, intermediary).any(|id| id == expected_rp_id) {
+        return Ok(());
+    }
+
+    let (field, actual) = match intermediary {
+        Some(intermediary) => (
+            "subject or intermediary",
+            format!(
+                "{} or {}",
+                subject.unwrap_or_default(),
+                intermediary.subject
+            ),
+        ),
+        None => ("subject", subject.unwrap_or_default().to_string()),
+    };
+    Err(WRPValidatorError::AccessRegistrationCertificateMismatch {
+        field,
+        expected: expected_rp_id.to_string(),
+        actual,
+    })
 }
 
 #[cfg(test)]

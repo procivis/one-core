@@ -317,7 +317,9 @@ fn build_eudi_trust_info(
     wrp: WalletRelyingPartyDetails,
 ) -> Result<EudiTrustInformationResponseDTO, EcosystemError> {
     let (eudi_ecosystem, has_intermediary) = match wrp {
-        WalletRelyingPartyDetails::RegistrationCertificate(reg_cert) => map_reg_cert(reg_cert)?,
+        WalletRelyingPartyDetails::RegistrationCertificate(reg_cert) => {
+            map_reg_cert(reg_cert, &access_certificate.rp_id)?
+        }
         WalletRelyingPartyDetails::NationalRegistryInfo(
             national_registry_info,
             privacy_policy_url,
@@ -349,7 +351,13 @@ fn validate_has_a_contact_option(
 
 fn map_reg_cert(
     reg_cert: JWTPayload<Payload>,
+    access_certificate_rp_id: &str,
 ) -> Result<(EudiTrustInformationResponseDTO, bool), EcosystemError> {
+    let is_intermediary_presenting = reg_cert
+        .custom
+        .intermediary
+        .as_ref()
+        .is_some_and(|intermediary| intermediary.subject == access_certificate_rp_id);
     Ok((
         EudiTrustInformationResponseDTO {
             name: reg_cert.custom.name,
@@ -380,7 +388,7 @@ fn map_reg_cert(
             intermediary: None,
             is_public_sector: reg_cert.custom.public_body.unwrap_or_default(),
         },
-        reg_cert.custom.intermediary.is_some(),
+        is_intermediary_presenting,
     ))
 }
 
@@ -584,6 +592,38 @@ mod tests {
     }
 
     #[test]
+    fn test_map_reg_cert_reports_intermediary_only_when_it_presents_access_certificate() {
+        let reg_cert: JWTPayload<Payload> = serde_json::from_value(json!({
+            "sub": "final-rp",
+            "name": "RP",
+            "country": "CH",
+            "registry_uri": "https://registry.example.com/",
+            "srv_description": [[]],
+            "entitlements": [],
+            "privacy_policy": "https://example.com/privacy",
+            "info_uri": "https://example.com/",
+            "supervisory_authority": {
+                "email": "supervisory@example.com",
+                "phone": "+41000000000",
+                "uri": "https://supervisory.example.com"
+            },
+            "policy_id": [],
+            "certificate_policy": "https://example.com/policy",
+            "status": { "status_list": { "uri": "https://example.com/status", "idx": "2" } },
+            "support_uri": "https://example.com/support",
+            "act": { "sub": "intermediary" }
+        }))
+        .unwrap();
+
+        let (_, presented_by_intermediary) =
+            map_reg_cert(reg_cert.clone(), "intermediary").unwrap();
+        let (_, presented_by_final_rp) = map_reg_cert(reg_cert, "final-rp").unwrap();
+
+        assert!(presented_by_intermediary);
+        assert!(!presented_by_final_rp);
+    }
+
+    #[test]
     fn test_map_reg_cert_skips_empty_service_description() {
         let reg_cert = serde_json::from_value(json!({
             "sub": "NTRCH-ch.procivis",
@@ -606,7 +646,7 @@ mod tests {
         }))
         .unwrap();
 
-        let (info, _) = map_reg_cert(reg_cert).unwrap();
+        let (info, _) = map_reg_cert(reg_cert, "rp").unwrap();
 
         assert_eq!(info.service_description, vec![]);
     }

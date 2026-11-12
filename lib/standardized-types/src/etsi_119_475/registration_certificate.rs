@@ -35,6 +35,7 @@ pub struct Payload {
     pub intended_use_id: Option<String>,
     pub public_body: Option<bool>,
     pub support_uri: Url,
+    #[serde(alias = "act")]
     pub intermediary: Option<Intermediary>,
 }
 
@@ -91,7 +92,11 @@ pub struct Status {
 pub struct Intermediary {
     #[serde(rename = "sub")]
     pub subject: String,
-    #[serde(rename = "name", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "name",
+        alias = "sname",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub common_name: Option<String>,
 }
 
@@ -212,6 +217,44 @@ mod test {
         let payload: Payload = serde_json::from_str(PAYLOAD).unwrap();
         let serialized = serde_json::to_value(&payload).unwrap();
         similar_asserts::assert_eq!(payload, serde_json::from_value(serialized).unwrap());
+    }
+
+    #[test]
+    fn serialize_intermediary_claim() {
+        let payload: Payload = serde_json::from_str(PAYLOAD).unwrap();
+
+        let serialized = serde_json::to_value(&payload).unwrap();
+
+        similar_asserts::assert_eq!(
+            serialized["intermediary"]["sub"],
+            "LEIXG-INTERMEDIARY-1234567890"
+        );
+        assert!(serialized.get("act").is_none());
+    }
+
+    #[test]
+    fn deserialize_intermediary_from_act_and_legacy_claim() {
+        let mut document: serde_json::Value = serde_json::from_str(PAYLOAD).unwrap();
+        let legacy: Payload = serde_json::from_value(document.clone()).unwrap();
+
+        let object = document.as_object_mut().unwrap();
+        let intermediary = object.remove("intermediary").unwrap();
+        object.insert("act".to_string(), intermediary);
+        let act: Payload = serde_json::from_value(document).unwrap();
+
+        assert!(act.intermediary.is_some());
+        similar_asserts::assert_eq!(legacy.intermediary, act.intermediary);
+    }
+
+    #[test]
+    fn deserialize_intermediary_common_name_from_sname() {
+        let intermediary: Intermediary =
+            serde_json::from_str(r#"{"sub": "LEIXG-1", "sname": "Intermediary Ltd."}"#).unwrap();
+
+        similar_asserts::assert_eq!(
+            intermediary.common_name,
+            Some("Intermediary Ltd.".to_string())
+        );
     }
 
     #[test]

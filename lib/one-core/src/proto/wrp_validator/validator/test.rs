@@ -9,14 +9,16 @@ use shared_types::{
 };
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_475::registration_certificate::{
-    Payload, Status, SupervisoryAuthority,
+    Intermediary, Payload, Status, SupervisoryAuthority,
 };
 use standardized_types::etsi_119_475::registry::LegalEntity;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use url::Url;
 
-use super::{QUALIFIED_EAA_CATEGORY, TrustEntityIdentifier, WRPValidatorImpl};
+use super::{
+    QUALIFIED_EAA_CATEGORY, TrustEntityIdentifier, WRPValidatorImpl, validate_relying_party_binding,
+};
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::trust_collection::{
     GetTrustCollectionList, TrustCollection, TrustCollectionFilterValue,
@@ -648,6 +650,70 @@ fn dummy_payload() -> Payload {
         support_uri: Url::parse("https://example.com/support").unwrap(),
         intermediary: None,
     }
+}
+
+fn dummy_jwt_payload(subject: Option<&str>, intermediary: Option<&str>) -> JWTPayload<Payload> {
+    let mut custom = dummy_payload();
+    custom.intermediary = intermediary.map(|subject| Intermediary {
+        subject: subject.to_string(),
+        common_name: None,
+    });
+    JWTPayload {
+        issued_at: None,
+        invalid_before: None,
+        expires_at: None,
+        issuer: None,
+        subject: subject.map(ToString::to_string),
+        audience: None,
+        jwt_id: None,
+        proof_of_possession_key: None,
+        custom,
+    }
+}
+
+#[test]
+fn test_relying_party_binding_accepts_matching_subject() {
+    let payload = dummy_jwt_payload(Some("rp"), None);
+
+    assert!(validate_relying_party_binding(&payload, "rp").is_ok());
+}
+
+#[test]
+fn test_relying_party_binding_accepts_intermediary_presenting_access_certificate() {
+    let payload = dummy_jwt_payload(Some("final-rp"), Some("intermediary"));
+
+    assert!(validate_relying_party_binding(&payload, "intermediary").is_ok());
+}
+
+#[test]
+fn test_relying_party_binding_accepts_subject_when_intermediary_is_listed() {
+    let payload = dummy_jwt_payload(Some("final-rp"), Some("intermediary"));
+
+    assert!(validate_relying_party_binding(&payload, "final-rp").is_ok());
+}
+
+#[test]
+fn test_relying_party_binding_rejects_unrelated_access_certificate() {
+    let payload = dummy_jwt_payload(Some("final-rp"), Some("intermediary"));
+
+    let result = validate_relying_party_binding(&payload, "other");
+
+    assert!(matches!(
+        result,
+        Err(WRPValidatorError::AccessRegistrationCertificateMismatch { .. })
+    ));
+}
+
+#[test]
+fn test_relying_party_binding_rejects_missing_subject() {
+    let payload = dummy_jwt_payload(None, Some("intermediary"));
+
+    let result = validate_relying_party_binding(&payload, "intermediary");
+
+    assert!(matches!(
+        result,
+        Err(WRPValidatorError::AccessRegistrationCertificateMismatch { .. })
+    ));
 }
 
 #[test]

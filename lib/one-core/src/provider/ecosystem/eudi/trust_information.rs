@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
+use serde::Deserialize;
 use shared_types::IdentifierTrustInformationId;
-use standardized_types::etsi_119_475::registration_certificate::Payload;
+use standardized_types::etsi_119_475::registration_certificate::{Intermediary, Payload};
 
 use super::EudiEcosystem;
 use super::mapper::map_dcql_credentials;
@@ -12,10 +13,17 @@ use crate::model::blob::BlobType;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
+use crate::proto::wrp_validator::relying_party_candidates;
 use crate::provider::ecosystem::error::EcosystemError;
 use crate::provider::ecosystem::model::{
     IdentifierTrustInformationType, ParsedTrustInformation, TrustInformationInput,
 };
+
+#[derive(Debug, Deserialize)]
+struct IntermediaryClaim {
+    #[serde(alias = "act")]
+    intermediary: Option<Intermediary>,
+}
 
 impl EudiEcosystem {
     pub(super) async fn parse_trust_information(
@@ -36,21 +44,22 @@ impl EudiEcosystem {
                 "No ETSI wallet relying party organization_id specified".to_string(),
             ));
         }
-        let mut reg_certs_by_rp: HashMap<&str, Payload> = HashMap::new();
+        let mut reg_certs_by_subject: HashMap<String, Payload> = HashMap::new();
         let mut result = Vec::with_capacity(trust_information.len());
         for trust_info in trust_information {
-            // Use the unverified subject only to select an existing relying party. The
-            // validator below still verifies the JWT and checks that its subject matches.
-            let parsed: DecomposedJwt<()> = Jwt::decompose_token(&trust_info.data)
-                .error_while("parsing registration certificate")?;
-            let rp_id = parsed
-                .payload
-                .subject
-                .as_ref()
-                .and_then(|subject| rp_ids.get(subject))
+            // Use the unverified claims only to select an existing relying party. The validator
+            // below still verifies the JWT and checks that its subject or intermediary matches.
+            let parsed: DecomposedJwt<IntermediaryClaim> =
+                Jwt::decompose_token(&trust_info.data)
+                    .error_while("parsing registration certificate")?;
+            let rp_id = relying_party_candidates(
+                parsed.payload.subject.as_deref(),
+                parsed.payload.custom.intermediary.as_ref(),
+            )
+            .find_map(|candidate| rp_ids.get(candidate))
                 .ok_or_else(|| {
                     EcosystemError::InvalidTrustInformation(
-                        "No access certificate matches the registration certificate subject"
+                        "No access certificate matches the registration certificate subject or intermediary"
                             .to_string(),
                     )
                 })?;
@@ -67,7 +76,8 @@ impl EudiEcosystem {
                 )
                 .await
                 .error_while("validating registration certificate")?;
-            if let Some(last_reg_cert) = reg_certs_by_rp.get(rp_id.as_str()) {
+            let subject = reg_cert_info.payload.subject.clone().unwrap_or_default();
+            if let Some(last_reg_cert) = reg_certs_by_subject.get(&subject) {
                 self.wrp_validator
                     .validate_registration_certificates_consistency(
                         last_reg_cert,
@@ -75,7 +85,7 @@ impl EudiEcosystem {
                     )
                     .error_while("validating registration certificates similarity")?;
             }
-            reg_certs_by_rp.insert(rp_id.as_str(), reg_cert_info.payload.custom.clone());
+            reg_certs_by_subject.insert(subject, reg_cert_info.payload.custom.clone());
 
             result.push(ParsedTrustInformation {
                 valid_from: reg_cert_info.payload.invalid_before,
@@ -126,13 +136,14 @@ impl EudiEcosystem {
             let blob_value = std::str::from_utf8(&blob.value).map_err(|e| {
                 EcosystemError::MappingError(format!("failed to parse blob value: {e}"))
             })?;
-            let parsed: DecomposedJwt<()> =
+            let parsed: DecomposedJwt<IntermediaryClaim> =
                 Jwt::decompose_token(blob_value).error_while("parsing trust information blob")?;
 
-            let covered = parsed
-                .payload
-                .subject
-                .is_some_and(|subject| rp_ids.contains(&subject));
+            let covered = relying_party_candidates(
+                parsed.payload.subject.as_deref(),
+                parsed.payload.custom.intermediary.as_ref(),
+            )
+            .any(|candidate| rp_ids.contains(candidate));
             if !covered {
                 orphaned.push(info.id);
             }
@@ -413,6 +424,70 @@ mod test {
             .unwrap();
 
         assert!(orphaned.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_find_orphaned_trust_information_keeps_matching_intermediary() {
+        let identifier_id = Uuid::new_v4().into();
+        let mut identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
+        let trust_info_id = Uuid::new_v4().into();
+        identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
+            trust_info_id,
+            identifier_id,
+            Uuid::new_v4().into(),
+        )]);
+
+        let ecosystem = setup(Mocks {
+            wrp_validator: access_certificate_validator("intermediary"),
+            blob_storage_provider: blob_storage_provider_returning(fake_jwt_with_payload(
+                json!({ "sub": "final-rp", "act": { "sub": "intermediary" } }),
+            )),
+        });
+
+        let orphaned = ecosystem
+            .find_orphaned_trust_information(&identifier)
+            .await
+            .unwrap();
+
+        assert!(orphaned.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_parse_trust_information_selects_rp_by_intermediary() {
+        let identifier_id = Uuid::new_v4().into();
+        let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
+
+        let mut wrp_validator = access_certificate_validator("intermediary");
+        wrp_validator
+            .expect_validate_registration_certificate()
+            .once()
+            .returning(|_, rp_id, _, _| {
+                assert_eq!(rp_id, "intermediary");
+                Ok(RegistrationCertificateResult {
+                    trust_entity: None,
+                    payload: dummy_reg_cert_payload(),
+                })
+            });
+
+        let ecosystem = setup(Mocks {
+            wrp_validator,
+            ..Default::default()
+        });
+
+        let result = ecosystem
+            .parse_trust_information(
+                &identifier,
+                &[TrustInformationInput {
+                    data: fake_jwt_with_payload(
+                        json!({ "sub": "final-rp", "intermediary": { "sub": "intermediary" } }),
+                    ),
+                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
+                }],
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result.len(), 1);
     }
 
     #[tokio::test]

@@ -19,6 +19,107 @@ use crate::proto::wrp_validator::model::AccessCertificateResult;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::ecosystem::eudi::{AttestationCoverageSource, EudiEcosystem};
 
+#[derive(Clone)]
+struct RefCertCredentialInfo<'a> {
+    credential_def: standardized_types::etsi_119_475::Credential,
+    reg_cert: &'a VerifierInfoAttestation,
+    purpose: Vec<standardized_types::etsi_119_475::MultiLangString>,
+    relying_party_name: String,
+}
+
+struct RelyingPartyCertificates<'a> {
+    subject: String,
+    last_reg_cert: Option<registration_certificate::Payload>,
+    allowed_credentials: HashMap<Option<CredentialQueryId>, Vec<RefCertCredentialInfo<'a>>>,
+}
+
+#[derive(Debug)]
+struct RegCertInfo {
+    relying_party_name: String,
+    purpose: HashMap<CredentialQueryId, Vec<MultiLangString>>,
+}
+
+fn select_relying_party(
+    relying_parties: &[RelyingPartyCertificates],
+    dcql_query: &DcqlQuery,
+) -> Result<HashMap<String, RegCertInfo>, HolderProofError> {
+    if relying_parties.is_empty() {
+        return reg_certs_covering_query(&HashMap::new(), dcql_query);
+    }
+
+    let mut first_error = None;
+    for relying_party in relying_parties {
+        match reg_certs_covering_query(&relying_party.allowed_credentials, dcql_query) {
+            Ok(reg_certs) => return Ok(reg_certs),
+            Err(err) => {
+                first_error.get_or_insert(err);
+            }
+        }
+    }
+
+    match first_error {
+        Some(err) => Err(err),
+        None => Ok(HashMap::new()),
+    }
+}
+
+fn reg_certs_covering_query(
+    allowed_credentials: &HashMap<Option<CredentialQueryId>, Vec<RefCertCredentialInfo>>,
+    dcql_query: &DcqlQuery,
+) -> Result<HashMap<String, RegCertInfo>, HolderProofError> {
+    let mut used_reg_certs: HashMap<String, RegCertInfo> = HashMap::new();
+    for credential_query in &dcql_query.credentials {
+        let empty = vec![];
+        let mut related_reg_cert_credentials = allowed_credentials
+            .get(&None)
+            .unwrap_or(&empty)
+            .iter()
+            .chain(
+                allowed_credentials
+                    .get(&Some(credential_query.id.to_owned()))
+                    .unwrap_or(&empty),
+            );
+
+        let mut reason = QueryMismatchReason::NoIntendedUse;
+        let Some(RefCertCredentialInfo {
+            reg_cert,
+            purpose,
+            relying_party_name,
+            ..
+        }) = related_reg_cert_credentials.find(
+            |RefCertCredentialInfo { credential_def, .. }| {
+                let Err(mismatch_reason) =
+                    credential_query_matches_reg_cert_credential(credential_query, credential_def)
+                else {
+                    return true;
+                };
+                reason = mismatch_reason;
+                false
+            },
+        )
+        else {
+            return Err(HolderProofError::DisallowedQuery {
+                query: credential_query.id.to_owned(),
+                document: AttestationCoverageSource::RegistrationCertificate,
+                reason,
+            });
+        };
+
+        used_reg_certs
+            .entry(reg_cert.data.to_owned())
+            .or_insert(RegCertInfo {
+                relying_party_name: relying_party_name.to_owned(),
+                purpose: Default::default(),
+            })
+            .purpose
+            .insert(
+                credential_query.id.to_owned(),
+                convert_inner(purpose.to_owned()),
+            );
+    }
+    Ok(used_reg_certs)
+}
+
 impl EudiEcosystem {
     #[tracing::instrument(level = "debug", skip_all, err(level = "debug"))]
     pub(crate) async fn resolve_holder_proof(
@@ -115,19 +216,7 @@ impl EudiEcosystem {
         organisation_id: OrganisationId,
         leeway: Duration,
     ) -> Result<(), HolderProofError> {
-        #[derive(Clone)]
-        struct RefCertCredentialInfo<'a> {
-            credential_def: standardized_types::etsi_119_475::Credential,
-            reg_cert: &'a VerifierInfoAttestation,
-            purpose: Vec<standardized_types::etsi_119_475::MultiLangString>,
-            relying_party_name: String,
-        }
-
-        let mut allowed_credentials: HashMap<
-            Option<CredentialQueryId>,
-            Vec<RefCertCredentialInfo>,
-        > = HashMap::new();
-        let mut last_reg_cert_jwt: Option<registration_certificate::Payload> = None;
+        let mut relying_parties: Vec<RelyingPartyCertificates> = Vec::new();
         // Individual registration certificate failures are tolerated (a verifier may present
         // several, only one has to match). Keep the first concrete reason so that, if *every*
         // certificate fails, the wallet sees why instead of a generic "query not allowed".
@@ -153,7 +242,26 @@ impl EudiEcosystem {
                 }
             };
 
-            if let Some(last_reg_cert) = &last_reg_cert_jwt
+            let subject = trusted.payload.subject.clone().unwrap_or_default();
+            let index = match relying_parties
+                .iter()
+                .position(|relying_party| relying_party.subject == subject)
+            {
+                Some(index) => index,
+                None => {
+                    relying_parties.push(RelyingPartyCertificates {
+                        subject,
+                        last_reg_cert: None,
+                        allowed_credentials: HashMap::new(),
+                    });
+                    relying_parties.len() - 1
+                }
+            };
+            let Some(relying_party) = relying_parties.get_mut(index) else {
+                continue;
+            };
+
+            if let Some(last_reg_cert) = &relying_party.last_reg_cert
                 && let Err(err) = self
                     .wrp_validator
                     .validate_registration_certificates_consistency(
@@ -167,7 +275,7 @@ impl EudiEcosystem {
                 });
                 continue;
             }
-            last_reg_cert_jwt = Some(trusted.payload.custom.clone());
+            relying_party.last_reg_cert = Some(trusted.payload.custom.clone());
 
             let (Some(credentials), Some(purpose)) = (
                 trusted.payload.custom.credentials,
@@ -187,13 +295,15 @@ impl EudiEcosystem {
                 .collect();
 
             if reg_cert.credential_ids.is_empty() {
-                allowed_credentials
+                relying_party
+                    .allowed_credentials
                     .entry(None)
                     .or_default()
                     .extend(creds_with_reg_cert);
             } else {
                 for credential_id in &reg_cert.credential_ids {
-                    allowed_credentials
+                    relying_party
+                        .allowed_credentials
                         .entry(Some(credential_id.to_owned()))
                         .or_default()
                         .extend(creds_with_reg_cert.to_owned());
@@ -204,67 +314,15 @@ impl EudiEcosystem {
         // Every provided registration certificate failed validation - report the underlying
         // reason (untrusted provider, AC/RC mismatch, invalid fields, ...) rather than the
         // generic "requested credential not permitted".
-        if allowed_credentials.is_empty()
+        if relying_parties
+            .iter()
+            .all(|relying_party| relying_party.allowed_credentials.is_empty())
             && let Some(err) = first_reg_cert_error
         {
             return Err(err.into());
         }
 
-        struct RegCertInfo {
-            relying_party_name: String,
-            purpose: HashMap<CredentialQueryId, Vec<MultiLangString>>,
-        }
-        let mut used_reg_certs: HashMap<String, RegCertInfo> = HashMap::new();
-        for credential_query in &dcql_query.credentials {
-            let empty = vec![];
-            let mut related_reg_cert_credentials = allowed_credentials
-                .get(&None)
-                .unwrap_or(&empty)
-                .iter()
-                .chain(
-                    allowed_credentials
-                        .get(&Some(credential_query.id.to_owned()))
-                        .unwrap_or(&empty),
-                );
-
-            let mut reason = QueryMismatchReason::NoIntendedUse;
-            let Some(RefCertCredentialInfo {
-                reg_cert,
-                purpose,
-                relying_party_name,
-                ..
-            }) = related_reg_cert_credentials.find(
-                |RefCertCredentialInfo { credential_def, .. }| {
-                    let Err(mismatch_reason) = credential_query_matches_reg_cert_credential(
-                        credential_query,
-                        credential_def,
-                    ) else {
-                        return true;
-                    };
-                    reason = mismatch_reason;
-                    false
-                },
-            )
-            else {
-                return Err(HolderProofError::DisallowedQuery {
-                    query: credential_query.id.to_owned(),
-                    document: AttestationCoverageSource::RegistrationCertificate,
-                    reason,
-                });
-            };
-
-            used_reg_certs
-                .entry(reg_cert.data.to_owned())
-                .or_insert(RegCertInfo {
-                    relying_party_name: relying_party_name.to_owned(),
-                    purpose: Default::default(),
-                })
-                .purpose
-                .insert(
-                    credential_query.id.to_owned(),
-                    convert_inner(purpose.to_owned()),
-                );
-        }
+        let used_reg_certs = select_relying_party(&relying_parties, dcql_query)?;
 
         for (
             used_reg_cert,
@@ -384,4 +442,109 @@ fn find_matching_intended_use(
     }
 
     Err(reason)
+}
+
+#[cfg(test)]
+mod test {
+    use serde_json::json;
+    use similar_asserts::assert_eq;
+    use standardized_types::openid4vp::VerifierInfoAttestationFormat;
+
+    use super::*;
+
+    fn query() -> DcqlQuery {
+        serde_json::from_value(json!({
+            "credentials": [{
+                "id": "query",
+                "format": "dc+sd-jwt",
+                "meta": { "vct_values": ["https://example.com/age"] },
+                "claims": [{ "path": ["age_over_18"] }]
+            }]
+        }))
+        .unwrap()
+    }
+
+    fn credential(vct: &str) -> standardized_types::etsi_119_475::Credential {
+        serde_json::from_value(json!({
+            "format": "dc+sd-jwt",
+            "meta": { "vct_values": [vct] },
+            "claim": [{ "path": ["age_over_18"] }]
+        }))
+        .unwrap()
+    }
+
+    fn attestation(data: &str) -> VerifierInfoAttestation {
+        VerifierInfoAttestation {
+            format: VerifierInfoAttestationFormat::RegistrationCert,
+            data: data.to_string(),
+            credential_ids: vec![],
+        }
+    }
+
+    fn relying_party<'a>(
+        subject: &str,
+        attestation: &'a VerifierInfoAttestation,
+        vct: &str,
+    ) -> RelyingPartyCertificates<'a> {
+        RelyingPartyCertificates {
+            subject: subject.to_string(),
+            last_reg_cert: None,
+            allowed_credentials: HashMap::from([(
+                None,
+                vec![RefCertCredentialInfo {
+                    credential_def: credential(vct),
+                    reg_cert: attestation,
+                    purpose: vec![],
+                    relying_party_name: subject.to_string(),
+                }],
+            )]),
+        }
+    }
+
+    #[test]
+    fn test_select_relying_party_picks_the_only_covering_client() {
+        let first = attestation("first");
+        let second = attestation("second");
+        let relying_parties = [
+            relying_party("client-a", &first, "https://example.com/other"),
+            relying_party("client-b", &second, "https://example.com/age"),
+        ];
+
+        let selected = select_relying_party(&relying_parties, &query()).unwrap();
+
+        assert_eq!(selected.len(), 1);
+        assert_eq!(selected["second"].relying_party_name, "client-b");
+    }
+
+    #[test]
+    fn test_select_relying_party_picks_first_of_several_covering_clients() {
+        let first = attestation("first");
+        let second = attestation("second");
+        let relying_parties = [
+            relying_party("client-a", &first, "https://example.com/age"),
+            relying_party("client-b", &second, "https://example.com/age"),
+        ];
+
+        let selected = select_relying_party(&relying_parties, &query()).unwrap();
+
+        assert_eq!(selected.len(), 1);
+        assert_eq!(selected["first"].relying_party_name, "client-a");
+    }
+
+    #[test]
+    fn test_select_relying_party_rejects_query_covered_by_nobody() {
+        let first = attestation("first");
+        let relying_parties = [relying_party(
+            "client-a",
+            &first,
+            "https://example.com/other",
+        )];
+
+        let result = select_relying_party(&relying_parties, &query());
+
+        assert!(matches!(
+            result,
+            Err(HolderProofError::DisallowedQuery { .. })
+        ));
+    }
 }

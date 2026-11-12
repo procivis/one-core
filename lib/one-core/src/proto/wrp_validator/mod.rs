@@ -2,7 +2,7 @@ use error::WRPValidatorError;
 use model::{
     AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, TrustScope,
 };
-use standardized_types::etsi_119_475::registration_certificate::Payload;
+use standardized_types::etsi_119_475::registration_certificate::{Intermediary, Payload};
 use time::Duration;
 use url::Url;
 
@@ -27,6 +27,18 @@ pub(crate) fn credential_category(claims: &[Claim], namespaced: bool) -> Option<
             },
         )
         .and_then(|claim| claim.value.as_deref())
+}
+
+pub(crate) fn relying_party_candidates<'a>(
+    subject: Option<&'a str>,
+    intermediary: Option<&'a Intermediary>,
+) -> impl Iterator<Item = &'a str> {
+    let candidates = match (subject, intermediary) {
+        (Some(subject), Some(intermediary)) => vec![subject, intermediary.subject.as_str()],
+        (Some(subject), None) => vec![subject],
+        (None, _) => vec![],
+    };
+    candidates.into_iter()
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
