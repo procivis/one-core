@@ -45,7 +45,7 @@ FROM base
 WORKDIR /app
 
 COPY --from=builder --chmod=555 /core-server .
-COPY config /app/config
+COPY --chmod=a=rX config /app/config
 
 EXPOSE 3000
 
