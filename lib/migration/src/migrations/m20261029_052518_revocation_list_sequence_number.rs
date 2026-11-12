@@ -1,9 +1,9 @@
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{integer, integer_null, string};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 
 use crate::datatype::{large_blob, timestamp, uuid_char, uuid_char_null};
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
-use crate::migrations::m20260417_150300_initial::{Certificate, Identifier};
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
@@ -82,76 +82,19 @@ async fn up_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     disable_foreign_key_checks(manager).await?;
 
     manager
-        .create_table(
-            Table::create()
-                .table(RevocationListNew::Table)
-                .col(uuid_char(RevocationList::Id).primary_key())
-                .col(timestamp(RevocationList::CreatedDate, manager))
-                .col(timestamp(RevocationList::LastModified, manager))
-                .col(large_blob(RevocationList::FormattedList, manager))
-                .col(string(RevocationList::Purpose))
-                .col(string(RevocationList::Format))
-                .col(string(RevocationList::Type))
-                .col(uuid_char(RevocationList::IssuerIdentifierId))
-                .col(uuid_char_null(RevocationList::IssuerCertificateId))
-                .col(integer(RevocationList::SequenceNumber))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk_revocation_list_issuer_identifier_id")
-                        .from_tbl(RevocationListNew::Table)
-                        .from_col(RevocationList::IssuerIdentifierId)
-                        .to_tbl(Identifier::Table)
-                        .to_col(Identifier::Id),
-                )
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk_revocation_list_issuer_certificate_id")
-                        .from_tbl(RevocationListNew::Table)
-                        .from_col(RevocationList::IssuerCertificateId)
-                        .to_tbl(Certificate::Table)
-                        .to_col(Certificate::Id),
-                )
-                .to_owned(),
-        )
-        .await?;
-
-    let copied_columns = vec![
-        RevocationList::Id,
-        RevocationList::CreatedDate,
-        RevocationList::LastModified,
-        RevocationList::FormattedList,
-        RevocationList::Purpose,
-        RevocationList::Format,
-        RevocationList::Type,
-        RevocationList::IssuerIdentifierId,
-        RevocationList::IssuerCertificateId,
-    ];
-    let mut insert_columns = copied_columns.clone();
-    insert_columns.push(RevocationList::SequenceNumber);
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(RevocationListNew::Table)
-                .columns(insert_columns)
-                .select_from(
-                    Query::select()
-                        .from(RevocationList::Table)
-                        .columns(copied_columns)
-                        .expr(Expr::value(0))
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(RevocationList::Table).to_owned())
-        .await?;
-    manager
-        .rename_table(
-            Table::rename()
-                .table(RevocationListNew::Table, RevocationList::Table)
+        .recreate_table(
+            Table::recreate()
+                .table(RevocationList::Table)
+                .modify_column(uuid_char(RevocationList::Id).primary_key())
+                .modify_column(timestamp(RevocationList::CreatedDate, manager))
+                .modify_column(timestamp(RevocationList::LastModified, manager))
+                .modify_column(large_blob(RevocationList::FormattedList, manager))
+                .modify_column(string(RevocationList::Purpose))
+                .modify_column(string(RevocationList::Format))
+                .modify_column(string(RevocationList::Type))
+                .modify_column(uuid_char(RevocationList::IssuerIdentifierId))
+                .modify_column(uuid_char_null(RevocationList::IssuerCertificateId))
+                .add_column_with_value(integer(RevocationList::SequenceNumber), Expr::value(0))
                 .to_owned(),
         )
         .await?;
@@ -172,9 +115,4 @@ enum RevocationList {
     IssuerIdentifierId,
     IssuerCertificateId,
     SequenceNumber,
-}
-
-#[derive(DeriveIden)]
-enum RevocationListNew {
-    Table,
 }

@@ -1,10 +1,10 @@
 use sea_orm::{ConnectionTrait, FromQueryResult};
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{string, string_len, string_null, text};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 use sha2::{Digest, Sha256};
 
 use crate::datatype::{timestamp, timestamp_null, uuid_char};
-use crate::migrations::m20260417_150300_initial::TrustCollection;
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
@@ -136,93 +136,26 @@ async fn up_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         .await?;
 
     manager
-        .create_table(
-            Table::create()
-                .table(TrustListSubscriptionNew::Table)
-                .col(uuid_char(TrustListSubscription::Id).primary_key())
-                .col(timestamp(TrustListSubscription::CreatedDate, manager))
-                .col(timestamp(TrustListSubscription::LastModified, manager))
-                .col(timestamp_null(
+        .recreate_table(
+            Table::recreate()
+                .table(TrustListSubscription::Table)
+                .modify_column(uuid_char(TrustListSubscription::Id).primary_key())
+                .modify_column(timestamp(TrustListSubscription::CreatedDate, manager))
+                .modify_column(timestamp(TrustListSubscription::LastModified, manager))
+                .modify_column(timestamp_null(
                     TrustListSubscription::DeactivatedAt,
                     manager,
                 ))
-                .col(string_null(TrustListSubscription::Role))
-                .col(string(TrustListSubscription::Type))
-                .col(string(TrustListSubscription::State))
-                .col(string(TrustListSubscription::Name))
-                .col(text(TrustListSubscription::Reference))
-                .col(string_len(TrustListSubscription::ReferenceHash, 64))
-                .col(uuid_char(TrustListSubscription::TrustCollectionId))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-TrustListSubscription-TrustCollectionId")
-                        .from_tbl(TrustListSubscriptionNew::Table)
-                        .from_col(TrustListSubscription::TrustCollectionId)
-                        .to_tbl(TrustCollection::Table)
-                        .to_col(TrustCollection::Id),
-                )
+                .modify_column(string_null(TrustListSubscription::Role))
+                .modify_column(string(TrustListSubscription::Type))
+                .modify_column(string(TrustListSubscription::State))
+                .modify_column(string(TrustListSubscription::Name))
+                .modify_column(text(TrustListSubscription::Reference))
+                .modify_column(string_len(TrustListSubscription::ReferenceHash, 64))
+                .modify_column(uuid_char(TrustListSubscription::TrustCollectionId))
                 .to_owned(),
         )
         .await?;
-
-    let copied_columns = vec![
-        TrustListSubscription::Id,
-        TrustListSubscription::CreatedDate,
-        TrustListSubscription::LastModified,
-        TrustListSubscription::DeactivatedAt,
-        TrustListSubscription::Role,
-        TrustListSubscription::Type,
-        TrustListSubscription::State,
-        TrustListSubscription::Name,
-        TrustListSubscription::Reference,
-        TrustListSubscription::ReferenceHash,
-        TrustListSubscription::TrustCollectionId,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(TrustListSubscriptionNew::Table)
-                .columns(copied_columns.clone())
-                .select_from(
-                    Query::select()
-                        .columns(copied_columns)
-                        .from(TrustListSubscription::Table)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(TrustListSubscription::Table).to_owned())
-        .await?;
-    manager
-        .rename_table(
-            Table::rename()
-                .table(
-                    TrustListSubscriptionNew::Table,
-                    TrustListSubscription::Table,
-                )
-                .to_owned(),
-        )
-        .await?;
-
-    add_nullable_unique_idx(
-        TrustListSubscription::Table,
-        TrustListSubscription::DeactivatedAt,
-        "index-TrustListSubscription-Name-Col-DeactivatedAt-Unique",
-        NullableIdxOpts {
-            non_nullable_columns: vec![
-                TrustListSubscription::Name,
-                TrustListSubscription::TrustCollectionId,
-            ],
-            null_value: Some("not_deactivated"),
-            ..Default::default()
-        },
-        manager,
-    )
-    .await?;
 
     db.execute_unprepared("PRAGMA defer_foreign_keys = OFF;")
         .await
@@ -243,9 +176,4 @@ enum TrustListSubscription {
     Reference,
     ReferenceHash,
     TrustCollectionId,
-}
-
-#[derive(DeriveIden)]
-enum TrustListSubscriptionNew {
-    Table,
 }

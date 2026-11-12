@@ -1,11 +1,11 @@
 use sea_orm::{ConnectionTrait, FromQueryResult};
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{boolean, string, string_len, text_null};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 use sha2::{Digest, Sha256};
 
 use crate::datatype::{timestamp, timestamp_null, uuid_char};
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
-use crate::migrations::m20260417_150300_initial::Organisation;
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
@@ -126,102 +126,24 @@ async fn up_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     disable_foreign_key_checks(manager).await?;
 
     manager
-        .create_table(
-            Table::create()
-                .table(DidNew::Table)
-                .col(uuid_char(Did::Id).primary_key())
-                .col(timestamp(Did::CreatedDate, manager))
-                .col(timestamp(Did::LastModified, manager))
-                .col(timestamp_null(Did::DeletedAt, manager))
-                .col(string_len(Did::Did, 4000))
-                .col(string_len(Did::DidHash, 64))
-                .col(string(Did::Name))
-                .col(string(Did::Type))
-                .col(string(Did::Method))
-                .col(boolean(Did::Deactivated))
-                .col(text_null(Did::Log))
-                .col(uuid_char(Did::OrganisationId))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-Did-OrganisationId")
-                        .from_tbl(DidNew::Table)
-                        .from_col(Did::OrganisationId)
-                        .to_tbl(Organisation::Table)
-                        .to_col(Organisation::Id),
-                )
-                .to_owned(),
-        )
-        .await?;
-
-    let copied_columns = vec![
-        Did::Id,
-        Did::Did,
-        Did::DidHash,
-        Did::CreatedDate,
-        Did::LastModified,
-        Did::Name,
-        Did::Type,
-        Did::Method,
-        Did::OrganisationId,
-        Did::Deactivated,
-        Did::DeletedAt,
-        Did::Log,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(DidNew::Table)
-                .columns(copied_columns.clone())
-                .select_from(
-                    Query::select()
-                        .columns(copied_columns)
-                        .from(Did::Table)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(Did::Table).to_owned())
-        .await?;
-
-    manager
-        .rename_table(Table::rename().table(DidNew::Table, Did::Table).to_owned())
-        .await?;
-
-    manager
-        .create_index(
-            Index::create()
-                .name("index-Did-CreatedDate")
+        .recreate_table(
+            Table::recreate()
                 .table(Did::Table)
-                .col(Did::CreatedDate)
+                .modify_column(uuid_char(Did::Id).primary_key())
+                .modify_column(timestamp(Did::CreatedDate, manager))
+                .modify_column(timestamp(Did::LastModified, manager))
+                .modify_column(timestamp_null(Did::DeletedAt, manager))
+                .modify_column(string_len(Did::Did, 4000))
+                .modify_column(string_len(Did::DidHash, 64))
+                .modify_column(string(Did::Name))
+                .modify_column(string(Did::Type))
+                .modify_column(string(Did::Method))
+                .modify_column(boolean(Did::Deactivated))
+                .modify_column(text_null(Did::Log))
+                .modify_column(uuid_char(Did::OrganisationId))
                 .to_owned(),
         )
         .await?;
-
-    manager
-        .create_index(
-            Index::create()
-                .name("index-Did-Did")
-                .table(Did::Table)
-                .col(Did::Did)
-                .to_owned(),
-        )
-        .await?;
-
-    add_nullable_unique_idx(
-        Did::Table,
-        Did::DeletedAt,
-        "index_Did_Name-OrganisationId-DeletedAt_Unique",
-        NullableIdxOpts {
-            non_nullable_columns: vec![Did::Name, Did::OrganisationId],
-            ..Default::default()
-        },
-        manager,
-    )
-    .await?;
 
     enable_foreign_key_checks(manager).await
 }
@@ -242,9 +164,4 @@ enum Did {
     Deactivated,
     Log,
     OrganisationId,
-}
-
-#[derive(DeriveIden)]
-enum DidNew {
-    Table,
 }

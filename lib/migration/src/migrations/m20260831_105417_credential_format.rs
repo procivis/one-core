@@ -1,10 +1,10 @@
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::schema::*;
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 
 use crate::batch_utils::get_ids;
-use crate::datatype::{timestamp, uuid_char, uuid_char_null};
+use crate::datatype::uuid_char_null;
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
-use crate::migrations::m20260417_150300_initial::{Credential, CredentialSchema};
+use crate::migrations::m20260417_150300_initial::Credential;
 use crate::migrations::m20260429_120000_credential_schema_multiformat::CredentialSchemaFormat;
 use crate::migrations::m20260526_095002_credential_grouping::CredentialNew as CredentialWithType;
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
@@ -104,7 +104,6 @@ impl MigrationTrait for Migration {
 
 #[derive(DeriveIden)]
 enum CredentialSchemaFormatNew {
-    Table,
     EcosystemSchemaId,
 }
 
@@ -117,73 +116,14 @@ async fn up_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     disable_foreign_key_checks(manager).await?;
 
     manager
-        .create_table(
-            Table::create()
-                .table(CredentialSchemaFormatNew::Table)
-                .col(uuid_char(CredentialSchemaFormat::Id).primary_key())
-                .col(timestamp(CredentialSchemaFormat::CreatedDate, manager))
-                .col(timestamp(CredentialSchemaFormat::LastModified, manager))
-                .col(uuid_char(CredentialSchemaFormat::CredentialSchemaId))
-                .col(string(CredentialSchemaFormat::Format))
-                .col(string(CredentialSchemaFormatNew::EcosystemSchemaId))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-CredentialSchemaFormat-CredentialSchemaId")
-                        .from_tbl(CredentialSchemaFormat::Table)
-                        .from_col(CredentialSchemaFormat::CredentialSchemaId)
-                        .to_tbl(CredentialSchema::Table)
-                        .to_col(CredentialSchema::Id),
-                )
-                .to_owned()
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(CredentialSchemaFormatNew::Table)
-                .columns([
-                    CredentialSchemaFormat::Id.into_iden(),
-                    CredentialSchemaFormat::CreatedDate.into_iden(),
-                    CredentialSchemaFormat::LastModified.into_iden(),
-                    CredentialSchemaFormat::CredentialSchemaId.into_iden(),
-                    CredentialSchemaFormat::Format.into_iden(),
-                    CredentialSchemaFormatNew::EcosystemSchemaId.into_iden(),
-                ])
-                .select_from(
-                    Query::select()
-                        .columns([
-                            CredentialSchemaFormat::Id,
-                            CredentialSchemaFormat::CreatedDate,
-                            CredentialSchemaFormat::LastModified,
-                            CredentialSchemaFormat::CredentialSchemaId,
-                            CredentialSchemaFormat::Format,
-                            CredentialSchemaFormat::SchemaId,
-                        ])
-                        .from(CredentialSchemaFormat::Table)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(
-            Table::drop()
+        .recreate_table(
+            Table::recreate()
                 .table(CredentialSchemaFormat::Table)
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .rename_table(
-            Table::rename()
-                .table(
-                    CredentialSchemaFormatNew::Table,
-                    CredentialSchemaFormat::Table,
+                .rename_column(
+                    CredentialSchemaFormat::SchemaId,
+                    CredentialSchemaFormatNew::EcosystemSchemaId,
                 )
+                .discard_indexes()
                 .to_owned(),
         )
         .await?;

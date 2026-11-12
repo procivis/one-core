@@ -1,9 +1,8 @@
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::schema::{
-    boolean, boolean_null, integer_null, json_null, string, string_len_null, string_null,
-};
+use sea_orm_migration::schema::{boolean_null, integer_null, string, string_null};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 
-use crate::datatype::{timestamp, timestamp_null, uuid_char};
+use crate::datatype::{timestamp, uuid_char};
 use crate::index_helper::table_with_indexes;
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
@@ -189,93 +188,16 @@ async fn alter_credential_schema_mysql_postgres(manager: &SchemaManager<'_>) -> 
 
 async fn alter_credential_schema_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     let db = manager.get_connection();
-    db.execute_unprepared("PRAGMA defer_foreign_keys = ON;")
-        .await?;
 
     manager
-        .create_table(
-            Table::create()
-                .table(CredentialSchemaNew::Table)
-                .col(uuid_char(CredentialSchemaNew::Id).primary_key())
-                .col(timestamp(CredentialSchemaNew::CreatedDate, manager))
-                .col(timestamp(CredentialSchemaNew::LastModified, manager))
-                .col(timestamp_null(CredentialSchemaNew::DeletedAt, manager))
-                .col(string(CredentialSchemaNew::Name))
-                .col(string_null(CredentialSchemaNew::Format))
-                .col(string_null(CredentialSchemaNew::RevocationMethod))
-                .col(string_null(CredentialSchemaNew::SchemaId))
-                .col(string(CredentialSchemaNew::LayoutType))
-                .col(json_null(CredentialSchemaNew::LayoutProperties))
-                .col(string(CredentialSchemaNew::ImportedSourceUrl))
-                .col(boolean(CredentialSchemaNew::AllowSuspension))
-                .col(boolean(
-                    CredentialSchemaNew::RequiresWalletInstanceAttestation,
-                ))
-                .col(string_null(CredentialSchemaNew::KeyStorageSecurity))
-                .col(string_null(CredentialSchemaNew::TransactionCodeType))
-                .col(integer_null(CredentialSchemaNew::TransactionCodeLength))
-                .col(string_len_null(
-                    CredentialSchemaNew::TransactionCodeDescription,
-                    300,
-                ))
-                .col(uuid_char(CredentialSchemaNew::OrganisationId))
-                .col(integer_null(CredentialSchemaNew::BatchSize))
-                .col(boolean_null(CredentialSchemaNew::AllowRevocation))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name(FK_CREDENTIAL_SCHEMA_ORGANISATION)
-                        .from_tbl(CredentialSchemaNew::Table)
-                        .from_col(CredentialSchemaNew::OrganisationId)
-                        .to_tbl(Organisation::Table)
-                        .to_col(Organisation::Id),
-                )
-                .to_owned(),
-        )
-        .await?;
-
-    let copied_columns = vec![
-        CredentialSchemaNew::Id,
-        CredentialSchemaNew::CreatedDate,
-        CredentialSchemaNew::LastModified,
-        CredentialSchemaNew::DeletedAt,
-        CredentialSchemaNew::Name,
-        CredentialSchemaNew::Format,
-        CredentialSchemaNew::RevocationMethod,
-        CredentialSchemaNew::SchemaId,
-        CredentialSchemaNew::LayoutType,
-        CredentialSchemaNew::LayoutProperties,
-        CredentialSchemaNew::ImportedSourceUrl,
-        CredentialSchemaNew::AllowSuspension,
-        CredentialSchemaNew::RequiresWalletInstanceAttestation,
-        CredentialSchemaNew::KeyStorageSecurity,
-        CredentialSchemaNew::TransactionCodeType,
-        CredentialSchemaNew::TransactionCodeLength,
-        CredentialSchemaNew::TransactionCodeDescription,
-        CredentialSchemaNew::OrganisationId,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(CredentialSchemaNew::Table)
-                .columns(copied_columns.to_vec())
-                .select_from(
-                    Query::select()
-                        .from(CredentialSchema::Table)
-                        .columns(copied_columns)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(CredentialSchema::Table).to_owned())
-        .await?;
-    manager
-        .rename_table(
-            Table::rename()
-                .table(CredentialSchemaNew::Table, CredentialSchema::Table)
+        .recreate_table(
+            Table::recreate()
+                .table(CredentialSchema::Table)
+                .modify_column(string_null(CredentialSchemaNew::Format))
+                .modify_column(string_null(CredentialSchemaNew::SchemaId))
+                .add_column(integer_null(CredentialSchemaNew::BatchSize))
+                .add_column(boolean_null(CredentialSchemaNew::AllowRevocation))
+                .discard_indexes()
                 .to_owned(),
         )
         .await?;
@@ -292,6 +214,7 @@ async fn alter_credential_schema_sqlite(manager: &SchemaManager<'_>) -> Result<(
                 .to_owned(),
         )
         .await?;
+
     db.execute_unprepared(
         r#"
         CREATE UNIQUE INDEX IF NOT EXISTS "index_CredentialSchema_Name-OrganisationId-DeletedAt_Unique"
@@ -303,9 +226,6 @@ async fn alter_credential_schema_sqlite(manager: &SchemaManager<'_>) -> Result<(
         "#,
     )
     .await?;
-
-    db.execute_unprepared("PRAGMA defer_foreign_keys = OFF;")
-        .await?;
 
     Ok(())
 }
@@ -363,33 +283,10 @@ enum CredentialSchema {
     AllowRevocation,
 }
 
-#[derive(DeriveIden)]
-enum Organisation {
-    Table,
-    Id,
-}
-
 #[derive(Clone, DeriveIden)]
 enum CredentialSchemaNew {
-    Table,
-    Id,
-    CreatedDate,
-    LastModified,
-    DeletedAt,
-    Name,
     Format,
-    RevocationMethod,
     SchemaId,
-    LayoutType,
-    LayoutProperties,
-    ImportedSourceUrl,
-    AllowSuspension,
-    RequiresWalletInstanceAttestation,
-    KeyStorageSecurity,
-    TransactionCodeType,
-    TransactionCodeLength,
-    TransactionCodeDescription,
-    OrganisationId,
     BatchSize,
     AllowRevocation,
 }
@@ -446,4 +343,3 @@ const INDEX_CREDENTIAL_SCHEMA_CREATED_DATE: &str = "index-CredentialSchema-Creat
 
 // Matches the constant in the initial migration so the SQLite-rewritten table's FK is
 // identical to the original.
-const FK_CREDENTIAL_SCHEMA_ORGANISATION: &str = "fk-CredentialSchema-OrganisationId";

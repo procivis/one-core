@@ -1,6 +1,7 @@
 use sea_orm::{ConnectionTrait, FromQueryResult};
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{string, string_len, string_null};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 use sha2::{Digest, Sha256};
 
 use crate::datatype::{large_blob, timestamp, timestamp_null, uuid_char};
@@ -10,7 +11,6 @@ use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 pub struct Migration;
 
 const INDEX_NAME: &str = "index-RemoteEntityCache-Key-Unique";
-const INDEX_TYPE_EXPIRATION_DATE: &str = "index-RemoteEntityCache-Type-ExpirationDate";
 const PAGE_SIZE: u64 = 1000;
 
 /// Moves the unique index of the cache key from the key itself to its SHA-256.
@@ -123,73 +123,24 @@ async fn backfill_rows(db: &impl ConnectionTrait) -> Result<(), DbErr> {
 
 async fn up_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
-        .create_table(
-            Table::create()
-                .table(RemoteEntityCacheNew::Table)
-                .col(uuid_char(RemoteEntityCache::Id).primary_key())
-                .col(timestamp(RemoteEntityCache::CreatedDate, manager))
-                .col(timestamp(RemoteEntityCache::LastModified, manager))
-                .col(timestamp(RemoteEntityCache::LastUsed, manager))
-                .col(timestamp_null(RemoteEntityCache::ExpirationDate, manager))
-                .col(string(RemoteEntityCache::Type))
-                .col(string_len(RemoteEntityCache::Key, 4096))
-                .col(string_len(RemoteEntityCache::KeyHash, 64))
-                .col(string_null(RemoteEntityCache::MediaType))
-                .col(large_blob(RemoteEntityCache::Value, manager))
-                .to_owned(),
-        )
-        .await?;
-
-    let copied_columns = vec![
-        RemoteEntityCache::Id,
-        RemoteEntityCache::CreatedDate,
-        RemoteEntityCache::LastModified,
-        RemoteEntityCache::LastUsed,
-        RemoteEntityCache::ExpirationDate,
-        RemoteEntityCache::Type,
-        RemoteEntityCache::Key,
-        RemoteEntityCache::KeyHash,
-        RemoteEntityCache::MediaType,
-        RemoteEntityCache::Value,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(RemoteEntityCacheNew::Table)
-                .columns(copied_columns.clone())
-                .select_from(
-                    Query::select()
-                        .columns(copied_columns)
-                        .from(RemoteEntityCache::Table)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(RemoteEntityCache::Table).to_owned())
-        .await?;
-
-    manager
-        .rename_table(
-            Table::rename()
-                .table(RemoteEntityCacheNew::Table, RemoteEntityCache::Table)
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .create_index(
-            Index::create()
-                .name(INDEX_TYPE_EXPIRATION_DATE)
+        .recreate_table(
+            Table::recreate()
                 .table(RemoteEntityCache::Table)
-                .col(RemoteEntityCache::Type)
-                .col(RemoteEntityCache::ExpirationDate)
+                .modify_column(uuid_char(RemoteEntityCache::Id).primary_key())
+                .modify_column(timestamp(RemoteEntityCache::CreatedDate, manager))
+                .modify_column(timestamp(RemoteEntityCache::LastModified, manager))
+                .modify_column(timestamp(RemoteEntityCache::LastUsed, manager))
+                .modify_column(timestamp_null(RemoteEntityCache::ExpirationDate, manager))
+                .modify_column(string(RemoteEntityCache::Type))
+                .modify_column(string_len(RemoteEntityCache::Key, 4096))
+                .modify_column(string_len(RemoteEntityCache::KeyHash, 64))
+                .modify_column(string_null(RemoteEntityCache::MediaType))
+                .modify_column(large_blob(RemoteEntityCache::Value, manager))
                 .to_owned(),
         )
-        .await
+        .await?;
+
+    Ok(())
 }
 
 #[derive(Clone, DeriveIden)]
@@ -205,9 +156,4 @@ enum RemoteEntityCache {
     KeyHash,
     MediaType,
     Value,
-}
-
-#[derive(DeriveIden)]
-enum RemoteEntityCacheNew {
-    Table,
 }

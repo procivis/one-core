@@ -20,6 +20,7 @@ members = [
   "platforms/uniffi-bindgen-ts-interface",
 
   "apps/core-server",
+  "lib/sea-orm-migration-sqlite",
 ]
 resolver = "2"
 
@@ -58,6 +59,8 @@ roxmltree                = { version = "0.20" }
 rstest                   = { version = "0.26" }
 rustls-platform-verifier = { version = "0.6" }
 sea-orm                  = { version = "2", default-features = false }
+sea-orm-migration        = { version = "2", default-features = false }
+sea-schema               = { version = "0.18", default-features = false }
 secrecy                  = { version = "0.10.3", features = ["serde"] }
 serde                    = { version = "1.0" }
 serde_json               = { version = "1.0" }

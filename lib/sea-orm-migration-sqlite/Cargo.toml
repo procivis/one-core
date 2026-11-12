@@ -1,0 +1,19 @@
+[package]
+name = "sea-orm-migration-sqlite"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+sea-orm.workspace           = true
+sea-orm-migration.workspace = true
+tracing.workspace           = true
+
+[dev-dependencies]
+sea-orm         = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio", "macros", "with-time", "mock"] }
+similar-asserts.workspace = true
+tokio           = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true

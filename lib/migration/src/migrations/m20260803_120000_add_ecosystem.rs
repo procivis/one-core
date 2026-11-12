@@ -1,10 +1,10 @@
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::schema::{string, string_null, text_null};
+use sea_orm_migration::schema::{string, string_null};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 
-use crate::datatype::{timestamp, timestamp_null, uuid_char};
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
 use crate::migrations::m20260417_150300_initial::{
-    Credential, CredentialSchema, Organisation, Proof, ProofSchema, TrustCollection,
+    Credential, CredentialSchema, Proof, ProofSchema, TrustCollection,
 };
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
@@ -144,68 +144,11 @@ async fn trust_collection_sane(manager: &SchemaManager<'_>) -> Result<(), DbErr>
 
 async fn trust_collection_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
-        .create_table(
-            Table::create()
-                .table(TrustCollectionNew::Table)
-                .col(uuid_char(TrustCollection::Id).primary_key())
-                .col(timestamp(TrustCollection::CreatedDate, manager))
-                .col(timestamp(TrustCollection::LastModified, manager))
-                .col(timestamp_null(TrustCollection::DeactivatedAt, manager))
-                .col(string(TrustCollection::Name))
-                .col(text_null(TrustCollection::RemoteTrustCollectionUrl))
-                .col(uuid_char(TrustCollection::OrganisationId))
-                .col(string(Col::Ecosystem))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-TrustCollection-OrganisationId")
-                        .from_tbl(TrustCollectionNew::Table)
-                        .from_col(TrustCollection::OrganisationId)
-                        .to_tbl(Organisation::Table)
-                        .to_col(Organisation::Id),
-                )
-                .to_owned(),
-        )
-        .await?;
-
-    let copied_columns = [
-        TrustCollection::Id.into_iden(),
-        TrustCollection::CreatedDate.into_iden(),
-        TrustCollection::LastModified.into_iden(),
-        TrustCollection::DeactivatedAt.into_iden(),
-        TrustCollection::Name.into_iden(),
-        TrustCollection::RemoteTrustCollectionUrl.into_iden(),
-        TrustCollection::OrganisationId.into_iden(),
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(TrustCollectionNew::Table)
-                .columns(
-                    copied_columns
-                        .iter()
-                        .cloned()
-                        .chain([Col::Ecosystem.into_iden()]),
-                )
-                .select_from(
-                    Query::select()
-                        .columns(copied_columns)
-                        .expr_as(Expr::value(EUDI_ECOSYSTEM), Col::Ecosystem.into_iden())
-                        .from(TrustCollection::Table)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(TrustCollection::Table).to_owned())
-        .await?;
-
-    manager
-        .rename_table(
-            Table::rename()
-                .table(TrustCollectionNew::Table, TrustCollection::Table)
+        .recreate_table(
+            Table::recreate()
+                .table(TrustCollection::Table)
+                .add_column_with_value(string(Col::Ecosystem), Expr::value(EUDI_ECOSYSTEM))
+                .discard_indexes()
                 .to_owned(),
         )
         .await?;
@@ -222,11 +165,6 @@ async fn trust_collection_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbEr
         manager,
     )
     .await
-}
-
-#[derive(DeriveIden)]
-enum TrustCollectionNew {
-    Table,
 }
 
 #[derive(DeriveIden)]

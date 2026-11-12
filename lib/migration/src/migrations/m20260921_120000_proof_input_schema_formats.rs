@@ -2,12 +2,11 @@ use std::collections::{BTreeSet, HashMap};
 
 use sea_orm::{DbBackend, FromQueryResult};
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::schema::{big_integer, integer, text, text_null};
+use sea_orm_migration::schema::{text, text_null};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 
 use crate::batch_utils::get_ids;
-use crate::datatype::{timestamp, uuid_char};
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
-use crate::migrations::m20260417_150300_initial::{CredentialSchema, ProofSchema};
 use crate::migrations::m20260429_120000_credential_schema_multiformat::CredentialSchemaFormat;
 
 #[derive(DeriveMigrationName)]
@@ -135,69 +134,10 @@ impl MigrationTrait for Migration {
 async fn rebuild_sqlite_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     disable_foreign_key_checks(manager).await?;
     manager
-        .create_table(
-            Table::create()
-                .table(ProofInputSchemaNew::Table)
-                .col(
-                    big_integer(ProofInputSchema::Id)
-                        .auto_increment()
-                        .primary_key(),
-                )
-                .col(timestamp(ProofInputSchema::CreatedDate, manager))
-                .col(timestamp(ProofInputSchema::LastModified, manager))
-                .col(integer(ProofInputSchema::Order))
-                .col(uuid_char(ProofInputSchema::CredentialSchema))
-                .col(uuid_char(ProofInputSchema::ProofSchema))
-                .col(text(ProofInputSchema::Formats))
-                .foreign_key(
-                    ForeignKey::create()
-                        .name("fk-ProofInputSchema-CredentialSchema")
-                        .from(
-                            ProofInputSchemaNew::Table,
-                            ProofInputSchema::CredentialSchema,
-                        )
-                        .to(CredentialSchema::Table, CredentialSchema::Id),
-                )
-                .foreign_key(
-                    ForeignKey::create()
-                        .name("fk-ProofInputSchema-ProofSchema")
-                        .from(ProofInputSchemaNew::Table, ProofInputSchema::ProofSchema)
-                        .to(ProofSchema::Table, ProofSchema::Id),
-                )
-                .to_owned(),
-        )
-        .await?;
-    let columns = [
-        ProofInputSchema::Id,
-        ProofInputSchema::CreatedDate,
-        ProofInputSchema::LastModified,
-        ProofInputSchema::Order,
-        ProofInputSchema::CredentialSchema,
-        ProofInputSchema::ProofSchema,
-        ProofInputSchema::Formats,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(ProofInputSchemaNew::Table)
-                .columns(columns)
-                .select_from(
-                    Query::select()
-                        .columns(columns)
-                        .from(ProofInputSchema::Table)
-                        .to_owned(),
-                )
-                .map_err(|error| DbErr::Migration(error.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .drop_table(Table::drop().table(ProofInputSchema::Table).to_owned())
-        .await?;
-    manager
-        .rename_table(
-            Table::rename()
-                .table(ProofInputSchemaNew::Table, ProofInputSchema::Table)
+        .recreate_table(
+            Table::recreate()
+                .table(ProofInputSchema::Table)
+                .modify_column(text(ProofInputSchema::Formats))
                 .to_owned(),
         )
         .await?;
@@ -208,15 +148,6 @@ async fn rebuild_sqlite_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> 
 enum ProofInputSchema {
     Table,
     Id,
-    CreatedDate,
-    LastModified,
-    Order,
     CredentialSchema,
-    ProofSchema,
     Formats,
-}
-
-#[derive(DeriveIden)]
-enum ProofInputSchemaNew {
-    Table,
 }

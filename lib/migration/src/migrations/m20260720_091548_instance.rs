@@ -5,6 +5,7 @@ use sea_orm_migration::prelude::*;
 use sea_orm_migration::schema::{
     integer_null, json_binary_null, string, string_null, text, text_null,
 };
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 use serde::Serialize;
 use serde_with::skip_serializing_none;
 use time::OffsetDateTime;
@@ -638,15 +639,6 @@ async fn wallet_instance_attestation_table(manager: &SchemaManager<'_>) -> Resul
 
 #[derive(DeriveIden)]
 enum NewOrganisation {
-    Table,
-    Id,
-    CreatedDate,
-    LastModified,
-    DeactivatedAt,
-    WalletProvider,
-    WalletProviderIssuer,
-    ParentOrganisation,
-
     // newly added
     Configuration,
     VerifierProvider,
@@ -688,85 +680,23 @@ async fn organisation_table_schema_simple(manager: &SchemaManager<'_>) -> Result
 }
 
 async fn organisation_table_schema_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    let db = manager.get_connection();
-    db.execute_unprepared("PRAGMA defer_foreign_keys = ON;")
-        .await?;
-
     manager
-        .create_table(
-            Table::create()
-                .table(NewOrganisation::Table)
-                .col(uuid_char(NewOrganisation::Id).primary_key())
-                .col(timestamp(NewOrganisation::CreatedDate, manager))
-                .col(timestamp(NewOrganisation::LastModified, manager))
-                .col(timestamp_null(NewOrganisation::DeactivatedAt, manager))
-                .col(string_null(NewOrganisation::WalletProvider))
-                .col(uuid_char_null(NewOrganisation::ParentOrganisation))
-                .col(uuid_char_null(NewOrganisation::WalletProviderIssuer))
-                .col(json_binary_null(NewOrganisation::Configuration))
-                .col(string_null(NewOrganisation::VerifierProvider))
-                .col(uuid_char_null(NewOrganisation::VerifierProviderIssuer))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-Organisation-ParentOrganisation")
-                        .from_tbl(NewOrganisation::Table)
-                        .from_col(NewOrganisation::ParentOrganisation)
-                        .to_tbl(NewOrganisation::Table)
-                        .to_col(NewOrganisation::Id)
-                        .on_delete(ForeignKeyAction::SetNull),
-                )
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-OrganisationWalletUnitIssuer-IssuerId")
-                        .from_tbl(NewOrganisation::Table)
-                        .from_col(NewOrganisation::WalletProviderIssuer)
-                        .to_tbl(Identifier::Table)
-                        .to_col(Identifier::Id),
-                )
-                .foreign_key(
+        .recreate_table(
+            Table::recreate()
+                .table(Organisation::Table)
+                .add_column(json_binary_null(NewOrganisation::Configuration))
+                .add_column(string_null(NewOrganisation::VerifierProvider))
+                .add_column(uuid_char_null(NewOrganisation::VerifierProviderIssuer))
+                .add_foreign_key(
                     ForeignKeyCreateStatement::new()
                         .name("fk-Organisation-VerifierProviderIssuer")
-                        .from_tbl(NewOrganisation::Table)
+                        .from_tbl(Organisation::Table)
                         .from_col(NewOrganisation::VerifierProviderIssuer)
                         .to_tbl(Identifier::Table)
-                        .to_col(Identifier::Id),
-                )
-                .to_owned(),
-        )
-        .await?;
-
-    let copied_columns = vec![
-        Organisation::Id,
-        Organisation::CreatedDate,
-        Organisation::LastModified,
-        Organisation::DeactivatedAt,
-        Organisation::WalletProvider,
-        Organisation::WalletProviderIssuer,
-        Organisation::ParentOrganisation,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(NewOrganisation::Table)
-                .columns(copied_columns.to_vec())
-                .select_from(
-                    Query::select()
-                        .from(Organisation::Table)
-                        .columns(copied_columns)
+                        .to_col(Identifier::Id)
                         .to_owned(),
                 )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(Organisation::Table).to_owned())
-        .await?;
-    manager
-        .rename_table(
-            Table::rename()
-                .table(NewOrganisation::Table, Organisation::Table)
+                .discard_indexes()
                 .to_owned(),
         )
         .await?;
@@ -801,9 +731,6 @@ async fn organisation_table_schema_sqlite(manager: &SchemaManager<'_>) -> Result
                 .col(Organisation::ParentOrganisation)
                 .to_owned(),
         )
-        .await?;
-
-    db.execute_unprepared("PRAGMA defer_foreign_keys = OFF;")
         .await?;
 
     Ok(())

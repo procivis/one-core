@@ -3768,9 +3768,11 @@ dependencies = [
  "ct-codecs",
  "hex",
  "migration",
+ "rand 0.10.3",
  "regex",
  "sea-orm",
  "sea-orm-migration",
+ "sea-orm-migration-sqlite",
  "sea-schema",
  "serde",
  "serde_json",
@@ -5638,6 +5640,17 @@ dependencies = [
  "sea-schema",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "sea-orm-migration-sqlite"
+version = "0.1.0"
+dependencies = [
+ "sea-orm",
+ "sea-orm-migration",
+ "similar-asserts",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

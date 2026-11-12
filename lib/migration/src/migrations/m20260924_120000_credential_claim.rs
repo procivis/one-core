@@ -1,8 +1,8 @@
 use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::schema::{boolean, string};
+use sea_orm_migration_sqlite::{ForeignKeyRef, SchemaManagerExt, TableExt};
 
-use crate::datatype::{large_blob_null, timestamp, uuid_char};
+use crate::datatype::uuid_char;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -130,65 +130,16 @@ impl MigrationTrait for Migration {
 }
 
 async fn rebuild_sqlite_claims(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    let connection = manager.get_connection();
-    connection
-        .execute_unprepared("PRAGMA defer_foreign_keys = ON")
-        .await?;
-    let replacement = Alias::new("claim_without_credential");
     manager
-        .create_table(
-            Table::create()
-                .table(replacement.clone())
-                .col(uuid_char(Claim::Id).primary_key())
-                .col(timestamp(Claim::CreatedDate, manager))
-                .col(timestamp(Claim::LastModified, manager))
-                .col(large_blob_null(Claim::Value, manager))
-                .col(string(Claim::Path))
-                .col(boolean(Claim::SelectivelyDisclosable))
-                .col(uuid_char(Claim::ClaimSchemaId))
-                .foreign_key(
-                    ForeignKey::create()
-                        .name("fk-Claim-ClaimSchemaId")
-                        .from(replacement.clone(), Claim::ClaimSchemaId)
-                        .to(Alias::new("claim_schema"), Alias::new("id")),
-                )
+        .recreate_table(
+            Table::recreate()
+                .table(Claim::Table)
+                .drop_foreign_key(ForeignKeyRef::new(["credential_id"], "credential", ["id"]))
+                .drop_column(Claim::CredentialId)
+                .discard_indexes()
                 .to_owned(),
         )
-        .await?;
-    let columns = [
-        Claim::Id,
-        Claim::CreatedDate,
-        Claim::LastModified,
-        Claim::Value,
-        Claim::Path,
-        Claim::SelectivelyDisclosable,
-        Claim::ClaimSchemaId,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(replacement.clone())
-                .columns(columns.clone())
-                .select_from(
-                    Query::select()
-                        .columns(columns)
-                        .from(Claim::Table)
-                        .to_owned(),
-                )
-                .map_err(|error| DbErr::Migration(error.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .drop_table(Table::drop().table(Claim::Table).to_owned())
-        .await?;
-    manager
-        .rename_table(Table::rename().table(replacement, Claim::Table).to_owned())
-        .await?;
-    connection
-        .execute_unprepared("PRAGMA defer_foreign_keys = OFF")
-        .await?;
-    Ok(())
+        .await
 }
 
 #[derive(DeriveIden)]
@@ -205,9 +156,4 @@ enum Claim {
     Id,
     CredentialId,
     ClaimSchemaId,
-    CreatedDate,
-    LastModified,
-    Value,
-    Path,
-    SelectivelyDisclosable,
 }

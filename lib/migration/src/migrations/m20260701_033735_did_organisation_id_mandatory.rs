@@ -1,9 +1,9 @@
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::schema::{boolean, string, string_len, text_null};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 
-use crate::datatype::{timestamp, timestamp_null, uuid_char};
+use crate::datatype::uuid_char;
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
-use crate::migrations::m20260417_150300_initial::{Did, Organisation};
+use crate::migrations::m20260417_150300_initial::Did;
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
@@ -76,74 +76,15 @@ impl MigrationTrait for Migration {
     }
 }
 
-#[derive(DeriveIden)]
-enum DidNew {
-    Table,
-}
-
 async fn up_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
-        .create_table(
-            Table::create()
-                .table(DidNew::Table)
-                .col(uuid_char(Did::Id).primary_key())
-                .col(timestamp(Did::CreatedDate, manager))
-                .col(timestamp(Did::LastModified, manager))
-                .col(timestamp_null(Did::DeletedAt, manager))
-                .col(string_len(Did::Did, 4000))
-                .col(string(Did::Name))
-                .col(string(Did::Type))
-                .col(string(Did::Method))
-                .col(boolean(Did::Deactivated))
-                .col(text_null(Did::Log))
-                .col(uuid_char(Did::OrganisationId))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-Did-OrganisationId")
-                        .from_tbl(Did::Table)
-                        .from_col(Did::OrganisationId)
-                        .to_tbl(Organisation::Table)
-                        .to_col(Organisation::Id),
-                )
+        .recreate_table(
+            Table::recreate()
+                .table(Did::Table)
+                .modify_column(uuid_char(Did::OrganisationId))
+                .discard_indexes()
                 .to_owned(),
         )
-        .await?;
-
-    let copied_columns = vec![
-        Did::Id,
-        Did::Did,
-        Did::CreatedDate,
-        Did::LastModified,
-        Did::Name,
-        Did::Type,
-        Did::Method,
-        Did::OrganisationId,
-        Did::Deactivated,
-        Did::DeletedAt,
-        Did::Log,
-    ];
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(DidNew::Table)
-                .columns(copied_columns.clone())
-                .select_from(
-                    Query::select()
-                        .columns(copied_columns)
-                        .from(Did::Table)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(Did::Table).to_owned())
-        .await?;
-
-    manager
-        .rename_table(Table::rename().table(DidNew::Table, Did::Table).to_owned())
         .await?;
 
     manager

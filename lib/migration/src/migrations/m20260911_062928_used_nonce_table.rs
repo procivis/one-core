@@ -1,11 +1,11 @@
 use sea_orm::FromQueryResult;
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::schema::{string, string_null};
+use sea_orm_migration_sqlite::{SchemaManagerExt, TableExt};
 use time::OffsetDateTime;
 
-use crate::datatype::{large_blob_null, timestamp, timestamp_null, uuid_char};
+use crate::datatype::{timestamp, uuid_char};
 use crate::foreign_key::{disable_foreign_key_checks, enable_foreign_key_checks};
-use crate::migrations::m20260417_150300_initial::{Interaction, Organisation};
+use crate::migrations::m20260417_150300_initial::Interaction;
 use crate::supported_db_type::{SupportedDbType, WithSupportedDbType};
 
 #[derive(DeriveMigrationName)]
@@ -128,77 +128,15 @@ async fn cleanup_interaction_simple(manager: &SchemaManager<'_>) -> Result<(), D
     Ok(())
 }
 
-#[derive(DeriveIden)]
-pub enum InteractionNew {
-    Table,
-    Ecosystem,
-    EcosystemData,
-}
-
 async fn cleanup_interaction_sqlite(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     disable_foreign_key_checks(manager).await?;
 
     manager
-        .create_table(
-            Table::create()
-                .table(InteractionNew::Table)
-                .col(uuid_char(Interaction::Id).primary_key())
-                .col(timestamp(Interaction::CreatedDate, manager))
-                .col(timestamp(Interaction::LastModified, manager))
-                .col(timestamp_null(Interaction::ExpiresAt, manager))
-                .col(large_blob_null(Interaction::Data, manager))
-                .col(string(Interaction::InteractionType))
-                .col(uuid_char(Interaction::OrganisationId))
-                .col(string_null(InteractionNew::Ecosystem))
-                .col(large_blob_null(InteractionNew::EcosystemData, manager))
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-interaction-OrganisationId")
-                        .from_tbl(Interaction::Table)
-                        .from_col(Interaction::OrganisationId)
-                        .to_tbl(Organisation::Table)
-                        .to_col(Organisation::Id),
-                )
-                .to_owned(),
-        )
-        .await?;
-
-    let copied_columns = vec![
-        Interaction::Id.into_iden(),
-        Interaction::CreatedDate.into_iden(),
-        Interaction::LastModified.into_iden(),
-        Interaction::ExpiresAt.into_iden(),
-        Interaction::Data.into_iden(),
-        Interaction::InteractionType.into_iden(),
-        Interaction::OrganisationId.into_iden(),
-        InteractionNew::Ecosystem.into_iden(),
-        InteractionNew::EcosystemData.into_iden(),
-    ];
-
-    manager
-        .exec_stmt(
-            Query::insert()
-                .into_table(InteractionNew::Table)
-                .columns(copied_columns.clone())
-                .select_from(
-                    Query::select()
-                        .columns(copied_columns)
-                        .from(Interaction::Table)
-                        .to_owned(),
-                )
-                .map_err(|e| DbErr::Migration(e.to_string()))?
-                .to_owned(),
-        )
-        .await?;
-
-    manager
-        .drop_table(Table::drop().table(Interaction::Table).to_owned())
-        .await?;
-
-    manager
-        .rename_table(
-            Table::rename()
-                .table(InteractionNew::Table, Interaction::Table)
+        .recreate_table(
+            Table::recreate()
+                .table(Interaction::Table)
+                .drop_column(Interaction::NonceId)
+                .discard_indexes()
                 .to_owned(),
         )
         .await?;
