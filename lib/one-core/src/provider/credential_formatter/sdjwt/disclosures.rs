@@ -402,17 +402,49 @@ pub(crate) fn parse_disclosure(
     Ok(parsed)
 }
 
+/// Finds the `Disclosure` (with index) matching `hash` (either the current or the
+/// legacy digest), if any.
+fn find_disclosure<'a>(
+    disclosures: &[(&'a Disclosure, (String, String))],
+    hash: &str,
+) -> Option<(usize, &'a Disclosure)> {
+    disclosures
+        .iter()
+        .enumerate()
+        .find(|(_, (_, (diclosure_hash, legacy_hash)))| {
+            diclosure_hash == hash || legacy_hash == hash
+        })
+        .map(|(index, (disclosure, _))| (index, *disclosure))
+}
+
+/// Records that the disclosure at `index` is being expanded.
+///
+/// Per the SD-JWT specification each digest MUST be referenced at most once;
+/// <https://datatracker.ietf.org/doc/html/rfc9901#section-4.1-4>
+#[derive(Default)]
+struct UsedDisclosures(HashSet<usize>);
+
+impl UsedDisclosures {
+    fn mark_used(&mut self, index: usize) -> Result<(), FormatterError> {
+        if !self.0.insert(index) {
+            return Err(FormatterError::CouldNotExtractCredentials(
+                "SD-JWT disclosure digest referenced more than once".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 fn gather_disclosures_from_sd(
     disclosures: &[(&Disclosure, (String, String))],
     sd_hashes: &[String],
+    used: &mut UsedDisclosures,
 ) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
     let mut result = HashMap::new();
 
     sd_hashes.iter().try_for_each(|hash| {
-        if let Some((disclosure, _)) = disclosures
-            .iter()
-            .find(|(_, disclosure_hash)| *hash == *disclosure_hash.0 || *hash == *disclosure_hash.1)
-        {
+        if let Some((index, disclosure)) = find_disclosure(disclosures, hash) {
+            used.mark_used(index)?;
             let credential_claim = CredentialClaim {
                 selectively_disclosable: true,
                 metadata: false,
@@ -463,10 +495,11 @@ pub(crate) fn gather_object_sd_hashes(claims: &HashMap<String, CredentialClaim>)
 fn gather_insertables_from_object(
     disclosures: &[(&Disclosure, (String, String))],
     map: &HashMap<String, CredentialClaim>,
+    used: &mut UsedDisclosures,
 ) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
     let sd_hashes = gather_object_sd_hashes(map);
     if !sd_hashes.is_empty() {
-        return gather_disclosures_from_sd(disclosures, &sd_hashes);
+        return gather_disclosures_from_sd(disclosures, &sd_hashes, used);
     }
 
     Ok(HashMap::new())
@@ -475,6 +508,7 @@ fn gather_insertables_from_object(
 fn expand_array_elements_in_place(
     disclosures: &[(&Disclosure, (String, String))],
     array: &mut [CredentialClaim],
+    used: &mut UsedDisclosures,
 ) -> Result<(), FormatterError> {
     for claim in array.iter_mut() {
         if let Some(obj) = claim.value.as_object()
@@ -482,10 +516,9 @@ fn expand_array_elements_in_place(
             && let Some(sd_hash) = obj
                 .get(SELECTIVE_DISCLOSURE_ARRAY_MARKER)
                 .and_then(|value| value.value.as_str())
-            && let Some((disclosure, _)) = disclosures.iter().find(|(_, disclosure_hash)| {
-                *sd_hash == *disclosure_hash.0 || *sd_hash == *disclosure_hash.1
-            })
+            && let Some((index, disclosure)) = find_disclosure(disclosures, sd_hash)
         {
+            used.mark_used(index)?;
             *claim = CredentialClaim {
                 selectively_disclosable: true,
                 metadata: false,
@@ -496,23 +529,32 @@ fn expand_array_elements_in_place(
     Ok(())
 }
 
-pub fn recursively_expand_disclosures(
+pub(super) fn recursively_expand_disclosures(
     disclosures: &[(&Disclosure, (String, String))],
     claims: &mut CredentialClaim,
 ) -> Result<(), FormatterError> {
+    let mut used = UsedDisclosures::default();
+    expand_disclosures_inner(disclosures, claims, &mut used)
+}
+
+fn expand_disclosures_inner(
+    disclosures: &[(&Disclosure, (String, String))],
+    claims: &mut CredentialClaim,
+    used: &mut UsedDisclosures,
+) -> Result<(), FormatterError> {
     if let Some(map) = claims.value.as_object_mut() {
         let values: HashMap<String, CredentialClaim> =
-            gather_insertables_from_object(disclosures, map)?;
+            gather_insertables_from_object(disclosures, map, used)?;
 
         map.remove(SELECTIVE_DISCLOSURE_MARKER);
         map.extend(values);
 
         map.iter_mut()
-            .try_for_each(|(_, v)| recursively_expand_disclosures(disclosures, v))?;
+            .try_for_each(|(_, v)| expand_disclosures_inner(disclosures, v, used))?;
     } else if let Some(array) = claims.value.as_array_mut() {
-        expand_array_elements_in_place(disclosures, array)?;
+        expand_array_elements_in_place(disclosures, array, used)?;
         for v in array.iter_mut() {
-            recursively_expand_disclosures(disclosures, v)?;
+            expand_disclosures_inner(disclosures, v, used)?;
         }
     }
     Ok(())

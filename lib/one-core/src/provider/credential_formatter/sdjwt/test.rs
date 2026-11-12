@@ -18,10 +18,14 @@ use super::model::Disclosure;
 use super::prepare_sd_presentation;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierData};
+use crate::proto::http_client::MockHttpClient;
+use crate::proto::jwt::Jwt;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, Issuer, MockSignatureProvider, UnsignedCredential,
     W3CCredentialStatus,
 };
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSchema, VcdmCredentialSubject,
 };
@@ -703,8 +707,85 @@ fn verify_x5t_s256_rejects_mismatching_thumbprint() {
 
     let result = super::verify_x5t_s256("not-the-thumbprint", fingerprint);
 
-    assert_matches!(
-        result,
-        Err(crate::provider::credential_formatter::error::FormatterError::CouldNotExtractCredentials(_))
+    assert_matches!(result, Err(FormatterError::CouldNotExtractCredentials(_)));
+}
+
+// ---------------------------------------------------------------------------
+// Security regression test: SD-JWT "disclosure bomb"
+// ---------------------------------------------------------------------------
+
+/// Builds a genuine SD-JWT serialized credential (`<jwt>~<disclosure>~...~`)
+/// that triggers the disclosure bomb.
+///
+/// A chain of `chain_len` array-element disclosures is built from the tail so
+/// each link can embed the digest of the next one. Link `i`'s value is an
+/// array that references link `i + 1` **twice**; the last link resolves
+/// to a scalar. The JWT payload contains a single reference to the head of the
+/// chain. Every digest is `base64url(sha256(<the base64url disclosure string>))`,
+/// exactly as a real issuer computes it, so the token is well-formed.
+fn build_disclosure_bomb_token(chain_len: usize) -> SerializedCredential {
+    // Returns (base64url disclosure segment, its digest).
+    let make = |value: Value| -> (String, String) {
+        // array-element disclosure: [salt, value]
+        let json = json!(["c2FsdHNhbHRzYWx0", value]).to_string();
+        let segment = Base64UrlSafeNoPadding::encode_to_string(json.as_bytes()).unwrap();
+        let digest = SHA256.hash_base64_url(segment.as_bytes()).unwrap();
+        (segment, digest)
+    };
+
+    let mut segments = Vec::with_capacity(chain_len + 1);
+
+    // Terminal disclosure -> scalar leaf.
+    let (seg, mut next_digest) = make(json!("leaf"));
+    segments.push(seg);
+
+    // Each link references the next one twice => expansion doubles per level.
+    for _ in 0..chain_len {
+        let value = json!([
+            { "...": next_digest },
+            { "...": next_digest },
+        ]);
+        let (seg, digest) = make(value);
+        segments.push(seg);
+        next_digest = digest;
+    }
+
+    let header = json!({ "alg": "ES256", "typ": "vc+sd-jwt" });
+    let payload = json!({
+        "iss": "did:example:issuer",
+        "vct": "https://credentials.example.com/bomb",
+        // A single reference into the head of the chain
+        "bomb": [ { "...": next_digest } ],
+    });
+
+    fn b64url(bytes: &[u8]) -> String {
+        Base64UrlSafeNoPadding::encode_to_string(bytes).unwrap()
+    }
+
+    let jwt = format!(
+        "{}.{}.{}",
+        b64url(header.to_string().as_bytes()),
+        b64url(payload.to_string().as_bytes()),
+        b64url(b"not-a-real-signature"),
     );
+
+    format!("{jwt}~{}~", segments.join("~")).into()
+}
+
+#[tokio::test]
+async fn test_sdjwt_disclosure_bomb() {
+    // the expansion would happen 2^CHAIN_LEN times.
+    const CHAIN_LEN: usize = 10;
+    let token = build_disclosure_bomb_token(CHAIN_LEN);
+
+    let error = Jwt::<SdJwtVc>::build_from_token_with_disclosures(
+        &token,
+        None, // no signature verification
+        None, // no certificate validator
+        &MockHttpClient::new(),
+    )
+    .await
+    .unwrap_err();
+
+    assert_matches!(error, FormatterError::CouldNotExtractCredentials(message) if message == "SD-JWT disclosure digest referenced more than once");
 }
