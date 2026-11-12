@@ -12,7 +12,7 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::did::KeyRole;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
-use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
@@ -26,6 +26,10 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::revocation::model::{
+    CredentialDataByRole, RevocationState, VerifierCredentialData,
+};
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
@@ -36,6 +40,7 @@ use crate::validator::{
 #[cfg(test)]
 mod test;
 
+#[derive(Debug)]
 pub(super) struct ValidatedProofCredential {
     credential: DetailCredential,
     credential_schema_id: CredentialSchemaId,
@@ -50,9 +55,10 @@ pub(super) async fn validate_proof(
     session_transcript: SessionTranscript,
     credential_formatter_provider: &dyn CredentialFormatterProvider,
     presentation_formatter_provider: &dyn PresentationFormatterProvider,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    revocation_method_provider: &dyn RevocationMethodProvider,
 ) -> Result<Vec<ValidatedProofCredential>, ServiceError> {
     let key_verification_presentation = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.clone(),
@@ -62,10 +68,10 @@ pub(super) async fn validate_proof(
     });
 
     let key_verification_credentials = Box::new(KeyVerification {
-        key_algorithm_provider: key_algorithm_provider.to_owned(),
+        key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
-        certificate_validator: certificate_validator.clone(),
+        certificate_validator,
     });
 
     let format = "MDOC";
@@ -113,6 +119,7 @@ pub(super) async fn validate_proof(
     }
 
     let mut remaining_requested_claims_with_mapping = HashMap::new();
+    let mut proof_inputs = HashMap::new();
     for input_schema in &input_schemas {
         let input_claims = input_schema.claim_schemas.as_ref().await?;
         let credential_schema = input_schema.credential_schema.as_ref().await?;
@@ -135,6 +142,7 @@ pub(super) async fn validate_proof(
             claims_with_mapping.push((input_claim_schema.to_owned(), mapping.to_owned()));
         }
         remaining_requested_claims_with_mapping.insert(credential_schema.id, claims_with_mapping);
+        proof_inputs.insert(credential_schema.id, input_schema);
     }
 
     let credential_formatter =
@@ -172,6 +180,19 @@ pub(super) async fn validate_proof(
             ));
         }
 
+        let proof_input =
+            proof_inputs
+                .get(&credential_schema_id)
+                .ok_or(ServiceError::MappingError(format!(
+                    "proof input not found for credential schema {credential_schema_id}"
+                )))?;
+        validate_credential_status(
+            &received_credential,
+            proof_input,
+            revocation_method_provider,
+        )
+        .await?;
+
         let mut claims = vec![];
         for (requested_proof_claim, mapping) in requested_proof_claims {
             if let Some(received_claim) = extract_matching_requested_claim(
@@ -200,6 +221,47 @@ pub(super) async fn validate_proof(
     }
 
     Ok(proved_credentials)
+}
+
+/// Rejects a revoked or suspended credential, and one whose status cannot be checked
+async fn validate_credential_status(
+    credential: &DetailCredential,
+    proof_input: &ProofInputSchema,
+    revocation_method_provider: &dyn RevocationMethodProvider,
+) -> Result<(), ServiceError> {
+    let Some(credential_status) = &credential.status else {
+        return Ok(());
+    };
+
+    let (revocation_method, _) = revocation_method_provider
+        .get_revocation_method_by_status(credential_status)
+        .ok_or_else(|| {
+            MissingProviderError::RevocationMethodByCredentialStatusType(format!(
+                "{credential_status:?}"
+            ))
+        })?;
+
+    let state = revocation_method
+        .check_credential_revocation_status(
+            credential_status,
+            &credential.issuer,
+            Some(CredentialDataByRole::Verifier(Box::new(
+                VerifierCredentialData {
+                    credential: credential.to_owned(),
+                    proof_input: proof_input.to_owned(),
+                },
+            ))),
+            false,
+        )
+        .await
+        .error_while("checking credential status")?;
+
+    match state {
+        RevocationState::Valid => Ok(()),
+        RevocationState::Revoked | RevocationState::Suspended { .. } => Err(
+            ServiceError::ValidationError("Credential is revoked or suspended".to_owned()),
+        ),
+    }
 }
 
 fn extract_matching_requested_schema(

@@ -17,6 +17,7 @@ use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
@@ -64,6 +65,7 @@ pub struct ProofService {
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
     ecosystem_provider: Arc<dyn EcosystemDirectory>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 }
 
 impl ProofService {
@@ -96,6 +98,7 @@ impl ProofService {
         transaction_data_provider: Arc<dyn TransactionDataProvider>,
         ecosystem_provider: Arc<dyn EcosystemDirectory>,
         ecosystem_resolver: Arc<dyn EcosystemResolver>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     ) -> Self {
         Self {
             proof_repository,
@@ -125,6 +128,7 @@ impl ProofService {
             transaction_data_provider,
             ecosystem_provider,
             ecosystem_resolver,
+            revocation_method_provider,
         }
     }
 }

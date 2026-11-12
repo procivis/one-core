@@ -88,7 +88,7 @@ impl IdentifierService {
         }
 
         throw_if_org_id_not_matching_session(
-            &identifier.organisation.id(),
+            identifier.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -541,7 +541,7 @@ impl IdentifierService {
         }
 
         throw_if_org_id_not_matching_session(
-            &identifier.organisation.id(),
+            identifier.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -759,7 +759,7 @@ impl IdentifierService {
             .await
             .error_while("getting identifier")?;
         throw_if_org_id_not_matching_session(
-            &identifier.organisation.id(),
+            identifier.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -1242,7 +1242,7 @@ impl IdentifierService {
         }
 
         throw_if_org_id_not_matching_session(
-            &identifier.organisation.id(),
+            identifier.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;

@@ -395,6 +395,9 @@ impl ProofService {
                     .ok_or(ProofServiceError::MissingDid(verifier_did_id))?
             }
         };
+        if verifier_identifier.organisation.id_ref() != proof_schema.organisation.id_ref() {
+            return Err(ProofServiceError::IdentifierOrganisationMismatch);
+        }
 
         let selection = verifier_identifier
             .select_key(KeySelection {

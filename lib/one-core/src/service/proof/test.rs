@@ -66,6 +66,7 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::transaction_data::provider::MockTransactionDataProvider;
 use crate::provider::transaction_data::{MockTransactionData, TransactionDataCapabilities};
 use crate::provider::verification_protocol::MockVerificationProtocol;
@@ -215,6 +216,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.transaction_data_provider),
         ecosystem_provider,
         ecosystem_resolver,
+        Arc::new(MockRevocationMethodProvider::new()),
     )
 }
 
@@ -311,6 +313,15 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         webhook_url: None,
         subscriber_information: None,
     }
+}
+
+/// Organisation owning both the proof schema and the verifier identifier of a created proof
+fn verifier_organisation() -> crate::model::organisation::Organisation {
+    dummy_organisation(Some(
+        Uuid::parse_str("4d1e0a5c-9b7e-4f2a-8c3d-6e5f7a8b9c0d")
+            .unwrap()
+            .into(),
+    ))
 }
 
 fn generic_proof_input_schema() -> ProofInputSchema {
@@ -1046,7 +1057,7 @@ async fn test_create_proof_using_invalid_did_method() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -1091,6 +1102,7 @@ async fn test_create_proof_using_invalid_did_method() {
         .return_once(|_| {
             Ok(Some(Identifier {
                 data: IdentifierData::Did((verifier_did).into()),
+                organisation: verifier_organisation().into(),
                 ..dummy_identifier()
             }))
         });
@@ -1179,7 +1191,7 @@ async fn test_create_proof_using_identifier() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -1219,6 +1231,7 @@ async fn test_create_proof_using_identifier() {
     identifier_repository.expect_get().return_once(|_| {
         Ok(Identifier {
             data: IdentifierData::Did((verifier_did).into()),
+            organisation: verifier_organisation().into(),
             ..dummy_identifier()
         })
     });
@@ -1284,6 +1297,107 @@ async fn test_create_proof_using_identifier() {
 }
 
 #[tokio::test]
+async fn test_create_proof_fails_with_verifier_identifier_of_other_organisation() {
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
+    let verifier_identifier_id = Uuid::new_v4().into();
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4().into(),
+        verifier_did_id: None,
+        verifier_identifier_id: Some(verifier_identifier_id),
+        protocol: exchange_type.to_string(),
+        redirect_uri: None,
+        verifier_key: None,
+        verifier_certificate: None,
+        iso_mdl_engagement: None,
+        transport: None,
+        profile: None,
+        engagement: None,
+        webhook_destination_url: None,
+        subscriber_information: None,
+        transaction_data: vec![],
+        ecosystem: None,
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .with(eq(request.proof_schema_id))
+        .returning(|id| {
+            Ok(ProofSchema {
+                ecosystem: None,
+                id: id.to_owned(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: verifier_organisation().into(),
+                input_schemas: vec![generic_proof_input_schema()].into(),
+            })
+        });
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .once()
+        .with(eq(verifier_identifier_id))
+        .return_once(|_| {
+            Ok(Identifier {
+                organisation: dummy_organisation(None).into(),
+                ..dummy_identifier()
+            })
+        });
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .returning(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_type],
+            verification_key_storages: vec![KeyStorageType::Internal],
+            verification_identifier_types: vec![IdentifierType::Did],
+            ..Default::default()
+        });
+    let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    credential_formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Ok(formatter.clone()));
+
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockVerificationProtocol::default();
+        protocol
+            .expect_get_capabilities()
+            .returning(|| VerificationProtocolCapabilities {
+                supported_encryption_algorithms: vec![],
+                features: vec![],
+                supported_transports: vec![TransportType::Http],
+                did_methods: vec![crate::config::core_config::DidType::Key],
+                verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
+            });
+        Ok(Arc::new(protocol))
+    });
+
+    let service = setup_service(Repositories {
+        identifier_repository,
+        proof_schema_repository,
+        credential_formatter_provider,
+        protocol_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request).await;
+    assert_matches!(
+        result,
+        Err(ProofServiceError::IdentifierOrganisationMismatch)
+    );
+}
+
+#[tokio::test]
 async fn test_create_proof_without_related_key() {
     let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
@@ -1319,7 +1433,7 @@ async fn test_create_proof_without_related_key() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -1365,6 +1479,7 @@ async fn test_create_proof_without_related_key() {
         .return_once(|_| {
             Ok(Some(Identifier {
                 data: IdentifierData::Did((verifier_did).into()),
+                organisation: verifier_organisation().into(),
                 ..dummy_identifier()
             }))
         });
@@ -1464,7 +1579,7 @@ async fn test_create_proof_with_related_key() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -1507,6 +1622,7 @@ async fn test_create_proof_with_related_key() {
         .return_once(|_| {
             Ok(Some(Identifier {
                 data: IdentifierData::Did((verifier_did).into()),
+                organisation: verifier_organisation().into(),
                 ..dummy_identifier()
             }))
         });
@@ -1612,7 +1728,7 @@ async fn test_create_proof_fail_duplicit_transaction_data() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -1654,6 +1770,7 @@ async fn test_create_proof_fail_duplicit_transaction_data() {
         .return_once(|_| {
             Ok(Some(Identifier {
                 data: IdentifierData::Did((verifier_did).into()),
+                organisation: verifier_organisation().into(),
                 ..dummy_identifier()
             }))
         });
@@ -1904,7 +2021,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -1931,6 +2048,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         .return_once(|_| {
             Ok(Some(Identifier {
                 data: IdentifierData::Did((verifier_did).into()),
+                organisation: verifier_organisation().into(),
                 ..dummy_identifier()
             }))
         });
@@ -2082,7 +2200,7 @@ async fn test_create_proof_did_deactivated_error() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -2108,6 +2226,7 @@ async fn test_create_proof_did_deactivated_error() {
         .return_once(|_| {
             Ok(Some(Identifier {
                 data: IdentifierData::Did((verifier_did).into()),
+                organisation: verifier_organisation().into(),
                 ..dummy_identifier()
             }))
         });
@@ -2245,7 +2364,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: dummy_organisation(None).into(),
+                organisation: verifier_organisation().into(),
                 input_schemas: vec![generic_proof_input_schema()].into(),
             })
         });
@@ -2290,6 +2409,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         .return_once(|_| {
             Ok(Some(Identifier {
                 data: IdentifierData::Did((verifier_did).into()),
+                organisation: verifier_organisation().into(),
                 ..dummy_identifier()
             }))
         });

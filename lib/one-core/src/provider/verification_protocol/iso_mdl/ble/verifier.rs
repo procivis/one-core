@@ -49,6 +49,7 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::{
     DeviceRequest, DocRequest, EphemeralSessionKey, ItemsRequest, KeyAgreementKey, SkDevice,
@@ -165,6 +166,7 @@ pub(crate) async fn handle_ble_verifier(
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<(), VerificationProtocolError> {
     let (sender, receiver) = oneshot::channel();
 
@@ -180,15 +182,16 @@ pub(crate) async fn handle_ble_verifier(
                     &central,
                     &peripheral,
                     sender,
-                    credential_formatter_provider.clone(),
-                    presentation_formatter_provider.clone(),
-                    did_method_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    credential_repository.clone(),
+                    credential_formatter_provider,
+                    presentation_formatter_provider,
+                    did_method_provider,
+                    key_algorithm_provider,
+                    credential_repository,
                     proof_repository.clone(),
-                    certificate_validator.clone(),
-                    identifier_creator.clone(),
-                    ecosystem_resolver.clone(),
+                    certificate_validator,
+                    identifier_creator,
+                    ecosystem_resolver,
+                    revocation_method_provider,
                 )
                 .await;
 
@@ -247,6 +250,7 @@ async fn verifier_flow(
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<(), VerificationProtocolError> {
     let connected_holder = connect_based_on_options(
         central,
@@ -276,6 +280,7 @@ async fn verifier_flow(
         certificate_validator,
         identifier_creator,
         ecosystem_resolver,
+        revocation_method_provider,
     )
     .await;
 
@@ -310,6 +315,7 @@ async fn process_proof(
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     ecosystem_resolver: Arc<dyn EcosystemResolver>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<(), VerificationProtocolError> {
     let session_establishment = SessionEstablishment {
         e_reader_key: verifier_session.reader_key,
@@ -429,11 +435,12 @@ async fn process_proof(
         &*presentation_formatter_provider,
         did_method_provider,
         key_algorithm_provider,
-        credential_repository,
+        &*credential_repository,
         &*proof_repository,
         certificate_validator,
         identifier_creator,
-        ecosystem_resolver,
+        &*ecosystem_resolver,
+        &*revocation_method_provider,
     )
     .await
     {
@@ -454,11 +461,12 @@ async fn fill_proof_claims_and_credentials(
     presentation_formatter_provider: &dyn PresentationFormatterProvider,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    credential_repository: Arc<dyn CredentialRepository>,
+    credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
-    ecosystem_resolver: Arc<dyn EcosystemResolver>,
+    ecosystem_resolver: &dyn EcosystemResolver,
+    revocation_method_provider: &dyn RevocationMethodProvider,
 ) -> Result<(), VerificationProtocolError> {
     let proof_schema = proof.schema.as_required_ref().await?;
 
@@ -472,9 +480,10 @@ async fn fill_proof_claims_and_credentials(
             session_transcript,
             credential_formatter_provider,
             presentation_formatter_provider,
-            &key_algorithm_provider,
-            did_method_provider.clone(),
-            certificate_validator.clone(),
+            key_algorithm_provider,
+            did_method_provider,
+            certificate_validator,
+            revocation_method_provider,
         )
         .await
         .error_while("validating proof")?;
@@ -483,10 +492,10 @@ async fn fill_proof_claims_and_credentials(
         proof,
         interaction,
         proved_credentials,
-        &*credential_repository,
+        credential_repository,
         proof_repository,
         identifier_creator.as_ref(),
-        &*ecosystem_resolver,
+        ecosystem_resolver,
     )
     .await
     .error_while("accepting proof")?;

@@ -24,6 +24,8 @@ pub enum CredentialServiceError {
     InvalidIdentifierType(IdentifierType),
     #[error("Identifier {0} is deactivated")]
     IdentifierIsDeactivated(IdentifierId),
+    #[error("Issuer identifier does not belong to the organisation of the credential schema")]
+    IdentifierOrganisationMismatch,
     #[error("Invalid datatype `{datatype}` for value `{value}`: {source}")]
     InvalidDatatype {
         datatype: String,
@@ -81,6 +83,7 @@ impl ErrorCodeMixin for CredentialServiceError {
             Self::NoIssuer | Self::InvalidIdentifierType(_) => ErrorCode::BR_0323,
             Self::IncompatibleIssuanceIdentifier => ErrorCode::BR_0218,
             Self::IdentifierIsDeactivated(_) => ErrorCode::BR_0027,
+            Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
             Self::InvalidDatatype { .. } => ErrorCode::BR_0061,
             Self::InvalidRedirectUri => ErrorCode::BR_0192,
             Self::NotificationsNotAllowed { .. } => ErrorCode::BR_0372,

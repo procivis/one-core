@@ -2,9 +2,10 @@ use std::assert_matches;
 use std::sync::{Arc, Mutex};
 
 use similar_asserts::assert_eq;
+use time::Duration;
 use uuid::Uuid;
 
-use super::{ValidatedProofCredential, accept_proof};
+use super::{ValidatedProofCredential, accept_proof, validate_proof};
 use crate::mapper::ValidatedProofClaim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -12,23 +13,167 @@ use crate::model::identifier::IdentifierData;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::ProofStateEnum;
 use crate::model::proof_schema::ProofInputSchema;
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolverProto;
 use crate::proto::identifier_creator::{
     IdentifierName, MockIdentifierCreator, RemoteIdentifierRelation,
 };
 use crate::proto::session_provider::NoSessionProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, DetailCredential, IdentifierDetails,
+    CredentialClaim, CredentialClaimValue, CredentialStatus, DetailCredential, IdentifierDetails,
+    TokenStatus,
 };
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::presentation_formatter::MockPresentationFormatter;
+use crate::provider::presentation_formatter::model::ExtractedPresentation;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::qr_code::QRHandover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
+    Handover, SessionTranscript,
+};
+use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
+use crate::provider::revocation::MockRevocationMethod;
+use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
+use crate::service::error::ServiceError;
 use crate::service::test_utilities::{
     dummy_claim_schema, dummy_credential_schema_with_format, dummy_did, dummy_identifier,
     dummy_jwk, dummy_key, dummy_organisation, dummy_proof_schema, dummy_proof_with_protocol,
 };
+
+/// Validates a presented mdoc whose status list entry the revocation method resolves to `state`
+async fn validate_proof_with_credential_status(
+    state: RevocationState,
+) -> Result<Vec<ValidatedProofCredential>, ServiceError> {
+    let holder = IdentifierDetails::Key(dummy_jwk());
+
+    let mut proof_schema = dummy_proof_schema();
+    proof_schema.input_schemas = vec![ProofInputSchema {
+        formats: vec!["MDOC".into()],
+        claim_schemas: Default::default(),
+        credential_schema: dummy_credential_schema_with_format("MDOC").into(),
+    }]
+    .into();
+
+    let mut presentation_formatter = MockPresentationFormatter::new();
+    presentation_formatter
+        .expect_extract_presentation()
+        .once()
+        .return_once({
+            let holder = holder.clone();
+            move |_, _, _| {
+                Ok(ExtractedPresentation {
+                    id: None,
+                    issued_at: None,
+                    expires_at: None,
+                    issuer: Some(holder),
+                    nonce: None,
+                    credentials: vec!["mdoc".into()],
+                    transaction_data: None,
+                })
+            }
+        });
+    presentation_formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(60));
+    let mut presentation_formatter_provider = MockPresentationFormatterProvider::new();
+    presentation_formatter_provider
+        .expect_get_presentation_formatter()
+        .return_once(move |_| Some(Arc::new(presentation_formatter)));
+
+    let mut credential_formatter = MockCredentialFormatter::new();
+    credential_formatter
+        .expect_extract_credentials()
+        .once()
+        .return_once(move |_, _, _| {
+            Ok(DetailCredential {
+                issuance_date: None,
+                valid_from: None,
+                valid_until: None,
+                update_at: None,
+                invalid_before: None,
+                issuer: IdentifierDetails::Did(dummy_did().did),
+                subject: Some(holder),
+                claims: Default::default(),
+                status: Some(CredentialStatus::TokenStatusList(TokenStatus {
+                    index: 1,
+                    uri: "https://status.example/list".parse().unwrap(),
+                    certificate: None,
+                })),
+            })
+        });
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
+    credential_formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(move |_| Ok(Arc::new(credential_formatter)));
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_check_credential_revocation_status()
+        .once()
+        .withf(|_, _, credential_data, _| {
+            matches!(credential_data, Some(CredentialDataByRole::Verifier(_)))
+        })
+        .return_once(move |_, _, _, _| Ok(state));
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method_by_status()
+        .once()
+        .return_once(|_| Some((Arc::new(revocation_method), "TOKENSTATUSLIST".into())));
+
+    validate_proof(
+        &proof_schema,
+        "presentation",
+        SessionTranscript {
+            device_engagement_bytes: None,
+            e_reader_key_bytes: None,
+            handover: Handover::QrCode(QRHandover),
+        },
+        &credential_formatter_provider,
+        &presentation_formatter_provider,
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockCertificateValidator::new()),
+        &revocation_method_provider,
+    )
+    .await
+}
+
+#[tokio::test]
+async fn test_validate_proof_rejects_revoked_credential() {
+    let error = validate_proof_with_credential_status(RevocationState::Revoked)
+        .await
+        .unwrap_err();
+
+    assert_matches!(error, ServiceError::ValidationError(message) if message == "Credential is revoked or suspended");
+}
+
+#[tokio::test]
+async fn test_validate_proof_rejects_suspended_credential() {
+    let error = validate_proof_with_credential_status(RevocationState::Suspended {
+        suspend_end_date: None,
+    })
+    .await
+    .unwrap_err();
+
+    assert_matches!(error, ServiceError::ValidationError(message) if message == "Credential is revoked or suspended");
+}
+
+#[tokio::test]
+async fn test_validate_proof_accepts_valid_credential() {
+    let credentials = validate_proof_with_credential_status(RevocationState::Valid)
+        .await
+        .unwrap();
+
+    assert_eq!(credentials.len(), 1);
+}
 
 #[tokio::test]
 async fn test_accept_proof_persists_holder_identifier_for_each_credential() {

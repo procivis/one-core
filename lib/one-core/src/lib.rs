@@ -802,6 +802,7 @@ impl OneCore {
                 transaction_data_provider,
                 ecosystem_provider.clone(),
                 ecosystem_resolver.clone(),
+                revocation_method_provider.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),

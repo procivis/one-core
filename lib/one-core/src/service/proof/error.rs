@@ -17,6 +17,8 @@ pub enum ProofServiceError {
     NoVerifier,
     #[error("Invalid identifier type: `{0}`")]
     InvalidIdentifierType(IdentifierType),
+    #[error("Verifier identifier does not belong to the organisation of the proof schema")]
+    IdentifierOrganisationMismatch,
     #[error("Engagement provided for non ISO mDL flow")]
     EngagementProvidedForNonISOmDLFlow,
     #[error("Missing engagement for ISO mDL flow")]
@@ -83,6 +85,7 @@ impl ErrorCodeMixin for ProofServiceError {
             Self::InvalidState(_) => ErrorCode::BR_0013,
             Self::InvalidRole(_) => ErrorCode::BR_0198,
             Self::NoVerifier | Self::InvalidIdentifierType(_) => ErrorCode::BR_0323,
+            Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
             Self::MissingEngagementForISOmDLFlow => ErrorCode::BR_0079,
             Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,

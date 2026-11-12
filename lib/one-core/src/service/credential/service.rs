@@ -85,6 +85,9 @@ impl CredentialService {
             .error_while("getting credential schema")?;
         throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
+        if issuer_identifier.organisation.id_ref() != schema.organisation.id_ref() {
+            return Err(CredentialServiceError::IdentifierOrganisationMismatch);
+        }
 
         validate_key_storage_security_supported(
             schema.wallet_attestation.key_storage_security_level,

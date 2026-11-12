@@ -153,6 +153,7 @@ impl ProofService {
             self.certificate_validator.clone(),
             self.identifier_creator.clone(),
             self.ecosystem_resolver.clone(),
+            self.revocation_method_provider.clone(),
         )
         .await
         .error_while("starting client")?;
