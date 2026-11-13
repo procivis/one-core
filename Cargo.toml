@@ -2,7 +2,7 @@
 authors      = ["Procivis"]
 edition      = "2024"
 license      = "Apache-2.0"
-rust-version = "1.99.1"
+rust-version = "1.100.0"
 version      = "0.1.0"
 
 [workspace]
@@ -90,7 +90,6 @@ wiremock                 = { version = "0.6" }
 x509-parser              = { version = "0.18", features = ["verify-aws"] }
 
 # workspace libs
-dcql               = { version = "0.1.0", path = "lib/dcql" }
 migration          = { version = "0.1.0", path = "lib/migration" }
 one-core           = { version = "0.1.0", path = "lib/one-core" }
 one-crypto         = { version = "0.1.0", path = "lib/one-crypto" }

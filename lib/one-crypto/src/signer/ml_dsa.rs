@@ -18,8 +18,7 @@ pub struct KeyPair {
 impl MlDsaSigner {
     pub fn generate_key_pair() -> Result<KeyPair, SignerError> {
         let mut rng: ChaCha20Rng = rand::make_rng();
-        let sk = SigningKey::<MlDsa65>::try_generate_from_rng(&mut rng)
-            .map_err(|e| SignerError::CouldNotGenerateKeyPair(e.to_string()))?;
+        let sk = SigningKey::<MlDsa65>::generate_from_rng(&mut rng);
 
         Ok(KeyPair {
             public: sk.verifying_key().encode().to_vec(),

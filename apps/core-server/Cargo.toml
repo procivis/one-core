@@ -70,9 +70,7 @@ utoipa-swagger-ui = { version = "10.0", features = ["axum"] }
 uuid.workspace = true
 
 [build-dependencies]
-serde                = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-shadow-rs.workspace  = true
+shadow-rs.workspace = true
 
 [dev-dependencies]
 asn1-rs.workspace          = true

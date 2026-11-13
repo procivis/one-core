@@ -16,3 +16,6 @@ serde.workspace          = true
 textwrap                 = "0.16"
 toml                     = "1.1"
 uniffi_bindgen.workspace = true
+
+[lints]
+workspace = true

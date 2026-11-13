@@ -900,7 +900,7 @@ pub(super) fn claims_from_create_request(
             // check other splits.
             && !claims_map.contains_key(&parent_path)
         {
-            current_path = parent_path.to_owned();
+            current_path = parent_path;
             let Some((parent_schema_path, _)) = current_schema_path.rsplit_once("/") else {
                 return Err(CredentialServiceError::MappingError(format!(
                     "Expected schema path '{current_schema_path}' to contain nested property",
