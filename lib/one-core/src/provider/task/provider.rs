@@ -21,6 +21,7 @@ use crate::proto::ecosystem_sync::EcosystemSync;
 use crate::proto::native_credential_manager::NativeCredentialManager;
 use crate::proto::notification_sender::NotificationSender;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::ecosystem::directory::EcosystemDirectory;
 use crate::provider::task::credential_registry_sync::CredentialRegistrySync;
@@ -82,7 +83,7 @@ pub(crate) fn task_provider_from_config(
     interaction_repository: Arc<dyn InteractionRepository>,
     notification_repository: Arc<dyn NotificationRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
-    holder_wallet_unit_repository: Arc<dyn InstanceRepository>,
+    instance_repository: Arc<dyn InstanceRepository>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -92,6 +93,7 @@ pub(crate) fn task_provider_from_config(
     ecosystem_sync: Arc<dyn EcosystemSync>,
     ecosystem_directory: Arc<dyn EcosystemDirectory>,
     native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
+    wallet_provider_client: Arc<dyn WalletProviderClient>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
     let config_clone = Arc::new(config.clone());
     let mut tasks: HashMap<TaskId, Arc<dyn Task>> = HashMap::new();
@@ -154,7 +156,7 @@ pub(crate) fn task_provider_from_config(
                 ))
             }
             TaskType::EcosystemSync => Arc::new(EcosystemSyncTask::new(
-                holder_wallet_unit_repository.clone(),
+                instance_repository.clone(),
                 ecosystem_sync.clone(),
             )),
             TaskType::EcosystemLifecycleCheck => Arc::new(EcosystemLifecycleCheckTask::new(
@@ -164,6 +166,8 @@ pub(crate) fn task_provider_from_config(
                 config_clone.clone(),
                 credential_repository.clone(),
                 native_credential_manager.clone(),
+                instance_repository.clone(),
+                wallet_provider_client.clone(),
             )),
         };
         tasks.insert(name.to_owned(), task);

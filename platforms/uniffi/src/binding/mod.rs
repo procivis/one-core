@@ -57,13 +57,22 @@ impl OneCore {
     #[uniffi::method]
     pub async fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
         let mut guard = self.inner.write().await;
-        if guard.take().is_none() {
+        let Some(core) = guard.take() else {
             return Err(SDKError::NotInitialized.into());
-        }
+        };
 
         if !delete_data {
             return Ok(());
         }
+
+        if let Some(native_credential_manager) = &core.native_credential_manager
+            && let Err(error) = native_credential_manager.synchronize(vec![]).await
+        {
+            tracing::warn!(%error, "Failed to remove credential registrations");
+        }
+
+        // drop all DB connections
+        drop(core);
 
         let result = fs::remove_file(&self.backup_db_path).await;
         if let Err(err) = result {

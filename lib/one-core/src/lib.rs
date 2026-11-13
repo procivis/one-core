@@ -154,6 +154,8 @@ pub struct OneCore {
     pub verifier_provider_service: VerifierProviderService,
     pub trust_list_publication_service: TrustListPublicationService,
     pub trust_collection_service: TrustCollectionService,
+
+    pub native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -321,7 +323,7 @@ impl OneCore {
             data_provider.get_remote_entity_cache_repository(),
             &config,
         ));
-        let wallet_unit_client = Arc::new(HTTPWalletProviderClient::new(
+        let wallet_provider_client = Arc::new(HTTPWalletProviderClient::new(
             client.clone(),
             wallet_provider_metadata_cache,
         ));
@@ -329,7 +331,7 @@ impl OneCore {
         let wallet_unit_proto = Arc::new(HolderWalletUnitProtoImpl::new(
             key_provider.clone(),
             key_algorithm_provider.clone(),
-            wallet_unit_client.clone(),
+            wallet_provider_client.clone(),
             revocation_method_provider.clone(),
             certificate_validator.clone(),
             data_provider.get_wallet_attestation_repository(),
@@ -581,7 +583,7 @@ impl OneCore {
 
         let ecosystem_sync = Arc::new(EcosystemSyncProto::new(
             data_provider.get_instance_repository(),
-            wallet_unit_client.clone(),
+            wallet_provider_client.clone(),
             verifier_provider_client.clone(),
             trust_collection_manager.clone(),
             data_provider.get_trust_collection_repository(),
@@ -609,7 +611,8 @@ impl OneCore {
             trust_list_subscriber_provider.clone(),
             ecosystem_sync.clone(),
             ecosystem_provider.clone(),
-            native_credential_manager,
+            native_credential_manager.clone(),
+            wallet_provider_client.clone(),
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(
@@ -647,7 +650,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_instance_repository(),
-                wallet_unit_client.clone(),
+                wallet_provider_client.clone(),
                 verifier_provider_client.clone(),
                 wallet_provider_directory.clone(),
                 verifier_provider_directory.clone(),
@@ -902,7 +905,7 @@ impl OneCore {
                 data_provider.get_key_repository(),
                 key_provider,
                 key_algorithm_provider,
-                wallet_unit_client,
+                wallet_provider_client,
                 verifier_provider_client,
                 wallet_unit_proto,
                 Arc::new(OSInfoProviderImpl),
@@ -944,6 +947,7 @@ impl OneCore {
                 session_provider,
                 ecosystem_provider,
             ),
+            native_credential_manager,
         })
     }
 

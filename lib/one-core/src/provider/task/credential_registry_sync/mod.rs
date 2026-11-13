@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 use shared_types::{CredentialFormat, OrganisationId};
 
+use self::dto::CredentialRegistrySyncResultDTO;
 use super::Task;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
@@ -16,6 +17,7 @@ use crate::model::credential::{
     CredentialType, HolderCredentialData,
 };
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
+use crate::model::instance::InstanceRole;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::localized_text::{LocalizedText, LocalizedTextField};
@@ -24,9 +26,12 @@ use crate::proto::native_credential_manager::{
     DigitalCredentialClaim, DigitalCredentialDisplay, DigitalCredentialMetadata,
     DigitalCredentialRegistration, NativeCredentialManager,
 };
+use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::instance_repository::InstanceRepository;
 use crate::service::error::ServiceError;
 
+mod dto;
 #[cfg(test)]
 mod test;
 
@@ -34,6 +39,8 @@ pub struct CredentialRegistrySync {
     config: Arc<CoreConfig>,
     credential_repository: Arc<dyn CredentialRepository>,
     native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
+    instance_repository: Arc<dyn InstanceRepository>,
+    wallet_provider_client: Arc<dyn WalletProviderClient>,
 }
 
 impl CredentialRegistrySync {
@@ -41,11 +48,15 @@ impl CredentialRegistrySync {
         config: Arc<CoreConfig>,
         credential_repository: Arc<dyn CredentialRepository>,
         native_credential_manager: Option<Arc<dyn NativeCredentialManager>>,
+        instance_repository: Arc<dyn InstanceRepository>,
+        wallet_provider_client: Arc<dyn WalletProviderClient>,
     ) -> Self {
         Self {
             config,
             credential_repository,
             native_credential_manager,
+            instance_repository,
+            wallet_provider_client,
         }
     }
 }
@@ -72,55 +83,82 @@ impl Task for CredentialRegistrySync {
             ));
         };
 
-        let credentials = self
-            .credential_repository
-            .get_credential_list(ListQuery {
-                include_count: false,
-                filtering: Some(
-                    CredentialFilterValue::OrganisationId(params.organisation_id).condition()
-                        & CredentialFilterValue::Roles(vec![CredentialRole::Holder])
-                        & CredentialFilterValue::States(vec![CredentialStateEnum::Accepted])
-                        & CredentialFilterValue::Deleted(false)
-                        & ((CredentialFilterValue::Types(vec![CredentialType::BatchParent])
-                            .condition()
-                            & CredentialFilterValue::HasUnconsumedBatchItems(true))
-                            | (CredentialFilterValue::Types(vec![CredentialType::Single])
-                                .condition()
-                                & CredentialFilterValue::Formats(self.supported_formats()))),
-                ),
-                ..Default::default()
-            })
+        let instance = self
+            .instance_repository
+            .get_by_role(InstanceRole::Wallet, params.organisation_id)
             .await
-            .error_while("getting credentials")?
-            .values;
+            .error_while("getting wallet instance")?
+            .ok_or(ServiceError::Other("No wallet instance".to_string()))?;
 
-        let mut credential_registrations = Vec::with_capacity(credentials.len());
-        for credential in credentials {
-            match credential {
-                Credential::HolderSingle { common, credential } => {
-                    credential_registrations.push(
-                        self.convert_holder_credential(&common, &credential, &params.language)
-                            .await?,
-                    );
-                }
-                Credential::HolderBatchParent { common } => {
-                    credential_registrations
-                        .extend(self.convert_batch_parent(common, &params.language).await?);
-                }
-                _ => {
-                    return Err(ServiceError::MappingError(
-                        "Invalid credential role/type".to_string(),
-                    ));
+        let metadata = self
+            .wallet_provider_client
+            .get_wallet_provider_metadata(instance.into())
+            .await
+            .error_while("fetching wallet provider metadata")?;
+
+        let credential_registrations = if !metadata.feature_flags.dc_api_integration_enabled {
+            vec![]
+        } else {
+            let credentials = self
+                .credential_repository
+                .get_credential_list(ListQuery {
+                    include_count: false,
+                    filtering: Some(
+                        CredentialFilterValue::OrganisationId(params.organisation_id).condition()
+                            & CredentialFilterValue::Roles(vec![CredentialRole::Holder])
+                            & CredentialFilterValue::States(vec![CredentialStateEnum::Accepted])
+                            & CredentialFilterValue::Deleted(false)
+                            & ((CredentialFilterValue::Types(vec![CredentialType::BatchParent])
+                                .condition()
+                                & CredentialFilterValue::HasUnconsumedBatchItems(true))
+                                | (CredentialFilterValue::Types(vec![CredentialType::Single])
+                                    .condition()
+                                    & CredentialFilterValue::Formats(self.supported_formats()))),
+                    ),
+                    ..Default::default()
+                })
+                .await
+                .error_while("getting credentials")?
+                .values;
+
+            let mut credential_registrations = Vec::with_capacity(credentials.len());
+            for credential in credentials {
+                match credential {
+                    Credential::HolderSingle { common, credential } => {
+                        credential_registrations.push(
+                            self.convert_holder_credential(&common, &credential, &params.language)
+                                .await?,
+                        );
+                    }
+                    Credential::HolderBatchParent { common } => {
+                        credential_registrations
+                            .extend(self.convert_batch_parent(common, &params.language).await?);
+                    }
+                    _ => {
+                        return Err(ServiceError::MappingError(
+                            "Invalid credential role/type".to_string(),
+                        ));
+                    }
                 }
             }
-        }
+
+            credential_registrations
+        };
+
+        let registered_credentials = credential_registrations
+            .iter()
+            .map(|r| r.credential_id)
+            .collect();
 
         credential_manager
             .synchronize(credential_registrations)
             .await
             .error_while("synchronizing credentials")?;
 
-        Ok(json!({}))
+        serde_json::to_value(CredentialRegistrySyncResultDTO {
+            registered_credentials,
+        })
+        .map_err(|e| ServiceError::MappingError(e.to_string()))
     }
 }
 
