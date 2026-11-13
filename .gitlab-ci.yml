@@ -299,6 +299,12 @@ coverage:report:
     # cargo-llvm-cov reads the test binaries from the extracted archive.
     - mkdir -p "$CARGO_LLVM_COV_TARGET_DIR"
     - cargo nextest list --archive-file "$NEXTEST_ARCHIVE_FILE" --extract-to "$CARGO_LLVM_COV_TARGET_DIR" --list-type binaries-only > /dev/null
+    # Workaround for https://github.com/taiki-e/cargo-llvm-cov/issues/520: with the v2 build-dir layout, cargo-llvm-cov
+    # finds the test binaries only next to a `fingerprint` directory, which nextest archives do not contain.
+    - |
+      find "$CARGO_LLVM_COV_TARGET_DIR" -type d -path '*/build/*/*/out' | while read -r dir; do
+        mkdir -p "$(dirname "$dir")/fingerprint"
+      done
     # cargo-llvm-cov reads the merged profile from <workspace directory name>.profdata.
     - |
       find coverage -name '*.profdata' | sort > inputs.txt
