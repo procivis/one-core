@@ -21,6 +21,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::provider::ecosystem::model::ProtocolArtifact;
 use crate::provider::verification_protocol::mapper::gather_registration_certificates;
@@ -114,14 +115,7 @@ impl OID4VPFinal1_0Service {
 
         let verifier_info = match client_id_scheme {
             ClientIdPrefix::X509SanDns | ClientIdPrefix::X509Hash => {
-                let verifier_identifier = proof
-                    .verifier_identifier
-                    .as_ref()
-                    .ok_or(OID4VPFinal1_0ServiceError::MappingError(
-                        "missing verifier".to_string(),
-                    ))?
-                    .as_ref()
-                    .await?;
+                let verifier_identifier = proof.verifier_identifier.as_required_ref().await?;
                 gather_registration_certificates(&verifier_identifier, &*self.blob_storage_provider)
                     .await
                     .error_while("generating verifier_info object")?

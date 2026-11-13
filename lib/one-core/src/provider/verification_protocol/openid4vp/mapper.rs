@@ -9,12 +9,12 @@ use shared_types::{ClaimSchemaId, TransactionDataId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::VerificationProtocolError;
 use super::error::OpenID4VCError;
 use super::model::{
     OpenID4VCVerifierAttestationPayload, OpenID4VPVerifierInteractionContent, ProvedCredential,
     ValidatedHolderTxData, VpSubmissionData,
 };
-use super::{JWTSigner, VerificationProtocolError, get_jwt_signer};
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::value_to_model_claims;
@@ -25,10 +25,15 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier::{Identifier, IdentifierData};
+use crate::model::key::Key;
 use crate::model::proof::Proof;
+use crate::model::relation::OptionalRelatedExt;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
-use crate::provider::credential_formatter::model::{CredentialClaim, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, CredentialClaim, IdentifierDetails,
+};
+use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
@@ -523,4 +528,37 @@ pub(super) fn map_transaction_data(
             credential_query_ids: data.credential_query_ids,
         })
         .collect()
+}
+
+struct JWTSigner {
+    pub auth_fn: AuthenticationFn,
+    pub verifier_key: Key,
+    pub key_algorithm: Arc<dyn KeyAlgorithm>,
+    pub jose_algorithm: String,
+}
+
+async fn get_jwt_signer(
+    proof: &Proof,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_provider: &dyn KeyProvider,
+) -> Result<JWTSigner, VerificationProtocolError> {
+    let verifier_key = proof.verifier_key.as_required_ref().await?.to_owned();
+
+    let auth_fn = key_provider.get_signature_provider(
+        &verifier_key,
+        None,
+        key_algorithm_provider.to_owned(),
+    )?;
+
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_key(&verifier_key)
+        .error_while("getting key algorithm")?;
+
+    let jose_algorithm = key_algorithm.issuance_jose_alg_id();
+    Ok(JWTSigner {
+        auth_fn,
+        verifier_key,
+        key_algorithm,
+        jose_algorithm,
+    })
 }

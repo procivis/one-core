@@ -9,16 +9,16 @@ use one_crypto::jwe::Header as JweHeader;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
-use shared_types::{ProofId, TransactionDataId, TransactionDataType};
+use shared_types::{InteractionId, ProofId, TransactionDataId, TransactionDataType};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dc_api::{
     DigitalCredential, DigitalCredentialGetRequest, DigitalCredentialRequestOptions,
-    SignedAuthorizationRequestPayload,
+    JWSCompactSerialized, SignedAuthorizationRequestPayload, UnsignedAuthorizationRequest,
 };
-use standardized_types::openid4vp::dcql::CredentialQueryId;
+use standardized_types::openid4vp::dcql::{CredentialQueryId, DcqlQuery};
 use standardized_types::openid4vp::{
-    ClientIdPrefix, DirectPostResponse, ResponseMode, VpTokenResponse,
+    ClientIdPrefix, ClientMetadata, DirectPostResponse, ResponseMode, VpTokenResponse,
 };
 use time::Duration;
 use tokio::sync::Mutex;
@@ -31,7 +31,10 @@ use super::final1_0::mappers::{
     create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
     transaction_data_from_interaction,
 };
-use super::mapper::{format_to_type, unencrypted_params};
+use super::mapper::{
+    format_authorization_request_client_id_scheme_did,
+    format_authorization_request_client_id_scheme_x509, format_to_type, unencrypted_params,
+};
 use super::mdoc::mdoc_presentation_context;
 use super::model::{
     CommonVerifierInteractionContent, HolderTxData, JwePayload, OpenID4VPHolderInteractionData,
@@ -56,6 +59,7 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::native_credential_manager::NativeDcApiResponseHandler;
 use crate::proto::wrp_validator::WRPValidator;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -80,7 +84,8 @@ use crate::provider::verification_protocol::dto::{
     ShareResponseData, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
-    interaction_from_handle_invitation, proof_from_handle_invitation,
+    gather_registration_certificates, interaction_from_handle_invitation,
+    proof_from_handle_invitation,
 };
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
@@ -126,6 +131,7 @@ pub(crate) struct OpenID4VPFinal1_0 {
     wrp_validator: Arc<dyn WRPValidator>,
     ecosystem_directory: Arc<dyn EcosystemDirectory>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
     base_url: Option<String>,
     params: Params,
     config: Arc<CoreConfig>,
@@ -157,6 +163,7 @@ impl OpenID4VPFinal1_0 {
         wrp_validator: Arc<dyn WRPValidator>,
         ecosystem_directory: Arc<dyn EcosystemDirectory>,
         transaction_data_provider: Arc<dyn TransactionDataProvider>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
         client: Arc<dyn HttpClient>,
         params: serde_json::Value,
         config: Arc<CoreConfig>,
@@ -186,6 +193,7 @@ impl OpenID4VPFinal1_0 {
             config,
             ecosystem_directory,
             transaction_data_provider,
+            blob_storage_provider,
             dc_api_response_handler: Default::default(),
         })
     }
@@ -584,6 +592,165 @@ impl OpenID4VPFinal1_0 {
         }
         Ok(())
     }
+
+    #[expect(clippy::too_many_arguments)]
+    async fn sharing_response_http(
+        &self,
+        proof: &Proof,
+        client_id_without_prefix: String,
+        client_id_scheme: ClientIdPrefix,
+        dcql_query: DcqlQuery,
+        response_uri: String,
+        client_metadata: ClientMetadata,
+        base_url: &str,
+        encryption_key: Option<PublicJwk>,
+        interaction_id: &InteractionId,
+    ) -> Result<(ShareResponseData, OpenID4VPVerifierInteractionContent), VerificationProtocolError>
+    {
+        let nonce = utilities::generate_alphanumeric(32);
+        let authorization_request = generate_authorization_request_params_final1_0(
+            nonce.clone(),
+            dcql_query,
+            vec![],
+            encode_client_id_with_scheme(client_id_without_prefix.clone(), client_id_scheme),
+            response_uri.clone(),
+            interaction_id,
+            client_metadata,
+            vec![],
+        )?;
+
+        let transaction_data = transaction_data_from_interaction(proof).await?;
+        let interaction_content = OpenID4VPVerifierInteractionContent {
+            nonce,
+            client_id: authorization_request.client_id.clone(),
+            dcql_query: authorization_request.dcql_query.clone(),
+            encryption_key,
+            client_id_scheme: Some(client_id_scheme),
+            response_uri: Some(response_uri),
+            common: CommonVerifierInteractionContent { transaction_data },
+        };
+
+        let authorization_request = create_openid4vp_final1_0_authorization_request(
+            base_url,
+            &self.params,
+            client_id_without_prefix,
+            proof,
+            client_id_scheme,
+            &self.key_algorithm_provider,
+            &*self.key_provider,
+            authorization_request,
+        )
+        .await?;
+
+        let encoded_authorization_request = serde_urlencoded::to_string(authorization_request)?;
+
+        let url = format!(
+            "{}://?{encoded_authorization_request}",
+            self.params.url_scheme
+        );
+        Ok((ShareResponseData::Url(url), interaction_content))
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    async fn sharing_response_dc_api(
+        &self,
+        proof: &Proof,
+        client_id_without_prefix: String,
+        client_id_scheme: ClientIdPrefix,
+        dcql_query: DcqlQuery,
+        client_metadata: ClientMetadata,
+        encryption_key: Option<PublicJwk>,
+        params: Option<ShareProofRequestParamsDTO>,
+    ) -> Result<(ShareResponseData, OpenID4VPVerifierInteractionContent), VerificationProtocolError>
+    {
+        let Some(ShareProofRequestParamsDTO {
+            dc_api_origin: Some(origin),
+            ..
+        }) = params
+        else {
+            return Err(VerificationProtocolError::Failed(
+                "Missing origin".to_string(),
+            ));
+        };
+
+        let response_mode = if encryption_key.is_some() {
+            ResponseMode::DcApiJwt
+        } else {
+            ResponseMode::DcApi
+        };
+        let client_id = encode_client_id_with_scheme(client_id_without_prefix, client_id_scheme);
+        let verifier_info = {
+            let verifier_identifier = proof.verifier_identifier.as_required_ref().await?;
+            gather_registration_certificates(&verifier_identifier, &*self.blob_storage_provider)
+                .await
+                .error_while("generating verifier_info object")?
+                .into_iter()
+                .map(|(_, attestation)| attestation)
+                .collect()
+        };
+        let transaction_data = transaction_data_from_interaction(proof).await?;
+        let nonce = utilities::generate_alphanumeric(32);
+
+        let request = SignedAuthorizationRequestPayload {
+            client_id: client_id.clone(),
+            expected_origins: vec![origin],
+            common: UnsignedAuthorizationRequest {
+                response_type: Some("vp_token".to_string()),
+                response_mode,
+                nonce: Some(nonce.clone()),
+                client_metadata: Some(client_metadata),
+                dcql_query: dcql_query.clone(),
+                verifier_info,
+                transaction_data: transaction_data
+                    .iter()
+                    .map(|request| request.encoded.clone())
+                    .collect(),
+            },
+        };
+
+        let interaction_content = OpenID4VPVerifierInteractionContent {
+            nonce,
+            client_id,
+            dcql_query,
+            encryption_key,
+            client_id_scheme: Some(client_id_scheme),
+            response_uri: None,
+            common: CommonVerifierInteractionContent { transaction_data },
+        };
+
+        let request = match client_id_scheme {
+            ClientIdPrefix::RedirectUri | ClientIdPrefix::VerifierAttestation => {
+                return Err(VerificationProtocolError::Failed(format!(
+                    "Unsupported client_id_scheme: {client_id_scheme}"
+                )));
+            }
+            ClientIdPrefix::X509SanDns | ClientIdPrefix::X509Hash => {
+                format_authorization_request_client_id_scheme_x509(
+                    proof,
+                    &self.key_algorithm_provider,
+                    &*self.key_provider,
+                    request,
+                )
+                .await?
+            }
+            ClientIdPrefix::DecentralizedIdentifier => {
+                format_authorization_request_client_id_scheme_did(
+                    proof,
+                    &self.key_algorithm_provider,
+                    &*self.key_provider,
+                    request,
+                )
+                .await?
+            }
+        };
+
+        Ok((
+            ShareResponseData::DcApi(DigitalCredentialGetRequest::OpenID4VpV1Signed(
+                JWSCompactSerialized { request },
+            )),
+            interaction_content,
+        ))
+    }
 }
 
 #[async_trait::async_trait]
@@ -938,25 +1105,11 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .transport
             .get_type(&proof.transport)
             .error_while("parsing transport")?;
-        if transport_type != TransportType::Http {
-            return Err(VerificationProtocolError::Failed(format!(
-                "Unsupported transport: {}",
-                proof.transport
-            )));
-        }
-
-        let interaction_id = Uuid::new_v4().into();
-
-        let Some(base_url) = &self.base_url else {
-            return Err(VerificationProtocolError::Failed("Missing base_url".into()));
-        };
-        let response_uri = format!("{base_url}/ssi/openid4vp/final-1.0/response");
-        let nonce = utilities::generate_alphanumeric(32);
 
         let verifier_identifier = proof.verifier_identifier.as_required_ref().await?;
 
         let client_id_scheme = get_client_id_scheme(
-            params,
+            params.as_ref(),
             &self.params.verifier.supported_client_id_schemes,
             &verifier_identifier,
         )?;
@@ -972,19 +1125,60 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             ));
         }
 
+        let response_uri = self
+            .base_url
+            .as_ref()
+            .map(|base_url| format!("{base_url}/ssi/openid4vp/final-1.0/response"));
+
         let client_id_without_prefix = match client_id_scheme {
             ClientIdPrefix::RedirectUri | ClientIdPrefix::VerifierAttestation => {
-                response_uri.to_owned()
+                if transport_type != TransportType::Http {
+                    return Err(VerificationProtocolError::Failed(format!(
+                        "Unsupported transport: {} combined with client_id_scheme: {client_id_scheme}",
+                        proof.transport
+                    )));
+                }
+
+                response_uri
+                    .as_ref()
+                    .ok_or(VerificationProtocolError::Failed("Missing base_url".into()))?
+                    .to_owned()
             }
             ClientIdPrefix::X509SanDns => {
-                let base_url = Url::parse(base_url)
+                let verifier_url = match transport_type {
+                    TransportType::Http => self
+                        .base_url
+                        .as_ref()
+                        .ok_or(VerificationProtocolError::Failed("Missing base_url".into()))?,
+                    TransportType::DcApi => {
+                        let Some(ShareProofRequestParamsDTO {
+                            dc_api_origin: Some(origin),
+                            ..
+                        }) = &params
+                        else {
+                            return Err(VerificationProtocolError::Failed(
+                                "Missing origin".to_string(),
+                            ));
+                        };
+
+                        origin
+                    }
+                    _ => {
+                        return Err(VerificationProtocolError::Failed(format!(
+                            "Unsupported transport: {}",
+                            proof.transport
+                        )));
+                    }
+                };
+
+                let verifier_url = Url::parse(verifier_url)
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-                base_url
+                verifier_url
                     .domain()
-                    .ok_or(VerificationProtocolError::Failed(
-                        "Invalid base_url".to_string(),
-                    ))?
+                    .ok_or(VerificationProtocolError::Failed(format!(
+                        "Invalid verifier_url: {verifier_url}"
+                    )))?
                     .to_string()
             }
             ClientIdPrefix::X509Hash => {
@@ -1059,41 +1253,45 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .and_then(|jwks| jwks.keys.first())
             .cloned();
 
-        let authorization_request = generate_authorization_request_params_final1_0(
-            nonce.clone(),
-            dcql_query,
-            vec![],
-            encode_client_id_with_scheme(client_id_without_prefix.clone(), client_id_scheme),
-            response_uri.clone(),
-            &interaction_id,
-            client_metadata,
-            vec![],
-        )?;
+        let interaction_id = Uuid::new_v4().into();
 
-        let transaction_data = transaction_data_from_interaction(proof).await?;
-        let interaction_content = OpenID4VPVerifierInteractionContent {
-            nonce,
-            client_id: authorization_request.client_id.clone(),
-            dcql_query: authorization_request.dcql_query.clone(),
-            encryption_key,
-            client_id_scheme: Some(client_id_scheme),
-            response_uri: Some(response_uri),
-            common: CommonVerifierInteractionContent { transaction_data },
+        let (data, interaction_content) = match (transport_type, self.params.swiyu_mode) {
+            (TransportType::Http, _) => {
+                self.sharing_response_http(
+                    proof,
+                    client_id_without_prefix,
+                    client_id_scheme,
+                    dcql_query,
+                    response_uri
+                        .ok_or(VerificationProtocolError::Failed("Missing base_url".into()))?,
+                    client_metadata,
+                    self.base_url
+                        .as_ref()
+                        .ok_or(VerificationProtocolError::Failed("Missing base_url".into()))?,
+                    encryption_key,
+                    &interaction_id,
+                )
+                .await?
+            }
+            (TransportType::DcApi, false) => {
+                self.sharing_response_dc_api(
+                    proof,
+                    client_id_without_prefix,
+                    client_id_scheme,
+                    dcql_query,
+                    client_metadata,
+                    encryption_key,
+                    params,
+                )
+                .await?
+            }
+            _ => {
+                return Err(VerificationProtocolError::Failed(format!(
+                    "Unsupported transport: {}",
+                    proof.transport
+                )));
+            }
         };
-
-        let authorization_request = create_openid4vp_final1_0_authorization_request(
-            base_url,
-            &self.params,
-            client_id_without_prefix,
-            proof,
-            client_id_scheme,
-            &self.key_algorithm_provider,
-            &*self.key_provider,
-            authorization_request,
-        )
-        .await?;
-
-        let encoded_authorization_request = serde_urlencoded::to_string(authorization_request)?;
 
         let expires_at = self
             .params
@@ -1101,12 +1299,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .interaction_expires_in_seconds
             .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in);
 
-        let url = format!(
-            "{}://?{encoded_authorization_request}",
-            self.params.url_scheme
-        );
         Ok(ShareResponse {
-            data: ShareResponseData::Url(url),
+            data,
             interaction_id,
             interaction_data: Some(serialize_interaction_data(&interaction_content)?),
             expires_at,

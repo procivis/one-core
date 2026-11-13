@@ -7,9 +7,11 @@ use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{Identifier, IdentifierData, IdentifierType};
 use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
+use one_core::proto::jwt::Jwt;
 use serde_json::Value;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
+use standardized_types::openid4vp::dc_api::SignedAuthorizationRequestPayload;
 use url::Url;
 use uuid::Uuid;
 
@@ -982,6 +984,101 @@ async fn test_share_proof_iso_mdl_dc_api() {
     assert_eq!(request["protocol"], "org-iso-mdoc");
     assert!(request["data"]["deviceRequest"].is_string());
     assert!(request["data"]["encryptionInfo"].is_string());
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
+async fn test_share_proof_openid4vp_dc_api() {
+    // GIVEN
+    let (context, organisation, identifier, certificate, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                format: Some("SD_JWT_VC".into()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+            }],
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            ProofStateEnum::Created,
+            "OPENID4VP_FINAL1",
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_certificate: Some(certificate),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                transport: Some("DC_API".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .share(
+            proof.id,
+            ShareProofTestParams {
+                dc_api_origin: Some("https://verifier.example.com"),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json::<Value>().await;
+    assert!(resp.get("url").is_none());
+
+    let request_json = resp["requestJson"].as_str().unwrap();
+    let request: Value = serde_json::from_str(request_json).unwrap();
+    assert_eq!(request["protocol"], "openid4vp-v1-signed");
+    let request_jwt = request["data"]["request"].as_str().unwrap();
+    let request_jwt =
+        Jwt::<SignedAuthorizationRequestPayload>::decompose_token(request_jwt).unwrap();
+    assert_eq!(
+        request_jwt.payload.custom.expected_origins,
+        vec!["https://verifier.example.com".to_string()]
+    );
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }
