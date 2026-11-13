@@ -26,9 +26,6 @@ use crate::repository::revocation_list_repository::RevocationListRepository;
 #[serde(rename_all = "camelCase")]
 pub(super) struct StatusListSizeParams<const MINIMUM_CAPACITY: usize> {
     /// (maximum) number of entries on the generated status list
-    ///
-    /// Beware that increasing `capacity` breaks the already generated lists,
-    /// as they are assumed to be generated with this size
     pub capacity: usize,
     /// assignment block size, when allocating indexes on the status-list,
     /// a random block is selected (to optimize for parallel execution).
