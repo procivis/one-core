@@ -302,7 +302,11 @@ do
   pushd ${CARGO_TARGET_DIR}/$arch/mobile-release >/dev/null &&
   mkdir -p ProcivisOneCoreFFI.framework &&
   cd ProcivisOneCoreFFI.framework &&
-  mkdir -p Headers Modules Resources &&
+  mkdir -p Headers Modules &&
+  cp ../../../../platforms/ios/uniffi/Info.plist ./Info.plist &&
+  if [[ "$arch" == *-sim ]]; then
+    sed -i '' 's/iPhoneOS/iPhoneSimulator/g' ./Info.plist
+  fi
   cp ../../../uniffi/ios/ProcivisOneCoreFFI.modulemap ./Modules/module.modulemap &&
   cp ../../../uniffi/ios/ProcivisOneCoreFFI.h ./Headers/ProcivisOneCoreFFI.h &&
   cp ../libone_core_uniffi.a ./ProcivisOneCoreFFI &&
