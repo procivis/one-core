@@ -1,3 +1,6 @@
+//! Newtypes and small value types shared across the One Core crates.
+#![warn(missing_docs)]
+
 mod config;
 mod did_value;
 pub mod i18n;

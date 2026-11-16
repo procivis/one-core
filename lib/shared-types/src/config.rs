@@ -15,8 +15,8 @@ string_ids! {
     SignerId,
     /// Identifier of a task based in CoreConfig.task
     TaskId,
-    /// Identifier of a trust list based in CoreConfig.trust_list_publisher
+    /// Identifier of a trust list publisher based in CoreConfig.trust_list_publisher
     TrustListPublisherId,
-    /// Identifier of a trust list based in CoreConfig.trust_list_subscriber
+    /// Identifier of a trust list subscriber based in CoreConfig.trust_list_subscriber
     TrustListSubscriberId,
 }

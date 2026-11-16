@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+/// Permission granted to a caller of the API
+#[expect(missing_docs, reason = "self-explanatory variants")]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Permission {

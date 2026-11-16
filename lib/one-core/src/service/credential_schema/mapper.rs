@@ -932,7 +932,7 @@ fn unnest_claim_schemas_inner(
                     parent_namespaces.insert((*format).clone(), namespace.to_string());
                 } else {
                     mapping.namespace = parent_namespaces
-                        .get(format)
+                        .get(*format)
                         .or_else(|| default_namespaces.get(format))
                         .cloned()
                 }
@@ -941,7 +941,7 @@ fn unnest_claim_schemas_inner(
                     format: (*format).clone(),
                     technical_key: claim_prefixes.nest_technical_key(format, &claim_schema.key),
                     namespace: parent_namespaces
-                        .get(format)
+                        .get(*format)
                         .or_else(|| default_namespaces.get(format))
                         .cloned(),
                 });

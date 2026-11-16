@@ -1,9 +1,9 @@
 /// Declares one or more newtypes wrapping a [`uuid::Uuid`].
 ///
-/// Each generated type is `Copy`, (de)serializes transparently as the inner UUID and gets:
-/// [`std::str::FromStr`], [`std::fmt::Display`], `From<Uuid>`, `From<Self> for Uuid`,
-/// `PartialEq<Uuid>`, a `utoipa::ToSchema` derive (feature `utoipa`) and the sea-orm
-/// conversions from [`impls_for_seaorm_newtype`] (feature `sea-orm`).
+/// Each generated type is `Copy` and `Ord`, (de)serializes transparently as the inner UUID and
+/// gets: a random `new_v4()` constructor, [`std::str::FromStr`], [`std::fmt::Display`],
+/// `From<Uuid>`, `From<Self> for Uuid`, `PartialEq<Uuid>`, a `utoipa::ToSchema` derive (feature
+/// `utoipa`) and the sea-orm conversions from [`impls_for_seaorm_newtype`] (feature `sea-orm`).
 ///
 /// # Examples
 /// ```ignore
@@ -24,6 +24,8 @@ macro_rules! uuid_ids {
                 Eq,
                 PartialEq,
                 Hash,
+                Ord,
+                PartialOrd,
                 serde::Serialize,
                 serde::Deserialize,
             )]
@@ -31,6 +33,13 @@ macro_rules! uuid_ids {
             #[serde(transparent)]
             #[repr(transparent)]
             pub struct $name(uuid::Uuid);
+
+            impl $name {
+                /// Creates a new random (version 4) identifier.
+                pub fn new_v4() -> Self {
+                    Self(uuid::Uuid::new_v4())
+                }
+            }
 
             $crate::macros::impls_for_uuid_newtype!($name);
 
@@ -43,8 +52,9 @@ pub(crate) use uuid_ids;
 
 /// Declares one or more newtypes wrapping a [`String`].
 ///
-/// Each generated type (de)serializes transparently as the inner string and gets:
-/// infallible [`std::str::FromStr`], `From<&str>`, `From<String>`, `From<Self> for String`, `AsRef<str>`,
+/// Each generated type (de)serializes transparently as the inner string and gets: `as_str()`,
+/// infallible [`std::str::FromStr`], `From<&str>`, `From<String>`, `From<Self> for String`,
+/// `AsRef<str>`, `Borrow<str>` (allows looking up `&str` keys in maps keyed by the newtype),
 /// [`std::fmt::Display`], a `utoipa::ToSchema` derive (feature `utoipa`) and the sea-orm
 /// conversions from [`impls_for_seaorm_newtype`] (feature `sea-orm`).
 ///
@@ -76,6 +86,13 @@ macro_rules! string_ids {
             #[repr(transparent)]
             pub struct $name(String);
 
+            impl $name {
+                /// Returns the underlying string.
+                pub fn as_str(&self) -> &str {
+                    &self.0
+                }
+            }
+
             impl std::str::FromStr for $name {
                 type Err = std::convert::Infallible;
 
@@ -92,6 +109,13 @@ macro_rules! string_ids {
 
             impl std::convert::AsRef<str> for $name {
                 fn as_ref(&self) -> &str {
+                    &self.0
+                }
+            }
+
+            // consistent with `Eq`, `Ord` and `Hash`, which are derived from the inner `String`
+            impl std::borrow::Borrow<str> for $name {
+                fn borrow(&self) -> &str {
                     &self.0
                 }
             }
@@ -284,6 +308,14 @@ mod tests {
         assert_eq!(Uuid::from(id), Uuid::from_str(UUID).unwrap());
         assert!(id == Uuid::from_str(UUID).unwrap());
         assert!(CredentialId::from_str("not-a-uuid").is_err());
+        assert_ne!(CredentialId::new_v4(), CredentialId::new_v4());
+    }
+
+    #[test]
+    fn test_uuid_id_ord_matches_uuid() {
+        let lower = CredentialId::from(Uuid::from_u128(1));
+        let higher = CredentialId::from(Uuid::from_u128(2));
+        assert!(lower < higher);
     }
 
     #[test]
@@ -300,8 +332,16 @@ mod tests {
         assert_eq!(id, SignerId::from_str("X509").unwrap());
         assert_eq!(id, SignerId::from("X509".to_string()));
         assert_eq!(id.as_ref(), "X509");
+        assert_eq!(id.as_str(), "X509");
         assert_eq!(id.to_string(), "X509");
         assert_eq!(String::from(id), "X509");
+    }
+
+    #[test]
+    fn test_string_id_borrow_lookup() {
+        let map = std::collections::HashMap::from([(SignerId::from("X509"), 1)]);
+        assert_eq!(map.get("X509"), Some(&1));
+        assert_eq!(map.get("other"), None);
     }
 
     #[test]

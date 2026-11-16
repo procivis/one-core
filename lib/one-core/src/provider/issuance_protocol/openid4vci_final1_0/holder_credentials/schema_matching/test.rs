@@ -1287,11 +1287,7 @@ async fn reuses_swiyu_format_for_parsed_sd_jwt_vc(
     #[values(false, true)] explicit_format_id: bool,
 ) {
     let mut config = generic_config().core;
-    let sd_jwt_vc_config = config
-        .format
-        .get_fields(&"SD_JWT_VC".into())
-        .unwrap()
-        .clone();
+    let sd_jwt_vc_config = config.format.get_fields("SD_JWT_VC").unwrap().clone();
     config
         .format
         .insert("SD_JWT_VC_SWIYU".into(), sd_jwt_vc_config);

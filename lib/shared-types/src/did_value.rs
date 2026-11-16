@@ -11,21 +11,27 @@ use url::Url;
 static DID_ALLOWLIST_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9:._%-]+$").expect("Failed to compile regex"));
 
+/// Error when parsing a [`DidValue`]
 #[derive(Debug, Error)]
 pub enum DidValueError {
+    /// The URL scheme is not `did`
     #[error("Incorrect URL scheme: `{0}`")]
     IncorrectScheme(String),
+    /// The DID method contains invalid characters
     #[error("Incorrect did method: `{0}`")]
     IncorrectDidMethod(String),
+    /// The method-specific identifier is invalid
     #[error("Incorrect did value: `{0}`")]
     IncorrectDidValue(String),
+    /// The DID does not contain a method
     #[error("Did method not found")]
     DidMethodNotFound,
+    /// The value is not a valid URL
     #[error("URL parsing error: `{0}`")]
     URLError(#[from] url::ParseError),
 }
 
-/// https://www.w3.org/TR/did-core/#did-syntax
+/// A DID, validated according to <https://www.w3.org/TR/did-core/#did-syntax>
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub struct DidValue {
@@ -34,19 +40,23 @@ pub struct DidValue {
 }
 
 impl DidValue {
+    /// Returns the DID as URL.
     pub fn into_url(self) -> Url {
         self.url
     }
 
+    /// Returns the DID as string.
     pub fn as_str(&self) -> &str {
         self.url.as_str()
     }
 
+    /// Returns the DID method, e.g. `key` for `did:key:...`.
     pub fn method(&self) -> &str {
         self.method.as_str()
     }
 
-    /// https://www.w3.org/TR/did-core/#did-url-syntax
+    /// Extracts the DID from a DID URL (<https://www.w3.org/TR/did-core/#did-url-syntax>) by
+    /// removing path, query and fragment.
     pub fn from_did_url(url: impl AsRef<str>) -> Result<Self, DidValueError> {
         let url = url.as_ref();
         let mut url = Url::parse(url)?;

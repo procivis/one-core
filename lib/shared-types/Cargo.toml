@@ -13,7 +13,7 @@ doctest = false
 
 [features]
 sea-orm = ["dep:sea-orm"]
-utoipa  = ["dep:utoipa"]
+utoipa  = ["dep:utoipa", "utoipa/url"]
 
 [dependencies]
 regex.workspace     = true
