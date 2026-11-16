@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
-use shared_types::IdentifierId;
-use shared_types::i18n::I18nString;
+use shared_types::{I18nString, IdentifierId};
 use standardized_types::openid4vci::IssuerDisplay;
 use time::OffsetDateTime;
 
@@ -99,8 +98,8 @@ pub(crate) fn issuer_display_to_identifier_translations(
     }
 
     Some(IdentifierTranslations {
-        name: I18nString(names),
-        logo_alt_text: (!logo_alt_texts.is_empty()).then_some(I18nString(logo_alt_texts)),
+        name: I18nString::from(names),
+        logo_alt_text: (!logo_alt_texts.is_empty()).then_some(I18nString::from(logo_alt_texts)),
     })
 }
 
@@ -137,7 +136,7 @@ mod tests {
             issuer_display_to_identifier_translations(&[display("Issuer", None, None)], "en")
                 .unwrap();
 
-        assert_eq!(result.name.0.get("en").map(String::as_str), Some("Issuer"));
+        assert_eq!(result.name.get("en"), Some("Issuer"));
         assert!(result.logo_alt_text.is_none());
     }
 
@@ -152,27 +151,18 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(result.name.0.get("en").map(String::as_str), Some("Issuer"));
-        assert_eq!(
-            result.name.0.get("de").map(String::as_str),
-            Some("Aussteller")
-        );
+        assert_eq!(result.name.get("en"), Some("Issuer"));
+        assert_eq!(result.name.get("de"), Some("Aussteller"));
         let alt = result.logo_alt_text.unwrap();
-        assert_eq!(
-            alt.0.get("de").map(String::as_str),
-            Some("Logo Beschreibung")
-        );
-        assert!(!alt.0.contains_key("en"));
+        assert_eq!(alt.get("de"), Some("Logo Beschreibung"));
+        assert!(alt.get("en").is_none());
     }
 
     #[test]
     fn build_identifier_translations_backfills_default_language_name() {
         let id = Uuid::new_v4().into();
         let supplied = IdentifierTranslations {
-            name: shared_types::i18n::I18nString(std::collections::BTreeMap::from([(
-                "pl".to_owned(),
-                "Nazwisko".to_owned(),
-            )])),
+            name: shared_types::I18nString::from([("pl", "Nazwisko")]),
             logo_alt_text: None,
         };
         let rows = build_identifier_translations(id, "Plain name", Some(supplied), now_utc(), "en");
@@ -190,10 +180,7 @@ mod tests {
     fn build_identifier_translations_keeps_supplied_default_language_name() {
         let id = Uuid::new_v4().into();
         let supplied = IdentifierTranslations {
-            name: shared_types::i18n::I18nString(std::collections::BTreeMap::from([(
-                "en".to_owned(),
-                "Given name".to_owned(),
-            )])),
+            name: shared_types::I18nString::from([("en", "Given name")]),
             logo_alt_text: None,
         };
         let rows = build_identifier_translations(id, "Plain name", Some(supplied), now_utc(), "en");

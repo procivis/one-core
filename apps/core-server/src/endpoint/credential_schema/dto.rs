@@ -20,9 +20,8 @@ use one_dto_mapper::{
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::i18n::I18nString;
 use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId,
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, I18nString, OrganisationId,
     RevocationMethodId,
 };
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
@@ -1185,10 +1184,7 @@ mod test {
                 array: true,
                 claims: vec![],
                 translations: CredentialClaimSchemaTranslationsRestDTO {
-                    name: I18nString(std::collections::BTreeMap::from([(
-                        "en".to_string(),
-                        "key".to_string(),
-                    )])),
+                    name: I18nString::from([("en", "key")]),
                 },
             }],
             key_storage_security: Some(KeyStorageSecurityRestEnum::Basic),
@@ -1221,10 +1217,7 @@ mod test {
             }),
             dcql: None,
             translations: CredentialSchemaTranslationsRestDTO {
-                name: I18nString(std::collections::BTreeMap::from([(
-                    "en".to_string(),
-                    "name".to_string(),
-                )])),
+                name: I18nString::from([("en", "name")]),
                 description: None,
             },
             expiration: Some(Duration::seconds(63072000)),
@@ -1264,10 +1257,7 @@ mod test {
                     namespace: None,
                 }]),
                 translations: CredentialClaimSchemaTranslationsRestDTO {
-                    name: I18nString(std::collections::BTreeMap::from([(
-                        "en".to_string(),
-                        "key".to_string(),
-                    )])),
+                    name: I18nString::from([("en", "key")]),
                 },
             }],
             wallet_attestation: CredentialSchemaWalletAttestationRestDTO {
@@ -1288,10 +1278,7 @@ mod test {
                 description: Some("description".to_string()),
             }),
             translations: CredentialSchemaTranslationsRestDTO {
-                name: I18nString(std::collections::BTreeMap::from([(
-                    "en".to_string(),
-                    "name".to_string(),
-                )])),
+                name: I18nString::from([("en", "name")]),
                 description: None,
             },
             embedded_disclosure_policy: None,

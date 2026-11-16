@@ -2,10 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::{assert_matches, vec};
 
-use maplit::btreemap;
 use mockall::predicate::*;
-use shared_types::CredentialSchemaId;
-use shared_types::i18n::I18nString;
+use shared_types::{CredentialSchemaId, I18nString};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -1876,7 +1874,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -1889,7 +1887,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -1902,7 +1900,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
     ];
@@ -1916,7 +1914,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
         required: true,
         array: false,
         translations: CredentialClaimSchemaTranslationsDTO {
-            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+            name: I18nString::from([("en", "name")]),
         },
 
         claims: vec![
@@ -1930,7 +1928,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
                 array: false,
                 claims: vec![],
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString::from([("en", "name")]),
                 },
             },
             CredentialClaimSchemaDTO {
@@ -1943,7 +1941,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
                 array: false,
                 claims: vec![],
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString::from([("en", "name")]),
                 },
             },
         ],
@@ -1975,7 +1973,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -1988,7 +1986,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2001,7 +1999,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2014,7 +2012,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2027,7 +2025,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2040,7 +2038,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
         CredentialClaimSchemaDTO {
@@ -2053,7 +2051,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             array: false,
             claims: vec![],
             translations: CredentialClaimSchemaTranslationsDTO {
-                name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                name: I18nString::from([("en", "name")]),
             },
         },
     ];
@@ -2067,7 +2065,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
         required: true,
         array: false,
         translations: CredentialClaimSchemaTranslationsDTO {
-            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+            name: I18nString::from([("en", "name")]),
         },
 
         claims: vec![
@@ -2080,7 +2078,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 required: true,
                 array: false,
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString::from([("en", "name")]),
                 },
 
                 claims: vec![
@@ -2094,7 +2092,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString::from([("en", "name")]),
                         },
                     },
                     CredentialClaimSchemaDTO {
@@ -2107,7 +2105,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString::from([("en", "name")]),
                         },
                     },
                 ],
@@ -2121,7 +2119,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 required: true,
                 array: false,
                 translations: CredentialClaimSchemaTranslationsDTO {
-                    name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                    name: I18nString::from([("en", "name")]),
                 },
 
                 claims: vec![
@@ -2135,7 +2133,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString::from([("en", "name")]),
                         },
                     },
                     CredentialClaimSchemaDTO {
@@ -2148,7 +2146,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         array: false,
                         claims: vec![],
                         translations: CredentialClaimSchemaTranslationsDTO {
-                            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+                            name: I18nString::from([("en", "name")]),
                         },
                     },
                 ],
@@ -2175,7 +2173,7 @@ fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
         array: false,
         claims: vec![],
         translations: CredentialClaimSchemaTranslationsDTO {
-            name: I18nString(btreemap! { "en".to_string() => "name".to_string()}),
+            name: I18nString::from([("en", "name")]),
         },
     }];
     assert_matches!(

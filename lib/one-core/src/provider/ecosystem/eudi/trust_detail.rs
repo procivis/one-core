@@ -1,5 +1,4 @@
-use shared_types::i18n::I18nString;
-use shared_types::{EcosystemId, EntityId, OrganisationId};
+use shared_types::{EcosystemId, EntityId, I18nString, OrganisationId};
 use standardized_types::etsi_119_475::registration_certificate::{Payload, SupervisoryAuthority};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use url::Url;
@@ -299,12 +298,12 @@ fn trust_purpose_from_history(
         return Ok(None);
     };
 
-    Ok(Some(I18nString(
+    Ok(Some(
         purpose
             .iter()
             .map(|p| (p.lang.to_owned(), p.value.to_owned()))
             .collect(),
-    )))
+    ))
 }
 
 enum WalletRelyingPartyDetails {
@@ -376,12 +375,10 @@ fn map_reg_cert(
                 .into_iter()
                 .filter(|langs| !langs.is_empty())
                 .map(|langs| {
-                    I18nString(
-                        langs
-                            .into_iter()
-                            .map(|lang| (lang.lang, lang.value))
-                            .collect(),
-                    )
+                    langs
+                        .into_iter()
+                        .map(|lang| (lang.lang, lang.value))
+                        .collect()
                 })
                 .collect(),
             supervisory_authority: reg_cert.custom.supervisory_authority,
@@ -417,12 +414,10 @@ fn map_national_registry_info(
                 .into_iter()
                 .filter(|langs| !langs.is_empty())
                 .map(|langs| {
-                    I18nString(
-                        langs
-                            .into_iter()
-                            .map(|lang| (lang.lang, lang.content))
-                            .collect(),
-                    )
+                    langs
+                        .into_iter()
+                        .map(|lang| (lang.lang, lang.content))
+                        .collect()
                 })
                 .collect(),
             supervisory_authority: SupervisoryAuthority {

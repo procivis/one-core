@@ -2,8 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use serde::Serialize;
-use shared_types::i18n::I18nString;
-use shared_types::{CredentialId, InteractionId, TransactionDataId, TransactionDataType};
+use shared_types::{
+    CredentialId, I18nString, InteractionId, TransactionDataId, TransactionDataType,
+};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::dc_api::DigitalCredentialGetRequest;
 use standardized_types::openid4vp::dcql::CredentialQueryId;

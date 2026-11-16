@@ -4,8 +4,7 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use assert2::let_assert;
 use mockall::Sequence;
-use shared_types::IdentifierId;
-use shared_types::i18n::I18nString;
+use shared_types::{I18nString, IdentifierId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::Duration;
@@ -428,7 +427,7 @@ async fn test_get_or_create_remote_identifier_does_not_update_when_translations_
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
             Some(IdentifierTranslations {
-                name: I18nString([("en".to_string(), "English issuer".to_string())].into()),
+                name: I18nString::from([("en", "English issuer")]),
                 logo_alt_text: None,
             }),
             None,
@@ -494,13 +493,7 @@ async fn test_get_or_create_remote_identifier_updates_when_translations_differ()
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
             Some(IdentifierTranslations {
-                name: I18nString(
-                    [
-                        ("en".to_string(), "identifier".to_string()),
-                        ("de".to_string(), "Deutscher Aussteller".to_string()),
-                    ]
-                    .into(),
-                ),
+                name: I18nString::from([("en", "identifier"), ("de", "Deutscher Aussteller")]),
                 logo_alt_text: None,
             }),
             None,
@@ -571,7 +564,7 @@ async fn test_get_or_create_remote_identifier_sets_logo_when_identifier_has_none
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
             Some(IdentifierTranslations {
-                name: I18nString([("en".to_string(), "English issuer".to_string())].into()),
+                name: I18nString::from([("en", "English issuer")]),
                 logo_alt_text: None,
             }),
             Some("data:image/png;base64,AAAA".to_string()),
@@ -615,7 +608,7 @@ async fn test_get_or_create_remote_identifier_does_not_refresh_existing_logo() {
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
             Some(IdentifierTranslations {
-                name: I18nString([("en".to_string(), "English issuer".to_string())].into()),
+                name: I18nString::from([("en", "English issuer")]),
                 logo_alt_text: None,
             }),
             Some("data:image/png;base64,BBBB".to_string()),

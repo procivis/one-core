@@ -357,7 +357,7 @@ pub(crate) struct ExportProofInputSchemaResponseRestDTO {
 
 #[cfg(test)]
 mod test {
-    use shared_types::i18n::I18nString;
+    use shared_types::I18nString;
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -423,10 +423,7 @@ mod test {
                     allow_suspension: true,
                     allow_revocation: Some(true),
                     translations: CredentialSchemaTranslationsRestDTO {
-                        name: I18nString(std::collections::BTreeMap::from([(
-                            "en".to_string(),
-                            "name".to_string(),
-                        )])),
+                        name: I18nString::from([("en", "name")]),
                         description: None,
                     },
                     ecosystem: Some("EUDI".into()),
@@ -442,10 +439,7 @@ mod test {
                         claims: vec![],
                         mappings: None,
                         translations: CredentialClaimSchemaTranslationsRestDTO {
-                            name: I18nString(std::collections::BTreeMap::from([(
-                                "en".to_string(),
-                                "attribute".to_string(),
-                            )])),
+                            name: I18nString::from([("en", "attribute")]),
                         },
                     }],
                     wallet_attestation: CredentialSchemaWalletAttestationRestDTO {

@@ -4,10 +4,9 @@ use async_trait::async_trait;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::i18n::I18nString;
 use shared_types::{
-    CredentialFormat, CredentialId, EcosystemId, IdentifierTrustInformationId, OrganisationId,
-    ProofId,
+    CredentialFormat, CredentialId, EcosystemId, I18nString, IdentifierTrustInformationId,
+    OrganisationId, ProofId,
 };
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use time::Duration;

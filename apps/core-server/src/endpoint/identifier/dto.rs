@@ -30,10 +30,9 @@ use one_dto_mapper::{
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::i18n::I18nString;
 use shared_types::{
-    CertificateId, CredentialSchemaId, DidMethodId, DidValue, EcosystemId, IdentifierId, KeyId,
-    OrganisationId, ProofSchemaId, TrustCollectionId, TrustListSubscriberId,
+    CertificateId, CredentialSchemaId, DidMethodId, DidValue, EcosystemId, I18nString,
+    IdentifierId, KeyId, OrganisationId, ProofSchemaId, TrustCollectionId, TrustListSubscriberId,
     TrustListSubscriptionId,
 };
 use standardized_types::etsi_119_602::TrustedEntityInformation;

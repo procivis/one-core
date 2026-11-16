@@ -2,8 +2,7 @@ use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::i18n::I18nString;
-use shared_types::{EcosystemId, EntityId, TrustCollectionId};
+use shared_types::{EcosystemId, EntityId, I18nString, TrustCollectionId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use uuid::Uuid;
@@ -2210,10 +2209,7 @@ async fn test_update_identifier_translations_replace_with_backfill() {
             PatchIdentifierRequestDTO {
                 translations: Some(Some(
                     crate::service::identifier::dto::IdentifierTranslationsDTO {
-                        name: I18nString(std::collections::BTreeMap::from([(
-                            "pl".to_string(),
-                            "Nazwa".to_string(),
-                        )])),
+                        name: I18nString::from([("pl", "Nazwa")]),
                         logo_alt_text: None,
                     },
                 )),

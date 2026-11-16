@@ -52,8 +52,7 @@ use one_core::service::ssi_holder::dto::{
 };
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
-use shared_types::KeyId;
-use shared_types::i18n::I18nString;
+use shared_types::{I18nString, KeyId};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use time::OffsetDateTime;
 use url::Url;
@@ -1160,7 +1159,7 @@ impl TryFrom<DisclosurePolicyOptionBindingDTO>
 }
 
 pub(crate) fn to_i18n_string(value: HashMap<String, String>) -> I18nString {
-    I18nString(value.into_iter().collect())
+    value.into_iter().collect()
 }
 pub(crate) fn from_i18n_string(value: I18nString) -> HashMap<String, String> {
     value.into_iter().collect()

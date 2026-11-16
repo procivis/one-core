@@ -2,8 +2,7 @@ use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use proc_macros::provider_mock;
-use shared_types::i18n::I18nString;
-use shared_types::{CredentialId, EcosystemId, IdentifierTrustInformationId, ProofId};
+use shared_types::{CredentialId, EcosystemId, I18nString, IdentifierTrustInformationId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use crate::model::credential::Credential;

@@ -1,10 +1,10 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::i18n::I18nString;
 use shared_types::{
-    CredentialSchemaId, DidMethodId, DidValue, EcosystemId, IdentifierId, KeyId, OrganisationId,
-    ProofSchemaId, SignerId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
+    CredentialSchemaId, DidMethodId, DidValue, EcosystemId, I18nString, IdentifierId, KeyId,
+    OrganisationId, ProofSchemaId, SignerId, TrustCollectionId, TrustListSubscriberId,
+    TrustListSubscriptionId,
 };
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;

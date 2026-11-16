@@ -1,9 +1,8 @@
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::i18n::I18nString;
 use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId,
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, EcosystemId, I18nString, OrganisationId,
     RevocationMethodId,
 };
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;

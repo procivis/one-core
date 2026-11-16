@@ -50,15 +50,14 @@ pub(crate) fn claim_name_translations_from_dto(
 ) -> Vec<LocalizedText> {
     translations
         .name
-        .0
         .iter()
         .map(|(lang, value)| LocalizedText {
             entity_id: id.into(),
             field: LocalizedTextField::Name,
             created_date: now,
             last_modified: now,
-            lang: lang.clone(),
-            value: value.clone(),
+            lang: lang.to_owned(),
+            value: value.to_owned(),
             entity_type: LocalizedTextEntityType::ClaimSchema,
         })
         .collect()

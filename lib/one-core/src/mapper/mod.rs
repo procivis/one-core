@@ -1,11 +1,10 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use shared_types::i18n::I18nString;
-use shared_types::{BlobId, ClaimSchemaId};
+use shared_types::{BlobId, ClaimSchemaId, I18nString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -435,15 +434,12 @@ pub(crate) fn translations_to_i18n(
     texts: &[LocalizedText],
     field: LocalizedTextField,
 ) -> Option<I18nString> {
-    let translations: BTreeMap<_, _> = texts
+    let translations: I18nString = texts
         .iter()
         .filter(|t| t.field == field)
-        .map(|t| (t.lang.clone(), t.value.clone()))
+        .map(|t| (t.lang.as_str(), t.value.as_str()))
         .collect();
-    if translations.is_empty() {
-        return None;
-    }
-    Some(I18nString(translations))
+    (!translations.is_empty()).then_some(translations)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -489,12 +485,8 @@ pub(crate) fn identifier_translations_dto(
     identifier_name: &str,
     default_language: &str,
 ) -> IdentifierTranslationsDTO {
-    let name = translations_to_i18n(texts, LocalizedTextField::Name).unwrap_or_else(|| {
-        I18nString(BTreeMap::from([(
-            default_language.to_owned(),
-            identifier_name.to_owned(),
-        )]))
-    });
+    let name = translations_to_i18n(texts, LocalizedTextField::Name)
+        .unwrap_or_else(|| I18nString::from([(default_language, identifier_name)]));
     IdentifierTranslationsDTO {
         name,
         logo_alt_text: translations_to_i18n(texts, LocalizedTextField::LogoAltText),

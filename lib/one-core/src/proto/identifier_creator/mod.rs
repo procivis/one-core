@@ -1,5 +1,6 @@
-use shared_types::i18n::I18nString;
-use shared_types::{BlobId, DidId, DidMethodId, DidValue, IdentifierId, OrganisationId};
+use shared_types::{
+    BlobId, DidId, DidMethodId, DidValue, I18nString, IdentifierId, OrganisationId,
+};
 use strum::Display;
 use time::OffsetDateTime;
 

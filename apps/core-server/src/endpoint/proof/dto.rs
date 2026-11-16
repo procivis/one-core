@@ -23,10 +23,9 @@ use one_dto_mapper::{
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::i18n::I18nString;
 use shared_types::{
-    CertificateId, CredentialSchemaId, DidId, EcosystemId, IdentifierId, KeyId, OrganisationId,
-    ProofId, ProofSchemaId, TransactionDataId,
+    CertificateId, CredentialSchemaId, DidId, EcosystemId, I18nString, IdentifierId, KeyId,
+    OrganisationId, ProofId, ProofSchemaId, TransactionDataId,
 };
 use standardized_types::openid4vp::ClientIdPrefix;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
