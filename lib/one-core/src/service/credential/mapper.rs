@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use shared_types::{CredentialFormat, CredentialId, EcosystemId};
 use time::OffsetDateTime;
@@ -16,7 +16,7 @@ use super::dto::{
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::error::{ContextWithErrorCode, NestedError};
-use crate::mapper::credential_schema_claim::claim_schema_to_dto;
+use crate::mapper::credential_schema_claim::{add_fallback_name, claim_schema_to_dto};
 use crate::mapper::{NESTED_CLAIM_MARKER, identifier_translations_dto, resolve_identifier_logo};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
@@ -342,15 +342,78 @@ async fn to_credential_detail_claims(
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
+    let claims = remove_metadata_claims(claims, &HashSet::new()).await?;
+    to_detail_claims(claims, credential_schema, config).await
+}
+
+/// Like the claims of the credential detail, but additionally containing the selectively
+/// disclosable metadata claims (e.g. a disclosed `sub` of an SD-JWT VC).
+///
+/// Unlike plain metadata claims, which are always part of a presentation, these are only shared
+/// with the verifier if presented, so they must be selectable when presenting.
+pub(crate) async fn to_presentation_detail_claims(
+    claims: Vec<Claim>,
+    credential_schema: &CredentialSchema,
+    config: &CoreConfig,
+) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
+    let mut disclosable_metadata_roots = HashSet::new();
+    for claim in &claims {
+        if claim.selectively_disclosable
+            && !claim.path.contains(NESTED_CLAIM_MARKER)
+            && claim.schema.as_ref().await?.metadata
+        {
+            disclosable_metadata_roots.insert(claim.path.to_owned());
+        }
+    }
+    let claims = remove_metadata_claims(claims, &disclosable_metadata_roots).await?;
+    to_detail_claims(claims, credential_schema, config).await
+}
+
+/// Removes all metadata claims, except the ones within `retained_roots`.
+async fn remove_metadata_claims(
+    claims: Vec<Claim>,
+    retained_roots: &HashSet<String>,
+) -> Result<Vec<Claim>, CredentialServiceError> {
+    let mut result = Vec::with_capacity(claims.len());
+    for claim in claims {
+        let root = claim
+            .path
+            .split(NESTED_CLAIM_MARKER)
+            .next()
+            .unwrap_or_default();
+        if !claim.schema.as_ref().await?.metadata || retained_roots.contains(root) {
+            result.push(claim);
+        }
+    }
+    Ok(result)
+}
+
+async fn to_detail_claims(
+    claims: Vec<Claim>,
+    credential_schema: &CredentialSchema,
+    config: &CoreConfig,
+) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
+    let mut claim_schema_ids = HashSet::new();
+    for claim in &claims {
+        claim_schema_ids.insert(claim.schema.id());
+    }
     let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
     let claim_schemas_raw = claim_schemas
         .iter()
-        .filter(|cs| !cs.metadata)
+        .filter(|cs| !cs.metadata || claim_schema_ids.contains(&cs.id))
         .map(ToOwned::to_owned)
         .collect::<Vec<_>>();
 
     let mut claim_schema_dtos = Vec::with_capacity(claim_schemas_raw.len());
     for cs in claim_schemas_raw {
+        let cs = if cs.metadata {
+            // metadata claims are not translated
+            add_fallback_name(cs, &config.global_settings.default_language)
+                .await
+                .map_err(|e| CredentialServiceError::MappingError(e.to_string()))?
+        } else {
+            cs
+        };
         claim_schema_dtos.push(
             claim_schema_to_dto(cs)
                 .await
@@ -360,9 +423,7 @@ async fn to_credential_detail_claims(
 
     let mut result = vec![];
     for claim in claims {
-        if !claim.schema.as_ref().await?.metadata {
-            result = insert_claim(result, claim, &claim_schema_dtos, config).await?;
-        }
+        result = insert_claim(result, claim, &claim_schema_dtos, config).await?;
     }
     sort_claims(&mut result);
 

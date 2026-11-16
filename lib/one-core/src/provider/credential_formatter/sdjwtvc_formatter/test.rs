@@ -2474,6 +2474,36 @@ async fn test_extract_credentials_selectively_disclosed_sub() {
     assert!(sub.metadata);
 }
 
+#[rstest]
+#[case::disclosed(vec!["sub", "given_name"], vec!["given_name", "sub"])]
+#[case::not_disclosed(vec!["given_name"], vec!["given_name"])]
+#[tokio::test]
+async fn test_prepare_selective_disclosure_selectively_disclosed_sub(
+    #[case] disclosed_keys: Vec<&str>,
+    #[case] expected_disclosures: Vec<&str>,
+) {
+    let presentation = parse_credential_test_formatter()
+        .prepare_selective_disclosure(CredentialPresentation {
+            token: SD_SUB_CREDENTIAL.into(),
+            disclosed_keys: disclosed_keys.into_iter().map(String::from).collect(),
+        })
+        .await
+        .unwrap();
+
+    let mut disclosed_claims = presentation
+        .split('~')
+        .skip(1)
+        .filter(|disclosure| !disclosure.is_empty())
+        .map(|disclosure| {
+            let disclosure = Base64UrlSafeNoPadding::decode_to_vec(disclosure, None).unwrap();
+            let disclosure: serde_json::Value = serde_json::from_slice(&disclosure).unwrap();
+            disclosure[1].as_str().unwrap().to_string()
+        })
+        .collect::<Vec<_>>();
+    disclosed_claims.sort();
+    assert_eq!(disclosed_claims, expected_disclosures);
+}
+
 #[tokio::test]
 async fn test_parse_credential_selectively_disclosed_iat() {
     let mut payload = base_payload();

@@ -139,15 +139,26 @@ pub(crate) async fn backfill_default_translations(
 }
 
 pub(crate) async fn add_fallback_translation(
+    claim_schema: ClaimSchema,
+    default_language: &str,
+) -> Result<ClaimSchema, DataLayerError> {
+    if claim_schema.metadata {
+        // metadata claims are not translated
+        return Ok(claim_schema);
+    }
+    add_fallback_name(claim_schema, default_language).await
+}
+
+/// Adds the last segment of the key as name in the default language, if no such name exists.
+pub(crate) async fn add_fallback_name(
     mut claim_schema: ClaimSchema,
     default_language: &str,
 ) -> Result<ClaimSchema, DataLayerError> {
     {
         let mut translations = claim_schema.translations.as_mut().await?;
-        if !claim_schema.metadata
-            && !translations
-                .iter()
-                .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
+        if !translations
+            .iter()
+            .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
         {
             translations.push(LocalizedText {
                 entity_id: claim_schema.id.into(),

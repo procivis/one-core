@@ -53,7 +53,9 @@ use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO,
 };
-use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential::mapper::{
+    credential_detail_response_from_model, to_presentation_detail_claims,
+};
 use crate::service::credential_schema::dto::{
     CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
     CredentialSchemaListIncludeEntityTypeEnum,
@@ -285,9 +287,16 @@ pub(crate) async fn get_presentation_definition_v2(
             .await?;
 
             let stored_claims = holder.data.claims.as_ref().await?.to_owned();
-            let credential_detail_dto = credential_detail_response_from_model(
+            let schema = candidate.common().schema.as_ref().await?.to_owned();
+            // Selectively disclosable metadata claims must be presentable, so the claims are
+            // mapped separately, instead of using the claims of the credential detail.
+            let presentation_claims = to_presentation_detail_claims(stored_claims, &schema, config)
+                .await
+                .error_while("mapping presentation claims")?;
+            drop(schema);
+            let mut credential_detail_dto = credential_detail_response_from_model(
                 candidate,
-                stored_claims,
+                vec![],
                 config,
                 CredentialAttestationBlobs::default(),
                 None,
@@ -298,6 +307,7 @@ pub(crate) async fn get_presentation_definition_v2(
             )
             .await
             .error_while("creating credential detail")?;
+            credential_detail_dto.claims = presentation_claims;
 
             let biometric_consent_claims = ecosystem
                 .as_ref()

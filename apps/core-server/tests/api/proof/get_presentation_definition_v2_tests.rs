@@ -1,4 +1,5 @@
 use one_core::clock::now_utc;
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
     CredentialType, UpdateCredentialRequest,
@@ -9,6 +10,7 @@ use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::UpdateProofRequest;
 use one_core::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use rstest::rstest;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::dcql::{
@@ -19,6 +21,7 @@ use uuid::Uuid;
 use crate::fixtures::dcql::proof_for_dcql_query;
 use crate::fixtures::{ClaimData, TestingCredentialParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -1696,6 +1699,149 @@ async fn test_get_presentation_definition_2_batch_disclosure_policy_per_format()
             .as_object()
             .unwrap()
             .contains_key("embeddedDisclosurePolicyViolation")
+    );
+}
+
+#[rstest]
+#[case::required(Some(true), Some(json!({"required": true, "userSelection": false})))]
+#[case::optional(Some(false), Some(json!({"required": false, "userSelection": true})))]
+#[case::not_requested(None, None)]
+#[tokio::test]
+async fn test_get_presentation_definition_2_selectively_disclosable_metadata_claim(
+    #[case] required: Option<bool>,
+    #[case] expected: Option<serde_json::Value>,
+) {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let claim_schema = |key: &str, metadata: bool, array: bool| ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: key.to_string(),
+        data_type: "STRING".to_string(),
+        created_date: now_utc(),
+        last_modified: now_utc(),
+        array,
+        metadata,
+        required: false,
+        translations: Default::default(),
+    };
+    let schema = context
+        .db
+        .credential_schemas
+        .create(
+            "SD metadata schema",
+            &org,
+            TestingCreateSchemaParams {
+                format: Some("SD_JWT_VC".into()),
+                schema_id: Some("https://example.org/sd-metadata".to_string()),
+                claim_schemas: Some(vec![
+                    claim_schema("name", false, false),
+                    claim_schema("sub", true, false),
+                    claim_schema("aud", true, true),
+                    claim_schema("iss", true, false),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let claims = vec![
+        claim_data("name", "name", Some("Max"), true, &schema).await,
+        claim_data("sub", "sub", Some("urn:subject"), true, &schema).await,
+        // disclosed as a whole, the elements are not selectively disclosable
+        claim_data("aud", "aud", None, true, &schema).await,
+        claim_data("aud/0", "aud", Some("verifier-a"), false, &schema).await,
+        claim_data("aud/1", "aud", Some("verifier-b"), false, &schema).await,
+        claim_data("iss", "iss", Some("https://issuer"), false, &schema).await,
+    ];
+    let credential = create_credential(
+        &context,
+        &identifier,
+        &schema,
+        claims,
+        CredentialStateEnum::Accepted,
+    )
+    .await;
+
+    let mut claim_queries = vec![ClaimQuery::builder().path(vec!["name".to_string()]).build()];
+    if let Some(required) = required {
+        for path in ["sub", "aud"] {
+            claim_queries.push(
+                ClaimQuery::builder()
+                    .path(vec![path.to_string()])
+                    .required(required)
+                    .build(),
+            );
+        }
+    }
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![
+            CredentialQuery::sd_jwt_vc(vec![schema.single_format().await.ecosystem_schema_id])
+                .id("test_query_id")
+                .claims(claim_queries)
+                .build(),
+        ])
+        .build();
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+        None,
+    )
+    .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let applicable_credential =
+        &body["credentialQueries"]["test_query_id"]["applicableCredentials"][0];
+    applicable_credential["id"].assert_eq(&credential.common().id);
+    let claims = applicable_credential["claims"].as_array().unwrap();
+    let claim_paths = claims
+        .iter()
+        .map(|claim| claim["path"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    // plain metadata claims are always presented, so they are not listed
+    assert!(!claim_paths.contains(&"iss"));
+    assert!(claim_paths.contains(&"name"));
+    let sub = claims.iter().find(|claim| claim["path"] == "sub");
+    let aud = claims.iter().find(|claim| claim["path"] == "aud");
+    let Some(expected) = expected else {
+        assert!(sub.is_none());
+        assert!(aud.is_none());
+        return;
+    };
+    let sub = sub.unwrap();
+    assert_eq!(sub["value"], "urn:subject");
+    assert_eq!(sub["schema"]["key"], "sub");
+    assert_eq!(sub["required"], expected["required"]);
+    assert_eq!(sub["userSelection"], expected["userSelection"]);
+    let aud = aud.unwrap();
+    assert_eq!(aud["schema"]["key"], "aud");
+    assert_eq!(aud["required"], expected["required"]);
+    assert_eq!(aud["userSelection"], expected["userSelection"]);
+    let aud_values = aud["value"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|element| {
+            (
+                element["path"].as_str().unwrap(),
+                element["value"].as_str().unwrap(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        aud_values,
+        vec![("aud/0", "verifier-a"), ("aud/1", "verifier-b")]
     );
 }
 
