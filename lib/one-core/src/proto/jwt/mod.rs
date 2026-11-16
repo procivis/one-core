@@ -144,7 +144,19 @@ impl<CustomPayload, CustomHeader> Jwt<CustomPayload, CustomHeader> {
 
 impl<CustomPayload: WithMetadata + Serialize, CustomHeader> Jwt<CustomPayload, CustomHeader> {
     pub fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, TokenError> {
-        let value = serde_json::to_value(&self.payload)?;
+        // Read the metadata only from the registered claims, without the flattened custom payload.
+        let registered_claims = JWTPayload {
+            issued_at: self.payload.issued_at,
+            expires_at: self.payload.expires_at,
+            invalid_before: self.payload.invalid_before,
+            issuer: self.payload.issuer.clone(),
+            subject: self.payload.subject.clone(),
+            audience: self.payload.audience.clone(),
+            jwt_id: self.payload.jwt_id.clone(),
+            proof_of_possession_key: None,
+            custom: AnyPayload::new(),
+        };
+        let value = serde_json::to_value(&registered_claims)?;
 
         let Some(obj) = value.as_object() else {
             return Err(TokenError::ValidationFailed(
@@ -160,6 +172,8 @@ impl<CustomPayload: WithMetadata + Serialize, CustomHeader> Jwt<CustomPayload, C
             claim.set_metadata(true);
             result.insert(key.to_string(), claim);
         }
+        // Custom metadata claims take precedence, e.g. a selectively disclosed `iat` in SD-JWT VC
+        // (also reflected in `issued_at`) must keep its selective disclosability.
         result.extend(
             self.payload
                 .custom

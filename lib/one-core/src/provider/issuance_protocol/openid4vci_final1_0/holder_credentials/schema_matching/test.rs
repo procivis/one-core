@@ -765,6 +765,141 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
     );
 }
 
+/// A JWT schema (plain `sub`/`iat`) and an SD-JWT VC with selectively disclosed `sub`/`iat`
+/// combine into a single schema: disclosed registered claims are metadata claims, too.
+#[tokio::test]
+async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_formats() {
+    let metadata_claim_schema = |key: &str, data_type: &str| {
+        let mut claim_schema = claim_schema(key, data_type);
+        claim_schema.metadata = true;
+        claim_schema.required = false;
+        claim_schema
+    };
+
+    let parsed_sub = metadata_claim_schema("sub", "STRING");
+    let parsed_iat = metadata_claim_schema("iat", "NUMBER");
+    let parsed_name = claim_schema_with_name("name", "STRING", "Name").await;
+    let parsed_format_id = Uuid::new_v4().into();
+    let mut parsed_schema = credential_schema(
+        Uuid::new_v4().into(),
+        parsed_format_id,
+        "SD_JWT_VC",
+        vec![parsed_sub.clone(), parsed_iat.clone(), parsed_name.clone()],
+        vec![
+            mapping(parsed_format_id, parsed_sub.id, "sub", None),
+            mapping(parsed_format_id, parsed_iat.id, "iat", None),
+            mapping(parsed_format_id, parsed_name.id, "name", None),
+        ],
+    );
+    set_ecosystem_schema_id(&mut parsed_schema, "https://example.com/vct").await;
+    add_name_translation(&mut parsed_schema, "en", "Student status").await;
+    let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
+    let disclosed_claim = |path: &str, schema: &ClaimSchema| {
+        let mut claim = claim(path, schema);
+        claim.selectively_disclosable = true;
+        claim
+    };
+    let mut parsed_credential = credential(
+        parsed_schema.clone(),
+        vec![
+            disclosed_claim("sub", &parsed_sub),
+            disclosed_claim("iat", &parsed_iat),
+            disclosed_claim("name", &parsed_name),
+        ],
+    )
+    .await;
+
+    let stored_sub = metadata_claim_schema("sub", "STRING");
+    let stored_iat = metadata_claim_schema("iat", "NUMBER");
+    let stored_name = claim_schema_with_name("name", "STRING", "Name").await;
+    let stored_format_id = Uuid::new_v4().into();
+    let stored_schema_id = Uuid::new_v4().into();
+    let mut stored_schema = credential_schema(
+        stored_schema_id,
+        stored_format_id,
+        "JWT",
+        vec![stored_sub.clone(), stored_iat.clone(), stored_name.clone()],
+        vec![
+            mapping(stored_format_id, stored_sub.id, "sub", None),
+            mapping(stored_format_id, stored_iat.id, "iat", None),
+            mapping(
+                stored_format_id,
+                stored_name.id,
+                "credentialSubject/name",
+                None,
+            ),
+        ],
+    );
+    set_ecosystem_schema_id(&mut stored_schema, "jwt-schema-id").await;
+    add_name_translation(&mut stored_schema, "en", "Student status").await;
+
+    let mut repository = MockCredentialSchemaRepository::new();
+    repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(move |_| Ok(credential_schema_list(vec![stored_schema])));
+    let importer = MockCredentialSchemaImporter::new();
+
+    let resolution = find_or_import_credential_schema(
+        &importer,
+        &repository,
+        parsed_schema,
+        &parsed_format,
+        dummy_organisation(None).id,
+        &CoreConfig::default(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(resolution.schema.id, stored_schema_id);
+    let new_format = resolution.new_format.as_ref().unwrap();
+    let mut new_mappings: Vec<_> = new_format
+        .claim_mappings
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .map(|mapping| (mapping.technical_key.clone(), mapping.claim_schema_id))
+        .collect();
+    new_mappings.sort_by(|left, right| left.0.cmp(&right.0));
+    assert_eq!(
+        new_mappings,
+        vec![
+            ("iat".to_string(), stored_iat.id),
+            ("name".to_string(), stored_name.id),
+            ("sub".to_string(), stored_sub.id),
+        ]
+    );
+
+    let mut resolved_schema = resolution.schema;
+    let alignment = align_format_claim_schemas_and_mappings(
+        &mut resolved_schema,
+        parsed_credential.holder_mut().unwrap(),
+        &generic_config().core,
+        None,
+    )
+    .await
+    .unwrap();
+
+    assert!(alignment.new_claim_schemas.is_empty());
+    assert!(alignment.new_mappings.is_empty());
+    assert_eq!(
+        resolved_schema.claim_schemas.as_ref().await.unwrap().len(),
+        3
+    );
+    let holder = parsed_credential.holder().unwrap();
+    let claims = holder.data.claims.as_ref().await.unwrap();
+    for (path, stored_claim_schema_id) in [
+        ("sub", stored_sub.id),
+        ("iat", stored_iat.id),
+        ("name", stored_name.id),
+    ] {
+        let claim = claims.iter().find(|claim| claim.path == path).unwrap();
+        assert_eq!(claim.schema.id(), stored_claim_schema_id);
+        assert!(claim.selectively_disclosable);
+    }
+}
+
 #[tokio::test]
 async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key() {
     let mut parsed_claim = claim_schema("claim", "STRING");

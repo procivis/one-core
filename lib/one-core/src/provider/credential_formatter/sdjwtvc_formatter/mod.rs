@@ -713,6 +713,7 @@ fn sdjwt_vc_from_credential(
             custom_claims: Default::default(),
         }),
         public_claims: Default::default(),
+        disclosed_metadata_claims: Default::default(),
         vc_type,
         vct_integrity,
     }

@@ -45,19 +45,38 @@ pub struct SdJwtVc {
 
     #[serde(flatten)]
     pub public_claims: HashMap<String, CredentialClaim>,
+
+    /// Registered JWT claims (see [`DISCLOSABLE_METADATA_CLAIMS`]) received as disclosures.
+    /// They keep the semantics of their plain counterparts, so they are handled as metadata
+    /// claims, not as public claims.
+    #[serde(skip)]
+    pub disclosed_metadata_claims: HashMap<String, CredentialClaim>,
 }
 
 impl WithMetadata for SdJwtVc {
     fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
-        Ok(hashmap! {
+        let mut metadata_claims = hashmap! {
             "vct".to_string() => CredentialClaim {
                 selectively_disclosable: false,
                 metadata: true,
                 value: CredentialClaimValue::String(self.vc_type.clone()),
             }
-        })
+        };
+        metadata_claims.extend(self.disclosed_metadata_claims.clone());
+        Ok(metadata_claims)
     }
 }
+
+/// Root-level claims that must not be selectively disclosed.
+///
+/// SD-JWT VC, section "Registered JWT Claims" (https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-26.html#name-registered-jwt-claims):
+/// `iss`, `nbf`, `exp`, `cnf`, `vct`, `vct#integrity` and `status` MUST NOT be selectively
+/// disclosed. All other claims (e.g. `sub`, `iat`, `aud`, `jti`) may be selectively disclosed.
+const NON_DISCLOSABLE_CLAIMS: [&str; 7] =
+    ["iss", "nbf", "exp", "cnf", "vct", "vct#integrity", "status"];
+
+/// Registered JWT claims that may be selectively disclosed, but are still metadata claims.
+const DISCLOSABLE_METADATA_CLAIMS: [&str; 4] = ["sub", "iat", "aud", "jti"];
 
 impl SettableClaims for SdJwtVc {
     fn set_claims(&mut self, claims: CredentialClaim) -> Result<(), FormatterError> {
@@ -67,12 +86,29 @@ impl SettableClaims for SdJwtVc {
                 "Expected claims to be object".to_string(),
             ))?,
         };
+        if let Some(key) = NON_DISCLOSABLE_CLAIMS
+            .iter()
+            .find(|key| claims.get(**key).is_some_and(|c| c.selectively_disclosable))
+        {
+            return Err(FormatterError::CouldNotExtractCredentials(format!(
+                "Claim `{key}` must not be selectively disclosed"
+            )));
+        }
         // don't override reserved claims
         claims.remove("vct");
         claims.remove("vct#integrity");
         claims.remove("_sd");
         claims.remove("_sd_alg");
         claims.remove("status");
+        // plain registered claims are not part of `claims`, so these can only be disclosures
+        self.disclosed_metadata_claims = DISCLOSABLE_METADATA_CLAIMS
+            .iter()
+            .filter_map(|key| claims.remove_entry(*key))
+            .map(|(key, mut claim)| {
+                claim.set_metadata(true);
+                (key, claim)
+            })
+            .collect();
         self.public_claims = claims;
         Ok(())
     }

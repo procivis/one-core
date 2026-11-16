@@ -42,10 +42,12 @@ use crate::provider::caching_loader::vct::{
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::common::MockAuth;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialPresentation,
     CredentialStatus, IdentifierDetails, IssuedClaimValue, IssuedClaims, MockSignatureProvider,
-    MockTokenVerifier, PublicKeySource, TokenStatus, UnsignedCredential, issued_claims,
+    MockTokenVerifier, ParsedCredential, PublicKeySource, TokenStatus, UnsignedCredential,
+    issued_claims,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::{SdJwtVc, SdJwtVcCredential};
@@ -1592,113 +1594,8 @@ fn formatter_for_params(
 async fn test_parse_credential_eudi() {
     const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCIsIng1YyI6WyJNSUlDK1RDQ0FxQ2dBd0lCQWdJVUQwaStTd0JnQjZ1b3QvSnFpUmc2VlMvZmprOHdDZ1lJS29aSXpqMEVBd0l3WERFZU1Cd0dBMVVFQXd3VlVFbEVJRWx6YzNWbGNpQkRRU0F0SUZWVUlEQXlNUzB3S3dZRFZRUUtEQ1JGVlVSSklGZGhiR3hsZENCU1pXWmxjbVZ1WTJVZ1NXMXdiR1Z0Wlc1MFlYUnBiMjR4Q3pBSkJnTlZCQVlUQWxWVU1CNFhEVEkxTURjeU1qRXpNemd3TjFvWERUSTNNRGN5TWpFek16Z3dObG93UlRFVU1CSUdBMVVFQXd3TFVISnZZMmwyYVhNZ1FVY3hDakFJQmdOVkJBVVRBVEF4RkRBU0JnTlZCQW9NQzFCeWIyTnBkbWx6SUVGSE1Rc3dDUVlEVlFRR0V3SlZWREJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUFCTmFSWnBBTXlnNDJhUjZVWjFUMlJKaFViQTNSSTVpMEp5OVptK040Q0hPODVpZUhHTkdDOU94Y052NTBsZUxZemJibk82cjFWaWNPSXp6Ylh5T09hZHlqZ2dGVk1JSUJVVEFNQmdOVkhSTUJBZjhFQWpBQU1COEdBMVVkSXdRWU1CYUFGR0xIbEVjb3ZRK2lGaUNubXNKSmxFVHhBZFBITURrR0ExVWRFUVF5TURDQkUzTjFjSEJ2Y25SQWNISnZZMmwyYVhNdVkyaUNHV052Y21VdVpHVjJMbkJ5YjJOcGRtbHpMVzl1WlM1amIyMHdFZ1lEVlIwbEJBc3dDUVlIS0lHTVhRVUJCakJEQmdOVkhSOEVQREE2TURpZ05xQTBoakpvZEhSd2N6b3ZMM0J5WlhCeWIyUXVjR3RwTG1WMVpHbDNMbVJsZGk5amNtd3ZjR2xrWDBOQlgxVlVYekF5TG1OeWJEQWRCZ05WSFE0RUZnUVVwSktpd25LVDdTMXBEWEhabFU3TkNBTjAwcTR3RGdZRFZSMFBBUUgvQkFRREFnZUFNRjBHQTFVZEVnUldNRlNHVW1oMGRIQnpPaTh2WjJsMGFIVmlMbU52YlM5bGRTMWthV2RwZEdGc0xXbGtaVzUwYVhSNUxYZGhiR3hsZEM5aGNtTm9hWFJsWTNSMWNtVXRZVzVrTFhKbFptVnlaVzVqWlMxbWNtRnRaWGR2Y21zd0NnWUlLb1pJemowRUF3SURSd0F3UkFJZkk2RTRLcnYrcXFtMFVFajJRTFViWXljMklJTXlnelN1LzRTdTJrekhVQUloQUowd2ZOTzBjWmRXTFdleG5lOXlsV1lFRmtpRU51TGlWUUN2R3ZRdUhXZTUiXX0.eyJpYXQiOjE3NTc1NzczMjEsImV4cCI6MTgyMDY0OTMyMSwibmJmIjoxNzU3NTc3MzIxLCJpc3MiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL29wZW5pZDR2Y2kvZHJhZnQtMTMvMjhhZWUwNjktNDhjMC00ZmY5LTljZTktNzU2MDFhZWM4MjZkIiwic3ViIjoiZGlkOmtleTp6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwiY25mIjp7Imp3ayI6eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6InF0N3BDelJjOHhCVFlkNDh0WWNuRWRZSVFVWE9HRnRZOXZxWkxEbklTNFEiLCJ5IjoiMnRHOTZlU3JPLU5KeFVhQldzUnhXaThrampDMUZKaEZxTmtRRzM1WnR1WSJ9fSwidmN0IjoidXJuOmV1ZGk6cGlkOjEiLCJfc2QiOlsiNUx0NTVNM2J5S0JlX0p1RkFKX3Rta09JVWV0VnZ1ZjVkY1BRODlnYVdQQSIsIjdwQTNtaUlGenRIVUJsQXM1UkFwVFZIMkN3TVNmMk1MeUtOMHFjWUp2LVUiLCJSS2w4YW90eU5kcHI3NTVfN0ZXY0dzOEVtYl93NlV2ZTR1S2dhU2VNZWRZIiwiZUw5dEhnMi1JQ3hUMk9OTE5iV0VlNzVqQWJJZURRV2c4Q1JRa1JSX3F0OCIsImtZMmVaM3VrTlVjdnlnN25UQnNmZ0JBaHBja2tFR2xEQUV0a3Q1SGFrT1EiLCJ1Rk1Gb2M5aXdfOXo0NnB1akpNWER0ZUEwT1MyNHZJaFhGdUZ0SzRMemNVIiwidmJ4d212alZEcnQ5U2tHU0p4OXMxOU1Ua2tzSjN3V0NwbHdQZXhpbWdOTSJdLCJfc2RfYWxnIjoic2hhLTI1NiIsInN0YXR1cyI6eyJzdGF0dXNfbGlzdCI6eyJpZHgiOjMwLCJ1cmkiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC9mNWI1NGNhNS05NmVjLTQxZmQtYjRkMS0zODM0NDQ1NGNjY2EifX19.SoKrlj3ZQcDD0JpA2s50gJfPDL1eQpNg7TjchIIMERwJoNeYsm8fkk1ODzkiSLSxU3OFRa-FF-HQmoZJpryZyQ~WyJWS2Nqd1pIOFFBUVAyeUY1a1MtN0xnIiwiYmlydGhkYXRlIiwiMTk5MC0wMS0wMSJd~WyJ6Y0tDREgxcjlFSFJPVmhJQVhTN1pRIiwiZmFtaWx5X25hbWUiLCJNdXN0ZXIiXQ~WyJqOGVrVEtLWDhiLU9WYTdEcHFRZ013IiwiZ2l2ZW5fbmFtZSIsIk1heCJd~WyJ5TnplR1djT0xLY2lXNzcyR28wQjN3IiwiaXNzdWluZ19hdXRob3JpdHkiLCJUZXN0Il0~WyJzelhMdmwyUGJmTnFMdG9yNWduQTdBIiwiaXNzdWluZ19jb3VudHJ5IiwiQ0giXQ~WyJlZkQ2eGlXS2ZjQy1neTRGaEZGaVVRIiwiQ0giXQ~WyJESF9rNnVFQmhDNHJiVkNnVlFzVVlRIiwiSVQiXQ~WyI0SmNDT0tjeEEyQlJPOTZpcW9pWUl3IiwiREUiXQ~WyI3TTNvVVZ4c1ZKUlpEWWRWYnhGX0FBIiwibmF0aW9uYWxpdGllcyIsW3siLi4uIjoiZU9aTncxWEZIcERWWHZPUWcwYmJpWDFTUWJISlIwWFFfYnNjMXJMZWJsYyJ9LHsiLi4uIjoicXg0X3RaMV81XzlnRGMyMmd0TDFNdjViV3VCeWxVck5oMGRPaHhLek9VRSJ9LHsiLi4uIjoiQXA4X09NZ3ljbFhHME9jZC1HeEtJSENvMlFYOTVsdzhuTWlxTzNNVVhiQSJ9XV0~WyJ1eUxxOUFMNHkzNUoxcFpMMlZMbTF3IiwibG9jYWxpdHkiLCJDSCJd~WyJieTdYN3FmZXBiZHJhUzNGVHhkRHJnIiwicGxhY2Vfb2ZfYmlydGgiLHsiX3NkIjpbIjhzaVdNN2lmZnFSaXU3cDRvM1Z3b2ttOU1oTHFWakhJUGlSU1dlNWRjU1UiXX1d~";
 
-    let params = json!({
-        "leewaySeconds": 60,
-        "embedLayoutProperties": false,
-        "swiyuMode": false,
-        "sdArrayElements": true,
-        "expirationSeconds": 86_400
-    });
-
-    let mut certificate_validator = MockCertificateValidator::new();
-    certificate_validator
-        .expect_parse_pem_chain()
-        .returning(|_, _| {
-            use crate::proto::certificate_validator::ParsedCertificate;
-            use crate::provider::key_algorithm::key::{
-                KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
-            };
-            use crate::service::certificate::dto::CertificateX509AttributesDTO;
-            let now = crate::clock::now_utc();
-            Ok(ParsedCertificate {
-                attributes: CertificateX509AttributesDTO {
-                    serial_number: "test".to_string(),
-                    not_before: now,
-                    not_after: now,
-                    issuer: "Test Issuer".to_string(),
-                    subject: "Test Subject".to_string(),
-                    fingerprint: "test".to_string(),
-                    extensions: vec![],
-                },
-                subject_common_name: Some("Test".to_string()),
-                subject_key_identifier: None,
-                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
-                    MockSignaturePublicKeyHandle::default(),
-                ))),
-            })
-        });
-
-    let mut datatype_provider = MockDataTypeProvider::new();
-    datatype_provider
-        .expect_extract_json_claim()
-        .returning(|value| {
-            use crate::provider::data_type::model::ExtractedClaim;
-            match value {
-                serde_json::Value::Bool(b) => Ok(ExtractedClaim {
-                    data_type: "BOOLEAN".to_string(),
-                    value: b.to_string(),
-                }),
-                serde_json::Value::String(s) => Ok(ExtractedClaim {
-                    data_type: "STRING".to_string(),
-                    value: s.clone(),
-                }),
-                serde_json::Value::Number(n) => Ok(ExtractedClaim {
-                    data_type: "NUMBER".to_string(),
-                    value: n.to_string(),
-                }),
-                _ => Err(
-                    crate::provider::data_type::error::DataTypeProviderError::UnableToExtract(
-                        crate::provider::data_type::model::JsonOrCbor::Json(value.clone()),
-                    ),
-                ),
-            }
-        });
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_parse_jwk()
-        .once()
-        .return_once(|_| {
-            let mut public_key = MockSignaturePublicKeyHandle::new();
-            public_key.expect_as_raw().returning(|| vec![0x0, 0x1]);
-            Ok(ParsedKey {
-                algorithm_type: KeyAlgorithmType::Eddsa,
-                key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
-                    public_key,
-                ))),
-            })
-        });
-
-    let formatter = SDJWTVCFormatter::new(
-        Some("testUrl".into()),
-        "SD_JWT_VC".into(),
-        params,
-        Arc::new(MockDidMethodProvider::new()),
-        Arc::new(key_algorithm_provider),
-        Arc::new(MockVctTypeMetadataFetcher::new()),
-        Arc::new(certificate_validator),
-        generic_config().core.datatype,
-        Arc::new(MockHttpClient::new()),
-        Arc::new(datatype_provider),
-    )
-    .unwrap();
-    let mut verify_mock = MockTokenVerifier::new();
-    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_jose_alg()
-        .once()
-        .returning(|_| {
-            let mut key_algorithm = MockKeyAlgorithm::default();
-            key_algorithm
-                .expect_algorithm_type()
-                .return_once(|| KeyAlgorithmType::Eddsa);
-
-            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
-        });
-    verify_mock
-        .expect_key_algorithm_provider()
-        .return_const(Box::new(key_algorithm_provider));
+    let formatter = parse_credential_test_formatter();
+    let verify_mock = parse_credential_test_verifier();
     let result = formatter
         .parse_credential(
             &CREDENTIAL.into(),
@@ -2345,4 +2242,427 @@ fn round_trip_claims() -> IssuedClaims {
         },
         "is_over_18": true,
     }))
+}
+
+/// Formatter with mocked dependencies for parsing SD-JWT VCs signed with an `x5c` certificate chain.
+fn parse_credential_test_formatter() -> SDJWTVCFormatter {
+    let params = json!({
+        "leewaySeconds": 60,
+        "embedLayoutProperties": false,
+        "swiyuMode": false,
+        "sdArrayElements": true,
+        "expirationSeconds": 86_400
+    });
+
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
+        .returning(|_, _| {
+            use crate::proto::certificate_validator::ParsedCertificate;
+            use crate::provider::key_algorithm::key::{
+                KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+            };
+            use crate::service::certificate::dto::CertificateX509AttributesDTO;
+            let now = crate::clock::now_utc();
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "test".to_string(),
+                    not_before: now,
+                    not_after: now,
+                    issuer: "Test Issuer".to_string(),
+                    subject: "Test Subject".to_string(),
+                    fingerprint: "test".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("Test".to_string()),
+                subject_key_identifier: None,
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                ))),
+            })
+        });
+
+    let mut datatype_provider = MockDataTypeProvider::new();
+    datatype_provider
+        .expect_extract_json_claim()
+        .returning(|value| {
+            use crate::provider::data_type::model::ExtractedClaim;
+            match value {
+                serde_json::Value::Bool(b) => Ok(ExtractedClaim {
+                    data_type: "BOOLEAN".to_string(),
+                    value: b.to_string(),
+                }),
+                serde_json::Value::String(s) => Ok(ExtractedClaim {
+                    data_type: "STRING".to_string(),
+                    value: s.clone(),
+                }),
+                serde_json::Value::Number(n) => Ok(ExtractedClaim {
+                    data_type: "NUMBER".to_string(),
+                    value: n.to_string(),
+                }),
+                _ => Err(
+                    crate::provider::data_type::error::DataTypeProviderError::UnableToExtract(
+                        crate::provider::data_type::model::JsonOrCbor::Json(value.clone()),
+                    ),
+                ),
+            }
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider.expect_parse_jwk().return_once(|_| {
+        let mut public_key = MockSignaturePublicKeyHandle::new();
+        public_key.expect_as_raw().returning(|| vec![0x0, 0x1]);
+        Ok(ParsedKey {
+            algorithm_type: KeyAlgorithmType::Eddsa,
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(public_key))),
+        })
+    });
+
+    SDJWTVCFormatter::new(
+        Some("testUrl".into()),
+        "SD_JWT_VC".into(),
+        params,
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(key_algorithm_provider),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(certificate_validator),
+        generic_config().core.datatype,
+        Arc::new(MockHttpClient::new()),
+        Arc::new(datatype_provider),
+    )
+    .unwrap()
+}
+
+/// Token verifier accepting any signature.
+fn parse_credential_test_verifier() -> MockTokenVerifier {
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+        });
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+    verify_mock
+}
+
+/// Real-world SD-JWT VC with a selectively disclosed `sub` claim.
+const SD_SUB_CREDENTIAL: &str = "eyJ0eXAiOiJkYytzZC1qd3QiLCJraWQiOiJSdTM1Vl9vbFVDendaaXdUX2VKaTlpV2dUZVlUVWpxUmczVGtsT2hYTXl3IiwieDVjIjpbIk1JSUJzVENDQVZlZ0F3SUJBZ0lRSFFLbzBZRU5JNDdodGJFZnl4SkdiakFLQmdncWhrak9QUVFEQWpBb01TWXdKQVlEVlFRREV4MXBjM04xWlhJdWIzQnBiblJ2ZEc5a2FYTjBaUzVtYVc1a2VTNW1hVEFlRncweU5qRXhNRFF4TnpNNU1UWmFGdzB6TmpFeE1ERXhOek01TVRaYU1DZ3hKakFrQmdOVkJBTVRIV2x6YzNWbGNpNXZjR2x1ZEc5MGIyUnBjM1JsTG1acGJtUjVMbVpwTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFSzRQNHkvSnFIdGVxZi9YNUE0QXQ1VzZnZHFLL0o3cTNDVzFIZ3Q4TzJkL3VDK1J6dk5XUExQeXBZTGFwbERoLzBoQ20yeGxLZ1h0bzRoQ1FVdHFzbGFOak1HRXdUd1lEVlIwUkJFZ3dSb1lsYUhSMGNITTZMeTlwYzNOMVpYSXViM0JwYm5SdmRHOWthWE4wWlM1bWFXNWtlUzVtYVlJZGFYTnpkV1Z5TG05d2FXNTBiM1J2WkdsemRHVXVabWx1WkhrdVpta3dEZ1lEVlIwUEFRSC9CQVFEQWdlQU1Bb0dDQ3FHU000OUJBTUNBMGdBTUVVQ0lRRHRFYktXWkhnMkkyTW1ka2VwbmNwT1daQ2M0NUNldUxvWStneXhpQ3dIQndJZ1N5V2w3OUExTVVERzVYYkd5WjdZNGRpVW9lRW1IV1Ivc2JKbmVHY3oyTGs9Il0sImFsZyI6IkVTMjU2In0.eyJ2Y3QiOiJodHRwczovL29wZW5iYWRnZS5kaWdpY3JlZGVudGlhbC5ldS9jcmVkZW50aWFscy9zdHVkZW50LXN0YXR1cy92MS9TdHVkZW50U3RhdHVzVkNUIiwiZW5yb2xtZW50X3N0YXR1cyI6ImVucm9sbGVkIiwiZWR1Y2F0aW9uX2xldmVsIjoiNyIsImVkdWNhdGlvbl9sZXZlbF9uYW1lIjoiTWFzdGVyJ3Mgb3IgZXF1aXZhbGVudCBsZXZlbCIsImVkdWNhdGlvbl90eXBlIjoia29ya2Vha291bHV0dXMiLCJlZHVjYXRpb25fdHlwZV9uYW1lIjoiSGlnaGVyIGVkdWNhdGlvbiIsInN0YXJ0X2RhdGUiOiIyMDIxLTA4LTAxIiwiZXhwaXJ5X2RhdGUiOiIyMDI2LTEyLTMxIiwiaXNzdWFuY2VfZGF0ZSI6IjIwMjYtMTEtMTMiLCJpc3N1aW5nX2NvdW50cnkiOiJGSSIsImlzcyI6Imh0dHBzOi8vaXNzdWVyLm9waW50b3RvZGlzdGUuZmluZHkuZmkiLCJpYXQiOjE3OTQ1ODQ0NzYsImV4cCI6MTc5ODc1NDM5OSwidmN0I2ludGVncml0eSI6InNoYTI1Ni03Sm13ZjR0OTh5bHIzWFNhT0xjVTY5aHQ0eUdvWlE3MmtNeFovNU1HTldNPSIsImZlZCI6Imh0dHBzOi8vaXNzdWVyLm9waW50b3RvZGlzdGUuZmluZHkuZmkiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiUGxTRzBIYndqbElTR0YzbFliWG1FLXJKdzAwRW9SU0lHR2pzQTZhVXdoTSIsInkiOiJMZkQ2QnFCaUdXMU5tZHNsSzdlMmRkRTVFeDEyMUZGWk1lSEY2dnluYVU0In19LCJfc2QiOlsiLVZXZzVHbG9ldmJldUlZWDZtV01fSS14ZEVnUkJXZm1hY2c0RXdBamZ4WSIsIkJxNWF3eDdfSTZSQV9OVVM3Yi02UG9acTdOS1V0a0oyejA3MlFZMC1hRWMiLCJFdXQ1VFpRU0YxdGhCY0I3Y1VEcklDeV9pUTgwdTBPSUVkdTFha3lnRjdnIiwiRk1mQzc0b3pTc2Y3QW5DNmZfZjk0NkpBOHR6X3k3SmphYjRqbVBpUDREYyIsIk9NbFp6LUxKcDJQRnkzbzNndVFaMUU0MnBQMXRjTllobzJqc0JUV0xiVUEiLCJSV29yQjFVenFHWVB6U1BFZml5OS1LMUVmZzV0MXEzMzBqcjVoOXk5cV9nIiwiWmlzYVRuSkFwME9BS2xBMXF5MWFTQV9QMlVLaFJrbzlzc3d0RUlPVHBNNCIsInlaTWFFajNoX3hKRERrMXd4bTBvSUNBTzY3TlJRTEhiQWhzeUxMTm8tc0kiXSwiX3NkX2FsZyI6InNoYS0yNTYifQ.M-PvWvBYWfYifOHvMcFUJ0D0JKxyZDnHJXw-r_fd0FgP3Wq_d4N0Y73ddT2ferFwq0jGVOAQd-vMYh0km1V-GQ~WyI1YmIzNmZlZjE0Njc3Y2RmIiwic3ViIiwidXJuOm9pZDoxLjIuMjQ2LjU2Mi4yNC4wMDAwMDAwMDEwMCJd~WyI4NTU3YWFhNjVkYjg5MWEzIiwiZ2l2ZW5fbmFtZSIsIkVldmEgTWFyaWEiXQ~WyJjNmQ1ODI0NGZhOGVkY2RlIiwiZmFtaWx5X25hbWUiLCJFc2ltZXJra2kiXQ~WyIxZmFkM2M0MDQ0YTFlNGI2IiwiYmlydGhkYXRlIiwiMjAwMS0wNC0xMiJd~WyIzMzQwMTQyMGMxMTZiZTY5IiwiaW5zdGl0dXRpb25fbmFtZSIsIkV4YW1wbGUgVW5pdmVyc2l0eSJd~WyJmZjU3MGU5ZjA4YTg3OThjIiwiaW5zdGl0dXRpb25faWQiLCJ1cm46b2lkOjEuMi4yNDYuNTYyLjEwLjAwMDAwMDAwMTAxIl0~WyJhMThkYTE4M2ZkMWMxZmZmIiwiaW5zdGl0dXRpb25fY29kZSIsIjk5MTAxIl0~WyIxNmY3OTQ5MDU4NWE5Yjk3IiwicHJvZ3JhbW1lIiwiTWFzdGVyIG9mIFNjaWVuY2UiXQ~";
+
+const TEST_IAT: i64 = 1794584476;
+
+/// Plain (non-disclosed) payload of a minimal SD-JWT VC.
+fn base_payload() -> serde_json::Value {
+    json!({
+        "vct": "https://example.com/vct",
+        "iss": "https://issuer.example.com",
+        "iat": TEST_IAT,
+        "exp": 4102444800_i64,
+        "cnf": {"jwk": {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "PlSG0HbwjlISGF3lYbXmE-rJw00EoRSIGGjsA6aUwhM",
+            "y": "LfD6BqBiGW1NmdslK7e2ddE5Ex121FFZMeHF6vynaU4"
+        }},
+        "given_name": "Eeva"
+    })
+}
+
+/// Builds an SD-JWT VC (with a dummy signature) from the given plain payload and root-level
+/// disclosures.
+fn sd_jwt_vc_with_disclosures(
+    mut payload: serde_json::Value,
+    disclosures: &[(&str, serde_json::Value)],
+) -> String {
+    use one_crypto::Hasher;
+    use one_crypto::hasher::sha256::SHA256;
+
+    let encode = |value: &serde_json::Value| {
+        Base64UrlSafeNoPadding::encode_to_string(value.to_string()).unwrap()
+    };
+    let header = json!({
+        "alg": "ES256",
+        "typ": "dc+sd-jwt",
+        "x5c": ["MIIBsTCCAVegAwIBAgIQHQKo0YENI47htbEfyxJGbjAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1pc3N1ZXIub3BpbnRvdG9kaXN0ZS5maW5keS5maTAeFw0yNjExMDQxNzM5MTZaFw0zNjExMDExNzM5MTZaMCgxJjAkBgNVBAMTHWlzc3Vlci5vcGludG90b2Rpc3RlLmZpbmR5LmZpMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEK4P4y/JqHteqf/X5A4At5W6gdqK/J7q3CW1Hgt8O2d/uC+RzvNWPLPypYLaplDh/0hCm2xlKgXto4hCQUtqslaNjMGEwTwYDVR0RBEgwRoYlaHR0cHM6Ly9pc3N1ZXIub3BpbnRvdG9kaXN0ZS5maW5keS5maYIdaXNzdWVyLm9waW50b3RvZGlzdGUuZmluZHkuZmkwDgYDVR0PAQH/BAQDAgeAMAoGCCqGSM49BAMCA0gAMEUCIQDtEbKWZHg2I2MmdkepncpOWZCc45CeuLoY+gyxiCwHBwIgSyWl79A1MUDG5XbGyZ7Y4diUoeEmHWR/sbJneGcz2Lk="]
+    });
+
+    let encoded_disclosures: Vec<String> = disclosures
+        .iter()
+        .enumerate()
+        .map(|(i, (key, value))| encode(&json!([format!("salt{i}"), key, value])))
+        .collect();
+    payload["_sd"] = encoded_disclosures
+        .iter()
+        .map(|disclosure| SHA256.hash_base64_url(disclosure.as_bytes()).unwrap())
+        .collect();
+    payload["_sd_alg"] = json!("sha-256");
+
+    let mut token = format!("{}.{}.c2lnbmF0dXJl~", encode(&header), encode(&payload));
+    for disclosure in encoded_disclosures {
+        token.push_str(&disclosure);
+        token.push('~');
+    }
+    token
+}
+
+async fn parse_test_credential(token: &str) -> Result<ParsedCredential, FormatterError> {
+    parse_credential_test_formatter()
+        .parse_credential(
+            &token.into(),
+            dummy_organisation(None),
+            Box::new(parse_credential_test_verifier()),
+        )
+        .await
+}
+
+/// Asserts that claim paths and claim schema keys are unique (DB unique constraints).
+async fn assert_no_duplicate_claims(parsed: &ParsedCredential) {
+    let claims = parsed.claims.as_ref().await.unwrap();
+    let claim_paths: HashSet<_> = claims.iter().map(|claim| claim.path.as_str()).collect();
+    assert_eq!(claim_paths.len(), claims.len());
+
+    let schema = parsed.common.schema.as_ref().await.unwrap();
+    let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
+    let claim_schema_keys: HashSet<_> = claim_schemas.iter().map(|cs| cs.key.as_str()).collect();
+    assert_eq!(claim_schema_keys.len(), claim_schemas.len());
+}
+
+/// Asserts that the claim at `path` exists once, as a selectively disclosable metadata claim.
+async fn assert_single_disclosed_metadata_claim(
+    parsed: &ParsedCredential,
+    path: &str,
+    value: &str,
+) {
+    let claims = parsed.claims.as_ref().await.unwrap();
+    let matching: Vec<_> = claims.iter().filter(|claim| claim.path == path).collect();
+    let_assert!([claim] = matching.as_slice());
+    assert_eq!(claim.value.as_deref(), Some(value));
+    assert!(claim.selectively_disclosable);
+    assert!(claim.schema.as_ref().await.unwrap().metadata);
+}
+
+#[tokio::test]
+async fn test_parse_credential_selectively_disclosed_sub() {
+    let parsed = parse_test_credential(SD_SUB_CREDENTIAL).await.unwrap();
+
+    assert_no_duplicate_claims(&parsed).await;
+    assert_single_disclosed_metadata_claim(&parsed, "sub", "urn:oid:1.2.246.562.24.00000000100")
+        .await;
+}
+
+#[tokio::test]
+async fn test_extract_credentials_selectively_disclosed_sub() {
+    let credential = parse_credential_test_formatter()
+        .extract_credentials_unverified(&SD_SUB_CREDENTIAL.into(), None)
+        .await
+        .unwrap();
+
+    let sub = credential.claims.get("sub").unwrap();
+    assert_eq!(
+        sub.value,
+        CredentialClaimValue::String("urn:oid:1.2.246.562.24.00000000100".to_string())
+    );
+    assert!(sub.selectively_disclosable);
+    assert!(sub.metadata);
+}
+
+#[tokio::test]
+async fn test_parse_credential_selectively_disclosed_iat() {
+    let mut payload = base_payload();
+    payload.as_object_mut().unwrap().remove("iat");
+    let token = sd_jwt_vc_with_disclosures(payload, &[("iat", json!(TEST_IAT))]);
+
+    let parsed = parse_test_credential(&token).await.unwrap();
+
+    assert_no_duplicate_claims(&parsed).await;
+    assert_single_disclosed_metadata_claim(&parsed, "iat", &TEST_IAT.to_string()).await;
+    assert_eq!(
+        parsed.common.issuance_date,
+        Some(OffsetDateTime::from_unix_timestamp(TEST_IAT).unwrap())
+    );
+}
+
+#[tokio::test]
+async fn test_extract_credentials_selectively_disclosed_iat() {
+    let mut payload = base_payload();
+    payload.as_object_mut().unwrap().remove("iat");
+    let token = sd_jwt_vc_with_disclosures(payload, &[("iat", json!(TEST_IAT))]);
+
+    let credential = parse_credential_test_formatter()
+        .extract_credentials_unverified(&token.into(), None)
+        .await
+        .unwrap();
+
+    let expected_issuance_date = Some(OffsetDateTime::from_unix_timestamp(TEST_IAT).unwrap());
+    assert_eq!(credential.issuance_date, expected_issuance_date);
+    assert_eq!(credential.valid_from, expected_issuance_date);
+    let iat = credential.claims.get("iat").unwrap();
+    assert!(iat.selectively_disclosable);
+    assert!(iat.metadata);
+}
+
+#[rstest]
+#[case::string(json!("yesterday"), "Disclosed `iat` claim is not a number")]
+#[case::out_of_range(json!(1e20), "Invalid disclosed `iat` claim: 1e+20")]
+#[tokio::test]
+async fn test_parse_credential_invalid_disclosed_iat(
+    #[case] iat: serde_json::Value,
+    #[case] expected_error: &str,
+) {
+    let mut payload = base_payload();
+    payload.as_object_mut().unwrap().remove("iat");
+    let token = sd_jwt_vc_with_disclosures(payload, &[("iat", iat)]);
+
+    let_assert!(
+        Err(FormatterError::CouldNotExtractCredentials(error)) =
+            parse_test_credential(&token).await
+    );
+    assert_eq!(error, expected_error);
+}
+
+/// The claim schemas must not depend on whether registered claims are plain or disclosed,
+/// otherwise schemas of different issuances / formats cannot be combined.
+#[tokio::test]
+async fn test_parse_credential_claim_schemas_independent_of_disclosure() {
+    let registered_claims = [
+        ("sub", json!("urn:oid:1.2.246.562.24.00000000100")),
+        ("iat", json!(TEST_IAT)),
+        ("aud", json!("https://verifier.example.com")),
+        (
+            "jti",
+            json!("urn:uuid:5b1d4a3e-6c0b-4b8e-9f0e-2a1f3d4c5b6a"),
+        ),
+    ];
+
+    let mut plain_payload = base_payload();
+    for (key, value) in &registered_claims {
+        plain_payload[key] = value.clone();
+    }
+    let plain = parse_test_credential(&sd_jwt_vc_with_disclosures(plain_payload, &[]))
+        .await
+        .unwrap();
+
+    let mut disclosed_payload = base_payload();
+    disclosed_payload.as_object_mut().unwrap().remove("iat");
+    let disclosed = parse_test_credential(&sd_jwt_vc_with_disclosures(
+        disclosed_payload,
+        &registered_claims,
+    ))
+    .await
+    .unwrap();
+
+    async fn claim_schema_shapes(parsed: &ParsedCredential) -> Vec<(String, String, bool, bool)> {
+        let schema = parsed.common.schema.as_ref().await.unwrap();
+        let mut shapes: Vec<_> = schema
+            .claim_schemas
+            .as_ref()
+            .await
+            .unwrap()
+            .iter()
+            .map(|cs| (cs.key.clone(), cs.data_type.clone(), cs.metadata, cs.array))
+            .collect();
+        shapes.sort();
+        shapes
+    }
+    assert_eq!(
+        claim_schema_shapes(&plain).await,
+        claim_schema_shapes(&disclosed).await
+    );
+    assert_eq!(plain.common.issuance_date, disclosed.common.issuance_date);
+
+    let plain_claims = plain.claims.as_ref().await.unwrap();
+    for (key, _) in &registered_claims {
+        let claim = plain_claims
+            .iter()
+            .find(|claim| claim.path == *key)
+            .unwrap();
+        assert!(!claim.selectively_disclosable);
+        assert!(claim.schema.as_ref().await.unwrap().metadata);
+    }
+    for (key, value) in &registered_claims {
+        let value = value
+            .as_str()
+            .map(ToString::to_string)
+            .unwrap_or(value.to_string());
+        assert_single_disclosed_metadata_claim(&disclosed, key, &value).await;
+    }
+}
+
+/// `aud` and `jti` are not restricted by the SD-JWT VC spec and may be selectively disclosed.
+#[rstest]
+#[case::aud("aud", "https://verifier.example.com")]
+#[case::jti("jti", "urn:uuid:5b1d4a3e-6c0b-4b8e-9f0e-2a1f3d4c5b6a")]
+#[tokio::test]
+async fn test_parse_credential_selectively_disclosed_aud_jti(
+    #[case] key: &str,
+    #[case] value: &str,
+) {
+    let token = sd_jwt_vc_with_disclosures(base_payload(), &[(key, json!(value))]);
+
+    let parsed = parse_test_credential(&token).await.unwrap();
+
+    assert_no_duplicate_claims(&parsed).await;
+    assert_single_disclosed_metadata_claim(&parsed, key, value).await;
+}
+
+#[rstest]
+#[case::iss("iss", json!("https://issuer.example.com"))]
+#[case::nbf("nbf", json!(TEST_IAT))]
+#[case::exp("exp", json!(4102444800_i64))]
+#[case::cnf("cnf", base_payload()["cnf"].clone())]
+#[case::vct("vct", json!("https://example.com/other-vct"))]
+#[case::vct_integrity("vct#integrity", json!("sha256-7Jmwf4t98ylr3XSaOLcU69ht4yGoZQ72kMxZ/5MGNWM="))]
+#[case::status("status", json!({"status_list": {"idx": 0, "uri": "https://example.com/status"}}))]
+#[tokio::test]
+async fn test_parse_credential_non_disclosable_claim_disclosed(
+    #[case] key: &str,
+    #[case] value: serde_json::Value,
+) {
+    let mut payload = base_payload();
+    // `vct` is a mandatory plain claim, all others are only present as disclosure
+    if key != "vct" {
+        payload.as_object_mut().unwrap().remove(key);
+    }
+    let token = sd_jwt_vc_with_disclosures(payload, &[(key, value)]);
+
+    let_assert!(
+        Err(FormatterError::CouldNotExtractCredentials(error)) =
+            parse_test_credential(&token).await
+    );
+    assert_eq!(
+        error,
+        format!("Claim `{key}` must not be selectively disclosed")
+    );
+}
+
+#[rstest]
+#[case::sub("sub", json!("urn:oid:1.2.246.562.24.00000000100"))]
+#[case::iat("iat", json!(TEST_IAT))]
+#[case::aud("aud", json!("https://verifier.example.com"))]
+#[case::jti("jti", json!("urn:uuid:5b1d4a3e-6c0b-4b8e-9f0e-2a1f3d4c5b6a"))]
+#[tokio::test]
+async fn test_parse_credential_claim_both_plain_and_disclosed(
+    #[case] key: &str,
+    #[case] value: serde_json::Value,
+) {
+    let mut payload = base_payload();
+    payload[key] = value.clone();
+    let token = sd_jwt_vc_with_disclosures(payload, &[(key, value)]);
+
+    let_assert!(
+        Err(FormatterError::CouldNotExtractCredentials(error)) =
+            parse_test_credential(&token).await
+    );
+    assert_eq!(
+        error,
+        format!("Claim `{key}` is present both as plain claim and as disclosure")
+    );
 }

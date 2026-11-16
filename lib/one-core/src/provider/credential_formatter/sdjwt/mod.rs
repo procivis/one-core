@@ -9,11 +9,12 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use shared_types::{DidValue, SerializedCredential};
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 
 use super::model::{
-    AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
-    PublicKeySource, SettableClaims, SignatureProvider, VerificationFn, X5References,
+    AuthenticationFn, CertificateDetails, CredentialClaim, CredentialClaimValue, HolderBindingCtx,
+    IdentifierDetails, PublicKeySource, SettableClaims, SignatureProvider, VerificationFn,
+    X5References,
 };
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::{
@@ -178,6 +179,66 @@ fn verify_x5t_s256(header_thumbprint: &str, leaf_fingerprint: &str) -> Result<()
         ));
     }
     Ok(())
+}
+
+/// Reject root-level disclosures of registered claims that are also present as plain claims.
+/// The plain registered claims are not part of the expanded claims (they are deserialized
+/// into the dedicated payload fields), so such duplicates are not detected during expansion.
+///
+/// <https://www.rfc-editor.org/rfc/rfc9901.html#section-7.1>: "If the claim name already exists
+/// at the level of the `_sd` key, the SD-JWT MUST be rejected."
+fn validate_disclosed_registered_claims<T>(
+    payload: &JWTPayload<T>,
+    expanded_claims: &CredentialClaim,
+) -> Result<(), FormatterError> {
+    let Some(root) = expanded_claims.value.as_object() else {
+        return Ok(());
+    };
+    for (key, claim) in root {
+        let present_as_plain_claim = match key.as_str() {
+            "iss" => payload.issuer.is_some(),
+            "sub" => payload.subject.is_some(),
+            "aud" => payload.audience.is_some(),
+            "exp" => payload.expires_at.is_some(),
+            "nbf" => payload.invalid_before.is_some(),
+            "iat" => payload.issued_at.is_some(),
+            "jti" => payload.jwt_id.is_some(),
+            "cnf" => payload.proof_of_possession_key.is_some(),
+            _ => false,
+        };
+        if claim.selectively_disclosable && present_as_plain_claim {
+            return Err(FormatterError::CouldNotExtractCredentials(format!(
+                "Claim `{key}` is present both as plain claim and as disclosure"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Parse a selectively disclosed `iat` claim (NumericDate) on the root level.
+fn parse_disclosed_issued_at(
+    expanded_claims: &CredentialClaim,
+) -> Result<Option<OffsetDateTime>, FormatterError> {
+    let Some(iat) = expanded_claims
+        .value
+        .as_object()
+        .and_then(|root| root.get("iat"))
+        .filter(|iat| iat.selectively_disclosable)
+    else {
+        return Ok(None);
+    };
+    let CredentialClaimValue::Number(timestamp) = &iat.value else {
+        return Err(FormatterError::CouldNotExtractCredentials(
+            "Disclosed `iat` claim is not a number".to_string(),
+        ));
+    };
+    timestamp
+        .as_f64()
+        .and_then(|timestamp| OffsetDateTime::from_unix_timestamp(timestamp as i64).ok())
+        .map(Some)
+        .ok_or(FormatterError::CouldNotExtractCredentials(format!(
+            "Invalid disclosed `iat` claim: {timestamp}"
+        )))
 }
 
 fn certificate_into_x5c_and_x5u(
@@ -446,7 +507,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             })
             .collect::<Result<Vec<(&Disclosure, (String, String))>, FormatterError>>()?;
 
-        let expanded_payload: Payload = {
+        let (expanded_payload, disclosed_issued_at): (Payload, _) = {
             let mut payload_before_expanding =
                 CredentialClaim::try_from(Value::from(decomposed_token.payload.custom.clone()))?;
 
@@ -454,20 +515,25 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 &disclosures_with_hashes,
                 &mut payload_before_expanding,
             )?;
+            validate_disclosed_registered_claims(
+                &decomposed_token.payload,
+                &payload_before_expanding,
+            )?;
+            let disclosed_issued_at = parse_disclosed_issued_at(&payload_before_expanding)?;
 
             let mut extended_payload: Payload =
                 serde_json::from_value(Value::from(decomposed_token.payload.custom))?;
             extended_payload.set_claims(payload_before_expanding)?;
-            extended_payload
+            (extended_payload, disclosed_issued_at)
         };
         let new_payload = JWTPayload {
             custom: expanded_payload,
             invalid_before: decomposed_token.payload.invalid_before,
-            issued_at: decomposed_token.payload.issued_at,
+            issued_at: decomposed_token.payload.issued_at.or(disclosed_issued_at),
             expires_at: decomposed_token.payload.expires_at,
             issuer: issuer.map(String::from),
             subject: decomposed_token.payload.subject,
-            audience: None,
+            audience: decomposed_token.payload.audience,
             jwt_id: decomposed_token.payload.jwt_id,
             proof_of_possession_key: decomposed_token.payload.proof_of_possession_key,
         };
