@@ -1105,6 +1105,19 @@ where
             .clone())
     }
 
+    /// Returns the key of the first enabled config entry of the given type
+    pub fn get_enabled_key_by_type(&self, r#type: T) -> Result<K, ConfigValidationError>
+    where
+        T: PartialEq + Display,
+    {
+        Ok(self
+            .iter()
+            .find(|(_, v)| v.enabled && v.r#type == r#type)
+            .ok_or_else(|| ConfigValidationError::TypeNotFound(r#type.to_string()))?
+            .0
+            .clone())
+    }
+
     pub fn get_fields<Q: ?Sized + Display + Ord>(
         &self,
         key: &Q,

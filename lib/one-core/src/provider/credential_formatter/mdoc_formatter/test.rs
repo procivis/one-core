@@ -325,6 +325,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -591,6 +592,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -779,6 +781,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -883,6 +886,7 @@ fn test_credential_schema_id() {
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
     let schema_id = "schema_id_name".to_string();
@@ -1066,6 +1070,7 @@ async fn test_parse_credential() {
         Arc::new(datatype_provider),
         Arc::new(key_algorithm_provider),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
     let mut verify_mock = MockTokenVerifier::new();
@@ -1260,6 +1265,7 @@ fn issued_mdoc_formatter() -> MdocFormatter {
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap()
 }
@@ -1338,6 +1344,7 @@ async fn test_format_status_list() {
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 

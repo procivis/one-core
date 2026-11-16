@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde_json::json;
-use shared_types::{DidId, DidValue, KeyId, KeyStorageId};
+use shared_types::{DidId, DidValue, KeyId};
 
 use super::DidService;
 use super::dto::{
@@ -13,7 +13,7 @@ use super::mapper::{
     did_update_to_update_request, map_did_model_to_did_web_response, map_did_to_did_keys,
 };
 use super::validator::validate_deactivation_request;
-use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
+use crate::config::core_config::{KeyAlgorithmType, KeyStorageConfig, KeyStorageType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::did::{RelatedKey, SortableDidColumn};
 use crate::model::identifier::{IdentifierData, IdentifierState, UpdateIdentifierRequest};
@@ -349,9 +349,11 @@ pub(crate) async fn generate_update_key(
     organisation: Related<Organisation>,
     update_key_type: KeyAlgorithmType,
     key_provider: &dyn KeyProvider,
+    key_storage_config: &KeyStorageConfig,
 ) -> Result<Key, DidServiceError> {
-    // TODO ONE-9647: uses the key storage type name instead of an enabled key storage config entry of that type
-    let key_storage_id = KeyStorageId::from(KeyStorageType::Internal.as_ref());
+    let key_storage_id = key_storage_config
+        .get_enabled_key_by_type(KeyStorageType::Internal)
+        .error_while("getting internal key storage")?;
     let key_storage = key_provider.get_key_storage(&key_storage_id)?;
 
     let key_id = KeyId::new();

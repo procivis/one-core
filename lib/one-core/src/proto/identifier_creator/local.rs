@@ -275,10 +275,14 @@ impl IdentifierCreatorProto {
 
         let mut update_keys = None;
         if let Some(update_key_type) = capabilities.supported_update_key_types.first() {
-            let update_key =
-                generate_update_key(organisation.clone(), *update_key_type, &*self.key_provider)
-                    .await
-                    .error_while("generating update key")?;
+            let update_key = generate_update_key(
+                organisation.clone(),
+                *update_key_type,
+                &*self.key_provider,
+                &self.config.key_storage,
+            )
+            .await
+            .error_while("generating update key")?;
 
             update_keys = Some(vec![update_key]);
             keys.update_keys = update_keys.clone();

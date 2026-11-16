@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, RevocationMethodId,
+    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, KeyStorageId, RevocationMethodId,
     SerializedCredential,
 };
 use standardized_types::iana::HashAlgorithm;
@@ -52,6 +52,7 @@ mod test;
 
 #[derive(Provider)]
 pub struct JsonLdClassic {
+    remote_key_storage_id: Option<KeyStorageId>,
     config_id: CredentialFormat,
     caching_loader: ContextCache,
     data_type_provider: Arc<dyn DataTypeProvider>,
@@ -371,6 +372,7 @@ impl CredentialFormatter for JsonLdClassic {
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         let credential_subject = vcdm.credential_subject.into_iter().next().ok_or_else(|| {
@@ -388,6 +390,7 @@ impl CredentialFormatter for JsonLdClassic {
                     self.key_algorithm_provider.as_ref(),
                     self.did_method_provider.as_ref(),
                     organisation,
+                    self.remote_key_storage_id.as_ref(),
                 )
             })
             .transpose()?;
@@ -429,6 +432,7 @@ impl CredentialFormatter for JsonLdClassic {
 }
 
 impl JsonLdClassic {
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         config_id: CredentialFormat,
         params: serde_json::Value,
@@ -437,6 +441,7 @@ impl JsonLdClassic {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         client: Arc<dyn HttpClient>,
+        remote_key_storage_id: Option<KeyStorageId>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -445,6 +450,7 @@ impl JsonLdClassic {
             })?;
 
         Ok(Self {
+            remote_key_storage_id,
             config_id,
             params,
             caching_loader: ContextCache::new(caching_loader, client),

@@ -142,6 +142,7 @@ async fn test_format_credential() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -289,6 +290,7 @@ async fn test_format_credential_swiyu() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -415,6 +417,7 @@ async fn test_extract_credentials() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -573,6 +576,7 @@ async fn test_extract_credentials_certificate_validity(
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -649,6 +653,7 @@ async fn test_extract_credentials_swiyu() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -854,6 +859,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         generic_config().core.datatype,
         Arc::new(http_client),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -965,6 +971,7 @@ async fn test_extract_credentials_example_b1() {
         generic_config().core.datatype,
         Arc::new(http_client),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -1112,6 +1119,7 @@ fn test_schema_id() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -1576,6 +1584,7 @@ fn formatter_for_params(
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
     (key_algorithm_provider, did_method_provider, formatter)
@@ -1870,6 +1879,7 @@ async fn test_parse_credential() {
         generic_config().core.datatype,
         Arc::new(client),
         Arc::new(datatype_provider),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -2041,6 +2051,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -2087,6 +2098,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(MockDataTypeProvider::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -2320,6 +2332,7 @@ fn parse_credential_test_formatter() -> SDJWTVCFormatter {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
         Arc::new(datatype_provider),
+        Some("INTERNAL".into()),
     )
     .unwrap()
 }

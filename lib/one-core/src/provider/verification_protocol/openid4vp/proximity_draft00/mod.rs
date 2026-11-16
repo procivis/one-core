@@ -35,7 +35,7 @@ use super::proximity_draft00::holder_flow::{
 };
 use super::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::config::core_config::{
-    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
+    CoreConfig, DidType, FormatType, IdentifierType, TransportConfig, TransportType,
 };
 use crate::error::ContextWithErrorCode;
 use crate::model::did::{Did, KeyRole};
@@ -167,8 +167,13 @@ impl OpenID4VPProximityDraft00 {
             .clone()
             .map(|ble| BleHolderTransport::new(url_scheme.clone(), ble));
         let (openid_mqtt, mqtt_holder_transport) = if let Some(mqtt_client) = mqtt_client {
-            // TODO ONE-9647: looks up the MQTT transport config entry by its type name instead of by type
-            if let Ok(transport_params) = config.transport.get(TransportType::Mqtt.as_ref()) {
+            // TODO ONE-9647: only a single MQTT transport config entry is supported, the settings
+            // of the first enabled one are used for all proofs
+            if let Ok(mqtt_transport_id) = config
+                .transport
+                .get_enabled_transport_type(TransportType::Mqtt)
+                && let Ok(transport_params) = config.transport.get(mqtt_transport_id)
+            {
                 (
                     Some(MqttVerifier::new(mqtt_client.clone(), transport_params)),
                     Some(MqttHolderTransport::new(url_scheme, mqtt_client)),
@@ -229,11 +234,23 @@ impl OpenID4VPProximityDraft00 {
             self.interaction_repository.as_ref(),
             self.identifier_creator.as_ref(),
             holder_transport,
+            &self.config_id,
             transport_id,
             verification_fn,
             self.certificate_validator.as_ref(),
         )
         .await
+    }
+
+    fn transport_type(
+        &self,
+        transport: &TransportId,
+    ) -> Result<TransportType, VerificationProtocolError> {
+        Ok(self
+            .config
+            .transport
+            .get_type(transport)
+            .error_while("getting transport type")?)
     }
 
     fn parse_interaction_data(
@@ -330,10 +347,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
 
     async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        // TODO ONE-9647: parses the transport config entry name as transport type instead of looking up its type
-        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
-            VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
-        })?;
+        let transport = self.transport_type(&proof.transport)?;
 
         let interaction_data = interaction_data_from_proof(proof).await?;
         match transport {
@@ -360,10 +374,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<(), VerificationProtocolError> {
-        // TODO ONE-9647: parses the transport config entry name as transport type instead of looking up its type
-        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
-            VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
-        })?;
+        let transport = self.transport_type(&proof.transport)?;
 
         let interaction_data = interaction_data_from_proof(proof).await?;
 
@@ -403,7 +414,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
-        let transport = get_transport(proof).await?;
+        let transports = get_transports(proof, &self.config.transport).await?;
+        let transport: Vec<TransportType> = transports.iter().map(|(_, r#type)| *r#type).collect();
         let on_submission_callback = on_submission_callback.map(|fut| fut.shared());
 
         let key_id = proof.verifier_key.as_ref().map(|key| key.id()).ok_or(
@@ -436,6 +448,10 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             key_agreement: key_agreement.clone(),
             // notification to cancel the other flow (if any) when one is selected
             cancellation_token: Default::default(),
+            transport_ids: transports
+                .iter()
+                .map(|(id, r#type)| (*r#type, id.clone()))
+                .collect(),
         };
 
         let expires_at = self.params.verifier.as_ref().and_then(|verifier| {
@@ -551,11 +567,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                     interaction_id,
                     interaction_data: Some(serialize_interaction_data(
                         &CreateProofInteractionData {
-                            // TODO ONE-9647: stores transport type names instead of transport config entry names
-                            transport: transport
-                                .iter()
-                                .map(|t| TransportId::from(t.as_ref()))
-                                .collect(),
+                            transport: transports.iter().map(|(id, _)| id.clone()).collect(),
                             common: Default::default(),
                         },
                     )?),
@@ -569,7 +581,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
 
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        for transport in get_transport(proof).await? {
+        for (_, transport) in get_transports(proof, &self.config.transport).await? {
             match transport {
                 TransportType::Http | TransportType::DcApi => {}
                 TransportType::Ble => {
@@ -626,10 +638,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         proof: &Proof,
         submitted_credential_ids: &[CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-        // TODO ONE-9647: parses the transport config entry name as transport type instead of looking up its type
-        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
-            VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
-        })?;
+        let transport = self.transport_type(&proof.transport)?;
 
         let interaction = proof.interaction.as_required_ref().await?;
         let interaction_data = deserialize_interaction_data(interaction.data.as_ref())?;
@@ -677,7 +686,10 @@ async fn interaction_data_from_proof(proof: &Proof) -> Result<Value, Verificatio
     Ok(interaction_data)
 }
 
-async fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, VerificationProtocolError> {
+async fn get_transports(
+    proof: &Proof,
+    config: &TransportConfig,
+) -> Result<Vec<(TransportId, TransportType)>, VerificationProtocolError> {
     // TODO ONE-9647: an empty transport is used as marker for 'multiple transports, not selected yet'
     let transport = if proof.transport.as_str().is_empty() {
         let interaction = proof.interaction.as_required_ref().await?;
@@ -698,10 +710,11 @@ async fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, Verification
 
     transport
         .into_iter()
-        // TODO ONE-9647: parses transport config entry names as transport types instead of looking up their types
-        .map(|t| TransportType::try_from(t.as_str()))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|err| VerificationProtocolError::Failed(format!("Invalid transport type: {err}")))
+        .map(|id| {
+            let r#type = config.get_type(&id).error_while("getting transport type")?;
+            Ok((id, r#type))
+        })
+        .collect()
 }
 
 fn merge_query_params(mut first: Url, second: Url) -> Url {
@@ -720,7 +733,7 @@ pub(super) async fn create_interaction_and_proof(
     interaction_data: Option<Vec<u8>>,
     organisation: Organisation,
     verifier_identifier: Option<Identifier>,
-    verification_protocol_type: VerificationProtocolType,
+    protocol_id: &VerificationProtocolId,
     transport: TransportId,
     interaction_repository: &dyn InteractionRepository,
 ) -> Result<(InteractionId, Proof), VerificationProtocolError> {
@@ -749,8 +762,7 @@ pub(super) async fn create_interaction_and_proof(
         interaction_id,
         proof_from_handle_invitation(
             proof_id,
-            // TODO ONE-9647: uses the protocol type name instead of the config entry name of this protocol
-            &VerificationProtocolId::from(verification_protocol_type.as_ref()),
+            protocol_id,
             verifier_identifier,
             interaction,
             transport,

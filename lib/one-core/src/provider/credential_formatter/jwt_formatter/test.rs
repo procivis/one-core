@@ -162,6 +162,7 @@ fn get_credential_data_with_array(
 async fn test_format_credential() {
     let expiration_seconds = Duration::days(1);
     let formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds: Duration::seconds(45),
@@ -262,6 +263,7 @@ async fn test_format_credential_with_layout_properties() {
     let leeway_seconds = Duration::seconds(45);
 
     let formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds,
@@ -362,6 +364,7 @@ async fn test_format_credential_nested_array() {
     let leeway_seconds = Duration::seconds(45);
 
     let sd_formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds,
@@ -449,6 +452,7 @@ async fn test_extract_credentials() {
     let leeway_seconds = Duration::seconds(45);
 
     let jwt_formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds,
@@ -559,6 +563,7 @@ async fn test_extract_credentials_nested_array() {
     let leeway_seconds = Duration::seconds(45);
 
     let jwt_formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds,
@@ -665,6 +670,7 @@ async fn test_format_credential_presentation() {
         IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0.QUJD";
 
     let jwt_formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds: Duration::seconds(45),
@@ -705,6 +711,7 @@ async fn test_format_credential_presentation() {
 #[test]
 fn test_get_capabilities() {
     let jwt_formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds: Duration::seconds(123),
@@ -730,6 +737,7 @@ fn test_get_capabilities() {
 #[test]
 fn test_schema_id() {
     let formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds: Duration::seconds(123),
@@ -793,6 +801,7 @@ async fn test_parse_credential() {
         .returning(|name| Ok((name.into(), Arc::new(MockDidMethod::new()))));
 
     let jwt_formatter = JWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         config_id: "JWT".into(),
         params: Params {
             leeway_seconds: Duration::seconds(45),

@@ -20,8 +20,8 @@ use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaId, OrganisationId, RevocationMethodId,
-    SerializedCredential,
+    CredentialFormat, CredentialId, CredentialSchemaId, KeyStorageId, OrganisationId,
+    RevocationMethodId, SerializedCredential,
 };
 use standardized_types::iana::HashAlgorithm;
 use time::Duration;
@@ -68,6 +68,7 @@ const PNG_DATA_URI_PREFIX: &str = "data:image/png;base64,";
 
 #[derive(Provider)]
 pub struct SDJWTVCFormatter {
+    remote_key_storage_id: Option<KeyStorageId>,
     base_url: Option<Arc<str>>,
     config_id: CredentialFormat,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -127,6 +128,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             &parsed_credential,
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         let revocation_method = parsed_credential
@@ -193,6 +195,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         Ok(ParsedCredential {
@@ -522,6 +525,7 @@ impl SDJWTVCFormatter {
         datatype_config: DatatypeConfig,
         http_client: Arc<dyn HttpClient>,
         data_type_provider: Arc<dyn DataTypeProvider>,
+        remote_key_storage_id: Option<KeyStorageId>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -529,6 +533,7 @@ impl SDJWTVCFormatter {
                 source: err,
             })?;
         Ok(Self {
+            remote_key_storage_id,
             base_url,
             config_id,
             params,

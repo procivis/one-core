@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, RevocationMethodId,
+    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, KeyStorageId, RevocationMethodId,
     SerializedCredential,
 };
 use standardized_types::iana::HashAlgorithm;
@@ -59,6 +59,7 @@ mod test;
 
 #[derive(Provider)]
 pub struct SDJWTFormatter {
+    remote_key_storage_id: Option<KeyStorageId>,
     base_url: Option<Arc<str>>,
     config_id: CredentialFormat,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -305,6 +306,7 @@ impl CredentialFormatter for SDJWTFormatter {
             &parsed_credential,
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         let revocation_method = if let Some(status) = parsed_credential
@@ -408,6 +410,7 @@ impl CredentialFormatter for SDJWTFormatter {
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         Ok(ParsedCredential {
@@ -447,6 +450,7 @@ impl CredentialFormatter for SDJWTFormatter {
 }
 
 impl SDJWTFormatter {
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<Arc<str>>,
         config_id: CredentialFormat,
@@ -455,6 +459,7 @@ impl SDJWTFormatter {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         data_type_provider: Arc<dyn DataTypeProvider>,
         client: Arc<dyn HttpClient>,
+        remote_key_storage_id: Option<KeyStorageId>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -463,6 +468,7 @@ impl SDJWTFormatter {
             })?;
 
         Ok(Self {
+            remote_key_storage_id,
             config_id,
             params,
             did_method_provider,

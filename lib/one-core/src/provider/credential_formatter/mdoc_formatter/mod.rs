@@ -23,8 +23,8 @@ use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{
     ClaimId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaFormatClaimSchemaId,
-    CredentialSchemaFormatId, CredentialSchemaId, DidValue, OrganisationId, RevocationMethodId,
-    SerializedCredential,
+    CredentialSchemaFormatId, CredentialSchemaId, DidValue, KeyStorageId, OrganisationId,
+    RevocationMethodId, SerializedCredential,
 };
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
@@ -89,6 +89,7 @@ pub(crate) const DOCTYPE_METADATA_CLAIM_KEY: &str = "doctype";
 
 #[derive(Provider)]
 pub struct MdocFormatter {
+    remote_key_storage_id: Option<KeyStorageId>,
     config_id: CredentialFormat,
     certificate_validator: Arc<dyn CertificateValidator>,
     params: Params,
@@ -125,6 +126,7 @@ impl MdocFormatter {
         datatype_provider: Arc<dyn DataTypeProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         client: Arc<dyn HttpClient>,
+        remote_key_storage_id: Option<KeyStorageId>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -133,6 +135,7 @@ impl MdocFormatter {
             })?;
 
         Ok(Self {
+            remote_key_storage_id,
             base_url,
             config_id,
             certificate_validator,
@@ -686,6 +689,7 @@ impl CredentialFormatter for MdocFormatter {
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
@@ -694,6 +698,7 @@ impl CredentialFormatter for MdocFormatter {
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
             organisation,
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         Ok(ParsedCredential {

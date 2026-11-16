@@ -89,6 +89,7 @@ pub async fn format_mdoc_credential(
         datatype_provider,
         key_algorithm_provider,
         Arc::new(ReqwestClient::default()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
     formatter

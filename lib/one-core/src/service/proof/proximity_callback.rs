@@ -45,8 +45,12 @@ impl ProofService {
                 .as_ref()
                 .context("Missing interaction data")?;
 
-            // TODO ONE-9647: compares the transport config entry name with a transport type name instead of looking up its type
-            if proof.transport.as_str() == TransportType::Ble.as_ref() {
+            let transport_type = self
+                .config
+                .transport
+                .get_type(&proof.transport)
+                .context("getting transport type")?;
+            if transport_type == TransportType::Ble {
                 let interaction_data =
                     serde_json::from_slice::<BLEOpenID4VPInteractionDataVerifier>(interaction_data)
                         .context("BLE interaction data deserialization")?;

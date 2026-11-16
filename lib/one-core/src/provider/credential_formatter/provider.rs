@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use serde_json::json;
-use shared_types::CredentialFormat;
+use shared_types::{CredentialFormat, KeyStorageId};
 
 use super::CredentialFormatter;
 use super::decorators::CapabilityChecked;
@@ -15,7 +15,9 @@ use super::mdoc_formatter::MdocFormatter;
 use super::sdjwt_formatter::SDJWTFormatter;
 use super::sdjwtvc_formatter::SDJWTVCFormatter;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, DatatypeConfig, Fields, FormatType, Params};
+use crate::config::core_config::{
+    CoreConfig, DatatypeConfig, Fields, FormatType, KeyStorageType, Params,
+};
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -80,6 +82,7 @@ fn initialize_provider(
     certificate_validator: &Arc<dyn CertificateValidator>,
     datatype_config: &DatatypeConfig,
     base_url: Option<Arc<str>>,
+    remote_key_storage_id: &Option<KeyStorageId>,
 ) -> Result<Arc<dyn CredentialFormatter>, InitializationError> {
     let provider: Arc<dyn CredentialFormatter> = match fields.r#type {
         FormatType::Jwt => Arc::new(JWTFormatter::new(
@@ -88,6 +91,7 @@ fn initialize_provider(
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
             data_type_provider.clone(),
+            remote_key_storage_id.clone(),
         )?),
         FormatType::SdJwt => Arc::new(SDJWTFormatter::new(
             base_url,
@@ -97,6 +101,7 @@ fn initialize_provider(
             key_algorithm_provider.clone(),
             data_type_provider.clone(),
             client.clone(),
+            remote_key_storage_id.clone(),
         )?),
         FormatType::SdJwtVc => Arc::new(SDJWTVCFormatter::new(
             base_url,
@@ -109,6 +114,7 @@ fn initialize_provider(
             datatype_config.clone(),
             client.clone(),
             data_type_provider.clone(),
+            remote_key_storage_id.clone(),
         )?),
         FormatType::JsonLdClassic => Arc::new(JsonLdClassic::new(
             name.clone(),
@@ -118,6 +124,7 @@ fn initialize_provider(
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
             client.clone(),
+            remote_key_storage_id.clone(),
         )?),
         FormatType::JsonLdBbsPlus => Arc::new(JsonLdBbsplus::new(
             name.clone(),
@@ -127,6 +134,7 @@ fn initialize_provider(
             key_algorithm_provider.clone(),
             json_ld_cache.clone(),
             client.clone(),
+            remote_key_storage_id.clone(),
         )?),
         FormatType::Mdoc => Arc::new(MdocFormatter::new(
             base_url,
@@ -137,6 +145,7 @@ fn initialize_provider(
             data_type_provider.clone(),
             key_algorithm_provider.clone(),
             client.clone(),
+            remote_key_storage_id.clone(),
         )?),
     };
     Ok(provider)
@@ -155,6 +164,11 @@ pub(crate) fn credential_formatter_provider_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Result<Arc<dyn CredentialFormatterProvider>, ConfigValidationError> {
     let datatype_config = &config.datatype;
+    // remote (public-only) keys are associated with the key storage of type INTERNAL
+    let remote_key_storage_id = config
+        .key_storage
+        .get_key_by_type(KeyStorageType::Internal)
+        .ok();
     let directory = ProviderDirectory::initialize(
         config.format.iter_mut(),
         |name: &CredentialFormat, fields: &Fields<FormatType>| {
@@ -170,6 +184,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                 &certificate_validator,
                 datatype_config,
                 base_url.clone(),
+                &remote_key_storage_id,
             )?;
 
             let provider: Arc<dyn CredentialFormatter> = Arc::new(CapabilityChecked(provider));

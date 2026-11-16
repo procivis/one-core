@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_with::DurationSeconds;
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, RevocationMethodId,
+    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, KeyStorageId, RevocationMethodId,
     SerializedCredential,
 };
 use time::Duration;
@@ -65,6 +65,7 @@ mod test;
 
 #[derive(Provider)]
 pub struct JsonLdBbsplus {
+    remote_key_storage_id: Option<KeyStorageId>,
     config_id: CredentialFormat,
     did_method_provider: Arc<dyn DidMethodProvider>,
     data_type_provider: Arc<dyn DataTypeProvider>,
@@ -90,6 +91,7 @@ struct Params {
 }
 
 impl JsonLdBbsplus {
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         config_id: CredentialFormat,
         params: serde_json::Value,
@@ -98,6 +100,7 @@ impl JsonLdBbsplus {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         caching_loader: JsonLdCachingLoader,
         client: Arc<dyn HttpClient>,
+        remote_key_storage_id: Option<KeyStorageId>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -106,6 +109,7 @@ impl JsonLdBbsplus {
             })?;
 
         Ok(Self {
+            remote_key_storage_id,
             config_id,
             params,
             did_method_provider,
@@ -530,6 +534,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
+            self.remote_key_storage_id.as_ref(),
         )?;
 
         let credential_subject = vcdm.credential_subject.into_iter().next().ok_or_else(|| {
@@ -547,6 +552,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                     self.key_algorithm_provider.as_ref(),
                     self.did_method_provider.as_ref(),
                     organisation,
+                    self.remote_key_storage_id.as_ref(),
                 )
             })
             .transpose()?;

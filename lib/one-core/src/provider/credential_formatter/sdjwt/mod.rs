@@ -8,7 +8,7 @@ use one_crypto::{Hasher, get_hasher};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use shared_types::{DidValue, SerializedCredential};
+use shared_types::{DidValue, KeyStorageId, SerializedCredential};
 use time::{Duration, OffsetDateTime};
 
 use super::model::{
@@ -652,6 +652,7 @@ pub(crate) fn parse_holder_identifier<T>(
     parsed_credential: &Jwt<T>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     did_method_provider: &dyn DidMethodProvider,
+    remote_key_storage_id: Option<&KeyStorageId>,
 ) -> Result<Option<Identifier>, FormatterError> {
     Ok(
         if let Some(proof_of_possession_key) = &parsed_credential.payload.proof_of_possession_key {
@@ -660,6 +661,7 @@ pub(crate) fn parse_holder_identifier<T>(
                 key_algorithm_provider,
                 did_method_provider,
                 organisation.clone(),
+                remote_key_storage_id,
             )?)
         } else {
             parsed_credential
@@ -677,6 +679,7 @@ pub(crate) fn parse_holder_identifier<T>(
                         key_algorithm_provider,
                         did_method_provider,
                         organisation.clone(),
+                        remote_key_storage_id,
                     )
                 })
                 .transpose()?

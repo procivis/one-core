@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use one_core::config::core_config::AppConfig;
+use one_core::config::core_config::{AppConfig, KeyStorageType};
 use one_core::{OneCore, OneCoreInitializationError};
 use sentry::integrations::tracing::EventFilter;
 use sql_data_provider::{DataLayer, DbConn};
@@ -18,8 +18,18 @@ pub async fn initialize_core(
 
     let data_repository = Arc::new(DataLayer::build(
         db_conn,
-        // TODO ONE-9647: hard-coded key storage names instead of the config entries of the exportable key storage types
-        vec!["INTERNAL".into(), "AZURE_VAULT".into()],
+        app_config
+            .core
+            .key_storage
+            .iter()
+            .filter(|(_, fields)| {
+                matches!(
+                    fields.r#type,
+                    KeyStorageType::Internal | KeyStorageType::AzureVault
+                )
+            })
+            .map(|(id, _)| id.to_owned())
+            .collect(),
     ));
 
     let core_base_url = app_config.app.core_base_url.to_owned();

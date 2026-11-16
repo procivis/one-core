@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::sync::{Arc, LazyLock};
 
-use one_core::config::core_config::{self, AppConfig, InputFormat};
+use one_core::config::core_config::{self, AppConfig, InputFormat, KeyStorageType};
 use one_core::error::ContextWithErrorCode;
 use one_core::proto::session_provider::NoSessionProvider;
 use one_core::repository::error::DataLayerError;
@@ -200,8 +200,12 @@ async fn initialize(
                 .error_while("opening DB")?;
             let data_repository = Arc::new(DataLayer::build(
                 db_conn,
-                // TODO ONE-9647: hard-coded key storage name instead of the config entries of the exportable key storage types
-                vec!["INTERNAL".into()],
+                core_config
+                    .key_storage
+                    .iter()
+                    .filter(|(_, fields)| fields.r#type == KeyStorageType::Internal)
+                    .map(|(id, _)| id.to_owned())
+                    .collect(),
             ));
 
             let session_provider = Arc::new(NoSessionProvider);

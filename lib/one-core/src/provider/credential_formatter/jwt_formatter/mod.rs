@@ -11,7 +11,7 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, RevocationMethodId,
+    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, KeyStorageId, RevocationMethodId,
     SerializedCredential,
 };
 use time::Duration;
@@ -56,6 +56,7 @@ mod status_list;
 
 #[derive(Provider)]
 pub struct JWTFormatter {
+    remote_key_storage_id: Option<KeyStorageId>,
     config_id: CredentialFormat,
     params: Params,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -83,6 +84,7 @@ impl JWTFormatter {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         data_type_provider: Arc<dyn DataTypeProvider>,
+        remote_key_storage_id: Option<KeyStorageId>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -91,6 +93,7 @@ impl JWTFormatter {
             })?;
 
         Ok(Self {
+            remote_key_storage_id,
             config_id,
             params,
             key_algorithm_provider,
@@ -449,6 +452,7 @@ impl CredentialFormatter for JWTFormatter {
             self.key_algorithm_provider.as_ref(),
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
+            self.remote_key_storage_id.as_ref(),
         )?;
         let holder_identifier = jwt
             .payload
@@ -464,6 +468,7 @@ impl CredentialFormatter for JWTFormatter {
                     self.key_algorithm_provider.as_ref(),
                     self.did_method_provider.as_ref(),
                     organisation,
+                    self.remote_key_storage_id.as_ref(),
                 )
             })
             .transpose()?;

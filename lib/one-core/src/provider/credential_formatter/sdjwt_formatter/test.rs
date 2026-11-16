@@ -104,6 +104,7 @@ async fn test_format_credential() {
 
     let expiration_seconds = Duration::days(1);
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(did_method_provider),
@@ -255,6 +256,7 @@ async fn test_format_credential_with_array() {
         .return_once(move |_| Ok(did_document));
 
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(did_method_provider),
@@ -384,6 +386,7 @@ async fn test_format_credential_with_array_sd() {
         .return_once(move |_| Ok(did_document));
 
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(did_method_provider),
@@ -494,6 +497,7 @@ async fn test_extract_credentials() {
     let leeway_seconds = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -624,6 +628,7 @@ async fn test_extract_credentials_with_array() {
     let leeway_seconds = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -704,6 +709,7 @@ async fn test_extract_credentials_with_array_stripped() {
     let leeway_seconds = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -845,6 +851,7 @@ async fn test_extract_credentials_with_array_stripped() {
 #[test]
 fn test_get_capabilities() {
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -976,6 +983,7 @@ async fn test_parse_credential() {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -1208,6 +1216,7 @@ async fn test_parse_credential_cnf() {
         Arc::new(key_algorithm_provider),
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -1324,6 +1333,7 @@ async fn test_format_credential_sets_x5c_and_x5u_headers() {
         .return_once(move |_| Ok(dummy_did_document(&holder_did)));
 
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some(base_url.into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(did_method_provider),
@@ -1390,6 +1400,7 @@ async fn test_format_credential_without_certificate_has_no_x5_headers() {
         .return_once(move |_| Ok(dummy_did_document(&holder_did)));
 
     let sd_formatter = SDJWTFormatter {
+        remote_key_storage_id: Some("INTERNAL".into()),
         base_url: Some("http://base_url".into()),
         config_id: "SD_JWT".into(),
         did_method_provider: Arc::new(did_method_provider),

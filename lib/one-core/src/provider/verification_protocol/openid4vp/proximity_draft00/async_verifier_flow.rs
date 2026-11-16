@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Arc;
 
@@ -130,6 +131,8 @@ pub(super) struct AsyncVerifierFlowParams {
     pub blob_storage_provider: Arc<dyn BlobStorageProvider>,
     pub key_agreement: KeyAgreementKey,
     pub cancellation_token: CancellationToken,
+    /// config entry of each transport type the flow was started for
+    pub transport_ids: HashMap<TransportType, TransportId>,
 }
 
 enum FlowState {
@@ -209,13 +212,22 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
     // we notify other transport that this was selected so they can cancel their work
     params.cancellation_token.cancel();
 
+    let transport_id = params
+        .transport_ids
+        .get(&transport_type)
+        .cloned()
+        .ok_or_else(|| {
+            VerificationProtocolError::Failed(format!(
+                "No transport configured for selected transport type {transport_type}"
+            ))
+        })?;
+
     params
         .proof_repository
         .update_proof(
             &params.proof_id,
             UpdateProofRequest {
-                // TODO ONE-9647: stores the transport type name instead of the transport config entry name
-                transport: Some(TransportId::from(transport_type.as_ref())),
+                transport: Some(transport_id),
                 ..Default::default()
             },
             None,

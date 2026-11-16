@@ -1,12 +1,11 @@
 use std::borrow::Cow;
 
 use async_trait::async_trait;
-use shared_types::{DidValue, TransportId};
+use shared_types::{DidValue, TransportId, VerificationProtocolId};
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{AuthorizationRequest, ClientIdPrefix, VpTokenResponse};
 use url::Url;
 
-use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
@@ -72,6 +71,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
     interaction_repository: &dyn InteractionRepository,
     identifier_creator: &dyn IdentifierCreator,
     transport_handler: &dyn ProximityHolderTransport<Context = T>,
+    protocol_id: &VerificationProtocolId,
     transport_id: TransportId,
     verification_fn: VerificationFn,
     certificate_validator: &dyn CertificateValidator,
@@ -80,7 +80,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
         None,
         organisation.clone(),
         None,
-        VerificationProtocolType::OpenId4VpProximityDraft00,
+        protocol_id,
         transport_id,
         interaction_repository,
     )

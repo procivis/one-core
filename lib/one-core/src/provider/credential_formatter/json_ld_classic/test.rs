@@ -162,6 +162,7 @@ async fn create_token(include_layout: bool, valid_until: Option<time::OffsetDate
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         client,
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
@@ -294,6 +295,7 @@ async fn test_parse_credential() {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(did_method_provider),
         Arc::new(ReqwestClient::default()),
+        Some("INTERNAL".into()),
     )
     .unwrap();
 
