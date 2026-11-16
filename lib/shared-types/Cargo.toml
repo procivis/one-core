@@ -25,6 +25,7 @@ utoipa              = { workspace = true, features = ["uuid"], optional = true }
 uuid.workspace      = true
 
 [dev-dependencies]
+serde_json.workspace      = true
 similar-asserts.workspace = true
 
 [lints]

@@ -161,66 +161,8 @@ impl From<&DidValue> for DidValue {
     }
 }
 
-// needed if we want to put the type inside and Option
 #[cfg(feature = "sea-orm")]
-mod seaorm {
-    use super::*;
-    impl sea_orm::sea_query::value::Nullable for DidValue {
-        fn null() -> sea_orm::Value {
-            sea_orm::Value::String(None)
-        }
-    }
-
-    impl From<DidValue> for sea_orm::Value {
-        fn from(source: DidValue) -> Self {
-            source.to_string().into()
-        }
-    }
-
-    impl sea_orm::sea_query::ValueType for DidValue {
-        fn try_from(v: sea_orm::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
-            let s = <String as sea_orm::sea_query::ValueType>::try_from(v)?;
-            let s = s.parse().map_err(|_| sea_orm::sea_query::ValueTypeErr)?;
-            Ok(s)
-        }
-
-        fn type_name() -> String {
-            "DidValue".to_owned()
-        }
-
-        fn array_type() -> sea_orm::sea_query::ArrayType {
-            sea_orm::sea_query::ArrayType::String
-        }
-
-        fn column_type() -> sea_orm::sea_query::ColumnType {
-            sea_orm::sea_query::ColumnType::string(None)
-        }
-    }
-
-    impl sea_orm::TryGetable for DidValue {
-        fn try_get_by<I: sea_orm::ColIdx>(
-            res: &sea_orm::QueryResult,
-            idx: I,
-        ) -> Result<Self, sea_orm::TryGetError> {
-            let s: String = <String as sea_orm::TryGetable>::try_get_by(res, idx)?;
-
-            let newtype_str = stringify!($newtype);
-            let s = s.parse().map_err(|error| {
-                sea_orm::TryGetError::DbErr(sea_orm::error::DbErr::Type(format!(
-                    "Failed to parse {newtype_str}: {error}"
-                )))
-            })?;
-
-            Ok(s)
-        }
-    }
-
-    impl From<&DidValue> for sea_orm::Value {
-        fn from(source: &DidValue) -> Self {
-            source.to_string().into()
-        }
-    }
-}
+crate::macros::impls_for_seaorm_value!(DidValue);
 
 #[cfg(test)]
 mod tests {
