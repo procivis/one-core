@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use futures::future;
 use shared_types::ProofSchemaId;
-use uuid::Uuid;
 
 use super::mapper::proof_input_from_import_request;
 use super::validator::{proof_schema_name_already_exists, validate_imported_proof_schema};
@@ -145,7 +144,7 @@ impl ProofSchemaImporter for ProofSchemaImporterProto {
         .await
         .error_while("downloading proof schema")?;
 
-        self.import_proof_schema(schema, Uuid::new_v4().into(), organisation, url.to_owned())
+        self.import_proof_schema(schema, ProofSchemaId::new(), organisation, url.to_owned())
             .await
     }
 }

@@ -1,8 +1,7 @@
-use shared_types::{EcosystemId, EntityId, I18nString, OrganisationId};
+use shared_types::{EcosystemId, EntityId, HistoryId, I18nString, OrganisationId};
 use standardized_types::etsi_119_475::registration_certificate::{Payload, SupervisoryAuthority};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use url::Url;
-use uuid::Uuid;
 
 use super::EudiEcosystem;
 use crate::clock::now_utc;
@@ -236,7 +235,7 @@ impl EudiEcosystem {
 
         self.history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: now_utc(),
                 action,
                 name: Default::default(),
@@ -476,7 +475,6 @@ mod tests {
     use serde_json::json;
     use shared_types::HistoryId;
     use similar_asserts::assert_eq;
-    use uuid::Uuid;
 
     use super::*;
     use crate::clock::now_utc;
@@ -484,7 +482,7 @@ mod tests {
 
     fn trust_event(ecosystem: Option<&str>) -> History {
         History {
-            id: HistoryId::from(Uuid::new_v4()),
+            id: HistoryId::new(),
             created_date: now_utc(),
             action: HistoryAction::WrpRcReceived,
             name: Default::default(),

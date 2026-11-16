@@ -1,7 +1,7 @@
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
+use shared_types::RemoteEntityCacheEntryId;
 use similar_asserts::assert_eq;
 use time::Duration;
-use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 
@@ -98,7 +98,7 @@ async fn test_invalid_type() {
 fn test_entry(cache_type: CacheType, persistent: bool) -> RemoteEntityCacheEntry {
     // some dbs don't support nanosecond precision
     let now = one_core::clock::now_utc().replace_nanosecond(0).unwrap();
-    let id = Uuid::new_v4().into();
+    let id = RemoteEntityCacheEntryId::new();
 
     RemoteEntityCacheEntry {
         id,

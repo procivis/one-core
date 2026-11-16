@@ -9,9 +9,8 @@ use one_core::model::interaction::InteractionType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
-use shared_types::{CredentialId, DidValue};
+use shared_types::{ClaimSchemaId, CredentialId, DidValue};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::fixtures::interaction::{
     ConfigurationParams, InteractionDataParams, dummy_holder_issuance_interaction_data,
@@ -38,8 +37,8 @@ async fn test_issuance_reject_subset_of_multi_format_offer() {
         credential_schema.id
     );
 
-    let first_credential_id = Uuid::new_v4().into();
-    let second_credential_id = Uuid::new_v4().into();
+    let first_credential_id = CredentialId::new();
+    let second_credential_id = CredentialId::new();
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
         &credential_schema,
@@ -162,7 +161,7 @@ async fn check_reject_batch_parent(include_item: bool) {
             },
         )
         .await;
-    let item_ids = [Uuid::new_v4().into(), Uuid::new_v4().into()];
+    let item_ids = [CredentialId::new(), CredentialId::new()];
     for item_id in item_ids {
         context
             .db
@@ -268,7 +267,7 @@ async fn test_issuance_reject_openid4vci_with_notification() {
         .create("test", &organisation, Default::default())
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -421,7 +420,7 @@ async fn check_batch_item_rejection(
                     ]
                     .into_iter()
                     .map(|(key, data_type, array)| ClaimSchema {
-                        id: Uuid::new_v4().into(),
+                        id: ClaimSchemaId::new(),
                         key: key.into(),
                         data_type: data_type.into(),
                         created_date: now,
@@ -438,7 +437,7 @@ async fn check_batch_item_rejection(
         )
         .await;
     let formats = schema.formats.as_ref().await.unwrap();
-    let parent_id: CredentialId = Uuid::new_v4().into();
+    let parent_id: CredentialId = CredentialId::new();
     let did_key_binding = Some(vec!["did:key".to_string()]);
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,

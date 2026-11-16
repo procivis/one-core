@@ -1,6 +1,7 @@
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entry::TrustEntryStateEnum;
 use one_core::model::trust_list_role::TrustListRoleEnum;
+use shared_types::TrustListPublicationId;
 
 use crate::utils::context::TestContext;
 
@@ -70,7 +71,7 @@ async fn test_delete_trust_list_publication() {
 async fn test_fail_to_delete_trust_list_publication_not_found() {
     // given
     let (context, ..) = TestContext::new_with_certificate_identifier(None).await;
-    let non_existent_id = uuid::Uuid::new_v4().into();
+    let non_existent_id = TrustListPublicationId::new();
 
     // when
     let resp = context

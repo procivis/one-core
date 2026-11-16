@@ -3,6 +3,7 @@ use std::assert_matches;
 use assert2::let_assert;
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, IntoActiveModel};
+use shared_types::ClaimId;
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -16,12 +17,12 @@ async fn issuer_single_round_trip_preserves_data_and_relations() {
         .get_credential(&setup.credential_id)
         .await
         .unwrap();
-    request.common_mut().id = Uuid::new_v4().into();
+    request.common_mut().id = CredentialId::new();
     request.common_mut().state = CredentialStateEnum::Suspended {
         suspend_end_date: Some(get_dummy_date() + Duration::days(1)),
     };
     let claim = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("issued value".into()),

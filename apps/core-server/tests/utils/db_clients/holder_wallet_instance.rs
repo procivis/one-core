@@ -5,7 +5,6 @@ use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::repository::instance_repository::InstanceRepository;
 use shared_types::{InstanceId, ManagedInstanceId};
-use uuid::Uuid;
 
 pub struct HolderWalletInstancesDB {
     repository: Arc<dyn InstanceRepository>,
@@ -35,7 +34,7 @@ impl HolderWalletInstancesDB {
     ) -> Instance {
         let now = one_core::clock::now_utc();
         let instance = Instance {
-            id: Uuid::new_v4().into(),
+            id: InstanceId::new(),
             created_date: now,
             last_modified: now,
             status: test_holder_wallet_instance
@@ -57,7 +56,7 @@ impl HolderWalletInstancesDB {
             authentication_key: authentication_key.map(|key| key.into()),
             provider_instance_id: test_holder_wallet_instance
                 .provider_wallet_unit_id
-                .unwrap_or(Uuid::new_v4().into()),
+                .unwrap_or(ManagedInstanceId::new()),
             nonce: None,
             user_nonce: test_holder_wallet_instance.user_nonce,
             wallet_attestations: Default::default(),

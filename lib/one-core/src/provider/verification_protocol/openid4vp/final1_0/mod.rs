@@ -23,7 +23,6 @@ use standardized_types::openid4vp::{
 use time::Duration;
 use tokio::sync::Mutex;
 use url::Url;
-use uuid::Uuid;
 
 use super::dcql::get_presentation_definition_v2;
 use super::final1_0::dcql::create_dcql_query;
@@ -580,7 +579,7 @@ impl OpenID4VPFinal1_0 {
                 }
 
                 validated_tx_data.insert(
-                    TransactionDataId::from(Uuid::new_v4()),
+                    TransactionDataId::new(),
                     ValidatedHolderTxData {
                         raw: tx_data.clone(),
                         credential_query_ids: convert_inner(validated.credential_ids),
@@ -895,7 +894,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 .await?;
         let interaction_id = interaction.id;
 
-        let proof_id = Uuid::new_v4().into();
+        let proof_id = ProofId::new();
         let proof = proof_from_handle_invitation(
             proof_id,
             self.config_name(),
@@ -1253,7 +1252,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .and_then(|jwks| jwks.keys.first())
             .cloned();
 
-        let interaction_id = Uuid::new_v4().into();
+        let interaction_id = InteractionId::new();
 
         let (data, interaction_content) = match (transport_type, self.params.swiyu_mode) {
             (TransportType::Http, _) => {

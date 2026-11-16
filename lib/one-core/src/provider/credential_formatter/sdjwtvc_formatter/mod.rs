@@ -20,11 +20,11 @@ use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::{
-    CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId, SerializedCredential,
+    CredentialFormat, CredentialId, CredentialSchemaId, OrganisationId, RevocationMethodId,
+    SerializedCredential,
 };
 use standardized_types::iana::HashAlgorithm;
 use time::Duration;
-use uuid::Uuid;
 
 use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
@@ -136,7 +136,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .as_ref()
             .map(|_| RevocationType::TokenStatusList);
 
-        let credential_id = Uuid::new_v4().into();
+        let credential_id = CredentialId::new();
         let vct = parsed_credential.payload.custom.vc_type.clone();
 
         // Get metadata claims first (includes vct and standard JWT claims)
@@ -157,7 +157,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         claims.extend(metadata_claims);
         claim_schemas.extend(metadata_claim_schemas);
 
-        let credential_schema_id = Uuid::new_v4().into();
+        let credential_schema_id = CredentialSchemaId::new();
         let format = to_format_with_mappings(
             self.config_id.clone(),
             credential_schema_id,

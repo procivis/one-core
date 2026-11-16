@@ -11,7 +11,6 @@ use one_core::repository::trust_list_publication_repository::TrustListPublicatio
 use one_dto_mapper::convert_inner;
 use shared_types::{TrustListPublicationId, TrustListPublisherId};
 use sql_data_provider::test_utilities::get_dummy_date;
-use uuid::Uuid;
 
 pub struct TrustListPublicationDB {
     repository: Arc<dyn TrustListPublicationRepository>,
@@ -35,7 +34,7 @@ impl TrustListPublicationDB {
         certificate: Option<Certificate>,
     ) -> TrustListPublication {
         let trust_list_publication = TrustListPublication {
-            id: TrustListPublicationId::from(Uuid::new_v4()),
+            id: TrustListPublicationId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_string(),

@@ -163,7 +163,6 @@ mod test {
     use serde_json::json;
     use shared_types::EcosystemId;
     use similar_asserts::assert_eq;
-    use uuid::Uuid;
 
     use super::*;
     use crate::config::core_config::CoreConfig;
@@ -354,7 +353,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap();
@@ -380,7 +379,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap();
@@ -405,7 +404,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap();
@@ -427,7 +426,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -458,7 +457,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -491,7 +490,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -524,7 +523,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -557,7 +556,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -590,7 +589,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &preferred_periods(Duration::days(30)),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap();
@@ -616,7 +615,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &preferred_periods(Duration::days(30)),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap();
@@ -638,7 +637,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &preferred_periods(Duration::days(30)),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -669,7 +668,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &no_preference(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -699,7 +698,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &preferred_periods(Duration::days(30)),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();
@@ -728,7 +727,7 @@ mod test {
                     jwt: &jwt,
                 },
                 &preferred_periods(Duration::days(30)),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap_err();

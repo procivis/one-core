@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use uuid::Uuid;
+use shared_types::OrganisationId;
 
 use crate::model::identifier::Identifier;
 use crate::model::instance::Instance;
@@ -25,7 +25,7 @@ pub(super) fn request_to_model(
     organisation_repository: &Arc<dyn OrganisationRepository>,
 ) -> Organisation {
     let now = crate::clock::now_utc();
-    let id = request.id.unwrap_or(Uuid::new_v4().into());
+    let id = request.id.unwrap_or(OrganisationId::new());
     Organisation {
         id,
         created_date: now,

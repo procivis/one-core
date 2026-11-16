@@ -6,7 +6,9 @@ use indexmap::IndexMap;
 use maplit::hashmap;
 use one_dto_mapper::try_convert_inner;
 use serde_json::json;
-use shared_types::{DidValue, ProofId};
+use shared_types::{
+    CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId, DidValue, InteractionId, ProofId,
+};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::VpTokenResponse;
 use standardized_types::openid4vp::dcql::{
@@ -310,7 +312,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
     let issuer_did: DidValue = "did:issuer:123".parse().unwrap();
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
     let verifier_did: DidValue = "did:verifier:123".parse().unwrap();
-    let proof_id: ProofId = Uuid::new_v4().into();
+    let proof_id: ProofId = ProofId::new();
     let mut credential_schema = dummy_credential_schema();
     let format_id = dcql_query.credentials[0].id.to_string().parse().unwrap();
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
@@ -361,7 +363,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         claim_mappings: claim_schemas
             .iter()
             .map(|cs| CredentialSchemaFormatClaimSchema {
-                id: Uuid::new_v4().into(),
+                id: CredentialSchemaFormatClaimSchemaId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 credential_schema_format_id: format_id,
@@ -828,7 +830,7 @@ async fn multiformat_test_data(transaction_data: bool) -> TestData {
     let mut first = schema.formats.as_ref().await.unwrap()[0].clone();
     first.format = "first".into();
     let mut second = first.clone();
-    second.id = Uuid::new_v4().into();
+    second.id = CredentialSchemaFormatId::new();
     second.format = "second".into();
     let mut mappings = second.claim_mappings.as_ref().await.unwrap().clone();
     for mapping in &mut mappings {
@@ -948,7 +950,7 @@ fn multiformat_submission(data: &TestData, selections: &[usize]) -> SubmissionRe
                 })
                 .collect(),
         }),
-        state: Uuid::new_v4().into(),
+        state: InteractionId::new(),
         mdoc_generated_nonce: None,
         encryption_key: None,
     }

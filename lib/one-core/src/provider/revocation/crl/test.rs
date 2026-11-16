@@ -5,11 +5,10 @@ use assert2::let_assert;
 use mockall::predicate::{always, eq};
 use rstest::rstest;
 use serde_json::json;
-use shared_types::{RevocationListId, RevocationMethodId};
+use shared_types::{CertificateId, RevocationListEntryId, RevocationListId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use standardized_types::x509::CertificateSerial;
 use time::Duration;
-use uuid::Uuid;
 
 use super::CRLRevocation;
 use crate::model::certificate::{Certificate, CertificateState};
@@ -100,7 +99,7 @@ async fn test_add_signature_new_list() {
                 list_id.lock().unwrap().unwrap() == *id
             }
         })
-        .return_once(|_, _, _| Ok(Uuid::new_v4().into()));
+        .return_once(|_, _, _| Ok(RevocationListEntryId::new()));
 
     let refresh_interval = Duration::seconds(10);
     let revocation_method = CRLRevocation::new(
@@ -151,8 +150,8 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
     let mut certificate = dummy_ca_certificate(&dummy_identifier());
     certificate.deleted_at = deleted.then(crate::clock::now_utc);
 
-    let signature_id = Uuid::new_v4().into();
-    let list_id = Uuid::new_v4().into();
+    let signature_id = RevocationListEntryId::new();
+    let list_id = RevocationListId::new();
 
     let mut revocation_list_repository = MockRevocationListRepository::new();
     revocation_list_repository
@@ -286,7 +285,7 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
 async fn test_get_updated_list_no_update() {
     let certificate = dummy_ca_certificate(&dummy_identifier());
 
-    let list_id = Uuid::new_v4().into();
+    let list_id = RevocationListId::new();
 
     let formatted_list = empty_crl();
     let mut revocation_list_repository = MockRevocationListRepository::new();
@@ -332,7 +331,7 @@ async fn test_get_updated_list_no_update() {
 async fn test_get_updated_list_with_update() {
     let certificate = dummy_ca_certificate(&dummy_identifier());
 
-    let list_id = Uuid::new_v4().into();
+    let list_id = RevocationListId::new();
 
     let old_list = empty_crl();
     let mut revocation_list_repository = MockRevocationListRepository::new();
@@ -411,7 +410,7 @@ async fn test_get_updated_list_with_update() {
 
 fn dummy_ca_certificate(issuer: &Identifier) -> Certificate {
     Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id: issuer.id,
         organisation: dummy_organisation(None).into(),
         created_date: crate::clock::now_utc(),

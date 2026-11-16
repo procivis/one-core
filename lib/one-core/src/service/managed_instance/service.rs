@@ -2,10 +2,9 @@ use std::collections::HashMap;
 
 use futures::FutureExt;
 use one_crypto::utilities::generate_alphanumeric;
-use shared_types::{EntityId, ManagedInstanceId, RevocationMethodId};
+use shared_types::{EntityId, HistoryId, ManagedInstanceId, RevocationMethodId};
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
-use uuid::Uuid;
 
 use super::ManagedInstanceService;
 use super::app_integrity::android::validate_attestation_android;
@@ -344,7 +343,7 @@ impl ManagedInstanceService {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action,
                 name: managed_instance.name.to_owned(),

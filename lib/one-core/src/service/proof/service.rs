@@ -2,10 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{ProofId, TransactionDataId};
+use shared_types::{InteractionId, ProofId, TransactionDataId};
 use standardized_types::openid4vp::dc_api::DigitalCredential;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
-use uuid::Uuid;
 
 use super::ProofService;
 use super::dto::{
@@ -616,7 +615,7 @@ impl ProofService {
 
             maybe_interaction = Some(
                 add_new_interaction(
-                    Uuid::new_v4().into(),
+                    InteractionId::new(),
                     &*self.interaction_repository,
                     serde_json::to_vec(&data).ok(),
                     proof_schema.organisation.to_owned(),
@@ -977,7 +976,7 @@ impl ProofService {
             None
         };
 
-        let interaction_id = Uuid::new_v4().into();
+        let interaction_id = InteractionId::new();
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
             service_uuid: ble_session.service_uuid,
             continuation_task_id: ble_session.task_id,
@@ -1003,7 +1002,7 @@ impl ProofService {
             .proof_repository
             .create_proof(Proof {
                 ecosystem: request.ecosystem,
-                id: Uuid::new_v4().into(),
+                id: ProofId::new(),
                 created_date: now,
                 last_modified: now,
                 protocol: request.protocol,

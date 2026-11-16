@@ -6,9 +6,9 @@ use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryState, RevocationListPurpose,
 };
 use one_core::model::wallet_attestation::AttestationType;
+use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
 use similar_asserts::assert_eq;
 use time::Duration;
-use uuid::Uuid;
 
 use crate::fixtures::TestingIdentifierParams;
 use crate::utils::context::TestContext;
@@ -47,8 +47,8 @@ async fn test_revoke_wallet_instance_success() {
         )
         .await;
 
-    let wallet_unit_id = Uuid::new_v4().into();
-    let wallet_unit_attested_key_id = Uuid::new_v4().into();
+    let wallet_unit_id = ManagedInstanceId::new();
+    let wallet_unit_attested_key_id = ManagedInstanceAttestationId::new();
 
     let revocation_list = context
         .db

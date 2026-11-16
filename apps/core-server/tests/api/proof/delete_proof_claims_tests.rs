@@ -4,9 +4,8 @@ use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::history::HistoryAction;
 use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
-use shared_types::EntityId;
+use shared_types::{EntityId, InteractionId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
@@ -55,7 +54,7 @@ async fn test_delete_proof_claims_success() {
         )
         .await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let interaction = context
         .db
         .interactions

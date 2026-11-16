@@ -1,7 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use reqwest::StatusCode;
+use shared_types::KeyId;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
@@ -45,7 +45,7 @@ async fn test_get_key_not_found() {
     let (context, _) = TestContext::new_with_organisation(None).await;
 
     // WHEN
-    let resp = context.api.keys.get(Uuid::new_v4().into()).await;
+    let resp = context.api.keys.get(KeyId::new()).await;
 
     // THEN
     assert_eq!(resp.status(), 404);

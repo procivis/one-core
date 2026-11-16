@@ -44,7 +44,7 @@ async fn update_after_previous_entry(
 
 #[tokio::test]
 async fn create_update_resolve_roundtrip() {
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let mut setup = setup(MockHttpClient::new());
     assert!(
         setup
@@ -160,7 +160,7 @@ async fn create_update_resolve_roundtrip() {
 
 #[tokio::test]
 async fn rapid_updates_have_increasing_version_times() {
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let setup = setup(MockHttpClient::new());
     let time = OffsetDateTime::from_unix_timestamp(1_700_000_000).unwrap();
     let created = crate::clock::run_with_mocked_time_async(time, create_log(&setup, id)).await;
@@ -196,7 +196,7 @@ async fn rapid_updates_have_increasing_version_times() {
 
 #[tokio::test]
 async fn update_preserves_document_fields_and_removes_old_relationships() {
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let mut setup = setup(MockHttpClient::new());
     setup.method.params.include_swiss_profile_marker = true;
     let created = create_log(&setup, id).await;
@@ -258,7 +258,7 @@ async fn update_rejects_missing_log() {
     let error = setup
         .method
         .update(
-            Uuid::new_v4().into(),
+            DidId::new(),
             did_keys(&setup),
             replacement_keys(&setup),
             None,
@@ -271,7 +271,7 @@ async fn update_rejects_missing_log() {
 #[tokio::test]
 async fn update_rejects_tampered_log() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let mut log: Value = serde_json::from_str(&created.log.unwrap()).unwrap();
     log["state"]["alsoKnownAs"] = json!(["https://attacker.example"]);
@@ -291,7 +291,7 @@ async fn update_rejects_tampered_log() {
 #[tokio::test]
 async fn update_rejects_deactivated_did() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let deactivated = setup
         .method
@@ -314,7 +314,7 @@ async fn update_rejects_deactivated_did() {
 #[tokio::test]
 async fn update_rejects_missing_signing_keys() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let mut keys = did_keys(&setup);
     keys.update_keys = None;
@@ -329,7 +329,7 @@ async fn update_rejects_missing_signing_keys() {
 #[tokio::test]
 async fn update_rejects_unauthorized_signing_key() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let error = setup
         .method
@@ -347,7 +347,7 @@ async fn update_rejects_unauthorized_signing_key() {
 #[tokio::test]
 async fn update_selects_authorized_signing_key() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let mut keys = did_keys(&setup);
     keys.update_keys = Some(vec![setup.new_update.clone(), setup.active.clone()]);
@@ -372,7 +372,7 @@ async fn update_selects_authorized_signing_key() {
 #[tokio::test]
 async fn update_rejects_invalid_update_key_count(#[case] count: usize) {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let mut new_keys = replacement_keys(&setup);
     new_keys.update_keys = Some(vec![setup.new_update.clone(); count]);
@@ -387,7 +387,7 @@ async fn update_rejects_invalid_update_key_count(#[case] count: usize) {
 #[tokio::test]
 async fn update_rejects_missing_replacement_update_key() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let mut new_keys = replacement_keys(&setup);
     new_keys.update_keys = None;
@@ -402,7 +402,7 @@ async fn update_rejects_missing_replacement_update_key() {
 #[tokio::test]
 async fn update_rejects_non_eddsa_update_key() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let mut new_keys = replacement_keys(&setup);
     new_keys.update_keys = Some(vec![setup.new_document.clone()]);
@@ -417,7 +417,7 @@ async fn update_rejects_non_eddsa_update_key() {
 #[tokio::test]
 async fn update_rejects_active_pre_rotation() {
     let setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     let committed = make_keyref(&setup.new_update, setup.method.key_provider.as_ref()).unwrap();
     let log = append_signed_update(
@@ -444,7 +444,7 @@ async fn update_rejects_active_pre_rotation() {
 #[tokio::test]
 async fn update_allows_exceeding_resolution_entry_limit() {
     let mut setup = setup(MockHttpClient::new());
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let created = create_log(&setup, id).await;
     setup.method.params.max_did_log_entry_check = Some(25);
     let mut log = created.log.unwrap();

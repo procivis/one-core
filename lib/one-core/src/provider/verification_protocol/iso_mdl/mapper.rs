@@ -1,9 +1,8 @@
 use serde::Serialize;
-use shared_types::ProofId;
+use shared_types::{InteractionId, ProofId};
 use standardized_types::openid4vp::dcql::{
     ClaimPath, ClaimQuery, CredentialFormat, CredentialQuery, DcqlQuery, MsoMdocMeta, PathSegment,
 };
-use uuid::Uuid;
 
 use super::common::DeviceRequest;
 use crate::model::interaction::{Interaction, InteractionEcosystems, InteractionType};
@@ -59,7 +58,7 @@ pub(super) fn interaction_with_data<T: Serialize>(
     let now = crate::clock::now_utc();
 
     Ok(Interaction {
-        id: Uuid::new_v4().into(),
+        id: InteractionId::new(),
         created_date: now,
         last_modified: now,
         data: Some(serialize_interaction_data(data)?),

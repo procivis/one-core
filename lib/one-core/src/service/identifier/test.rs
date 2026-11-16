@@ -2,7 +2,11 @@ use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::{EcosystemId, EntityId, I18nString, TrustCollectionId};
+use shared_types::{
+    BlobId, CertificateId, EcosystemId, EntityId, I18nString, IdentifierId,
+    IdentifierTrustInformationId, KeyId, OrganisationId, TrustCollectionId,
+    TrustListSubscriptionId,
+};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use uuid::Uuid;
@@ -149,7 +153,7 @@ fn dummy_trust_list_subscription(
     };
     (
         TrustListSubscription {
-            id: Uuid::new_v4().into(),
+            id: TrustListSubscriptionId::new(),
             name: "test trust list subscription".to_string(),
             created_date: now,
             last_modified: now,
@@ -194,7 +198,7 @@ async fn test_get_identifier_list_session_org_mismatch() {
                 ecosystem_credential_schema_id: None,
                 ecosystem_proof_schema_id: None,
                 exact: None,
-                organisation_id: Uuid::new_v4().into(),
+                organisation_id: OrganisationId::new(),
                 created_date_after: None,
                 created_date_before: None,
                 last_modified_after: None,
@@ -221,7 +225,7 @@ async fn test_create_identifier_session_org_mismatch() {
             certificate_authorities: None,
             translations: None,
             logo: None,
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             trust_information: vec![],
         })
         .await;
@@ -235,10 +239,10 @@ async fn test_identifier_ops_session_org_mismatch() {
     identifier.organisation = dummy_organisation(None).into();
     let service = setup_service_simple(Some(identifier));
 
-    let result = service.get_identifier(&Uuid::new_v4().into()).await;
+    let result = service.get_identifier(&IdentifierId::new()).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
-    let result = service.delete_identifier(&Uuid::new_v4().into()).await;
+    let result = service.delete_identifier(&IdentifierId::new()).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
@@ -250,7 +254,7 @@ async fn test_resolve_trust_entries_success() {
     let mut trust_collection_repository = MockTrustCollectionRepository::default();
     let mut trust_list_subscriber_provider = MockTrustListSubscriberProvider::default();
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let mut identifier = dummy_identifier();
     let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
@@ -267,7 +271,7 @@ async fn test_resolve_trust_entries_success() {
             })
         });
 
-    let trust_collection_id = Uuid::new_v4().into();
+    let trust_collection_id = TrustCollectionId::new();
     let (subscription, trust_collection) = dummy_trust_list_subscription(trust_collection_id);
 
     trust_list_subscription_repository
@@ -368,7 +372,7 @@ async fn test_resolve_trust_entries_session_org_mismatch() {
 
     let result = service
         .resolve_trust_entries(ResolveTrustEntriesRequestDTO {
-            identifiers: vec![Uuid::new_v4().into()],
+            identifiers: vec![IdentifierId::new()],
             roles: None,
             trust_collection_ids: None,
         })
@@ -400,7 +404,7 @@ async fn test_resolve_trust_entries_identifiers_of_different_organisations() {
 
     let result = service
         .resolve_trust_entries(ResolveTrustEntriesRequestDTO {
-            identifiers: vec![Uuid::new_v4().into(), Uuid::new_v4().into()],
+            identifiers: vec![IdentifierId::new(), IdentifierId::new()],
             roles: None,
             trust_collection_ids: None,
         })
@@ -416,7 +420,7 @@ async fn test_resolve_trust_entries_filters_local() {
     let mut trust_collection_repository = MockTrustCollectionRepository::default();
     let mut trust_list_subscriber_provider = MockTrustListSubscriberProvider::default();
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let mut identifier = dummy_identifier();
     let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
@@ -437,7 +441,7 @@ async fn test_resolve_trust_entries_filters_local() {
         .expect_list()
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
-                values: vec![dummy_trust_list_subscription(Uuid::new_v4().into()).0],
+                values: vec![dummy_trust_list_subscription(TrustCollectionId::new()).0],
                 total_items: Some(1),
                 total_pages: Some(1),
             })
@@ -508,7 +512,7 @@ async fn test_resolve_trust_entries_ignores_missing_identifiers() {
     let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::default();
     let mut trust_collection_repository = MockTrustCollectionRepository::default();
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     identifier_repository
         .expect_get_identifier_list()
         .returning(move |_| {
@@ -569,7 +573,7 @@ async fn test_resolve_trust_entries_subscriber_error() {
     let mut trust_collection_repository = MockTrustCollectionRepository::default();
     let mut trust_list_subscriber_provider = MockTrustListSubscriberProvider::default();
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let mut identifier = dummy_identifier();
     let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
@@ -590,7 +594,7 @@ async fn test_resolve_trust_entries_subscriber_error() {
         .expect_list()
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
-                values: vec![dummy_trust_list_subscription(Uuid::new_v4().into()).0],
+                values: vec![dummy_trust_list_subscription(TrustCollectionId::new()).0],
                 total_items: Some(1),
                 total_pages: Some(1),
             })
@@ -660,7 +664,7 @@ async fn test_resolve_trust_entries_filters_key_type() {
     let mut trust_collection_repository = MockTrustCollectionRepository::default();
     let mut trust_list_subscriber_provider = MockTrustListSubscriberProvider::default();
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let mut identifier = dummy_identifier();
     let organisation_id = identifier.organisation.id();
     identifier.id = identifier_id;
@@ -681,7 +685,7 @@ async fn test_resolve_trust_entries_filters_key_type() {
         .expect_list()
         .returning(move |_| {
             Ok(GetTrustListSubscriptionList {
-                values: vec![dummy_trust_list_subscription(Uuid::new_v4().into()).0],
+                values: vec![dummy_trust_list_subscription(TrustCollectionId::new()).0],
                 total_items: Some(1),
                 total_pages: Some(1),
             })
@@ -770,7 +774,7 @@ fn setup_for_trust_information() -> (
         .returning(move |_| Ok(dummy_key.clone()));
 
     let mut identifier = dummy_identifier();
-    identifier.id = Uuid::new_v4().into();
+    identifier.id = IdentifierId::new();
     identifier.organisation = dummy_organisation(Some(organisation_id)).into();
 
     let mut identifier_creator = MockIdentifierCreator::default();
@@ -849,7 +853,7 @@ async fn test_create_identifier_with_trust_information() {
     identifier_trust_information_repository
         .expect_create()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(IdentifierTrustInformationId::new()));
     let mut blob_storage = MockBlobStorage::default();
     blob_storage.expect_create().once().returning(|_| Ok(()));
     let blob_storage = Arc::new(blob_storage);
@@ -1004,7 +1008,7 @@ async fn test_create_identifier_trust_information_tries_next_ecosystem_after_rej
     identifier_trust_information_repository
         .expect_create()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(IdentifierTrustInformationId::new()));
     let mut blob_storage = MockBlobStorage::default();
     blob_storage.expect_create().once().returning(|_| Ok(()));
     let blob_storage = Arc::new(blob_storage);
@@ -1059,7 +1063,7 @@ async fn test_create_identifier_trust_information_tries_next_ecosystem_after_rej
 
 #[tokio::test]
 async fn test_delete_identifier_cascades_to_certificates() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let cert_a: Certificate = dummy_certificate(identifier_id);
     let cert_b: Certificate = dummy_certificate(identifier_id);
@@ -1098,7 +1102,7 @@ async fn test_delete_identifier_cascades_to_certificates() {
 
 #[tokio::test]
 async fn test_delete_identifier_removes_logo_blob() {
-    let logo_id: shared_types::BlobId = Uuid::new_v4().into();
+    let logo_id: shared_types::BlobId = BlobId::new();
     let mut identifier = dummy_identifier();
     identifier.logo = Some(logo_id);
     identifier.data = IdentifierData::Key(dummy_key().into());
@@ -1170,7 +1174,7 @@ async fn test_create_remote_identifier_session_org_mismatch() {
     let result = service
         .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
             did: Some("did:example:123".parse().unwrap()),
-            ..remote_dto(Uuid::new_v4().into(), "remote")
+            ..remote_dto(OrganisationId::new(), "remote")
         })
         .await;
 
@@ -1326,7 +1330,7 @@ async fn test_create_remote_did_identifier_success() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
     let did_value: shared_types::DidValue = "did:example:abc".parse().unwrap();
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
 
     let mut returned = dummy_identifier();
     returned.id = identifier_id;
@@ -1376,7 +1380,7 @@ async fn test_create_remote_did_identifier_success() {
 async fn test_create_remote_did_identifier_duplicate_returns_colliding_id() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let existing_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let existing_id: shared_types::IdentifierId = IdentifierId::new();
 
     let mut existing = dummy_identifier();
     existing.id = existing_id;
@@ -1422,7 +1426,7 @@ async fn test_create_remote_key_identifier_success_forwards_jwk_and_name() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
     let jwk = full_field_jwk();
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
 
     let mut returned = dummy_identifier();
     returned.id = identifier_id;
@@ -1472,7 +1476,7 @@ async fn test_create_remote_key_identifier_success_forwards_jwk_and_name() {
 async fn test_create_remote_key_identifier_duplicate_returns_colliding_id() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let existing_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let existing_id: shared_types::IdentifierId = IdentifierId::new();
     let jwk = full_field_jwk();
 
     let mut existing = dummy_identifier();
@@ -1518,7 +1522,7 @@ async fn test_create_remote_key_identifier_duplicate_returns_colliding_id() {
 async fn test_create_remote_certificate_identifier_single_chain_success() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
 
     let chain = "-----BEGIN CERTIFICATE-----\nLEAF\n-----END CERTIFICATE-----\n".to_string();
     let expected_chain = chain.clone();
@@ -1558,7 +1562,7 @@ async fn test_create_remote_certificate_identifier_single_chain_success() {
 async fn test_create_remote_certificate_identifier_multiple_chains_success() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
 
     let chains = vec![
         "-----BEGIN CERTIFICATE-----\nLEAF-1\n-----END CERTIFICATE-----\n".to_string(),
@@ -1607,7 +1611,7 @@ async fn test_create_remote_certificate_identifier_multiple_chains_success() {
 async fn test_create_remote_certificate_identifier_duplicate_returns_colliding_id() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let colliding_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let colliding_id: shared_types::IdentifierId = IdentifierId::new();
 
     let mut identifier_creator = MockIdentifierCreator::default();
     identifier_creator
@@ -1645,7 +1649,7 @@ async fn test_create_remote_certificate_identifier_duplicate_returns_colliding_i
 async fn test_create_remote_ca_identifier_single_chain_success() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
 
     let chain = "-----BEGIN CERTIFICATE-----\nROOT-CA\n-----END CERTIFICATE-----\n".to_string();
     let expected_chain = chain.clone();
@@ -1685,7 +1689,7 @@ async fn test_create_remote_ca_identifier_single_chain_success() {
 async fn test_create_remote_ca_identifier_multiple_chains_success() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
 
     let chains = vec![
         "-----BEGIN CERTIFICATE-----\nROOT-CA-A\n-----END CERTIFICATE-----\n".to_string(),
@@ -1733,7 +1737,7 @@ async fn test_create_remote_ca_identifier_multiple_chains_success() {
 async fn test_create_remote_ca_identifier_duplicate_returns_colliding_id() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let colliding_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let colliding_id: shared_types::IdentifierId = IdentifierId::new();
 
     let mut identifier_creator = MockIdentifierCreator::default();
     identifier_creator
@@ -1771,7 +1775,7 @@ async fn test_create_remote_ca_identifier_duplicate_returns_colliding_id() {
 async fn test_create_remote_identifier_name_already_taken_returns_colliding_id() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
-    let colliding_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let colliding_id: shared_types::IdentifierId = IdentifierId::new();
 
     let mut existing = dummy_identifier();
     existing.id = colliding_id;
@@ -1887,7 +1891,7 @@ async fn test_update_identifier_key_on_non_key_identifier_fails() {
             &identifier_id,
             PatchIdentifierRequestDTO {
                 key: Some(CreateIdentifierKeyRequestDTO {
-                    key_id: Uuid::new_v4().into(),
+                    key_id: KeyId::new(),
                 }),
                 ..Default::default()
             },
@@ -1951,7 +1955,7 @@ async fn test_update_identifier_remote_key_fails() {
 
 #[tokio::test]
 async fn test_update_identifier_logo_updates_existing_blob_in_place() {
-    let existing_blob_id = Uuid::new_v4().into();
+    let existing_blob_id = BlobId::new();
     let mut identifier = dummy_identifier();
     identifier.logo = Some(existing_blob_id);
     let identifier_id = identifier.id;
@@ -2014,7 +2018,7 @@ async fn test_update_identifier_logo_updates_existing_blob_in_place() {
 
 #[tokio::test]
 async fn test_update_identifier_logo_null_removes_blob() {
-    let existing_blob_id = Uuid::new_v4().into();
+    let existing_blob_id = BlobId::new();
     let mut identifier = dummy_identifier();
     identifier.logo = Some(existing_blob_id);
     let identifier_id = identifier.id;
@@ -2126,7 +2130,7 @@ async fn test_update_identifier_logo_creates_blob_when_missing() {
         .once()
         .returning(move |_| Ok(identifier.clone()));
 
-    let new_blob_id = Uuid::new_v4().into();
+    let new_blob_id = BlobId::new();
     let mut identifier_creator = MockIdentifierCreator::default();
     identifier_creator
         .expect_persist_identifier_logo()
@@ -2225,7 +2229,7 @@ async fn test_update_identifier_trust_information_replace() {
     let session_provider = StaticSessionProvider::new_random();
     let organisation_id = session_provider.0.organisation_id.unwrap();
 
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let mut identifier = dummy_identifier();
     identifier.id = identifier_id;
     identifier.organisation = dummy_organisation(Some(organisation_id)).into();
@@ -2242,7 +2246,7 @@ async fn test_update_identifier_trust_information_replace() {
         .once()
         .returning(|_, _| Ok(()));
 
-    let old_blob_id: shared_types::BlobId = Uuid::new_v4().into();
+    let old_blob_id: shared_types::BlobId = BlobId::new();
     let mut identifier_trust_information_repository =
         MockIdentifierTrustInformationRepository::default();
     identifier_trust_information_repository
@@ -2251,7 +2255,7 @@ async fn test_update_identifier_trust_information_replace() {
         .returning(move |_| {
             Ok(vec![
                 crate::model::identifier_trust_information::IdentifierTrustInformation {
-                    id: Uuid::new_v4().into(),
+                    id: IdentifierTrustInformationId::new(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     valid_from: None,
@@ -2271,7 +2275,7 @@ async fn test_update_identifier_trust_information_replace() {
     identifier_trust_information_repository
         .expect_create()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(IdentifierTrustInformationId::new()));
 
     let mut blob_storage = MockBlobStorage::default();
     blob_storage
@@ -2375,7 +2379,7 @@ fn ca_identifier(
 
 #[tokio::test]
 async fn test_add_certificates_happy_path() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let identifier = certificate_identifier(identifier_id, organisation.clone(), vec![]);
     let new_cert = dummy_certificate(identifier_id);
@@ -2431,7 +2435,7 @@ async fn test_add_certificates_happy_path() {
 
 #[tokio::test]
 async fn test_add_certificates_reactivates_deactivated_identifier() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let mut identifier = certificate_identifier(identifier_id, organisation.clone(), vec![]);
     identifier.state = crate::model::identifier::IdentifierState::Deactivated;
@@ -2481,7 +2485,7 @@ async fn test_add_certificates_reactivates_deactivated_identifier() {
 
 #[tokio::test]
 async fn test_add_certificates_wrong_identifier_type() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let mut identifier = dummy_identifier();
     identifier.id = identifier_id;
@@ -2510,7 +2514,7 @@ async fn test_add_certificates_wrong_identifier_type() {
 
 #[tokio::test]
 async fn test_add_certificate_authorities_wrong_identifier_type() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let identifier = certificate_identifier(identifier_id, organisation.clone(), vec![]);
 
@@ -2536,7 +2540,7 @@ async fn test_add_certificate_authorities_wrong_identifier_type() {
 
 #[tokio::test]
 async fn test_remove_certificate_happy_path() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let cert_a = dummy_certificate(identifier_id);
     let mut cert_b = dummy_certificate(identifier_id);
@@ -2597,7 +2601,7 @@ async fn test_remove_certificate_happy_path() {
 
 #[tokio::test]
 async fn test_remove_certificate_prunes_orphaned_trust_information() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let cert_a = dummy_certificate(identifier_id);
     let mut cert_b = dummy_certificate(identifier_id);
@@ -2607,8 +2611,9 @@ async fn test_remove_certificate_prunes_orphaned_trust_information() {
         organisation.clone(),
         vec![cert_a.clone(), cert_b.clone()],
     );
-    let trust_info_id: shared_types::IdentifierTrustInformationId = Uuid::new_v4().into();
-    let blob_id: shared_types::BlobId = Uuid::new_v4().into();
+    let trust_info_id: shared_types::IdentifierTrustInformationId =
+        IdentifierTrustInformationId::new();
+    let blob_id: shared_types::BlobId = BlobId::new();
     identifier.trust_information = RelatedVec::from(vec![
         crate::model::identifier_trust_information::IdentifierTrustInformation {
             id: trust_info_id,
@@ -2706,7 +2711,7 @@ async fn test_remove_certificate_prunes_orphaned_trust_information() {
 
 #[tokio::test]
 async fn test_remove_last_certificate_fails() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let cert = dummy_certificate(identifier_id);
     let identifier =
@@ -2734,7 +2739,7 @@ async fn test_remove_last_certificate_fails() {
 
 #[tokio::test]
 async fn test_remove_certificate_not_belonging_to_identifier() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let cert_a = dummy_certificate(identifier_id);
     let identifier = certificate_identifier(identifier_id, organisation.clone(), vec![cert_a]);
@@ -2751,7 +2756,7 @@ async fn test_remove_certificate_not_belonging_to_identifier() {
         ..Default::default()
     });
 
-    let foreign_certificate_id: shared_types::CertificateId = Uuid::new_v4().into();
+    let foreign_certificate_id: shared_types::CertificateId = CertificateId::new();
     let err = service
         .remove_certificate(&identifier_id, &foreign_certificate_id)
         .await
@@ -2762,7 +2767,7 @@ async fn test_remove_certificate_not_belonging_to_identifier() {
 
 #[tokio::test]
 async fn test_remove_certificate_already_deleted() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let cert_a = dummy_certificate(identifier_id);
     let mut cert_b = dummy_certificate(identifier_id);
@@ -2795,7 +2800,7 @@ async fn test_remove_certificate_already_deleted() {
 
 #[tokio::test]
 async fn test_remove_certificate_wrong_identifier_type() {
-    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let identifier_id: shared_types::IdentifierId = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let cert_a = dummy_certificate(identifier_id);
     let cert_b = dummy_certificate(identifier_id);
@@ -2841,7 +2846,7 @@ fn setup_service_for_identifier(identifier: Identifier) -> IdentifierService {
 }
 
 fn did_keys_request() -> CreateDidRequestKeysDTO {
-    let key_id = Uuid::new_v4().into();
+    let key_id = KeyId::new();
     CreateDidRequestKeysDTO {
         authentication: vec![key_id],
         assertion_method: vec![key_id],

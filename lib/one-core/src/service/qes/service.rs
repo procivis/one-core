@@ -1,5 +1,4 @@
-use shared_types::OrganisationId;
-use uuid::Uuid;
+use shared_types::{HistoryId, OrganisationId};
 
 use super::QesService;
 use super::dto::{
@@ -66,7 +65,7 @@ impl QesService {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action: HistoryAction::Signed,
                 name: String::new(),
@@ -114,7 +113,7 @@ mod test {
         let mut history = MockHistoryRepository::new();
         history
             .expect_create_history()
-            .returning(|_| Ok(Uuid::new_v4().into()));
+            .returning(|_| Ok(HistoryId::new()));
         QesService::new(
             Arc::new(provider),
             Arc::new(history),
@@ -200,7 +199,7 @@ mod test {
                     && event.name.is_empty()
                     && event.entity_id.is_none()
             })
-            .returning(|_| Ok(Uuid::new_v4().into()));
+            .returning(|_| Ok(HistoryId::new()));
 
         let service = QesService::new(
             Arc::new(provider),

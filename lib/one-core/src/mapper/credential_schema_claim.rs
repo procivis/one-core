@@ -3,7 +3,6 @@ use std::collections::{HashMap, VecDeque};
 use itertools::Itertools;
 use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{
@@ -30,7 +29,7 @@ pub(crate) fn claim_schema_from_metadata_claim_schema(
     now: OffsetDateTime,
 ) -> ClaimSchema {
     ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: metadata_claim.key.to_string(),
         data_type: metadata_claim.data_type,
         created_date: now,
@@ -67,7 +66,7 @@ pub(crate) fn from_request_claim_schema(
     now: OffsetDateTime,
     request: &CredentialClaimSchemaRequestDTO,
 ) -> ClaimSchema {
-    let id: ClaimSchemaId = Uuid::new_v4().into();
+    let id: ClaimSchemaId = ClaimSchemaId::new();
     let translations = match &request.translations {
         Some(t) => claim_name_translations_from_dto(id, t, now).into(),
         None => Default::default(),

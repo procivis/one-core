@@ -17,7 +17,6 @@ use serde_with::{DurationSeconds, serde_as};
 use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
-use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
 use super::RevocationMethod;
@@ -583,7 +582,7 @@ impl TokenStatusList {
         issuer_certificate: Option<&Certificate>,
         purpose: RevocationListPurpose,
     ) -> Result<RevocationList, RevocationError> {
-        let revocation_list_id = Uuid::new_v4().into();
+        let revocation_list_id = RevocationListId::new();
         let formatted_list = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,

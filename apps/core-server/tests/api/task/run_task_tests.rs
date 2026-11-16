@@ -18,6 +18,7 @@ use one_core::provider::task::certificate_check::dto::CertificateCheckResultDTO;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::json;
+use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::Duration;
@@ -458,7 +459,7 @@ async fn test_run_task_lifecycle_check_expires_expiring_credential() {
     let a_while_ago = one_core::clock::now_utc().sub(Duration::seconds(1));
     let a_while_later = one_core::clock::now_utc().add(Duration::hours(1));
 
-    let expired_credential_id = Uuid::new_v4().into();
+    let expired_credential_id = CredentialId::new();
     context
         .db
         .credentials

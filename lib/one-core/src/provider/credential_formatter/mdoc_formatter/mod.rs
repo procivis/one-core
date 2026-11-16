@@ -22,15 +22,15 @@ use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{
-    CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId, DidValue, OrganisationId,
-    RevocationMethodId, SerializedCredential,
+    ClaimId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaFormatClaimSchemaId,
+    CredentialSchemaFormatId, CredentialSchemaId, DidValue, OrganisationId, RevocationMethodId,
+    SerializedCredential,
 };
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
-use uuid::Uuid;
 
 use self::util::{
     Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
@@ -600,17 +600,17 @@ impl CredentialFormatter for MdocFormatter {
 
         let now = crate::clock::now_utc();
         let doctype = mso.doc_type;
-        let credential_id = Uuid::new_v4().into();
-        let credential_format_id = Uuid::new_v4().into();
+        let credential_id = CredentialId::new();
+        let credential_format_id = CredentialSchemaFormatId::new();
         let (mut claims, mut mappings) = parse_claims(
             namespaces,
             self.datatype_provider.as_ref(),
             credential_format_id,
         )
         .await?;
-        let doctype_schema_id = Uuid::new_v4().into();
+        let doctype_schema_id = ClaimSchemaId::new();
         claims.push(Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: now,
             last_modified: now,
             value: Some(doctype.to_owned()),
@@ -630,7 +630,7 @@ impl CredentialFormatter for MdocFormatter {
             .into(),
         });
         let doctype_mapping = CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: now,
             last_modified: now,
             credential_schema_format_id: credential_format_id,
@@ -649,7 +649,7 @@ impl CredentialFormatter for MdocFormatter {
             }
         }
 
-        let credential_schema_id = Uuid::new_v4().into();
+        let credential_schema_id = CredentialSchemaId::new();
         let format = CredentialSchemaFormat {
             id: credential_format_id,
             created_date: now,
@@ -1497,7 +1497,7 @@ fn mapping_for_claim(
     credential_schema_format_id: CredentialSchemaFormatId,
 ) -> CredentialSchemaFormatClaimSchema {
     CredentialSchemaFormatClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatClaimSchemaId::new(),
         created_date: claim.created_date,
         last_modified: claim.last_modified,
         credential_schema_format_id,
@@ -1514,14 +1514,14 @@ fn claim_with_schema(
     value: Option<String>,
 ) -> Claim {
     Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: now,
         last_modified: now,
         value,
         path: paths.claim_path(),
         selectively_disclosable: paths.is_root_level(),
         schema: ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             created_date: now,
             last_modified: now,
             key: paths.claim_schema_path(),

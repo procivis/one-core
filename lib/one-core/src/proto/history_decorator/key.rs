@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::KeyId;
-use uuid::Uuid;
+use shared_types::{HistoryId, KeyId};
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::key::{GetKeyList, Key, KeyListQuery};
@@ -24,7 +23,7 @@ impl KeyRepository for KeyHistoryDecorator {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: request.created_date,
                 action: HistoryAction::Created,
                 name: request.name,

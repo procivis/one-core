@@ -5,7 +5,11 @@ use std::{assert_matches, vec};
 use mockall::predicate::{always, eq};
 use regex::Regex;
 use serde_json::json;
-use shared_types::{CredentialFormat, EcosystemId, InteractionId, OrganisationId};
+use shared_types::{
+    BlobId, ClaimId, ClaimSchemaId, CredentialFormat, CredentialId,
+    CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId, CredentialSchemaId, DidId,
+    EcosystemId, IdentifierId, InteractionId, OrganisationId, ProofId,
+};
 use similar_asserts::assert_eq;
 use standardized_types::oauth2::authorization_server_metadata::{
     AuthorizationServerMetadata, CodeChallengeMethod,
@@ -93,8 +97,8 @@ use crate::util::test_utilities::{TestHolderCredentialConfiguration, TestHolderI
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested()
  {
-    let interaction_id = Uuid::new_v4().into();
-    let proof_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
+    let proof_id = ProofId::new();
     let protocol = "OPENID4VP_FINAL1";
 
     let mut proof_repository = MockProofRepository::new();
@@ -189,8 +193,8 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 #[tokio::test]
 async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
     // trust is decided at the invitation, so the event is written there and not at the end
-    let interaction_id = Uuid::new_v4().into();
-    let proof_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
+    let proof_id = ProofId::new();
 
     let mut outcomes = EcosystemOutcomes::default();
     outcomes.record(EcosystemId::from("EUDI"), Ok(()));
@@ -322,8 +326,8 @@ async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
 async fn test_rejecting_a_proof_consults_no_ecosystem_and_records_nothing() {
     // verification resolves its trust once, at the invitation: no later step adds to it, so
     // rejecting neither consults an ecosystem nor writes a second event
-    let interaction_id = Uuid::new_v4().into();
-    let proof_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
+    let proof_id = ProofId::new();
     let protocol = "OPENID4VP_FINAL1";
 
     let mut proof_repository = MockProofRepository::new();
@@ -381,8 +385,8 @@ async fn test_rejecting_a_proof_consults_no_ecosystem_and_records_nothing() {
 #[tokio::test]
 async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
     let reject_proof_for_state = |state| async move {
-        let interaction_id = Uuid::new_v4().into();
-        let proof_id = Uuid::new_v4().into();
+        let interaction_id = InteractionId::new();
+        let proof_id = ProofId::new();
         let protocol = "OPENID4VP_FINAL1";
         let mut proof_repository = MockProofRepository::new();
         proof_repository
@@ -436,8 +440,8 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
 #[tokio::test]
 async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state_is_set_to_errored()
 {
-    let interaction_id = Uuid::new_v4().into();
-    let proof_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
+    let proof_id = ProofId::new();
     let protocol = "OPENID4VP_FINAL1";
 
     let mut proof_repository = MockProofRepository::new();
@@ -531,7 +535,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
 
 #[tokio::test]
 async fn test_accept_credential() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository.expect_get().returning(move |_| {
@@ -634,7 +638,7 @@ async fn test_accept_credential() {
                 },
             })))
         });
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -643,7 +647,7 @@ async fn test_accept_credential() {
             Ok(Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(
@@ -687,7 +691,7 @@ async fn test_accept_credential() {
 #[tokio::test]
 async fn test_accept_credential_validates_every_configuration_against_the_ecosystem() {
     let ecosystem_id = EcosystemId::from("ecosystem");
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository.expect_get().returning(move |_| {
@@ -798,7 +802,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
     let mut organisation = dummy_organisation(None);
     organisation.configuration.selected_ecosystems = vec![ecosystem_id.clone()];
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let mut interaction_repository = MockInteractionRepository::new();
     let committed = ecosystem_id.clone();
     interaction_repository
@@ -882,7 +886,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
 
 #[tokio::test]
 async fn test_accept_credential_with_did() {
-    let did_id = Uuid::new_v4().into();
+    let did_id = DidId::new();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
@@ -988,7 +992,7 @@ async fn test_accept_credential_with_did() {
             })))
         });
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -997,7 +1001,7 @@ async fn test_accept_credential_with_did() {
             Ok(Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(
@@ -1109,7 +1113,7 @@ async fn test_accept_credential_batch() {
         .once()
         .returning(move |_| Ok(blob_storage.clone()));
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
@@ -1163,7 +1167,7 @@ async fn test_accept_credential_batch() {
 
 #[tokio::test]
 async fn test_accept_credential_wrong_tx_code() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
@@ -1227,7 +1231,7 @@ async fn test_accept_credential_wrong_tx_code() {
         });
 
     let organisation = dummy_organisation(None);
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -1237,7 +1241,7 @@ async fn test_accept_credential_wrong_tx_code() {
             Ok(Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(
@@ -1308,7 +1312,7 @@ async fn test_reject_credential() {
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     service
         .reject_credential(&interaction_id, None)
         .await
@@ -1359,7 +1363,7 @@ async fn test_reject_credential_failed_issuer_notification() {
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     service
         .reject_credential(&interaction_id, None)
         .await
@@ -1397,7 +1401,7 @@ async fn test_initiate_issuance() {
 
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             protocol: "OPENID4VCI_FINAL1".to_string(),
             issuer,
             client_id: "clientId".to_string(),
@@ -1435,7 +1439,7 @@ async fn test_initiate_issuance() {
 async fn test_continue_issuance() {
     // given
     let organisation = dummy_organisation(None);
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
         request: InitiateIssuanceRequestDTO {
@@ -1574,7 +1578,7 @@ async fn test_initiate_issuance_pkce() {
 
             data.code_verifier.is_some()
         })
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(InteractionId::new()));
 
     let issuer = "https://issuer.com".to_string();
     let service = SSIHolderService {
@@ -1596,7 +1600,7 @@ async fn test_initiate_issuance_pkce() {
 
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             protocol: "OPENID4VCI_FINAL1".to_string(),
             issuer,
             client_id: "clientId".to_string(),
@@ -1734,7 +1738,7 @@ async fn test_initiate_issuance_dpop_bound_par() {
 
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             protocol: "OPENID4VCI_FINAL1".to_string(),
             issuer,
             client_id: "clientId".to_string(),
@@ -1758,8 +1762,8 @@ async fn test_continue_issuance_hands_over_dpop_key() {
     let organisation = dummy_organisation(None);
     let dpop_key = dummy_key();
     let dpop_key_id = dpop_key.id;
-    let initiated_interaction_id: InteractionId = Uuid::new_v4().into();
-    let continued_interaction_id: InteractionId = Uuid::new_v4().into();
+    let initiated_interaction_id: InteractionId = InteractionId::new();
+    let continued_interaction_id: InteractionId = InteractionId::new();
 
     let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
         request: InitiateIssuanceRequestDTO {
@@ -1912,9 +1916,9 @@ fn ecosystem_resolver(
 }
 
 fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let claim_schema = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "key1".to_string(),
         data_type: "STRING".to_string(),
         created_date: crate::clock::now_utc(),
@@ -1924,7 +1928,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         required: true,
         translations: Default::default(),
     };
-    let credential_schema_format_id = Uuid::new_v4().into();
+    let credential_schema_format_id = CredentialSchemaFormatId::new();
     let format = CredentialSchemaFormat {
         id: credential_schema_format_id,
         created_date: crate::clock::now_utc(),
@@ -1933,7 +1937,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         format: "JWT".into(),
         ecosystem_schema_id: "CredentialSchemaId".to_owned(),
         claim_mappings: vec![CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id,
@@ -1947,7 +1951,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
-            id: Uuid::new_v4().into(),
+            id: CredentialId::new(),
             created_date: crate::clock::now_utc(),
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
@@ -1988,7 +1992,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 Interaction {
                     dpop_key: None,
                     client_attestation_key: None,
-                    id: Uuid::new_v4().into(),
+                    id: InteractionId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     data: Some(b"interaction data".to_vec()),
@@ -2007,14 +2011,14 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         claims: Default::default(),
         issuer_identifier: Some(
             Identifier {
-                id: Uuid::new_v4().into(),
+                id: IdentifierId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 name: "identifier".to_string(),
                 data: IdentifierData::Did(
                     (Did {
                         deleted_at: None,
-                        id: Uuid::new_v4().into(),
+                        id: DidId::new(),
                         created_date: crate::clock::now_utc(),
                         last_modified: crate::clock::now_utc(),
                         name: "issuer_did".to_string(),
@@ -2042,7 +2046,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         issuer_certificate: None,
         holder_identifier: None,
         key: None,
-        credential_blob_id: Some(Uuid::new_v4().into()),
+        credential_blob_id: Some(BlobId::new()),
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
@@ -2068,7 +2072,7 @@ async fn test_handle_invitation_session_org_mismatch() {
             data: HandleInvitationRequestDataDTO::Url {
                 url: "https://localhost:3000/some_path".parse().unwrap(),
             },
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             transport: None,
             redirect_uri: None,
             ecosystem: None,
@@ -2081,9 +2085,9 @@ async fn test_handle_invitation_session_org_mismatch() {
 
 #[tokio::test]
 async fn test_accept_credential_identifier_org_mismatch() {
-    let identifier_id = Uuid::new_v4().into();
-    let organisation_id = Uuid::new_v4().into();
-    let session_organisation_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
+    let organisation_id = OrganisationId::new();
+    let session_organisation_id = OrganisationId::new();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository.expect_get().return_once(move |_| {
@@ -2118,16 +2122,16 @@ async fn test_accept_credential_identifier_org_mismatch() {
     };
 
     let result = service
-        .accept_credential(Uuid::new_v4().into(), None, Some(identifier_id), None, None)
+        .accept_credential(InteractionId::new(), None, Some(identifier_id), None, None)
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
 async fn test_accept_interaction_credential_org_mismatch() {
-    let identifier_id = Uuid::new_v4().into();
-    let organisation_id = Uuid::new_v4().into();
-    let session_organisation_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
+    let organisation_id = OrganisationId::new();
+    let session_organisation_id = OrganisationId::new();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository.expect_get().return_once(move |_| {
@@ -2151,7 +2155,7 @@ async fn test_accept_interaction_credential_org_mismatch() {
         })
     });
     let organisation = dummy_organisation(Some(organisation_id));
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -2161,7 +2165,7 @@ async fn test_accept_interaction_credential_org_mismatch() {
             Ok(Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(
@@ -2195,9 +2199,9 @@ async fn test_accept_interaction_credential_org_mismatch() {
 
 #[tokio::test]
 async fn test_reject_credential_credential_org_mismatch() {
-    let identifier_id = Uuid::new_v4().into();
-    let organisation_id = Uuid::new_v4().into();
-    let session_organisation_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
+    let organisation_id = OrganisationId::new();
+    let session_organisation_id = OrganisationId::new();
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository.expect_get().return_once(move |_| {
@@ -2237,9 +2241,7 @@ async fn test_reject_credential_credential_org_mismatch() {
         ..mock_ssi_holder_service()
     };
 
-    let result = service
-        .reject_credential(&Uuid::new_v4().into(), None)
-        .await;
+    let result = service.reject_credential(&InteractionId::new(), None).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
@@ -2254,7 +2256,7 @@ async fn test_initiate_issuance_session_org_mismatch() {
     // when
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             protocol: "".to_string(),
             issuer: "".to_string(),
             client_id: "".to_string(),
@@ -2415,7 +2417,7 @@ async fn accept_groups_batches_by_non_metadata_claims(
         credential.holder_mut().unwrap().data.claims = claims
             .iter()
             .map(|(path, value, metadata)| Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 value: value.map(str::to_owned),
@@ -2490,7 +2492,7 @@ async fn accept_keeps_singles_separate_even_with_the_same_schema() {
     let first = dummy_credential(None);
     let second = {
         let mut updated_credential = first.clone();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         updated_credential
     };
     let expected = [first, second];
@@ -2529,7 +2531,7 @@ async fn accept_keeps_batch_parents_with_different_schemas_and_ecosystems_separa
     let second = dummy_credential(None);
     let third = {
         let mut updated_credential = first.clone();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         updated_credential.common_mut().ecosystem = Some("another-ecosystem".into());
         updated_credential
     };
@@ -2600,12 +2602,12 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
     first.common_mut().interaction = None;
     let second = {
         let mut updated_credential = first.clone();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         updated_credential
             .holder_mut()
             .unwrap()
             .data
-            .credential_blob_id = Some(Uuid::new_v4().into());
+            .credential_blob_id = Some(BlobId::new());
         updated_credential
     };
     let expected_ids = vec![first.common().id, second.common().id];
@@ -2655,7 +2657,7 @@ async fn refresh_validates_each_configuration_even_when_they_share_a_batch_paren
             .once()
             .return_once(move |_| Ok(item));
     }
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let mut organisation = dummy_organisation(None);
     organisation.configuration.selected_ecosystems = vec!["EUDI".into()];
     let mut interactions = MockInteractionRepository::new();

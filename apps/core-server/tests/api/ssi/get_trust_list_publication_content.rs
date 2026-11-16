@@ -3,6 +3,7 @@ use core_server::endpoint::trust_list_publication::dto::{
 };
 use core_server::extractor::Accept;
 use one_core::proto::jwt::Jwt;
+use shared_types::TrustListPublicationId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -64,7 +65,7 @@ async fn test_get_trust_list_publication_success() {
 async fn test_get_trust_list_publication_not_found() {
     // GIVEN
     let context = TestContext::new(None).await;
-    let non_existent_id = Uuid::new_v4().into();
+    let non_existent_id = TrustListPublicationId::new();
 
     // WHEN
     let resp = context

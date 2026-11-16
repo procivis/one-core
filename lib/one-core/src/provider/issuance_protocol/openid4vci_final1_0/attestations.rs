@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use shared_types::WalletAttestationId;
 use standardized_types::oauth2::attestation_based_client_auth::OAuthClientAttestationPopCustomClaims;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use standardized_types::openid4vci::SecurityLevel;
@@ -465,7 +466,7 @@ impl OpenID4VCIFinal1_0 {
         let now = crate::clock::now_utc();
         self.wallet_attestation_repository
             .create(WalletAttestation {
-                id: Uuid::new_v4().into(),
+                id: WalletAttestationId::new(),
                 created_date: now,
                 last_modified: now,
                 expiration_date: check_result.expiration_date,

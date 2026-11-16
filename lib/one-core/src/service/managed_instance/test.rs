@@ -7,10 +7,9 @@ use one_crypto::Signer;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use secrecy::SecretSlice;
 use serde_json::json;
-use shared_types::IdentifierId;
+use shared_types::{HistoryId, IdentifierId, ManagedInstanceId, OrganisationId};
 use similar_asserts::assert_eq;
 use time::Duration;
-use uuid::Uuid;
 
 use super::ManagedInstanceService;
 use super::dto::{ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO};
@@ -126,7 +125,7 @@ fn wallet_provider_config(
 async fn test_register_wallet_unit() {
     // given
     let mut config = CoreConfig::default();
-    let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
+    let issuer_identifier_id: IdentifierId = IdentifierId::new();
 
     let procivis_one_provider = "PROCIVIS_ONE";
     config.wallet_provider.insert(
@@ -161,7 +160,7 @@ async fn test_register_wallet_unit() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(HistoryId::new()));
 
     let mut wallet_provider_directory = MockWalletProviderDirectory::new();
     wallet_provider_directory
@@ -219,7 +218,7 @@ async fn test_register_wallet_unit() {
 async fn test_register_wallet_unit_integrity_check() {
     // given
     let mut config = CoreConfig::default();
-    let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
+    let issuer_identifier_id: IdentifierId = IdentifierId::new();
     let procivis_one_provider = "PROCIVIS_ONE";
     config.wallet_provider.insert(
         procivis_one_provider.to_string(),
@@ -247,7 +246,7 @@ async fn test_register_wallet_unit_integrity_check() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(HistoryId::new()));
 
     let mut wallet_provider_directory = MockWalletProviderDirectory::new();
     wallet_provider_directory
@@ -302,7 +301,7 @@ async fn test_register_wallet_unit_integrity_check() {
 #[tokio::test]
 async fn test_register_verifier_unit() {
     // given
-    let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
+    let issuer_identifier_id: IdentifierId = IdentifierId::new();
     let verifier_provider_name = "VERIFIER_PROVIDER";
 
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -355,7 +354,7 @@ async fn test_register_verifier_unit() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(HistoryId::new()));
 
     let service = ManagedInstanceService {
         organisation_repository: Arc::new(organisation_repository),
@@ -419,7 +418,7 @@ fn validate_org_verifier_provider_organisation_disabled() {
     let org = Organisation {
         deactivated_at: Some(get_dummy_date()),
         verifier_provider: Some("VERIFIER_PROVIDER".to_string()),
-        verifier_provider_issuer: Some(Uuid::new_v4().into()),
+        verifier_provider_issuer: Some(IdentifierId::new()),
         ..dummy_organisation(None)
     };
 
@@ -441,7 +440,7 @@ fn validate_org_verifier_provider_not_configured_on_organisation() {
 fn validate_org_verifier_provider_mismatched_provider() {
     let org = Organisation {
         verifier_provider: Some("OTHER_PROVIDER".to_string()),
-        verifier_provider_issuer: Some(Uuid::new_v4().into()),
+        verifier_provider_issuer: Some(IdentifierId::new()),
         ..dummy_organisation(None)
     };
 
@@ -465,7 +464,7 @@ fn validate_org_verifier_provider_missing_issuer() {
 
 #[test]
 fn validate_org_verifier_provider_success() {
-    let issuer_id: IdentifierId = Uuid::new_v4().into();
+    let issuer_id: IdentifierId = IdentifierId::new();
     let org = Organisation {
         verifier_provider: Some("VERIFIER_PROVIDER".to_string()),
         verifier_provider_issuer: Some(issuer_id),
@@ -501,7 +500,7 @@ async fn provider_wallet_unit_ops_session_org_mismatch() {
                 provider_names: None,
                 roles: None,
                 attestation: None,
-                organisation_id: Uuid::new_v4().into(),
+                organisation_id: OrganisationId::new(),
                 created_date_after: None,
                 created_date_before: None,
                 user_sub: None,
@@ -517,7 +516,7 @@ async fn provider_wallet_unit_ops_session_org_mismatch() {
 #[tokio::test]
 async fn provider_get_wallet_unit_session_org_mismatch() {
     let wallet_unit = ManagedInstance {
-        id: Uuid::new_v4().into(),
+        id: ManagedInstanceId::new(),
         name: "".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -550,7 +549,9 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
     };
 
     // when
-    let result = service.get_managed_instance(&Uuid::new_v4().into()).await;
+    let result = service
+        .get_managed_instance(&ManagedInstanceId::new())
+        .await;
 
     // then
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);

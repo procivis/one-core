@@ -2,10 +2,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use mockall::Sequence;
-use shared_types::{EcosystemId, TrustCollectionId};
+use shared_types::{EcosystemId, InstanceId, ManagedInstanceId, TrustCollectionId};
 use similar_asserts::assert_eq;
 use url::Url;
-use uuid::Uuid;
 
 use crate::model::instance::{Instance, InstanceRole, InstanceStatus, WalletProviderType};
 use crate::model::list_filter::ListFilterCondition;
@@ -444,7 +443,7 @@ fn organisation_selecting(ecosystems: &[&str]) -> Organisation {
 fn dummy_collection(name: String) -> TrustCollection {
     TrustCollection {
         ecosystem: ECOSYSTEM.into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -457,13 +456,13 @@ fn dummy_collection(name: String) -> TrustCollection {
 fn dummy_wallet_unit(organisation: Organisation) -> Instance {
     let now = crate::clock::now_utc();
     Instance {
-        id: Uuid::new_v4().into(),
+        id: InstanceId::new(),
         created_date: now,
         last_modified: now,
         provider_type: WalletProviderType::ProcivisOne,
         provider_name: "wallet-provider".to_string(),
         provider_url: "https://wallet-provider.org".to_string(),
-        provider_instance_id: Uuid::new_v4().into(),
+        provider_instance_id: ManagedInstanceId::new(),
         status: InstanceStatus::Active,
         role: InstanceRole::Wallet,
         organisation: organisation.into(),
@@ -477,13 +476,13 @@ fn dummy_wallet_unit(organisation: Organisation) -> Instance {
 fn dummy_verifier_instance(organisation: Organisation) -> Instance {
     let now = crate::clock::now_utc();
     Instance {
-        id: Uuid::new_v4().into(),
+        id: InstanceId::new(),
         created_date: now,
         last_modified: now,
         provider_type: WalletProviderType::ProcivisOne,
         provider_name: "verifier-provider".to_string(),
         provider_url: "https://verifier-provider.org".to_string(),
-        provider_instance_id: Uuid::new_v4().into(),
+        provider_instance_id: ManagedInstanceId::new(),
         status: InstanceStatus::Active,
         role: InstanceRole::Verifier,
         organisation: organisation.into(),

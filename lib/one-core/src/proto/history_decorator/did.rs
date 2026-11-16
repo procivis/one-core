@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{DidId, DidValue, OrganisationId};
-use uuid::Uuid;
+use shared_types::{DidId, DidValue, HistoryId, OrganisationId};
 
 use crate::model::common::LockType;
 use crate::model::did::{Did, DidListQuery, GetDidList, RelatedKey, UpdateDidRequest};
@@ -28,7 +27,7 @@ impl DidHistoryDecorator {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action,
                 name,

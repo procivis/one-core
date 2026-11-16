@@ -13,7 +13,6 @@ use one_core::repository::managed_instance_repository::ManagedInstanceRepository
 use shared_types::{ManagedInstanceId, RevocationListEntryId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 pub struct ManagedInstancesDB {
     repository: Arc<dyn ManagedInstanceRepository>,
@@ -53,7 +52,7 @@ impl ManagedInstancesDB {
         let wallet_instance = ManagedInstance {
             id: test_wallet_instance
                 .id
-                .unwrap_or_else(|| Uuid::new_v4().into()),
+                .unwrap_or_else(ManagedInstanceId::new),
             name: test_wallet_instance
                 .name
                 .unwrap_or("test_wallet".to_string()),

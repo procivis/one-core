@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use serde_json::json;
-use shared_types::{BlobId, CredentialId};
+use shared_types::{BlobId, CredentialId, CredentialSchemaId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
 use crate::model::blob::{Blob, BlobType};
@@ -184,7 +183,7 @@ fn accepted_pid(wua_blob_id: Option<BlobId>, wia_blob_id: Option<BlobId>) -> Cre
     {
         let mut updated_credential = dummy_credential();
         let issuer = updated_credential.issuer_credential_mut().unwrap();
-        issuer.common.id = Uuid::new_v4().into();
+        issuer.common.id = CredentialId::new();
         issuer.common.state = CredentialStateEnum::Accepted;
         issuer.data.wallet_key_attestation_blob_id = wua_blob_id;
         CredentialBuilder {
@@ -211,7 +210,7 @@ fn batch_item(parent: &Credential, wua_blob_id: Option<BlobId>) -> Credential {
 fn batch_parent(wia_blob_id: Option<BlobId>) -> Credential {
     {
         let mut updated_credential = dummy_credential();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         updated_credential = CredentialBuilder {
             r#type: CredentialType::BatchParent,
             wallet_instance_attestation_blob_id: wia_blob_id,
@@ -224,7 +223,7 @@ fn batch_parent(wia_blob_id: Option<BlobId>) -> Credential {
 
 #[tokio::test]
 async fn test_credential_with_valid_attestations_is_not_revoked() {
-    let wua_blob_id: BlobId = Uuid::new_v4().into();
+    let wua_blob_id: BlobId = BlobId::new();
     let credential = accepted_pid(Some(wua_blob_id), None);
 
     let mut credential_repository = MockCredentialRepository::new();
@@ -277,7 +276,7 @@ async fn test_credential_with_valid_attestations_is_not_revoked() {
 
 #[tokio::test]
 async fn test_revoked_wallet_unit_attestation_revokes_the_pid() {
-    let wua_blob_id: BlobId = Uuid::new_v4().into();
+    let wua_blob_id: BlobId = BlobId::new();
     let credential = accepted_pid(Some(wua_blob_id), None);
     let credential_id = credential.common().id;
 
@@ -308,7 +307,7 @@ async fn test_revoked_wallet_unit_attestation_revokes_the_pid() {
 
 #[tokio::test]
 async fn test_revoked_wallet_instance_attestation_revokes_the_pid() {
-    let wia_blob_id: BlobId = Uuid::new_v4().into();
+    let wia_blob_id: BlobId = BlobId::new();
     let credential = accepted_pid(None, Some(wia_blob_id));
     let credential_id = credential.common().id;
 
@@ -342,7 +341,7 @@ async fn test_revoked_wallet_instance_attestation_revokes_the_pid() {
 
 #[tokio::test]
 async fn test_revoked_wia_revokes_the_whole_batch_once() {
-    let wia_blob_id: BlobId = Uuid::new_v4().into();
+    let wia_blob_id: BlobId = BlobId::new();
     let parent = batch_parent(Some(wia_blob_id));
     let parent_id = parent.common().id;
 
@@ -383,13 +382,13 @@ async fn test_revoked_wia_revokes_the_whole_batch_once() {
 async fn test_revoked_wua_revokes_only_the_batch_item() {
     let parent = {
         let mut updated_credential = dummy_credential();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         updated_credential
     };
 
     // every item of a batch has its own WUA
-    let revoked_wua_blob_id: BlobId = Uuid::new_v4().into();
-    let active_wua_blob_id: BlobId = Uuid::new_v4().into();
+    let revoked_wua_blob_id: BlobId = BlobId::new();
+    let active_wua_blob_id: BlobId = BlobId::new();
     let revoked_item = batch_item(&parent, Some(revoked_wua_blob_id));
     let revoked_item_id = revoked_item.common().id;
     let items = vec![revoked_item, batch_item(&parent, Some(active_wua_blob_id))];
@@ -429,8 +428,8 @@ async fn test_revoked_wua_revokes_only_the_batch_item() {
 
 #[tokio::test]
 async fn test_revoked_wia_skips_the_wua_check() {
-    let wua_blob_id: BlobId = Uuid::new_v4().into();
-    let wia_blob_id: BlobId = Uuid::new_v4().into();
+    let wua_blob_id: BlobId = BlobId::new();
+    let wia_blob_id: BlobId = BlobId::new();
     let credential = accepted_pid(Some(wua_blob_id), Some(wia_blob_id));
     let credential_id = credential.common().id;
 
@@ -467,7 +466,7 @@ async fn test_revoked_wia_skips_the_wua_check() {
 
 #[tokio::test]
 async fn test_inconclusive_status_check_does_not_revoke() {
-    let wua_blob_id: BlobId = Uuid::new_v4().into();
+    let wua_blob_id: BlobId = BlobId::new();
     let credential = accepted_pid(Some(wua_blob_id), None);
 
     let credential_repository = credential_repository_serving(vec![vec![credential]]);
@@ -512,7 +511,7 @@ async fn test_credential_without_attestations_is_not_revoked() {
 
 #[tokio::test]
 async fn test_all_pages_are_checked() {
-    let wua_blob_id: BlobId = Uuid::new_v4().into();
+    let wua_blob_id: BlobId = BlobId::new();
     let first_page = accepted_pid(Some(wua_blob_id), None);
     let second_page = accepted_pid(Some(wua_blob_id), None);
     let second_page_id = second_page.common().id;
@@ -551,7 +550,7 @@ async fn test_all_pages_are_checked() {
 
 #[tokio::test]
 async fn test_pid_that_cannot_be_revoked_is_reported() {
-    let wua_blob_id: BlobId = Uuid::new_v4().into();
+    let wua_blob_id: BlobId = BlobId::new();
     let credential = accepted_pid(Some(wua_blob_id), None);
     let credential_id = credential.common().id;
 
@@ -592,7 +591,7 @@ async fn test_pid_that_cannot_be_revoked_is_reported() {
 /// further state change, such as flagging the batch as `Expiring`.
 #[tokio::test]
 async fn test_batch_parent_that_cannot_be_revoked_is_only_reported() {
-    let wia_blob_id: BlobId = Uuid::new_v4().into();
+    let wia_blob_id: BlobId = BlobId::new();
     let parent = batch_parent(Some(wia_blob_id));
     let parent_id = parent.common().id;
     let items = vec![batch_item(&parent, None)];
@@ -615,7 +614,7 @@ async fn test_batch_parent_that_cannot_be_revoked_is_only_reported() {
         .withf(move |id, state| *id == parent_id && matches!(state, ChangeCredentialState::Revoked))
         .returning(|_, _| {
             Err(CredentialValidityManagerError::NoRevocationMethod(
-                Uuid::new_v4().into(),
+                CredentialSchemaId::new(),
             ))
         });
 
@@ -635,7 +634,7 @@ async fn test_batch_parent_that_cannot_be_revoked_is_only_reported() {
 /// A failed revocation is skipped over, the remaining credentials are still checked and revoked.
 #[tokio::test]
 async fn test_failed_revocation_does_not_stop_the_check() {
-    let wua_blob_id: BlobId = Uuid::new_v4().into();
+    let wua_blob_id: BlobId = BlobId::new();
     let failing = accepted_pid(Some(wua_blob_id), None);
     let failing_id = failing.common().id;
     let revocable = accepted_pid(Some(wua_blob_id), None);

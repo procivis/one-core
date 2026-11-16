@@ -1,3 +1,4 @@
+use shared_types::HistoryId;
 use standardized_types::openid4vci::{
     ClaimMetadata, CredentialMetadata, IssuerDisplay, KeyAttestationsRequired, SecurityLevel,
 };
@@ -12,7 +13,6 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use shared_types::{ClaimSchemaId, CredentialId, OrganisationId, SerializedCredential};
-use uuid::Uuid;
 
 use self::schema_matching::{
     CredentialSchemaResolution, align_format_claim_schemas_and_mappings,
@@ -512,7 +512,7 @@ impl OpenID4VCIFinal1_0 {
         {
             self.history_repository
                 .create_history(History {
-                    id: Uuid::new_v4().into(),
+                    id: HistoryId::new(),
                     created_date: now_utc(),
                     action: HistoryAction::Refreshed,
                     name: item.common().schema.as_ref().await?.name.to_owned(),

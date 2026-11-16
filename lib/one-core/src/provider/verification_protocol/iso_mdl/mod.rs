@@ -15,11 +15,10 @@ use one_crypto::utilities::generate_random_bytes;
 use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::ProofId;
+use shared_types::{InteractionId, KeyId, ProofId};
 use standardized_types::openid4vp::dc_api::{DigitalCredentialGetRequest, IsoMdocRequest};
 use time::Duration;
 use tokio::sync::Mutex;
-use uuid::Uuid;
 
 use super::dto::{
     FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
@@ -309,7 +308,7 @@ impl VerificationProtocol for IsoMdl {
             ),
         };
 
-        let proof_id = Uuid::new_v4().into();
+        let proof_id = ProofId::new();
         let ecosystem_artifact = holder_trust::holder_proof_artifact(
             &device_request,
             &session_transcript,
@@ -642,7 +641,7 @@ impl VerificationProtocol for IsoMdl {
         let key_storage = self
             .key_provider
             .get_key_storage(&params.encryption_key_storage)?;
-        let key_id = Uuid::new_v4().into();
+        let key_id = KeyId::new();
         let generated_key = key_storage
             .generate(key_id, KeyAlgorithmType::Ecdsa, Default::default())
             .await
@@ -729,7 +728,7 @@ impl VerificationProtocol for IsoMdl {
             encryption_info,
         };
 
-        let interaction_id = Uuid::new_v4().into();
+        let interaction_id = InteractionId::new();
         let session_transcript_bytes = EmbeddedCbor::new(session_transcript)?;
         let interaction_content = MdocDcApiVerifierInteractionData {
             encryption_key: key_id,

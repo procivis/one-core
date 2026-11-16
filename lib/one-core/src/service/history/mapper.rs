@@ -1,5 +1,5 @@
 use one_dto_mapper::convert_inner;
-use uuid::Uuid;
+use shared_types::HistoryId;
 
 use crate::model::history::{
     GetHistoryList, History, HistoryFilterValue, HistoryMetadata, HistorySearchEnum,
@@ -22,7 +22,7 @@ impl From<GetHistoryList<u64>> for GetHistoryListResponseDTO {
 impl From<CreateHistoryRequestDTO> for History {
     fn from(value: CreateHistoryRequestDTO) -> Self {
         Self {
-            id: Uuid::new_v4().into(),
+            id: HistoryId::new(),
             created_date: crate::clock::now_utc(),
             action: value.action,
             name: value.name,

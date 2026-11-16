@@ -127,7 +127,7 @@ impl TrustListPublisher for EtsiLotePublisher {
             ));
         };
 
-        let publication_id = TrustListPublicationId::from(uuid::Uuid::new_v4());
+        let publication_id = TrustListPublicationId::new();
 
         let now = crate::clock::now_utc();
         let publication = TrustListPublication {
@@ -172,7 +172,7 @@ impl TrustListPublisher for EtsiLotePublisher {
             .unwrap_or_default();
         let metadata = serde_json::to_vec(&entry_params)?;
 
-        let entry_id = TrustEntryId::from(uuid::Uuid::new_v4());
+        let entry_id = TrustEntryId::new();
         let now = crate::clock::now_utc();
         let entry = TrustEntry {
             id: entry_id,

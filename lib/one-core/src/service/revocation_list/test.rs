@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
+use shared_types::RevocationListId;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::config::core_config::RevocationType;
 use crate::model::revocation_list::{
@@ -32,7 +32,7 @@ fn setup_service(repositories: Repositories) -> RevocationListService {
 async fn test_get_revocation_list() {
     let mut revocation_list_repository = MockRevocationListRepository::default();
 
-    let revocation_id = Uuid::new_v4().into();
+    let revocation_id = RevocationListId::new();
     {
         let revocation = RevocationList {
             id: revocation_id,

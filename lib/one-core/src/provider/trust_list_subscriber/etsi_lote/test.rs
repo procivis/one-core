@@ -5,11 +5,11 @@ use std::sync::Arc;
 use ct_codecs::Decoder as _;
 use maplit::hashmap;
 use mockall::predicate::{always, eq, ne};
+use shared_types::{CertificateId, IdentifierId};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use url::Url;
-use uuid::Uuid;
 
 use crate::clock::run_with_mocked_time_async;
 use crate::config::core_config::KeyAlgorithmType;
@@ -155,7 +155,7 @@ async fn resolve_untrusted_identifier() {
 
     let subscriber = setup_subscriber(&reference);
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = crate::clock::now_utc();
     let identifier = Identifier {
         id: identifier_id,
@@ -163,7 +163,7 @@ async fn resolve_untrusted_identifier() {
         last_modified: now,
         name: "".to_string(),
         data: IdentifierData::Certificate(RelatedVec::from(vec![Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation: dummy_organisation(None).into(),
             created_date: now,
@@ -205,7 +205,7 @@ async fn resolve_trusted_identifier() {
 
     let subscriber = setup_subscriber(&reference);
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = crate::clock::now_utc();
     let identifier = Identifier {
         id: identifier_id,
@@ -213,7 +213,7 @@ async fn resolve_trusted_identifier() {
         last_modified: now,
         name: "".to_string(),
         data: IdentifierData::Certificate(RelatedVec::from(vec![Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation: dummy_organisation(None).into(),
             created_date: now,
@@ -493,7 +493,7 @@ async fn resolve_trusted_identifier_xml() {
 
     let subscriber = setup_subscriber_xml(&reference);
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = OffsetDateTime::now_utc();
     let identifier = Identifier {
         id: identifier_id,
@@ -501,7 +501,7 @@ async fn resolve_trusted_identifier_xml() {
         last_modified: now,
         name: "".to_string(),
         data: IdentifierData::Certificate(RelatedVec::from(vec![Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation: dummy_organisation(None).into(),
             created_date: now,
@@ -544,7 +544,7 @@ async fn resolve_untrusted_identifier_xml() {
 
     let subscriber = setup_subscriber_xml(&reference);
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = OffsetDateTime::now_utc();
     let identifier = Identifier {
         id: identifier_id,
@@ -552,7 +552,7 @@ async fn resolve_untrusted_identifier_xml() {
         last_modified: now,
         name: "".to_string(),
         data: IdentifierData::Certificate(RelatedVec::from(vec![Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation: dummy_organisation(None).into(),
             created_date: now,

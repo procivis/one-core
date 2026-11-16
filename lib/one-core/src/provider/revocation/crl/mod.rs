@@ -11,7 +11,6 @@ use serde_with::DurationSeconds;
 use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
 use standardized_types::x509::CertificateSerial;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::model::{CredentialRevocationInfo, Operation, ReservedEntries};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
@@ -312,7 +311,7 @@ impl CRLRevocation {
         Ok(self
             .revocation_list_repository
             .create_revocation_list(RevocationList {
-                id: Uuid::new_v4().into(),
+                id: RevocationListId::new(),
                 created_date: now,
                 last_modified: now,
                 formatted_list,

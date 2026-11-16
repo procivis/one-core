@@ -11,7 +11,7 @@ use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
-use shared_types::{CredentialId, DidValue};
+use shared_types::{ClaimSchemaId, CredentialId, DidValue};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use uuid::Uuid;
@@ -198,7 +198,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             TestingCreateSchemaParams {
                 batch_size: offer.batch_size.map(|size| size.try_into().unwrap()),
                 claim_schemas: Some(vec![ClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: datetime!(2024-10-20 12:00 +1),

@@ -131,9 +131,8 @@ mod test {
     use std::assert_matches;
 
     use ct_codecs::{Base64, Encoder};
-    use shared_types::EcosystemId;
+    use shared_types::{EcosystemId, HistoryId};
     use similar_asserts::assert_eq;
-    use uuid::Uuid;
 
     use super::*;
     use crate::error::ErrorCode;
@@ -159,7 +158,7 @@ mod test {
 
     #[tokio::test]
     async fn test_the_newest_recorded_outcomes_are_read_back() {
-        let entity_id = EntityId::from(Uuid::new_v4());
+        let entity_id = EntityId::new();
         let newest = outcomes(&[("EUDI", rejected("newest"))]);
         let returned = newest.to_owned();
 
@@ -177,7 +176,7 @@ mod test {
             .returning(move |_| {
                 Ok(GetListResponse {
                     values: vec![History {
-                        id: Uuid::new_v4().into(),
+                        id: HistoryId::new(),
                         created_date: crate::clock::now_utc(),
                         action: HistoryAction::EcosystemsResolved,
                         name: Default::default(),
@@ -215,7 +214,7 @@ mod test {
         });
 
         assert!(
-            recorded_ecosystem_outcomes(EntityId::from(Uuid::new_v4()), &history_repository)
+            recorded_ecosystem_outcomes(EntityId::new(), &history_repository)
                 .await
                 .unwrap()
                 .is_empty()

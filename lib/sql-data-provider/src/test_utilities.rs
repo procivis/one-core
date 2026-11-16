@@ -124,7 +124,7 @@ pub async fn insert_credential(
     let credential = credential::ActiveModel {
         expires_at: Set(None),
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CredentialId::new()),
         credential_schema_id: Set(*credential_schema_id),
         organisation_id: Set(organisation_id),
         created_date: Set(now),
@@ -192,7 +192,7 @@ pub async fn insert_credential_schema_to_database(
     allow_revocation: bool,
     key_storage_security: Option<KeyStorageSecurity>,
 ) -> Result<CredentialSchemaId, DbErr> {
-    let new_id: CredentialSchemaId = Uuid::new_v4().into();
+    let new_id: CredentialSchemaId = CredentialSchemaId::new();
     let schema = credential_schema::ActiveModel {
         expiration: Set(None),
         ecosystem: Set(None),
@@ -228,7 +228,7 @@ pub async fn insert_credential_schema_with_revocation_to_database(
     format: &str,
 ) -> Result<CredentialSchemaFormatId, DbErr> {
     let credential_schema_format = credential_schema_format::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CredentialSchemaFormatId::new()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         credential_schema_id: Set(credential_schema_id),
@@ -320,7 +320,7 @@ pub async fn insert_proof_request_to_database(
 ) -> Result<ProofId, DbErr> {
     let proof = proof::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofId::new()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         protocol: Set("OPENID4VP_FINAL1".to_string()),
@@ -370,7 +370,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
 ) -> Result<ProofSchemaId, DbErr> {
     let schema = proof_schema::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofSchemaId::new()),
         imported_source_url: Set(Some("CORE_URL".to_string())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
@@ -429,7 +429,7 @@ pub async fn insert_proof_schema_to_database(
 ) -> Result<ProofSchemaId, DbErr> {
     let schema = proof_schema::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofSchemaId::new()),
         created_date: Set(get_dummy_date()),
         imported_source_url: Set(Some("CORE_URL".to_string())),
         last_modified: Set(get_dummy_date()),
@@ -467,7 +467,7 @@ pub async fn insert_organisation_to_database(
     database: &DatabaseConnection,
     id: Option<OrganisationId>,
 ) -> Result<OrganisationId, DbErr> {
-    let id = id.unwrap_or(Uuid::new_v4().into());
+    let id = id.unwrap_or(OrganisationId::new());
     let organisation = organisation::ActiveModel {
         id: Set(id),
         created_date: Set(get_dummy_date()),
@@ -491,7 +491,7 @@ pub async fn insert_blob_to_database(
     r#type: BlobType,
     value: Option<Vec<u8>>,
 ) -> Result<BlobId, DbErr> {
-    let id = id.unwrap_or(Uuid::new_v4().into());
+    let id = id.unwrap_or(BlobId::new());
     let blob = blob::ActiveModel {
         id: Set(id),
         created_date: Set(get_dummy_date()),
@@ -661,7 +661,7 @@ pub async fn insert_interaction(
     let now = one_core::clock::now_utc();
 
     let interaction = interaction::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(InteractionId::new()),
         created_date: Set(now),
         last_modified: Set(now),
         data: Set(Some(data.to_owned())),
@@ -726,7 +726,7 @@ pub async fn insert_history(
     let now = one_core::clock::now_utc();
 
     let model = history::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(HistoryId::new()),
         created_date: Set(now),
         action: Set(action),
         name: Set(name),
@@ -754,7 +754,7 @@ pub async fn insert_revocation_list(
     r#type: RevocationMethodId,
     issuer_certificate_id: Option<CertificateId>,
 ) -> Result<RevocationListId, DbErr> {
-    let id = Uuid::new_v4().into();
+    let id = RevocationListId::new();
     let now = one_core::clock::now_utc();
 
     let _model = revocation_list::ActiveModel {
@@ -782,7 +782,7 @@ pub async fn insert_revocation_list_entry(
     index: usize,
     credential_id: Option<CredentialId>,
 ) -> Result<RevocationListEntryId, DbErr> {
-    let id = Uuid::new_v4().into();
+    let id = RevocationListEntryId::new();
     let now = one_core::clock::now_utc();
 
     let _model = revocation_list_entry::ActiveModel {
@@ -816,7 +816,7 @@ pub fn assert_eq_unordered<T: Hash + Eq + Debug, K: Into<T>>(
 }
 
 pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
-    let id = id.unwrap_or(Uuid::new_v4().into());
+    let id = id.unwrap_or(OrganisationId::new());
     Organisation {
         id,
         created_date: one_core::clock::now_utc(),
@@ -836,7 +836,7 @@ pub async fn insert_wallet_instance_to_database(
     organisation_id: OrganisationId,
     name: String,
 ) -> ManagedInstanceId {
-    let id: ManagedInstanceId = Uuid::new_v4().into();
+    let id: ManagedInstanceId = ManagedInstanceId::new();
     let now = get_dummy_date();
     let jwk = random_jwk_string();
 
@@ -874,7 +874,7 @@ pub async fn insert_wallet_unit_attested_key_to_database(
     revocation_list_entry_id: Option<Uuid>,
     expiration_date: OffsetDateTime,
 ) -> ManagedInstanceAttestationId {
-    let id = Uuid::new_v4().into();
+    let id = ManagedInstanceAttestationId::new();
     managed_instance_attestation::ActiveModel {
         id: Set(id),
         created_date: Set(get_dummy_date()),
@@ -896,7 +896,7 @@ pub async fn insert_trust_collection_to_database(
     database: &DatabaseConnection,
     organisation_id: OrganisationId,
 ) -> Result<TrustCollectionId, DbErr> {
-    let id = Uuid::new_v4().into();
+    let id = TrustCollectionId::new();
     let collection = trust_collection::ActiveModel {
         ecosystem: Set("EUDI".into()),
         id: Set(id),
@@ -916,7 +916,7 @@ pub async fn insert_trust_list_subscription_to_database(
     database: &DatabaseConnection,
     trust_collection_id: TrustCollectionId,
 ) -> Result<TrustListSubscriptionId, DbErr> {
-    let id = Uuid::new_v4().into();
+    let id = TrustListSubscriptionId::new();
     let subscription = trust_list_subscription::ActiveModel {
         id: Set(id),
         name: Set(id.to_string()),

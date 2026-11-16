@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{InteractionId, OrganisationId, ProofId};
-use uuid::Uuid;
+use shared_types::{HistoryId, InteractionId, OrganisationId, ProofId};
 
 use crate::model::common::LockType;
 use crate::model::history::{
@@ -49,7 +48,7 @@ impl ProofHistoryDecorator {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action,
                 name,

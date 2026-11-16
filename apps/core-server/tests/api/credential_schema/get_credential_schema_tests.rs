@@ -1,7 +1,7 @@
 use one_core::model::claim_schema::ClaimSchema;
+use shared_types::ClaimSchemaId;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
-use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -89,7 +89,7 @@ async fn test_get_credential_schema_with_category_claim() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let claim_id = Uuid::new_v4().into();
+    let claim_id = ClaimSchemaId::new();
     let credential_schema = context
         .db
         .credential_schemas

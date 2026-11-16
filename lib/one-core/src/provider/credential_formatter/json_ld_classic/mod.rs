@@ -10,11 +10,13 @@ use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialFormat, DidValue, RevocationMethodId, SerializedCredential};
+use shared_types::{
+    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, RevocationMethodId,
+    SerializedCredential,
+};
 use standardized_types::iana::HashAlgorithm;
 use time::Duration;
 use url::Url;
-use uuid::Uuid;
 
 use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
@@ -293,7 +295,7 @@ impl CredentialFormatter for JsonLdClassic {
             None
         };
 
-        let credential_id = Uuid::new_v4().into();
+        let credential_id = CredentialId::new();
         let vc_types = vcdm.r#type.clone();
         let schema_name = vc_types
             .iter()
@@ -334,7 +336,7 @@ impl CredentialFormatter for JsonLdClassic {
             .map(|s| s.id.clone())
             .unwrap_or_else(|| schema_name.clone());
 
-        let credential_schema_id = Uuid::new_v4().into();
+        let credential_schema_id = CredentialSchemaId::new();
         let format = to_format_with_mappings(
             self.config_id.clone(),
             credential_schema_id,

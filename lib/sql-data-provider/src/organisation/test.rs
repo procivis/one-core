@@ -8,8 +8,8 @@ use one_core::model::organisation::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
+use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::OrganisationProvider;
 use crate::test_utilities::*;
@@ -35,7 +35,7 @@ async fn setup() -> TestSetup {
 async fn test_create_organisation() {
     let TestSetup { db, repository } = setup().await;
 
-    let org_id = Uuid::new_v4().into();
+    let org_id = OrganisationId::new();
     let now = one_core::clock::now_utc();
 
     let organisation = Organisation {
@@ -62,7 +62,7 @@ async fn test_create_organisation() {
 async fn test_get_organisation_missing() {
     let TestSetup { repository, .. } = setup().await;
 
-    let result = repository.get_organisation(&Uuid::new_v4().into()).await;
+    let result = repository.get_organisation(&OrganisationId::new()).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
@@ -70,7 +70,7 @@ async fn test_get_organisation_missing() {
 async fn test_get_organisation_success() {
     let TestSetup { repository, db } = setup().await;
 
-    let org_id = Uuid::new_v4().into();
+    let org_id = OrganisationId::new();
     insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();
@@ -86,12 +86,12 @@ async fn test_get_organisation_success() {
 async fn test_get_organisation_list() {
     let TestSetup { repository, db } = setup().await;
 
-    let org_id = Uuid::new_v4().into();
+    let org_id = OrganisationId::new();
     insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();
 
-    let org2_id = Uuid::new_v4().into();
+    let org2_id = OrganisationId::new();
     insert_organisation_to_database(&db, Some(org2_id))
         .await
         .unwrap();
@@ -123,7 +123,7 @@ async fn test_get_organisation_list() {
 async fn test_update_organisation() {
     let TestSetup { db, repository } = setup().await;
 
-    let org_id = Uuid::new_v4().into();
+    let org_id = OrganisationId::new();
     insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();

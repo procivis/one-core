@@ -3,8 +3,7 @@ use one_core::provider::credential_formatter::model::CredentialData;
 use one_core::service::test_utilities::dummy_organisation;
 use one_core::util::test_mdoc::format_mdoc_credential as format_mdoc;
 use rcgen::CertificateParams;
-use shared_types::SerializedCredential;
-use uuid::Uuid;
+use shared_types::{CertificateId, IdentifierId, SerializedCredential};
 
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa, fingerprint};
 
@@ -24,8 +23,8 @@ pub(crate) async fn format_mdoc_credential(
 
     // the fingerprint feeds the COSE `x5t` header, so it must match the leaf certificate
     credential_data.issuer_certificate = Some(Certificate {
-        id: Uuid::new_v4().into(),
-        identifier_id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
+        identifier_id: IdentifierId::new(),
         organisation: dummy_organisation(None).into(),
         created_date: one_core::clock::now_utc(),
         last_modified: one_core::clock::now_utc(),

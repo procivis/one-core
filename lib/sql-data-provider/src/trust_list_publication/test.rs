@@ -18,6 +18,7 @@ use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use one_core::service::test_utilities::dummy_identifier;
 use sea_orm::DatabaseConnection;
+use shared_types::{TrustEntryId, TrustListPublicationId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -58,7 +59,7 @@ fn dummy_trust_list_publication(
     org_id: shared_types::OrganisationId,
     identifier_id: shared_types::IdentifierId,
 ) -> TrustListPublication {
-    let id = Uuid::new_v4().into();
+    let id = TrustListPublicationId::new();
     TrustListPublication {
         id,
         created_date: get_dummy_date(),
@@ -116,7 +117,7 @@ async fn test_list_publications_containing_identifier() {
         let publication_id = publication.id;
         provider.create(publication).await.unwrap();
         trust_entry::ActiveModel {
-            id: Set(Uuid::new_v4().into()),
+            id: Set(TrustEntryId::new()),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             state: Set(state),
@@ -183,7 +184,7 @@ async fn test_create_trust_list_publication() {
 async fn test_get_trust_list_publication_missing() {
     let TestSetup { provider, .. } = setup().await;
 
-    let result = provider.get(Uuid::new_v4().into()).await;
+    let result = provider.get(TrustListPublicationId::new()).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
@@ -599,7 +600,7 @@ async fn test_update_trust_list_publication_not_found() {
 
     let result = provider
         .update(
-            Uuid::new_v4().into(),
+            TrustListPublicationId::new(),
             UpdateTrustListPublicationRequest {
                 content: Some(b"updated".to_vec()),
                 sequence_number: Some(2),

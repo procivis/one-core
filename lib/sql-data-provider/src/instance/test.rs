@@ -4,7 +4,7 @@ use one_core::model::instance::{
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::repository::instance_repository::InstanceRepository;
-use shared_types::InstanceId;
+use shared_types::{InstanceId, ManagedInstanceId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -30,7 +30,7 @@ async fn create_holder_wallet_instance_success() {
         ..
     } = setup_empty().await;
 
-    let id = Uuid::new_v4().into();
+    let id = InstanceId::new();
     let result = provider
         .create(test_wallet_instance(id, organisation, key))
         .await;
@@ -50,7 +50,7 @@ async fn get_holder_wallet_instance_success() {
         ..
     } = setup_empty().await;
 
-    let id = Uuid::new_v4().into();
+    let id = InstanceId::new();
     provider
         .create(test_wallet_instance(id, organisation.clone(), key.clone()))
         .await
@@ -72,7 +72,7 @@ async fn update_holder_wallet_instance_success() {
         ..
     } = setup_empty().await;
 
-    let id = Uuid::new_v4().into();
+    let id = InstanceId::new();
     provider
         .create(test_wallet_instance(id, organisation.clone(), key.clone()))
         .await
@@ -104,7 +104,7 @@ fn test_wallet_instance(id: InstanceId, organisation: Organisation, key: Key) ->
         provider_url: "test_url".to_string(),
         organisation: organisation.into(),
         authentication_key: Some(key.into()),
-        provider_instance_id: Uuid::new_v4().into(),
+        provider_instance_id: ManagedInstanceId::new(),
         wallet_attestations: Default::default(),
         nonce: None,
         user_nonce: None,

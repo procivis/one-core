@@ -842,7 +842,7 @@ async fn test_update_did_keys_not_found() {
     let response = context
         .api
         .identifiers
-        .update_did_keys(&Uuid::new_v4().into(), all_roles_json(key))
+        .update_did_keys(&IdentifierId::new(), all_roles_json(key))
         .await;
 
     // THEN

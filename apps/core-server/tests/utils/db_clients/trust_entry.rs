@@ -7,7 +7,6 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use shared_types::TrustEntryId;
 use sql_data_provider::test_utilities::get_dummy_date;
-use uuid::Uuid;
 
 pub struct TrustEntryDB {
     repository: Arc<dyn TrustEntryRepository>,
@@ -26,7 +25,7 @@ impl TrustEntryDB {
         identifier: Identifier,
     ) -> TrustEntry {
         let trust_entry = TrustEntry {
-            id: TrustEntryId::from(Uuid::new_v4()),
+            id: TrustEntryId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             state,

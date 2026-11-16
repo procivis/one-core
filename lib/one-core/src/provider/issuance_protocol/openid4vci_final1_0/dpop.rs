@@ -294,7 +294,7 @@ mod test {
     #[test]
     fn test_record_nonce_reports_only_changes() {
         let context = DpopContext::new(
-            Uuid::new_v4().into(),
+            KeyId::new(),
             Box::new(MockSignatureProvider::new()),
             PublicJwk::Okp(PublicJwkEc {
                 alg: None,

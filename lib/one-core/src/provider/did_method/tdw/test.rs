@@ -1,6 +1,5 @@
 use rstest::rstest;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::*;
 use crate::proto::http_client::MockHttpClient;
@@ -27,7 +26,7 @@ fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case
         key_provider: Arc::new(MockKeyProvider::new()),
     };
 
-    let did_id = Uuid::new_v4().into();
+    let did_id = DidId::new();
     let external_hosting_url = external_hosting_url.parse().unwrap();
 
     assert_eq!(
@@ -55,7 +54,7 @@ fn test_use_domain_with_core_base_url(#[case] base_url: &str, #[case] expected: 
         key_provider: Arc::new(MockKeyProvider::new()),
     };
 
-    let did_id = Uuid::new_v4().into();
+    let did_id = DidId::new();
     let expected = format!("{expected}:{did_id}");
     assert_eq!(method.domain(did_id, None).unwrap(), expected)
 }

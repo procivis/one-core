@@ -8,7 +8,10 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
-use shared_types::{BlobId, CredentialFormat, CredentialSchemaFormatId, DidId, InteractionId};
+use shared_types::{
+    BlobId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaFormatClaimSchemaId,
+    CredentialSchemaFormatId, CredentialSchemaId, DidId, IdentifierId, InteractionId,
+};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::oauth2::TokenType;
@@ -232,10 +235,10 @@ fn generic_organisation() -> Organisation {
 
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
 
     let claim_schemas = {
-        let claim_schema_id = Uuid::new_v4().into();
+        let claim_schema_id = ClaimSchemaId::new();
         vec![ClaimSchema {
             array: false,
             created_date: get_dummy_date(),
@@ -258,7 +261,7 @@ fn generic_credential_schema() -> CredentialSchema {
         }]
     };
 
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     CredentialSchema {
         expiration: None,
         ecosystem: None,
@@ -287,7 +290,7 @@ fn generic_credential_schema() -> CredentialSchema {
             claim_mappings: claim_schemas
                 .iter()
                 .map(|cs| CredentialSchemaFormatClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatClaimSchemaId::new(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     credential_schema_format_id: format_id,
@@ -339,7 +342,7 @@ fn dummy_interaction(
     Interaction {
         dpop_key: None,
         client_attestation_key: None,
-        id: id.unwrap_or(Uuid::new_v4().into()),
+        id: id.unwrap_or(InteractionId::new()),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         data: Some(data.to_string().into_bytes()),
@@ -385,7 +388,7 @@ fn dummy_credential(
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
-            id: Uuid::new_v4().into(),
+            id: CredentialId::new(),
             created_date: crate::clock::now_utc(),
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
@@ -407,7 +410,7 @@ fn dummy_credential(
         issuer_certificate: None,
         holder_identifier: None,
         key: Some(crate::service::test_utilities::dummy_key().into()),
-        credential_blob_id: Some(Uuid::new_v4().into()),
+        credential_blob_id: Some(BlobId::new()),
         wallet_key_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
@@ -978,7 +981,7 @@ async fn test_get_issuer_metadata_mdoc() {
     let mut schema = generic_credential_schema();
     schema.organisation = generic_organisation().into();
     let now = crate::clock::now_utc();
-    let claim_schema_id = Uuid::new_v4().into();
+    let claim_schema_id = ClaimSchemaId::new();
     schema.claim_schemas = vec![ClaimSchema {
         id: claim_schema_id,
         key: "X".to_string(),
@@ -1001,7 +1004,7 @@ async fn test_get_issuer_metadata_mdoc() {
     }]
     .into();
 
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     schema.formats = vec![CredentialSchemaFormat {
         id: format_id,
         created_date: crate::clock::now_utc(),
@@ -1010,7 +1013,7 @@ async fn test_get_issuer_metadata_mdoc() {
         format: "MDOC".into(),
         ecosystem_schema_id: "doctype".to_owned(),
         claim_mappings: vec![CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             credential_schema_format_id: format_id,
@@ -2126,7 +2129,7 @@ async fn test_create_credential_success(#[case] notification_id_allocated: bool)
         schema.clone(),
         CredentialType::Single,
     );
-    let holder_did_id: DidId = Uuid::new_v4().into();
+    let holder_did_id: DidId = DidId::new();
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     expect_credential_blob_stored(
         &mut blob_storage_provider,
@@ -2357,7 +2360,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
 
     let mut schema = generic_credential_schema();
     schema.formats = vec![CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id: schema.id,
@@ -2374,7 +2377,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         schema.clone(),
         CredentialType::Single,
     );
-    let holder_did_id: DidId = Uuid::new_v4().into();
+    let holder_did_id: DidId = DidId::new();
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     expect_credential_blob_stored(
         &mut blob_storage_provider,
@@ -2580,13 +2583,13 @@ async fn test_create_credential_success_mdoc() {
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
-    let format_id: CredentialSchemaFormatId = Uuid::new_v4().into();
+    let format_id: CredentialSchemaFormatId = CredentialSchemaFormatId::new();
     let schema = CredentialSchema {
         formats: vec![CredentialSchemaFormat {
             id: format_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
-            credential_schema_id: Uuid::new_v4().into(),
+            credential_schema_id: CredentialSchemaId::new(),
             format: "MDOC".into(),
             ecosystem_schema_id: "test.doctype".to_owned(),
             claim_mappings: Default::default(),
@@ -2602,8 +2605,8 @@ async fn test_create_credential_success_mdoc() {
         schema.clone(),
         CredentialType::BatchParent,
     );
-    let holder_identifier_id = Uuid::new_v4().into();
-    let holder_did_id: DidId = Uuid::new_v4().into();
+    let holder_identifier_id = IdentifierId::new();
+    let holder_did_id: DidId = DidId::new();
     {
         let clone = schema.clone();
         credential_schema_repository
@@ -3224,7 +3227,7 @@ async fn test_create_credential_issuer_failed(
         schema.clone(),
         CredentialType::Single,
     );
-    let holder_did_id: DidId = Uuid::new_v4().into();
+    let holder_did_id: DidId = DidId::new();
     {
         let clone = schema.clone();
         repository
@@ -3520,7 +3523,7 @@ async fn test_create_credential_nonce_reused() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .returning(|_, _, _, _, _, _| {
-            let holder_did_id: DidId = Uuid::new_v4().into();
+            let holder_did_id: DidId = DidId::new();
             Ok((
                 Identifier {
                     id: Uuid::from(holder_did_id).into(),
@@ -3581,7 +3584,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
 
     let mut schema = generic_credential_schema();
     schema.formats = vec![CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id: schema.id,

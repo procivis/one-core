@@ -4,6 +4,7 @@ use assert2::let_assert;
 use one_core::model::credential::{IssuerIdentity, VerifierCredentialData};
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, IntoActiveModel};
+use shared_types::ClaimId;
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -29,7 +30,7 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
         .unwrap()[0]
         .clone();
     let claim = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("verified value".into()),
@@ -46,7 +47,7 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
     };
     let request = Credential::Verifier {
         common: CredentialCommon {
-            id: Uuid::new_v4().into(),
+            id: CredentialId::new(),
             state: CredentialStateEnum::Accepted,
             ..template.common().clone()
         },

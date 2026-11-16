@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{CertificateId, IdentifierId, OrganisationId};
-use uuid::Uuid;
+use shared_types::{CertificateId, HistoryId, IdentifierId, OrganisationId};
 
 use crate::model::certificate::{
     Certificate, CertificateListQuery, CertificateState, GetCertificateList,
@@ -55,7 +54,7 @@ impl CertificateHistoryDecorator {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action,
                 name,

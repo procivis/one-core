@@ -6,7 +6,6 @@ use one_core::model::relation::RelatedVec;
 use one_core::repository::credential_schema_format_repository::CredentialSchemaFormatRepository;
 use shared_types::{ClaimSchemaId, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::CredentialSchemaFormatProvider;
 use crate::test_utilities::*;
@@ -24,7 +23,7 @@ async fn test_create_and_get_credential_schema_format() {
             .await
             .unwrap();
 
-    let claim_schema_id: ClaimSchemaId = Uuid::new_v4().into();
+    let claim_schema_id: ClaimSchemaId = ClaimSchemaId::new();
     let claim_input = ProofInput {
         credential_schema_id,
         claims: &vec![ClaimInsertInfo {
@@ -44,8 +43,9 @@ async fn test_create_and_get_credential_schema_format() {
     let provider: Arc<dyn CredentialSchemaFormatRepository> =
         Arc::new(CredentialSchemaFormatProvider { db: tx_manager });
 
-    let format_id: CredentialSchemaFormatId = Uuid::new_v4().into();
-    let mapping_id: CredentialSchemaFormatClaimSchemaId = Uuid::new_v4().into();
+    let format_id: CredentialSchemaFormatId = CredentialSchemaFormatId::new();
+    let mapping_id: CredentialSchemaFormatClaimSchemaId =
+        CredentialSchemaFormatClaimSchemaId::new();
     let now = get_dummy_date();
 
     let format = CredentialSchemaFormat {
@@ -116,7 +116,7 @@ async fn test_unique_credential_schema_id_format() {
 
     let now = get_dummy_date();
     let format_a = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: now,
         last_modified: now,
         credential_schema_id,
@@ -126,7 +126,7 @@ async fn test_unique_credential_schema_id_format() {
     };
 
     let format_b = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: now,
         last_modified: now,
         credential_schema_id,
@@ -163,7 +163,7 @@ async fn test_unique_format_claim_schema_mapping() {
         .await
         .unwrap();
 
-    let claim_schema_id: ClaimSchemaId = Uuid::new_v4().into();
+    let claim_schema_id: ClaimSchemaId = ClaimSchemaId::new();
     insert_many_claims_schema_to_database(
         &db,
         &ProofInput {
@@ -186,7 +186,7 @@ async fn test_unique_format_claim_schema_mapping() {
         Arc::new(CredentialSchemaFormatProvider { db: tx_manager });
 
     let now = get_dummy_date();
-    let format_id: CredentialSchemaFormatId = Uuid::new_v4().into();
+    let format_id: CredentialSchemaFormatId = CredentialSchemaFormatId::new();
     let mapping = |id: CredentialSchemaFormatClaimSchemaId| CredentialSchemaFormatClaimSchema {
         id,
         created_date: now,
@@ -206,8 +206,8 @@ async fn test_unique_format_claim_schema_mapping() {
             format: "SD_JWT_VC".into(),
             ecosystem_schema_id: "https://example.com/schemas/example".to_string(),
             claim_mappings: RelatedVec::from(vec![
-                mapping(Uuid::new_v4().into()),
-                mapping(Uuid::new_v4().into()),
+                mapping(CredentialSchemaFormatClaimSchemaId::new()),
+                mapping(CredentialSchemaFormatClaimSchemaId::new()),
             ]),
         })
         .await;

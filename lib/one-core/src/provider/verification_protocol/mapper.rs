@@ -1,10 +1,9 @@
 use futures::future::join_all;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
-use shared_types::{CredentialId, OrganisationId, ProofId};
+use shared_types::{CredentialId, InteractionId, OrganisationId, ProofId};
 use standardized_types::openid4vp::dcql::CredentialSet;
 use standardized_types::openid4vp::{VerifierInfoAttestation, VerifierInfoAttestationFormat};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::dto::{CredentialSetResponseDTO, InvitationRequest};
 use super::error::VerificationProtocolError;
@@ -38,7 +37,7 @@ pub(super) fn interaction_from_handle_invitation(
     Interaction {
         dpop_key: None,
         client_attestation_key: None,
-        id: Uuid::new_v4().into(),
+        id: InteractionId::new(),
         created_date: now,
         last_modified: now,
         data,

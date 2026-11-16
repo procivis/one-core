@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use shared_types::{HistoryId, TrustCollectionId, TrustListSubscriptionId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::model::trust_collection::TrustCollection;
 use crate::model::trust_list_role::TrustListRoleEnum;
@@ -29,7 +29,7 @@ async fn test_trust_list_subscription_update_active() {
     let now = crate::clock::now_utc();
     let collection = TrustCollection {
         ecosystem: "EUDI".into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: "test collection".to_string(),
         created_date: now,
         last_modified: now,
@@ -37,7 +37,7 @@ async fn test_trust_list_subscription_update_active() {
         remote_trust_collection_url: None,
         organisation: dummy_organisation(None).into(),
     };
-    let subscription_id = Uuid::new_v4().into();
+    let subscription_id = TrustListSubscriptionId::new();
     let subscription = TrustListSubscription {
         id: subscription_id,
         name: "subscription 1".to_string(),
@@ -95,7 +95,7 @@ async fn test_trust_list_subscription_update_error() {
     let now = crate::clock::now_utc();
     let collection = TrustCollection {
         ecosystem: "EUDI".into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: "test collection".to_string(),
         created_date: now,
         last_modified: now,
@@ -103,7 +103,7 @@ async fn test_trust_list_subscription_update_error() {
         remote_trust_collection_url: None,
         organisation: dummy_organisation(None).into(),
     };
-    let subscription_id = Uuid::new_v4().into();
+    let subscription_id = TrustListSubscriptionId::new();
     let subscription = TrustListSubscription {
         id: subscription_id,
         name: "subscription 1".to_string(),
@@ -146,7 +146,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
     let now = crate::clock::now_utc();
     let collection = TrustCollection {
         ecosystem: "EUDI".into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: "test collection".to_string(),
         created_date: now,
         last_modified: now,
@@ -154,7 +154,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
         remote_trust_collection_url: None,
         organisation: dummy_organisation(None).into(),
     };
-    let subscription_id = Uuid::new_v4().into();
+    let subscription_id = TrustListSubscriptionId::new();
     let subscription = TrustListSubscription {
         id: subscription_id,
         name: "subscription 1".to_string(),
@@ -187,7 +187,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(HistoryId::new()));
     let task = TrustListSubscriptionUpdateTask::new(
         test_subscriber_provider(None),
         Arc::new(repository),
@@ -208,7 +208,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
     let now = crate::clock::now_utc();
     let collection = TrustCollection {
         ecosystem: "EUDI".into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: "test collection".to_string(),
         created_date: now,
         last_modified: now,
@@ -216,7 +216,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
         remote_trust_collection_url: None,
         organisation: dummy_organisation(None).into(),
     };
-    let subscription_id = Uuid::new_v4().into();
+    let subscription_id = TrustListSubscriptionId::new();
     let subscription = TrustListSubscription {
         id: subscription_id,
         name: "subscription 1".to_string(),
@@ -249,7 +249,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(HistoryId::new()));
     let task = TrustListSubscriptionUpdateTask::new(
         test_subscriber_provider(Some(validation_result)),
         Arc::new(repository),

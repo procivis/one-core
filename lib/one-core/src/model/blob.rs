@@ -1,6 +1,5 @@
 use shared_types::BlobId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -16,7 +15,7 @@ impl Blob {
     pub fn new(value: impl Into<Vec<u8>>, r#type: BlobType) -> Self {
         let now = crate::clock::now_utc();
         Self {
-            id: Uuid::new_v4().into(),
+            id: BlobId::new(),
             created_date: now,
             last_modified: now,
             value: value.into(),

@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use one_crypto::utilities::{generate_alphanumeric, generate_numeric};
-use shared_types::{DidMethodId, OrganisationId};
+use shared_types::{DidMethodId, InteractionId, KeyId, OrganisationId};
 use standardized_types::openid4vci::{
     KeyAttestationsRequired, ProofTypeSupported, TxCodeInputMode,
 };
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
@@ -39,7 +38,7 @@ pub(crate) fn interaction_from_handle_invitation(
     Interaction {
         dpop_key: None,
         client_attestation_key: None,
-        id: Uuid::new_v4().into(),
+        id: InteractionId::new(),
         created_date: now,
         last_modified: now,
         data,
@@ -74,7 +73,7 @@ pub(super) async fn autogenerate_holder_binding(
         key_security_level_provider,
     )?;
 
-    let key_id = Uuid::new_v4().into();
+    let key_id = KeyId::new();
     let key = key_storage
         .generate(key_id, key_algorithm, serde_json::json!({}))
         .await

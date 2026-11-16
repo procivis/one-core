@@ -5,6 +5,7 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use reqwest::header::AUTHORIZATION;
 use serde_json::json;
+use shared_types::{ManagedInstanceId, RevocationListEntryId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -161,7 +162,7 @@ async fn activate_wallet_unit_invalid_id() {
         .api
         .wallet_provider
         .activate_wallet(
-            Uuid::new_v4().into(),
+            ManagedInstanceId::new(),
             "dummy attestation",
             "dummy proof",
             None,
@@ -313,7 +314,7 @@ async fn activate_instance_verifier_role_provisions_access_certificate() {
     // given: a standalone mock server whose URL is known before the app config is built, since
     // `accessCertificateConfiguration.providerUrl` has to be baked into the static YAML config.
     let access_cert_provider = MockServer::start().await;
-    let signature_id = Uuid::new_v4().into();
+    let signature_id = RevocationListEntryId::new();
     Mock::given(method(Method::POST))
         .and(path("/provision"))
         .and(header(AUTHORIZATION, "Bearer test-access-token"))

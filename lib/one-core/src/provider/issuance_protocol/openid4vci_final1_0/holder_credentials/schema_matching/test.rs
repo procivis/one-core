@@ -1,5 +1,8 @@
 use rstest::rstest;
-use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId};
+use shared_types::{
+    ClaimId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaFormatClaimSchemaId,
+    CredentialSchemaFormatId, CredentialSchemaId,
+};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -32,9 +35,9 @@ async fn required_array_child_must_exist_in_every_element(#[case] stored_require
     degrees.array = true;
     let degree_type = claim_schema("degrees/type", "STRING");
     let name = claim_schema("name", "STRING");
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let mut schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![degrees.clone(), degree_type.clone(), name.clone()],
@@ -99,9 +102,9 @@ async fn required_child_of_nested_arrays_must_exist_at_every_nested_index() {
     let mut courses = claim_schema("degrees/courses", "OBJECT");
     courses.array = true;
     let course_type = claim_schema("degrees/courses/type", "STRING");
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![degrees.clone(), courses.clone(), course_type.clone()],
@@ -136,9 +139,9 @@ async fn required_array_child_not_mapped_to_current_format_is_ignored() {
     let mut degrees = claim_schema("degrees", "OBJECT");
     degrees.array = true;
     let degree_type = claim_schema("degrees/type", "STRING");
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![degrees.clone(), degree_type],
@@ -162,9 +165,9 @@ async fn required_child_is_checked_only_when_optional_parent_is_present() {
     let mut address = claim_schema("address", "OBJECT");
     address.required = false;
     let city = claim_schema("address/city", "STRING");
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![address.clone(), city.clone()],
@@ -212,9 +215,9 @@ async fn required_child_is_checked_only_in_array_elements_with_optional_parent()
     let mut details = claim_schema("degrees/details", "OBJECT");
     details.required = false;
     let detail_type = claim_schema("degrees/details/type", "STRING");
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![degrees.clone(), details.clone(), detail_type.clone()],
@@ -246,9 +249,9 @@ async fn required_child_is_checked_only_in_array_elements_with_optional_parent()
 #[tokio::test]
 async fn missing_ancestor_claim_schema_is_an_error() {
     let city = claim_schema("address/city", "STRING");
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![city.clone()],
@@ -269,7 +272,7 @@ async fn missing_ancestor_claim_schema_is_an_error() {
     let address = claim_schema("address", "OBJECT");
     let nested_city = claim_schema("address/location/city", "STRING");
     let nested_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![address.clone(), nested_city.clone()],
@@ -297,9 +300,9 @@ async fn missing_ancestor_claim_schema_is_an_error() {
 async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
     let mut parsed_claim = claim_schema("present", "STRING");
     parsed_claim.required = false;
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![parsed_claim.clone()],
@@ -309,9 +312,9 @@ async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
     let mut parsed_credential = credential(parsed_schema.clone(), vec![]).await;
 
     let required_claim = claim_schema("required", "STRING");
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "JWT",
         vec![required_claim.clone()],
@@ -365,9 +368,9 @@ async fn existing_ecosystem_schema_id_checks_required_claim_after_alignment() {
 #[tokio::test]
 async fn formatted_key_match_with_different_namespace_does_not_satisfy_stored_requirement() {
     let parsed_claim = claim_schema("parsed-city", "STRING");
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![parsed_claim.clone()],
@@ -386,8 +389,8 @@ async fn formatted_key_match_with_different_namespace_does_not_satisfy_stored_re
     .await;
 
     let required_claim = claim_schema("stored-city", "STRING");
-    let stored_format_id = Uuid::new_v4().into();
-    let stored_schema_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
+    let stored_schema_id = CredentialSchemaId::new();
     let stored_schema = credential_schema(
         stored_schema_id,
         stored_format_id,
@@ -448,9 +451,9 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
     #[values("JWT", "SD_JWT")] format: &str,
 ) {
     let parsed_claim = claim_schema("name", "STRING");
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         format,
         vec![parsed_claim.clone()],
@@ -463,8 +466,8 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
     let stored_claim = claim_schema("name", "STRING");
     let mut vct = claim_schema("vct", "STRING");
     vct.metadata = true;
-    let stored_format_id = Uuid::new_v4().into();
-    let stored_schema_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
+    let stored_schema_id = CredentialSchemaId::new();
     let mut stored_schema = credential_schema(
         stored_schema_id,
         stored_format_id,
@@ -472,7 +475,7 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
         vec![stored_claim.clone(), vct.clone()],
         vec![mapping(stored_format_id, stored_claim.id, "name", None)],
     );
-    let sd_jwt_vc_format_id = Uuid::new_v4().into();
+    let sd_jwt_vc_format_id = CredentialSchemaFormatId::new();
     stored_schema
         .formats
         .as_mut()
@@ -535,9 +538,9 @@ async fn existing_multiformat_schema_ignores_missing_metadata_claims(
 
 #[tokio::test]
 async fn ecosystem_schema_id_match_takes_precedence_over_display_name_match() {
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![],
@@ -547,8 +550,8 @@ async fn ecosystem_schema_id_match_takes_precedence_over_display_name_match() {
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
 
     let mut display_name_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
+        CredentialSchemaFormatId::new(),
         "SD_JWT",
         vec![],
         vec![],
@@ -556,10 +559,10 @@ async fn ecosystem_schema_id_match_takes_precedence_over_display_name_match() {
     set_ecosystem_schema_id(&mut display_name_schema, "other-schema-id").await;
     add_name_translation(&mut display_name_schema, "en", "Display name").await;
 
-    let exact_schema_id = Uuid::new_v4().into();
+    let exact_schema_id = CredentialSchemaId::new();
     let exact_schema = credential_schema(
         exact_schema_id,
-        Uuid::new_v4().into(),
+        CredentialSchemaFormatId::new(),
         "JWT",
         vec![],
         vec![],
@@ -605,9 +608,9 @@ async fn matches_display_name_translation_and_adds_new_format(
 ) {
     let mut parsed_claim = claim_schema("parsed-name", parsed_data_type);
     add_claim_name_translation(&mut parsed_claim, "en", "Full name").await;
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT",
         vec![parsed_claim.clone()],
@@ -626,8 +629,8 @@ async fn matches_display_name_translation_and_adds_new_format(
     // match, and the heuristic data type mismatch must not reject it.
     let mut stored_claim = claim_schema("stored-name", stored_data_type);
     add_claim_name_translation(&mut stored_claim, "en", "Full name").await;
-    let stored_format_id = Uuid::new_v4().into();
-    let stored_schema_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
+    let stored_schema_id = CredentialSchemaId::new();
     let mut stored_schema = credential_schema(
         stored_schema_id,
         stored_format_id,
@@ -691,9 +694,9 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
     let mut parsed_exp = claim_schema("exp", "NUMBER");
     parsed_exp.metadata = true;
     parsed_exp.required = false;
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT",
         vec![parsed_exp.clone()],
@@ -709,8 +712,8 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
     stored_exp.metadata = true;
     stored_exp.required = false;
     let stored_exp_id = stored_exp.id;
-    let stored_format_id = Uuid::new_v4().into();
-    let stored_schema_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
+    let stored_schema_id = CredentialSchemaId::new();
     let mut stored_schema = credential_schema(
         stored_schema_id,
         stored_format_id,
@@ -904,9 +907,9 @@ async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_
 async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key() {
     let mut parsed_claim = claim_schema("claim", "STRING");
     add_claim_name_translation(&mut parsed_claim, "en", "New claim").await;
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT",
         vec![parsed_claim.clone()],
@@ -926,9 +929,9 @@ async fn display_name_match_renames_a_new_claim_with_a_conflicting_internal_key(
     let mut stored_claim = claim_schema("claim", "STRING");
     stored_claim.required = false;
     add_claim_name_translation(&mut stored_claim, "en", "Existing claim").await;
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "JWT",
         vec![stored_claim.clone()],
@@ -998,9 +1001,9 @@ async fn matches_duplicate_claim_display_names_within_their_parent_hierarchy() {
         parsed_father_name.clone(),
         parsed_father_birthday.clone(),
     ];
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT",
         parsed_claim_schemas.clone(),
@@ -1029,8 +1032,8 @@ async fn matches_duplicate_claim_display_names_within_their_parent_hierarchy() {
         stored_father_name.clone(),
         stored_father_birthday.clone(),
     ];
-    let stored_format_id = Uuid::new_v4().into();
-    let stored_schema_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
+    let stored_schema_id = CredentialSchemaId::new();
     let mut stored_schema = credential_schema(
         stored_schema_id,
         stored_format_id,
@@ -1091,9 +1094,9 @@ async fn matches_duplicate_claim_display_names_within_their_parent_hierarchy() {
 
 #[tokio::test]
 async fn display_name_match_with_same_format_and_different_schema_id_imports_new_schema() {
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![],
@@ -1104,8 +1107,8 @@ async fn display_name_match_with_same_format_and_different_schema_id_imports_new
     let parsed_format = parsed_schema.formats.as_ref().await.unwrap()[0].clone();
 
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
+        CredentialSchemaFormatId::new(),
         "JWT",
         vec![],
         vec![],
@@ -1158,9 +1161,9 @@ async fn display_name_match_with_conflicting_claim_imports_new_schema(
     let mut parsed_claim = claim_schema("claim", parsed_data_type);
     parsed_claim.array = parsed_array;
     add_claim_name_translation(&mut parsed_claim, "en", "Claim").await;
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT",
         vec![parsed_claim.clone()],
@@ -1173,9 +1176,9 @@ async fn display_name_match_with_conflicting_claim_imports_new_schema(
     let mut stored_claim = claim_schema("claim", stored_data_type);
     stored_claim.array = stored_array;
     add_claim_name_translation(&mut stored_claim, "en", "Claim").await;
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "JWT",
         vec![stored_claim.clone()],
@@ -1221,9 +1224,9 @@ async fn display_name_match_requires_only_non_metadata_claims(
 ) {
     let mut parsed_claim = claim_schema("parsed-present", "STRING");
     add_claim_name_translation(&mut parsed_claim, "en", "Present").await;
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT",
         vec![parsed_claim.clone()],
@@ -1243,9 +1246,9 @@ async fn display_name_match_requires_only_non_metadata_claims(
     let mut stored_missing = claim_schema(missing_claim_key, "STRING");
     stored_missing.metadata = metadata;
     add_claim_name_translation(&mut stored_missing, "en", "Missing").await;
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "SD_JWT_VC",
         vec![stored_present.clone(), stored_missing.clone()],
@@ -1298,9 +1301,9 @@ async fn display_name_match_requires_only_non_metadata_claims(
 async fn display_name_match_with_metadata_mismatch_imports_new_schema() {
     let mut parsed_claim = claim_schema("parsed-claim", "STRING");
     add_claim_name_translation(&mut parsed_claim, "en", "Claim").await;
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let mut parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT",
         vec![parsed_claim.clone()],
@@ -1318,9 +1321,9 @@ async fn display_name_match_with_metadata_mismatch_imports_new_schema() {
     let mut stored_claim = claim_schema("stored-claim", "STRING");
     stored_claim.metadata = true;
     add_claim_name_translation(&mut stored_claim, "en", "Claim").await;
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "JWT",
         vec![stored_claim.clone()],
@@ -1364,9 +1367,9 @@ async fn display_name_match_with_metadata_mismatch_imports_new_schema() {
 #[tokio::test]
 async fn matches_existing_schema() {
     let parsed_cs = claim_schema("address/city", "STRING");
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![parsed_cs.clone()],
@@ -1381,8 +1384,8 @@ async fn matches_existing_schema() {
     // stored V2 schema: non-empty mappings, matched by technical_key + namespace
     let stored_cs = claim_schema("addr/city", "STRING");
     let stored_cs_id = stored_cs.id;
-    let stored_format_id = Uuid::new_v4().into();
-    let stored_id: CredentialSchemaId = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
+    let stored_id: CredentialSchemaId = CredentialSchemaId::new();
     let mut stored_schema = credential_schema(
         stored_id,
         stored_format_id,
@@ -1428,9 +1431,9 @@ async fn reuses_swiyu_format_for_parsed_sd_jwt_vc(
         .insert("SD_JWT_VC_SWIYU".into(), sd_jwt_vc_config);
 
     let parsed_claim = claim_schema("name", "STRING");
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "SD_JWT_VC",
         vec![parsed_claim.clone()],
@@ -1441,9 +1444,9 @@ async fn reuses_swiyu_format_for_parsed_sd_jwt_vc(
         credential(parsed_schema.clone(), vec![claim("name", &parsed_claim)]).await;
 
     let stored_claim = claim_schema("local-name", "STRING");
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "SD_JWT_VC_SWIYU",
         vec![stored_claim.clone()],
@@ -1513,9 +1516,9 @@ async fn remaps_nested_and_array_claim_paths() {
     parsed_root.array = true;
     let parsed_street = claim_schema("addresses/street", "STRING");
 
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![parsed_root.clone(), parsed_street.clone()],
@@ -1530,9 +1533,9 @@ async fn remaps_nested_and_array_claim_paths() {
     let stored_root_id = stored_root.id;
     let stored_street = claim_schema("addr/street", "STRING");
     let stored_street_id = stored_street.id;
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "JWT",
         vec![stored_root, stored_street],
@@ -1583,17 +1586,17 @@ async fn returns_new_claim_schemas() {
         required: false,
         ..claim_schema("newClaim", "STRING")
     };
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![parsed_cs.clone()],
         vec![mapping(parsed_format_id, parsed_cs.id, "newClaim", None)],
     );
 
-    let stored_id: CredentialSchemaId = Uuid::new_v4().into();
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_id: CredentialSchemaId = CredentialSchemaId::new();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let cs = claim_schema("other", "STRING");
     let cs_id = cs.id;
     let mut stored_schema = credential_schema(
@@ -1653,9 +1656,9 @@ async fn returns_new_claim_schemas() {
 async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts() {
     let parsed_parent = claim_schema("parsed-parent", "OBJECT");
     let parsed_child = claim_schema("parsed-parent/value", "STRING");
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![parsed_parent.clone(), parsed_child.clone()],
@@ -1678,9 +1681,9 @@ async fn renames_a_new_nested_claim_after_parent_remapping_if_its_key_conflicts(
     let stored_parent = claim_schema("stored-parent", "OBJECT");
     let mut stored_child = claim_schema("stored-parent/value", "STRING");
     stored_child.required = false;
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "JWT",
         vec![stored_parent.clone(), stored_child.clone()],
@@ -1743,16 +1746,16 @@ async fn errors_when_stored_format_does_not_match(
     #[case] explicit_format_id: bool,
 ) {
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
+        CredentialSchemaFormatId::new(),
         "JWT",
         vec![],
         vec![],
     );
 
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
+        CredentialSchemaFormatId::new(),
         stored_format,
         vec![],
         vec![],
@@ -1765,7 +1768,7 @@ async fn errors_when_stored_format_does_not_match(
         &mut stored_schema,
         credential.holder_mut().unwrap(),
         &generic_config().core,
-        explicit_format_id.then(|| Uuid::new_v4().into()),
+        explicit_format_id.then(CredentialSchemaFormatId::new),
     )
     .await;
 
@@ -1777,16 +1780,16 @@ async fn errors_when_parsed_mapping_missing() {
     // parsed schema has a claim schema but no corresponding claim mapping
     let parsed_cs = claim_schema("NUMBER", "NUMBER");
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
+        CredentialSchemaFormatId::new(),
         "JWT",
         vec![parsed_cs],
         vec![],
     );
 
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
+        CredentialSchemaFormatId::new(),
         "JWT",
         vec![],
         vec![],
@@ -1814,9 +1817,9 @@ async fn remaps_new_nested_and_array_claim_paths() {
     let mut parsed_nested2_array = claim_schema("root_mapped/nested2", "STRING");
     parsed_nested2_array.array = true;
 
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         format.as_ref(),
         vec![parsed_root.clone(), parsed_nested2_array.clone()],
@@ -1838,9 +1841,9 @@ async fn remaps_new_nested_and_array_claim_paths() {
     let mut stored_nested = claim_schema("root/nested", "STRING");
     stored_nested.required = false;
     let stored_nested_id = stored_nested.id;
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         format.as_ref(),
         vec![stored_root, stored_nested],
@@ -1931,7 +1934,7 @@ fn config_with_datatypes() -> CoreConfig {
 fn claim_schema(key: &str, data_type: &str) -> ClaimSchema {
     let now = now_utc();
     ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: key.to_string(),
         data_type: data_type.to_string(),
         created_date: now,
@@ -1951,7 +1954,7 @@ fn mapping(
 ) -> CredentialSchemaFormatClaimSchema {
     let now = now_utc();
     CredentialSchemaFormatClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatClaimSchemaId::new(),
         created_date: now,
         last_modified: now,
         credential_schema_format_id: format_id,
@@ -1964,7 +1967,7 @@ fn mapping(
 fn claim(path: &str, schema: &ClaimSchema) -> Claim {
     let now = now_utc();
     Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: now,
         last_modified: now,
         value: Some("value".to_string()),
@@ -2078,7 +2081,7 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
-            id: Uuid::new_v4().into(),
+            id: CredentialId::new(),
             created_date: now,
             issuance_date: None,
             last_modified: now,
@@ -2117,9 +2120,9 @@ async fn relinks_claims_of_new_root_array_claim_schema() {
     parsed_addresses.array = true;
     let parsed_street = claim_schema("addresses/street", "STRING");
 
-    let parsed_format_id = Uuid::new_v4().into();
+    let parsed_format_id = CredentialSchemaFormatId::new();
     let parsed_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         parsed_format_id,
         "JWT",
         vec![
@@ -2136,9 +2139,9 @@ async fn relinks_claims_of_new_root_array_claim_schema() {
 
     // stored: only `name` known (first accepted credential had no `addresses`)
     let stored_name = claim_schema("name", "STRING");
-    let stored_format_id = Uuid::new_v4().into();
+    let stored_format_id = CredentialSchemaFormatId::new();
     let mut stored_schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         stored_format_id,
         "JWT",
         vec![stored_name.clone()],

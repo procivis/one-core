@@ -6,7 +6,7 @@ use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use maplit::hashmap;
 use serde_json::json;
-use shared_types::DidValue;
+use shared_types::{DidValue, IdentifierId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use time::macros::datetime;
@@ -1280,7 +1280,7 @@ fn make_issuer_certificate(cert_id: uuid::Uuid) -> Certificate {
     let fingerprint = hex::encode([0u8; 32]);
     Certificate {
         id: cert_id.into(),
-        identifier_id: Uuid::new_v4().into(),
+        identifier_id: IdentifierId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,

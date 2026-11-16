@@ -22,6 +22,7 @@ use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
 use one_core::service::test_utilities::{dummy_identifier, dummy_trust_list_publication};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
+use shared_types::{TrustEntryId, TrustListPublicationId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -87,7 +88,8 @@ async fn setup() -> TestSetup {
     .await
     .unwrap();
 
-    let trust_list_publication_id: shared_types::TrustListPublicationId = Uuid::new_v4().into();
+    let trust_list_publication_id: shared_types::TrustListPublicationId =
+        TrustListPublicationId::new();
     trust_list_publication::ActiveModel {
         id: Set(trust_list_publication_id),
         created_date: Set(get_dummy_date()),
@@ -137,7 +139,7 @@ fn dummy_trust_entry(
     identifier_id: shared_types::IdentifierId,
 ) -> TrustEntry {
     TrustEntry {
-        id: Uuid::new_v4().into(),
+        id: TrustEntryId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         state: TrustEntryStateEnum::Active,
@@ -171,7 +173,7 @@ async fn test_create_trust_entry() {
 async fn test_get_trust_entry_missing() {
     let setup = setup().await;
 
-    let result = setup.provider.get(Uuid::new_v4().into()).await;
+    let result = setup.provider.get(TrustEntryId::new()).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
@@ -245,7 +247,7 @@ async fn test_list_trust_entries_filter_by_publication_id() {
     let setup = setup().await;
 
     // Create a second publication
-    let other_pub_id: shared_types::TrustListPublicationId = Uuid::new_v4().into();
+    let other_pub_id: shared_types::TrustListPublicationId = TrustListPublicationId::new();
     trust_list_publication::ActiveModel {
         id: Set(other_pub_id),
         created_date: Set(get_dummy_date()),
@@ -537,7 +539,8 @@ async fn test_get_trust_entry_with_publication_relation() {
             .await
             .unwrap();
 
-    let trust_list_publication_id: shared_types::TrustListPublicationId = Uuid::new_v4().into();
+    let trust_list_publication_id: shared_types::TrustListPublicationId =
+        TrustListPublicationId::new();
     trust_list_publication::ActiveModel {
         id: Set(trust_list_publication_id),
         created_date: Set(get_dummy_date()),
@@ -611,7 +614,7 @@ async fn test_update_trust_entry_not_found() {
     let result = setup
         .provider
         .update(
-            Uuid::new_v4().into(),
+            TrustEntryId::new(),
             UpdateTrustEntryRequest {
                 state: Some(TrustEntryStateEnum::Suspended),
                 ..Default::default()

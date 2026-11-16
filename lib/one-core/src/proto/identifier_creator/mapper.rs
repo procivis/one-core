@@ -105,9 +105,9 @@ pub(crate) fn issuer_display_to_identifier_translations(
 
 #[cfg(test)]
 mod tests {
+    use shared_types::IdentifierId;
     use similar_asserts::assert_eq;
     use standardized_types::openid4vci::{Image, IssuerDisplay};
-    use uuid::Uuid;
 
     use super::{build_identifier_translations, issuer_display_to_identifier_translations};
     use crate::clock::now_utc;
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn build_identifier_translations_backfills_default_language_name() {
-        let id = Uuid::new_v4().into();
+        let id = IdentifierId::new();
         let supplied = IdentifierTranslations {
             name: shared_types::I18nString::from([("pl", "Nazwisko")]),
             logo_alt_text: None,
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn build_identifier_translations_keeps_supplied_default_language_name() {
-        let id = Uuid::new_v4().into();
+        let id = IdentifierId::new();
         let supplied = IdentifierTranslations {
             name: shared_types::I18nString::from([("en", "Given name")]),
             logo_alt_text: None,

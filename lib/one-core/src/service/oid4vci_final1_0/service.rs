@@ -25,7 +25,6 @@ use standardized_types::openid4vci::{
 };
 use time::OffsetDateTime;
 use url::Url;
-use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
 use super::dto::{
@@ -1033,7 +1032,7 @@ impl OID4VCIFinal1_0Service {
                 let mut items = Vec::with_capacity(holder_identifiers.len());
                 for holder in holder_identifiers {
                     let mut item = template.clone();
-                    item.common_mut().id = Uuid::new_v4().into();
+                    item.common_mut().id = CredentialId::new();
                     let issued = issuance_protocol
                         .issuer_issue_credential(
                             item,
@@ -2135,7 +2134,7 @@ impl OID4VCIFinal1_0Service {
             .error_while("preparing issuer batch item")
             .into());
         };
-        common.id = Uuid::new_v4().into();
+        common.id = CredentialId::new();
         common.created_date = now;
         // mdoc refreshes are rate-limited by last_modified: measured from the previous
         // issuance of the format, the parent is only updated by the first issuance.

@@ -2,9 +2,9 @@ use one_core::model::localized_text::{LocalizedText, LocalizedTextEntityType, Lo
 use one_core::model::relation::AsyncBatchLoader;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use sea_orm::{EntityTrait, Set};
+use shared_types::EntityId;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::entity::localized_text;
 use crate::localized_text::{LocalizedTextLoader, LocalizedTextProvider};
@@ -189,7 +189,7 @@ async fn test_replace_does_not_affect_other_entities() {
 
     let localized_text = dummy_text();
     let mut other_entity_text = dummy_text();
-    other_entity_text.entity_id = Uuid::new_v4().into();
+    other_entity_text.entity_id = EntityId::new();
     provider
         .upsert_many(vec![localized_text.clone(), other_entity_text.clone()])
         .await
@@ -207,7 +207,7 @@ async fn test_replace_does_not_affect_other_entities() {
 
 fn dummy_text() -> LocalizedText {
     LocalizedText {
-        entity_id: Uuid::new_v4().into(),
+        entity_id: EntityId::new(),
         field: LocalizedTextField::Name,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use shared_types::{CredentialSchemaId, ProofSchemaId};
-use uuid::Uuid;
 
 use super::ProofSchemaService;
 use super::dto::{
@@ -276,7 +275,7 @@ impl ProofSchemaService {
             ));
         }
 
-        let proof_schema_id = Uuid::new_v4().into();
+        let proof_schema_id = ProofSchemaId::new();
         let imported_source_url = request.schema.imported_source_url.to_owned();
 
         let success_log = format!(

@@ -829,7 +829,7 @@ impl SSIHolderService {
             .await
             .error_while("preparing DPoP key")?;
 
-        let interaction_id: InteractionId = Uuid::new_v4().into();
+        let interaction_id: InteractionId = InteractionId::new();
         let authorization_request = AuthorizationRequest::builder()
             .client_id(request.client_id.clone())
             .maybe_scope(request.scope.as_ref().map(|s| s.join(" ")))

@@ -28,7 +28,9 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::jwe::{Header as JweHeader, build_jwe, decrypt_jwe_payload};
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialId, DidValue, InteractionId};
+use shared_types::{
+    CertificateId, CredentialFormat, CredentialId, DidValue, IdentifierId, InteractionId,
+};
 use similar_asserts::assert_eq;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
@@ -724,7 +726,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
     const NUM_CREDENTIALS: usize = 10;
     for _ in 0..NUM_CREDENTIALS {
         let schema_id = schema_id.clone();
-        let interaction_id: InteractionId = Uuid::new_v4().into();
+        let interaction_id: InteractionId = InteractionId::new();
         let access_token = format!("{interaction_id}.test");
         let interaction_data = dummy_issuer_interaction_data(
             access_token.as_str(),
@@ -852,7 +854,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
     const NUM_CREDENTIALS: usize = 10;
     for _ in 0..NUM_CREDENTIALS {
         let schema_id = schema_id.clone();
-        let interaction_id: InteractionId = Uuid::new_v4().into();
+        let interaction_id: InteractionId = InteractionId::new();
         let access_token = format!("{interaction_id}.test");
         let interaction_data =
             dummy_issuer_interaction_data(&access_token, IssuerInteractionDataParams::default());
@@ -1046,7 +1048,7 @@ async fn issuer_setup_with_key_roles(
     additional_config: Option<String>,
     key_roles: &[KeyRole],
 ) -> TestIssuerSetup {
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let access_token = format!("{interaction_id}.test");
     let context = TestContext::new_with_token(&access_token, additional_config).await;
 
@@ -1865,7 +1867,7 @@ async fn mdoc_issuer_setup(
     credential_type: CredentialType,
     additional_config: Option<String>,
 ) -> MdocIssuerSetup {
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let access_token = format!("{interaction_id}.test");
 
     let context = TestContext::new_with_token(&access_token, additional_config).await;
@@ -1878,13 +1880,13 @@ async fn mdoc_issuer_setup(
         .create(&organisation, eddsa_testing_params())
         .await;
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = one_core::clock::now_utc();
 
     let fingerprint =
         "b97935d875d0f9adff52f4a547db4ffc533ecc6372cba6cbe657ff53ad65248d".to_string();
     let certificate_model = Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id,
         organisation: organisation.clone().into(),
         created_date: now,

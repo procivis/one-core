@@ -3,10 +3,9 @@ use std::borrow::Cow;
 use anyhow::Context;
 use futures::FutureExt;
 use futures::future::BoxFuture;
-use shared_types::{BlobId, EcosystemId, ProofId};
+use shared_types::{BlobId, EcosystemId, InteractionId, ProofId};
 use standardized_types::openid4vp::DirectPostResponse;
 use tracing::warn;
-use uuid::Uuid;
 
 use super::ProofService;
 use super::error::ProofServiceError;
@@ -71,7 +70,7 @@ impl ProofService {
                     BLEVerifierProtocolData::V2 {
                         submission: Some(submission),
                         ..
-                    } => (Uuid::new_v4().into(), VpSubmissionData::Dcql(submission)),
+                    } => (InteractionId::new(), VpSubmissionData::Dcql(submission)),
                     _ => {
                         return Err(anyhow::anyhow!(
                             "BLE interaction missing presentation_submission"
@@ -96,7 +95,7 @@ impl ProofService {
 
                 let (state, submission_data) = match interaction_data.protocol_data {
                     MQTTVerifierProtocolData::V2 { submission, .. } => {
-                        (Uuid::new_v4().into(), VpSubmissionData::Dcql(submission))
+                        (InteractionId::new(), VpSubmissionData::Dcql(submission))
                     }
                 };
 

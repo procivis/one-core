@@ -20,7 +20,6 @@ use shared_types::{
     CertificateId, CredentialId, IdentifierId, RevocationListEntryId, RevocationListId,
     RevocationMethodId,
 };
-use uuid::Uuid;
 
 use super::RevocationListProvider;
 use super::mapper::revocation_list_entry_from_model;
@@ -287,7 +286,7 @@ impl RevocationListRepository for RevocationListProvider {
         };
 
         let now = one_core::clock::now_utc();
-        let entry_id: RevocationListEntryId = Uuid::new_v4().into();
+        let entry_id: RevocationListEntryId = RevocationListEntryId::new();
 
         self.db
             .tx(async move {

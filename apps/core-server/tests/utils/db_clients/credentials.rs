@@ -13,7 +13,7 @@ use one_core::model::relation::Related;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::service::test_utilities::CredentialBuilder;
 use one_dto_mapper::convert_inner;
-use shared_types::CredentialId;
+use shared_types::{ClaimId, CredentialId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -92,7 +92,7 @@ impl CredentialsDB {
         protocol: &str,
         params: TestingCredentialParams,
     ) -> Credential {
-        let credential_id = params.id.unwrap_or(Uuid::new_v4().into());
+        let credential_id = params.id.unwrap_or(CredentialId::new());
         let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
 
         let claims: Vec<Claim> = if let Some(claims_data) = params.claims_data {
@@ -105,7 +105,7 @@ impl CredentialsDB {
                         .expect("Missing claim schema id");
 
                     Claim {
-                        id: Uuid::new_v4().into(),
+                        id: ClaimId::new(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         value: new_claim.value,
@@ -127,7 +127,7 @@ impl CredentialsDB {
                     if claim_schema.array {
                         vec![
                             Claim {
-                                id: Uuid::new_v4().into(),
+                                id: ClaimId::new(),
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
                                 value: schema_to_dummy_value(claim_schema, params.random_claims),
@@ -136,7 +136,7 @@ impl CredentialsDB {
                                 schema: claim_schema.to_owned().into(),
                             },
                             Claim {
-                                id: Uuid::new_v4().into(),
+                                id: ClaimId::new(),
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
                                 value: None,
@@ -147,7 +147,7 @@ impl CredentialsDB {
                         ]
                     } else {
                         vec![Claim {
-                            id: Uuid::new_v4().into(),
+                            id: ClaimId::new(),
                             created_date: get_dummy_date(),
                             last_modified: get_dummy_date(),
                             value: schema_to_dummy_value(claim_schema, params.random_claims),
@@ -336,14 +336,14 @@ impl CredentialsDB {
             } else {
                 None
             };
-            let item_id = Uuid::new_v4().into();
+            let item_id = CredentialId::new();
             let claims = holder_claims
                 .as_ref()
                 .map(|claims| {
                     claims
                         .iter()
                         .map(|claim| Claim {
-                            id: Uuid::new_v4().into(),
+                            id: ClaimId::new(),
                             ..claim.clone()
                         })
                         .collect::<Vec<_>>()

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::WalletAttestationId;
-use uuid::Uuid;
+use shared_types::{HistoryId, WalletAttestationId};
 
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
@@ -30,7 +29,7 @@ impl WalletAttestationRepository for WalletAttestationHistoryDecorator {
     ) -> Result<WalletAttestationId, DataLayerError> {
         let instance_id = wallet_attestation.instance_id;
         let history = History {
-            id: Uuid::new_v4().into(),
+            id: HistoryId::new(),
             created_date: crate::clock::now_utc(),
             action: match wallet_attestation.r#type {
                 AttestationType::WalletInstanceAttestation => HistoryAction::WiaCreated,

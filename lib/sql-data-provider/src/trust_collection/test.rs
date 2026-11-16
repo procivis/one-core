@@ -13,10 +13,9 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use one_core::service::test_utilities::dummy_organisation;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, Unchanged};
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, TrustCollectionId};
 use similar_asserts::assert_eq;
 use url::Url;
-use uuid::Uuid;
 
 use crate::entity::trust_list_subscription;
 use crate::test_utilities::{
@@ -51,7 +50,7 @@ async fn setup() -> TestSetup {
 fn dummy_trust_collection(org_id: OrganisationId) -> TrustCollection {
     TrustCollection {
         ecosystem: "EUDI".into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "test-collection".to_string(),
@@ -79,7 +78,7 @@ async fn test_create_trust_collection() {
 async fn test_get_trust_collection_missing() {
     let TestSetup { provider, .. } = setup().await;
 
-    let result = provider.get(&Uuid::new_v4().into()).await;
+    let result = provider.get(&TrustCollectionId::new()).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 

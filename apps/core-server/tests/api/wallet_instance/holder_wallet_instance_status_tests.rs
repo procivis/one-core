@@ -1,6 +1,6 @@
 use one_core::model::instance::{InstanceRole, InstanceStatus, WalletProviderType};
+use shared_types::{InstanceId, KeyId, ManagedInstanceId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
@@ -10,7 +10,7 @@ use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstancePa
 async fn test_holder_instance_status_not_found() {
     // GIVEN
     let context = TestContext::new(None).await;
-    let non_existent_id = Uuid::new_v4().into();
+    let non_existent_id = InstanceId::new();
 
     // WHEN
     let resp = context
@@ -37,7 +37,7 @@ async fn test_holder_instance_status_already_revoked() {
         .create(
             &org,
             TestingKeyParams {
-                id: Some(Uuid::new_v4().into()),
+                id: Some(KeyId::new()),
                 created_date: Some(now),
                 last_modified: Some(now),
                 name: Some("authentication_key".to_string()),
@@ -61,7 +61,7 @@ async fn test_holder_instance_status_already_revoked() {
                 provider_type: Some(WalletProviderType::ProcivisOne),
                 provider_name: Some("PROCIVIS_ONE".to_string()),
                 provider_url: Some("https://wallet.provider".to_string()),
-                provider_wallet_unit_id: Some(Uuid::new_v4().into()),
+                provider_wallet_unit_id: Some(ManagedInstanceId::new()),
                 role: Some(InstanceRole::Wallet),
                 user_nonce: None,
             },

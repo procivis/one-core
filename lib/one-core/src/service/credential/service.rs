@@ -2,8 +2,7 @@ use std::collections::HashSet;
 
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialId};
-use uuid::Uuid;
+use shared_types::{CredentialFormat, CredentialId, InteractionId};
 
 use super::CredentialService;
 use super::dto::{
@@ -192,7 +191,7 @@ impl CredentialService {
         .error_while("validating ecosystem")?;
         drop(organisation);
 
-        let credential_id = Uuid::new_v4().into();
+        let credential_id = CredentialId::new();
         let claims = claims_from_create_request(
             request.claim_values.clone(),
             &schema.claim_schemas.as_ref().await?,
@@ -228,7 +227,7 @@ impl CredentialService {
 
             Some(
                 add_new_interaction(
-                    Uuid::new_v4().into(),
+                    InteractionId::new(),
                     &*self.interaction_repository,
                     interaction_data,
                     schema.organisation.to_owned(),

@@ -6,6 +6,7 @@ use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_entry::TrustEntryStateEnum;
 use one_core::model::trust_list_role::TrustListRoleEnum;
+use shared_types::{CertificateId, IdentifierId, TrustListPublicationId};
 use time::Duration;
 use uuid::Uuid;
 
@@ -115,7 +116,7 @@ async fn test_get_trust_list_publication_entries_empty() {
 async fn test_fail_to_get_trust_list_publication_entries_not_found() {
     // given
     let (context, ..) = TestContext::new_with_certificate_identifier(None).await;
-    let non_existent_id = uuid::Uuid::new_v4().into();
+    let non_existent_id = TrustListPublicationId::new();
 
     // when
     let resp = context
@@ -214,10 +215,10 @@ async fn create_dummy_certificate_identifier(
     key: &Key,
     identifier_name: impl Into<String>,
 ) -> (Identifier, Certificate) {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = one_core::clock::now_utc();
     let certificate = Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id,
         organisation: organisation.clone().into(),
         created_date: now,

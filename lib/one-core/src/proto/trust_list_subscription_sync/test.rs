@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex};
 use shared_types::{TrustCollectionId, TrustListSubscriptionId};
 use similar_asserts::assert_eq;
 use url::Url;
-use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::trust_collection::TrustCollection;
@@ -44,14 +43,14 @@ async fn test_sync_subscriptions() {
         trust_lists: vec![
             RemoteTrustList {
                 name: "to be newly creted".to_string(),
-                id: Uuid::new_v4().into(),
+                id: TrustListSubscriptionId::new(),
                 role: RemoteTrustListRole::PidProvider,
                 reference: "https://newly.created".to_string(),
                 r#type: "test_provider".into(),
             },
             RemoteTrustList {
                 name: "existing and remaining".to_string(),
-                id: Uuid::new_v4().into(),
+                id: TrustListSubscriptionId::new(),
                 role: RemoteTrustListRole::PidProvider,
                 reference: "https://existing.com".to_string(),
                 r#type: "test_provider".into(),
@@ -65,7 +64,7 @@ async fn test_sync_subscriptions() {
         .once()
         .returning(move |_| Ok(remote_list.clone()));
     let trust_collection = test_collection(true);
-    let to_be_deleted = Uuid::new_v4().into();
+    let to_be_deleted = TrustListSubscriptionId::new();
     let local_collection_id = trust_collection.id;
     let mut repository = MockTrustListSubscriptionRepository::new();
     repository.expect_list().once().returning(move |_| {
@@ -77,7 +76,7 @@ async fn test_sync_subscriptions() {
         Ok(GetTrustListSubscriptionList {
             values: vec![
                 TrustListSubscription {
-                    id: Uuid::new_v4().into(),
+                    id: TrustListSubscriptionId::new(),
                     name: "existing and remaining".to_string(),
                     created_date: now,
                     last_modified: now,
@@ -114,7 +113,7 @@ async fn test_sync_subscriptions() {
         .once()
         .returning(|newly_created| {
             assert_eq!(newly_created.reference, "https://newly.created");
-            Ok(Uuid::new_v4().into())
+            Ok(TrustListSubscriptionId::new())
         });
 
     let proto = TrustListSubscriptionSyncImpl::new(
@@ -129,7 +128,7 @@ async fn test_sync_subscriptions() {
 async fn test_sync_subscriptions_deletes_outdated_subscription_before_creating_replacement() {
     let trust_collection = test_collection(true);
     let collection_id = trust_collection.id;
-    let outdated: TrustListSubscriptionId = Uuid::new_v4().into();
+    let outdated: TrustListSubscriptionId = TrustListSubscriptionId::new();
 
     // the advertised list kept its name and changed its reference
     let remote_collection = remote_collection(vec![remote_list("pid list", "https://new.list")]);
@@ -164,7 +163,7 @@ async fn test_sync_subscriptions_deletes_outdated_subscription_before_creating_r
         assert_eq!(created.name, "pid list");
         assert_eq!(created.reference, "https://new.list");
         create_calls.lock().unwrap().push("create");
-        Ok(Uuid::new_v4().into())
+        Ok(TrustListSubscriptionId::new())
     });
 
     let proto = TrustListSubscriptionSyncImpl::new(
@@ -212,7 +211,7 @@ async fn test_sync_subscriptions_continues_when_a_subscription_already_exists() 
                     "test repository error"
                 )));
             }
-            Ok(Uuid::new_v4().into())
+            Ok(TrustListSubscriptionId::new())
         });
 
     let proto = TrustListSubscriptionSyncImpl::new(
@@ -239,7 +238,7 @@ fn remote_collection(trust_lists: Vec<RemoteTrustList>) -> RemoteTrustCollection
 fn remote_list(name: &str, reference: &str) -> RemoteTrustList {
     RemoteTrustList {
         name: name.to_string(),
-        id: Uuid::new_v4().into(),
+        id: TrustListSubscriptionId::new(),
         role: RemoteTrustListRole::PidProvider,
         reference: reference.to_string(),
         r#type: "test_provider".into(),
@@ -283,7 +282,7 @@ fn test_collection(is_remote: bool) -> TrustCollection {
     let now = crate::clock::now_utc();
     TrustCollection {
         ecosystem: "EUDI".into(),
-        id: uuid::Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: "test".into(),
         created_date: now,
         last_modified: now,

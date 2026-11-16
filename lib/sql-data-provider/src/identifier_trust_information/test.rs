@@ -51,7 +51,7 @@ async fn setup() -> TestSetup {
 #[tokio::test]
 async fn test_create_identifier_trust_information() {
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = IdentifierTrustInformationId::new();
 
     let trust_info = IdentifierTrustInformation {
         id,
@@ -83,7 +83,7 @@ async fn test_create_identifier_trust_information() {
 #[tokio::test]
 async fn test_get_identifier_trust_information() {
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = IdentifierTrustInformationId::new();
 
     let trust_info = IdentifierTrustInformation {
         id,
@@ -123,7 +123,7 @@ async fn test_get_identifier_trust_information() {
 #[tokio::test]
 async fn test_delete_identifier_trust_information() {
     let setup = setup().await;
-    let id: IdentifierTrustInformationId = Uuid::new_v4().into();
+    let id: IdentifierTrustInformationId = IdentifierTrustInformationId::new();
     setup
         .provider
         .create(IdentifierTrustInformation {

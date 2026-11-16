@@ -4,11 +4,10 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use assert2::let_assert;
 use mockall::Sequence;
-use shared_types::{I18nString, IdentifierId};
+use shared_types::{BlobId, CertificateId, DidId, I18nString, IdentifierId, KeyId, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::Duration;
-use uuid::Uuid;
 
 use super::creator::IdentifierCreatorProto;
 use super::{
@@ -107,7 +106,7 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
     certificate_repository
         .expect_create()
         .once()
-        .returning(move |_| Ok(Uuid::new_v4().into()));
+        .returning(move |_| Ok(CertificateId::new()));
 
     let now = crate::clock::now_utc();
 
@@ -138,7 +137,7 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
     identifier_repository
         .expect_create()
         .once()
-        .returning(move |_| Ok(Uuid::new_v4().into()));
+        .returning(move |_| Ok(IdentifierId::new()));
 
     let creator = setup_creator(Mocks {
         certificate_repository,
@@ -149,7 +148,7 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
 
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &IdentifierDetails::Certificate(CertificateDetails {
                 chain: "chain".to_string(),
                 fingerprint: "fingerprint".to_string(),
@@ -178,8 +177,8 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
     let mut certificate_repository = MockCertificateRepository::new();
 
     let organisation = dummy_organisation(None);
-    let certificate_id = Uuid::new_v4().into();
-    let identifier_id = Uuid::new_v4().into();
+    let certificate_id = CertificateId::new();
+    let identifier_id = IdentifierId::new();
     let now = crate::clock::now_utc();
     let certificate = Certificate {
         id: certificate_id,
@@ -308,7 +307,7 @@ async fn test_get_or_create_remote_identifier_key_existing() {
 
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
@@ -422,7 +421,7 @@ async fn test_get_or_create_remote_identifier_does_not_update_when_translations_
 
     creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &key_jwk(),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
@@ -488,7 +487,7 @@ async fn test_get_or_create_remote_identifier_updates_when_translations_differ()
 
     creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &key_jwk(),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
@@ -559,7 +558,7 @@ async fn test_get_or_create_remote_identifier_sets_logo_when_identifier_has_none
 
     creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &key_jwk(),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
@@ -579,7 +578,7 @@ async fn test_get_or_create_remote_identifier_does_not_refresh_existing_logo() {
     identifier.data = IdentifierData::Key(dummy_key().into());
     let identifier_id = identifier.id;
     // the identifier already has a logo and matching translations -> nothing to write
-    identifier.logo = Some(Uuid::new_v4().into());
+    identifier.logo = Some(BlobId::new());
     identifier.translations = vec![name_text(identifier_id, "en", "English issuer")].into();
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -603,7 +602,7 @@ async fn test_get_or_create_remote_identifier_does_not_refresh_existing_logo() {
 
     creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &key_jwk(),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             true,
@@ -683,7 +682,7 @@ async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
 
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
@@ -735,7 +734,7 @@ async fn test_create_local_identifier_did() {
     identifier_repository
         .expect_create()
         .once()
-        .return_once(move |_| Ok(Uuid::new_v4().into()));
+        .return_once(move |_| Ok(IdentifierId::new()));
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -770,7 +769,7 @@ async fn test_create_local_identifier_did() {
     did_repository
         .expect_create_did()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(DidId::new()));
 
     let creator = setup_creator(Mocks {
         key_algorithm_provider,
@@ -1014,7 +1013,7 @@ async fn test_create_local_identifier_key_threads_autogenerated_true() {
         .once()
         .returning(move |identifier| {
             assert!(identifier.autogenerated, "expected autogenerated = true");
-            Ok(Uuid::new_v4().into())
+            Ok(IdentifierId::new())
         });
 
     let creator = setup_creator(Mocks {
@@ -1053,7 +1052,7 @@ async fn test_create_local_identifier_key_threads_autogenerated_false() {
         .once()
         .returning(move |identifier| {
             assert!(!identifier.autogenerated, "expected autogenerated = false");
-            Ok(Uuid::new_v4().into())
+            Ok(IdentifierId::new())
         });
 
     let creator = setup_creator(Mocks {
@@ -1115,7 +1114,7 @@ async fn test_get_or_create_remote_identifier_key_new_is_autogenerated() {
     identifier_repository
         .expect_create()
         .once()
-        .returning(move |_| Ok(Uuid::new_v4().into()));
+        .returning(move |_| Ok(IdentifierId::new()));
 
     let creator = setup_creator(Mocks {
         key_algorithm_provider,
@@ -1126,7 +1125,7 @@ async fn test_get_or_create_remote_identifier_key_new_is_autogenerated() {
 
     let (identifier, _relation) = creator
         .get_or_create_remote_identifier(
-            Uuid::new_v4().into(),
+            OrganisationId::new(),
             &IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
@@ -1188,7 +1187,7 @@ async fn test_prepare_certificates_empty_requests() {
 
 #[tokio::test]
 async fn test_prepare_certificates_conflicts_with_existing_certificate() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let existing_cert = dummy_certificate(identifier_id); // fingerprint == "fingerprint"
 
@@ -1229,7 +1228,7 @@ async fn test_prepare_certificates_conflicts_with_existing_certificate() {
             vec![CreateCertificateRequestDTO {
                 name: None,
                 chain: Some("chain".to_string()),
-                key_id: Uuid::new_v4().into(),
+                key_id: KeyId::new(),
                 content: None,
                 roles: vec![CertificateRole::AssertionMethod],
             }],
@@ -1273,7 +1272,7 @@ async fn test_prepare_certificates_missing_signature_key_usage() {
             vec![CreateCertificateRequestDTO {
                 name: None,
                 chain: Some("chain".to_string()),
-                key_id: Uuid::new_v4().into(),
+                key_id: KeyId::new(),
                 content: None,
                 roles: vec![CertificateRole::AssertionMethod],
             }],
@@ -1296,7 +1295,7 @@ async fn test_prepare_certificate_authorities_empty_requests() {
 
 #[tokio::test]
 async fn test_prepare_certificate_authorities_conflicts_with_existing_certificate() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let organisation = dummy_organisation(None);
     let existing_cert = dummy_certificate(identifier_id); // fingerprint == "fingerprint"
 
@@ -1335,7 +1334,7 @@ async fn test_prepare_certificate_authorities_conflicts_with_existing_certificat
         .prepare_certificate_authorities(
             &identifier,
             vec![CreateCertificateAuthorityRequestDTO {
-                key_id: Uuid::new_v4().into(),
+                key_id: KeyId::new(),
                 name: None,
                 chain: Some("chain".to_string()),
                 self_signed: None,
@@ -1615,7 +1614,7 @@ async fn test_update_local_did_keys_fails_for_remote_did() {
     });
 
     let error = creator
-        .update_local_did_keys(did.id, keys_request(Uuid::new_v4().into()))
+        .update_local_did_keys(did.id, keys_request(KeyId::new()))
         .await
         .unwrap_err();
 
@@ -1636,7 +1635,7 @@ async fn test_update_local_did_keys_fails_for_deactivated_did() {
     });
 
     let error = creator
-        .update_local_did_keys(did.id, keys_request(Uuid::new_v4().into()))
+        .update_local_did_keys(did.id, keys_request(KeyId::new()))
         .await
         .unwrap_err();
 
@@ -1664,7 +1663,7 @@ async fn test_update_local_did_keys_fails_when_method_does_not_support_update() 
     });
 
     let error = creator
-        .update_local_did_keys(did.id, keys_request(Uuid::new_v4().into()))
+        .update_local_did_keys(did.id, keys_request(KeyId::new()))
         .await
         .unwrap_err();
 
@@ -1793,7 +1792,7 @@ async fn test_update_local_did_keys_rejects_missing_keys(#[case] partially_found
         organisation: organisation.clone().into(),
         ..dummy_key()
     };
-    let missing_key_id = Uuid::new_v4().into();
+    let missing_key_id = KeyId::new();
     let mut request = keys_request(missing_key_id);
     if partially_found {
         request.assertion_method = vec![key.id];

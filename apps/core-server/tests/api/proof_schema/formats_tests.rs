@@ -3,9 +3,8 @@ use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::organisation::Organisation;
 use one_core::repository::DataRepository;
 use serde_json::{Value, json};
-use shared_types::ProofSchemaId;
+use shared_types::{CredentialSchemaFormatId, ProofSchemaId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -97,7 +96,7 @@ async fn create_details_and_export_preserve_format_snapshots() {
     sql_data_provider::DataLayer::build(context.db.db_conn.clone(), vec![])
         .get_credential_schema_format_repository()
         .create_credential_schema_format(CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatId::new(),
             credential_schema_id: schema.id,
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),

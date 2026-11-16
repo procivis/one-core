@@ -10,7 +10,6 @@ use one_core::repository::wallet_attestation_repository::WalletAttestationReposi
 use one_dto_mapper::convert_inner;
 use shared_types::{InstanceId, WalletAttestationId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub struct WalletAttestationsDB {
     repository: Arc<dyn WalletAttestationRepository>,
@@ -50,7 +49,7 @@ impl WalletAttestationsDB {
     ) -> WalletAttestation {
         let now = one_core::clock::now_utc();
         let attestation = WalletAttestation {
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(WalletAttestationId::new()),
             r#type,
             created_date: now,
             last_modified: now,

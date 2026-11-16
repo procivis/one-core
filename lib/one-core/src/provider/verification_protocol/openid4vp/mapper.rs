@@ -5,9 +5,8 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use shared_types::{ClaimSchemaId, TransactionDataId};
+use shared_types::{ClaimSchemaId, CredentialId, TransactionDataId};
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 use super::VerificationProtocolError;
 use super::error::OpenID4VCError;
@@ -85,7 +84,7 @@ pub(crate) fn extracted_credential_to_model(
     issuance_date: Option<OffsetDateTime>,
 ) -> Result<ProvedCredential, OpenID4VCError> {
     let now = crate::clock::now_utc();
-    let credential_id = Uuid::new_v4().into();
+    let credential_id = CredentialId::new();
 
     let mut model_claims = vec![];
     for (value, claim_schema) in claims {

@@ -583,9 +583,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use shared_types::ClaimSchemaId;
+    use shared_types::{ClaimSchemaId, OrganisationId};
     use similar_asserts::assert_eq;
-    use uuid::Uuid;
 
     use super::*;
     use crate::model::claim_schema::ClaimSchema;
@@ -599,7 +598,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_from() {
-        let id = Uuid::new_v4().into();
+        let id = OrganisationId::new();
         let data = Related::from(dummy_organisation(Some(id)));
         assert_eq!(data.as_ref().await.unwrap().id, id);
 
@@ -618,7 +617,7 @@ mod tests {
 
         let repository: Arc<dyn OrganisationRepository> = Arc::new(repository);
 
-        let id = Uuid::new_v4().into();
+        let id = OrganisationId::new();
         let related = Related::new(id, repository);
         assert_eq!(related.id(), id);
         let organsation = related.as_ref().await.unwrap();
@@ -627,7 +626,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_model_loader_loads_whole_batch_once() {
-        let ids: Vec<ClaimSchemaId> = (0..3).map(|_| Uuid::new_v4().into()).collect();
+        let ids: Vec<ClaimSchemaId> = (0..3).map(|_| ClaimSchemaId::new()).collect();
 
         let mut repository = MockClaimSchemaRepository::new();
         repository
@@ -707,7 +706,7 @@ mod tests {
 
         let repository: Arc<dyn ClaimSchemaRepository> = Arc::new(repository);
 
-        let id = Uuid::new_v4().into();
+        let id = ClaimSchemaId::new();
         let related: RelatedVec<ClaimSchema> = RelatedVec::from_ids(vec![id], repository);
         let claim_schemas = related.as_ref().await.unwrap();
         assert_eq!(claim_schemas.len(), 0);

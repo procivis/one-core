@@ -1,4 +1,4 @@
-use shared_types::{DidId, DidValue, OrganisationId};
+use shared_types::{CertificateId, DidId, DidValue, IdentifierId, KeyId, OrganisationId};
 use standardized_types::jwk::PublicJwk;
 use uuid::Uuid;
 
@@ -71,7 +71,7 @@ impl IdentifierCreatorProto {
         {
             Some(identifier) => identifier,
             None => {
-                let identifier_id = Uuid::new_v4().into();
+                let identifier_id = IdentifierId::new();
                 let identifier = Identifier {
                     id: identifier_id,
                     created_date: now,
@@ -152,7 +152,7 @@ impl IdentifierCreatorProto {
         }
 
         let now = crate::clock::now_utc();
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let display_name = name.for_id(identifier_id);
 
         let mut identifier = Identifier {
@@ -182,7 +182,7 @@ impl IdentifierCreatorProto {
             .error_while("creating identifier")?;
 
         let certificate = Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation: organisation.to_owned(),
             created_date: now,
@@ -247,7 +247,7 @@ impl IdentifierCreatorProto {
 
             key
         } else {
-            let key_id = Uuid::new_v4().into();
+            let key_id = KeyId::new();
             let key = Key {
                 id: key_id,
                 created_date: now,
@@ -268,7 +268,7 @@ impl IdentifierCreatorProto {
             key
         };
 
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let display_name = name.for_id(identifier_id);
         let identifier = Identifier {
             id: identifier_id,

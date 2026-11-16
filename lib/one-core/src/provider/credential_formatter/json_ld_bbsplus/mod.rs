@@ -12,10 +12,12 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::DurationSeconds;
-use shared_types::{CredentialFormat, DidValue, RevocationMethodId, SerializedCredential};
+use shared_types::{
+    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, RevocationMethodId,
+    SerializedCredential,
+};
 use time::Duration;
 use url::Url;
-use uuid::Uuid;
 use verify_proof::extract_mandatory_pointers;
 
 use super::error::FormatterError;
@@ -474,7 +476,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             FormatterError::CouldNotExtractCredentials("Missing credential subject".to_string())
         })?;
 
-        let credential_id = Uuid::new_v4().into();
+        let credential_id = CredentialId::new();
         let mut claims = HashMap::from_iter(credential_subject.claims.clone());
         mark_claims_selectively_disclosable(&mut claims, mandatory_pointers);
         let (mut claims, mut claim_schemas) =
@@ -493,7 +495,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             .map(|s| s.id.clone())
             .unwrap_or_else(|| schema_name.clone());
 
-        let credential_schema_id = Uuid::new_v4().into();
+        let credential_schema_id = CredentialSchemaId::new();
         let format = to_format_with_mappings(
             self.config_id.clone(),
             credential_schema_id,

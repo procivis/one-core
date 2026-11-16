@@ -4,7 +4,6 @@ use one_core::model::blob::{Blob, BlobType};
 use one_core::repository::blob_repository::BlobRepository;
 use shared_types::BlobId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Debug, Default)]
 pub struct TestingBlobParams {
@@ -40,7 +39,7 @@ impl BlobsDB {
         let now = one_core::clock::now_utc();
 
         let blob = Blob {
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(BlobId::new()),
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
             value: params.value.unwrap_or(vec![1, 2, 3, 4, 5]),

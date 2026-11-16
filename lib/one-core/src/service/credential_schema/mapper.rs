@@ -2,7 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
+use shared_types::{
+    CredentialFormat, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId,
+    CredentialSchemaId, OrganisationId,
+};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::openid4vp::dcql;
 use standardized_types::openid4vp::dcql::{MsoMdocMeta, SdJwtVcMeta, W3cVcMeta};
@@ -643,7 +646,7 @@ pub(super) fn build_format_with_claim_mappings(
         (ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>),
     >,
 ) -> Result<CredentialSchemaFormat, CredentialSchemaServiceError> {
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let mut format_specific_mappings = vec![];
     for (claim_schema, mappings) in key_to_claim_schema_and_mappings.values() {
         let mapping = mappings.iter().find(|m| m.format == format);
@@ -662,7 +665,7 @@ pub(super) fn build_format_with_claim_mappings(
             )))?
             .clone();
         format_specific_mappings.push(CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: now,
             last_modified: now,
             credential_schema_format_id: format_id,

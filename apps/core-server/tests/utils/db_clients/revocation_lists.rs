@@ -16,7 +16,6 @@ use shared_types::{
 };
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub struct RevocationListsDB {
     repository: Arc<dyn RevocationListRepository>,
@@ -48,7 +47,7 @@ impl RevocationListsDB {
         let params = params.unwrap_or_default();
 
         let revocation_list = RevocationList {
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(RevocationListId::new()),
             created_date: params.created_date.unwrap_or(get_dummy_date()),
             last_modified: params.last_modified.unwrap_or(get_dummy_date()),
             formatted_list: params.formatted_list.unwrap_or_default(),

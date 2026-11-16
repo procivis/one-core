@@ -3,7 +3,6 @@ use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, NotificationId, OrganisationId, ProofId, TaskId};
 use time::OffsetDateTime;
 use url::{Host, Url};
-use uuid::Uuid;
 
 use super::{Error, NotificationPayload, NotificationScheduler, NotificationSchedulerImpl};
 use crate::config::core_config::TaskType;
@@ -33,7 +32,7 @@ impl NotificationScheduler for NotificationSchedulerImpl {
         let id = self
             .notification_repository
             .create(Notification {
-                id: Uuid::new_v4().into(),
+                id: NotificationId::new(),
                 created_date: crate::clock::now_utc(),
                 url: url.to_string(),
                 payload: serde_json::to_vec(&payload)?,

@@ -1,8 +1,8 @@
 use one_core::model::instance::{InstanceRole, InstanceStatus, WalletProviderType};
 use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisationRequest};
 use serde_json::json;
+use shared_types::{KeyId, ManagedInstanceId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -114,7 +114,7 @@ async fn test_get_organisation_returns_wallet_instance() {
         .create(
             &organisation,
             TestingKeyParams {
-                id: Some(Uuid::new_v4().into()),
+                id: Some(KeyId::new()),
                 created_date: Some(now),
                 last_modified: Some(now),
                 name: Some("auth-key".to_string()),
@@ -144,7 +144,7 @@ async fn test_get_organisation_returns_wallet_instance() {
                 provider_type: Some(WalletProviderType::ProcivisOne),
                 provider_name: Some("PROCIVIS_ONE".to_string()),
                 provider_url: Some(mock_server.uri()),
-                provider_wallet_unit_id: Some(Uuid::new_v4().into()),
+                provider_wallet_unit_id: Some(ManagedInstanceId::new()),
                 role: Some(InstanceRole::Wallet),
                 user_nonce: None,
             },
@@ -234,7 +234,7 @@ async fn test_get_organisation_with_verifier_instance_success() {
         .create(
             &organisation,
             TestingKeyParams {
-                id: Some(Uuid::new_v4().into()),
+                id: Some(KeyId::new()),
                 created_date: Some(now),
                 last_modified: Some(now),
                 name: Some("auth-key".to_string()),

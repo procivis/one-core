@@ -1260,8 +1260,8 @@ async fn check_disclosure_policy(
 #[cfg(test)]
 mod test {
     use rstest::rstest;
+    use shared_types::{CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId};
     use similar_asserts::assert_eq;
-    use uuid::Uuid;
 
     use super::*;
     use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
@@ -1284,12 +1284,12 @@ mod test {
         .build();
         let holder = item.holder().unwrap();
         let mut format = holder.data.format.as_ref().await.unwrap().to_owned();
-        format.id = Uuid::new_v4().into();
+        format.id = CredentialSchemaFormatId::new();
         format.format = "MDOC".into();
         format.ecosystem_schema_id = "doctype".into();
         let claim = holder.data.claims.as_ref().await.unwrap()[0].clone();
         format.claim_mappings = vec![CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: item.common().created_date,
             last_modified: item.common().last_modified,
             credential_schema_format_id: format.id,

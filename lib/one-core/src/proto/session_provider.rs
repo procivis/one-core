@@ -59,7 +59,7 @@ pub mod test {
     impl StaticSessionProvider {
         pub fn new_random() -> Self {
             Self(Session {
-                organisation_id: Some(Uuid::new_v4().into()),
+                organisation_id: Some(OrganisationId::new()),
                 permissions: vec![],
                 user_id: format!("test-user-{}", Uuid::new_v4()),
                 actor: None,

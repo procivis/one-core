@@ -2,8 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use futures::FutureExt;
-use shared_types::TrustCollectionId;
-use uuid::Uuid;
+use shared_types::{TrustCollectionId, TrustListSubscriptionId};
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::list_filter::ListFilterValue;
@@ -152,7 +151,7 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                     let result = self
                         .subscription_repository
                         .create(TrustListSubscription {
-                            id: Uuid::new_v4().into(),
+                            id: TrustListSubscriptionId::new(),
                             name: list.name,
                             created_date: now,
                             last_modified: now,

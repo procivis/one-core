@@ -14,7 +14,6 @@ use one_dto_mapper::convert_inner;
 use shared_types::{BlobId, CredentialId, EcosystemId, ProofId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Debug, Default)]
 pub struct TestingProofParams {
@@ -100,7 +99,7 @@ impl ProofsDB {
 
         let proof = Proof {
             ecosystem: params.ecosystem,
-            id: params.id.unwrap_or_else(|| Uuid::new_v4().into()),
+            id: params.id.unwrap_or_else(ProofId::new),
             created_date: params.created_date.unwrap_or(get_dummy_date()),
             last_modified: params.last_modified.unwrap_or(get_dummy_date()),
             protocol: protocol.to_owned(),

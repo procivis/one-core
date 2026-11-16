@@ -3,7 +3,6 @@ use std::sync::Arc;
 use futures::FutureExt;
 use shared_types::{OrganisationId, TrustCollectionId};
 use url::Url;
-use uuid::Uuid;
 
 use super::dto::RemoteTrustCollectionInfoDTO;
 use super::{Error, TrustCollectionManager};
@@ -59,7 +58,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                     let result = self.repository
                         .create(TrustCollection {
                             ecosystem: collection.ecosystem.clone(),
-                            id: Uuid::new_v4().into(),
+                            id: TrustCollectionId::new(),
                             name: collection.name.clone(),
                             created_date: now,
                             last_modified: now,

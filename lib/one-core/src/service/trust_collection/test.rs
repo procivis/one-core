@@ -2,10 +2,9 @@ use std::assert_matches;
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use shared_types::{OrganisationId, TrustCollectionId};
+use shared_types::{OrganisationId, TrustCollectionId, TrustListSubscriptionId};
 use similar_asserts::assert_eq;
 use url::Url;
-use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
@@ -59,7 +58,7 @@ fn dummy_trust_collection(organisation_id: OrganisationId) -> TrustCollection {
     let now = get_dummy_date();
     TrustCollection {
         ecosystem: "EUDI".into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: "test trust collection".to_string(),
         created_date: now,
         last_modified: now,
@@ -99,7 +98,7 @@ async fn test_create_trust_collection_success() {
     trust_collection_repository
         .expect_create()
         .withf(move |tc| tc.name == "new collection" && tc.organisation.id() == organisation_id)
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(TrustCollectionId::new()));
 
     let mut ecosystem_provider = MockEcosystemDirectory::new();
     ecosystem_provider.expect_get().return_once(|_| {
@@ -126,7 +125,7 @@ async fn test_create_trust_collection_success() {
 #[tokio::test]
 async fn test_create_trust_collection_org_mismatch() {
     // given
-    let other_organisation_id = Uuid::new_v4().into();
+    let other_organisation_id = OrganisationId::new();
     let request = CreateTrustCollectionRequestDTO {
         name: "new collection".to_string(),
         organisation_id: other_organisation_id,
@@ -249,7 +248,7 @@ async fn test_delete_trust_collection_success() {
 async fn test_delete_trust_collection_not_found() {
     // given
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
-    let trust_collection_id: TrustCollectionId = Uuid::new_v4().into();
+    let trust_collection_id: TrustCollectionId = TrustCollectionId::new();
 
     trust_collection_repository
         .expect_get()
@@ -276,7 +275,7 @@ async fn test_delete_trust_collection_not_found() {
 async fn test_delete_trust_collection_org_mismatch() {
     // given
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
-    let other_organisation_id = Uuid::new_v4().into();
+    let other_organisation_id = OrganisationId::new();
 
     let trust_collection = dummy_trust_collection(other_organisation_id);
     let trust_collection_id = trust_collection.id;
@@ -335,7 +334,7 @@ async fn test_get_trust_collection_parent_org_success() {
     let mut organisation_repository = MockOrganisationRepository::new();
 
     let session_provider = StaticSessionProvider::new_random();
-    let parent_org_id = Uuid::new_v4().into();
+    let parent_org_id = OrganisationId::new();
     let child_org_id = session_provider.0.organisation_id.unwrap();
 
     organisation_repository
@@ -422,7 +421,7 @@ async fn test_get_trust_collection_list_success() {
 #[tokio::test]
 async fn test_get_trust_collection_list_org_mismatch() {
     // given
-    let other_organisation_id = Uuid::new_v4().into();
+    let other_organisation_id = OrganisationId::new();
     let query = ListQueryDTO {
         page: 0,
         page_size: 30,
@@ -503,7 +502,7 @@ async fn test_create_trust_list_subscription_success() {
 
     trust_list_subscription_repository
         .expect_create()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(TrustListSubscriptionId::new()));
 
     let service = mock_service(Mocks {
         trust_collection_repository,
@@ -526,7 +525,7 @@ async fn test_create_trust_list_subscription_success() {
 async fn test_create_trust_list_subscription_org_mismatch() {
     // given
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
-    let other_organisation_id = Uuid::new_v4().into();
+    let other_organisation_id = OrganisationId::new();
     let trust_collection = dummy_trust_collection(other_organisation_id);
     let trust_collection_id = trust_collection.id;
 
@@ -612,7 +611,7 @@ async fn test_create_trust_list_subscription_validation_fails() {
 async fn test_create_trust_list_subscription_not_found() {
     // given
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
-    let trust_collection_id: TrustCollectionId = Uuid::new_v4().into();
+    let trust_collection_id: TrustCollectionId = TrustCollectionId::new();
 
     trust_collection_repository
         .expect_get()
@@ -654,7 +653,7 @@ async fn test_delete_trust_list_subscription_success() {
     let organisation_id = session_provider.0.organisation_id.unwrap();
 
     let trust_collection = dummy_trust_collection(organisation_id);
-    let trust_list_subscription_id = Uuid::new_v4().into();
+    let trust_list_subscription_id = TrustListSubscriptionId::new();
 
     let now = get_dummy_date();
     let trust_list_subscription = TrustListSubscription {
@@ -700,7 +699,8 @@ async fn test_delete_trust_list_subscription_success() {
 async fn test_delete_trust_list_subscription_not_found() {
     // given
     let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
-    let trust_list_subscription_id: shared_types::TrustListSubscriptionId = Uuid::new_v4().into();
+    let trust_list_subscription_id: shared_types::TrustListSubscriptionId =
+        TrustListSubscriptionId::new();
 
     trust_list_subscription_repository
         .expect_get()
@@ -736,7 +736,7 @@ async fn test_get_trust_list_subscription_list_success() {
         .returning(move |_| Ok(dummy_trust_collection(org_id)));
     let mut trust_list_subscription_repository = MockTrustListSubscriptionRepository::new();
 
-    let trust_collection_id: TrustCollectionId = Uuid::new_v4().into();
+    let trust_collection_id: TrustCollectionId = TrustCollectionId::new();
     let query = ListQueryDTO {
         page: 0,
         page_size: 30,

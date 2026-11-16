@@ -4,7 +4,6 @@ use one_core::model::identifier::{Identifier, IdentifierState};
 use one_core::model::organisation::Organisation;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use shared_types::{DidId, IdentifierId};
-use uuid::Uuid;
 
 use crate::fixtures::{TestingIdentifierParams, unwrap_or_random};
 
@@ -24,7 +23,7 @@ impl IdentifiersDB {
     ) -> Identifier {
         let now = one_core::clock::now_utc();
 
-        let id = params.id.unwrap_or(IdentifierId::from(Uuid::new_v4()));
+        let id = params.id.unwrap_or(IdentifierId::new());
         let data = params.identifier_data();
         let identifier = Identifier {
             id: id.to_owned(),

@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use serde_json::json;
+use shared_types::{RevocationListEntryId, RevocationListId};
 use similar_asserts::assert_eq;
 use time::Duration;
-use uuid::Uuid;
 
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::revocation_list::{
@@ -89,7 +89,7 @@ async fn revocation_status(suspension: bool) -> ReservedEntries {
             let issuer_identifier = issuer_identifier.clone();
             move |_, _, purpose, r#type| {
                 Ok(Some(RevocationList {
-                    id: Uuid::new_v4().into(),
+                    id: RevocationListId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     formatted_list: vec![],
@@ -116,7 +116,7 @@ async fn revocation_status(suspension: bool) -> ReservedEntries {
     revocation_list_repository
         .expect_create_entry()
         .withf(|_, entity_id, _| *entity_id == RevocationListEntityId::Credential(None))
-        .returning(|_, _, _| Ok(Uuid::new_v4().into()));
+        .returning(|_, _, _| Ok(RevocationListEntryId::new()));
 
     let revocation_list = BitstringStatusList::new(
         "BITSTRINGSTATUSLIST".into(),

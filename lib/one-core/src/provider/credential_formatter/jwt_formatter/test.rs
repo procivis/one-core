@@ -745,7 +745,7 @@ fn test_schema_id() {
         name: "".to_string(),
         format: "".into(),
         revocation_method: None,
-        organisation_id: OrganisationId::from(Uuid::new_v4()),
+        organisation_id: OrganisationId::new(),
         claims: vec![],
         key_storage_security: None,
         layout_properties: None,
@@ -756,7 +756,7 @@ fn test_schema_id() {
         ecosystem: None,
     };
 
-    let id = CredentialSchemaId::from(Uuid::new_v4());
+    let id = CredentialSchemaId::new();
     let result = formatter
         .credential_schema_id(
             id,

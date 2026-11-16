@@ -61,12 +61,7 @@ async fn test_did_web_update(#[case] disabled: bool) {
             .contains(&Operation::UPDATE)
     );
     let update = method
-        .update(
-            Uuid::new_v4().into(),
-            single_key_set(),
-            single_key_set(),
-            None,
-        )
+        .update(DidId::new(), single_key_set(), single_key_set(), None)
         .await
         .unwrap();
 
@@ -79,12 +74,7 @@ async fn test_did_web_update(#[case] disabled: bool) {
 async fn test_did_web_update_rejects_invalid_key_count() {
     let method = web_method_for_update();
     let result = method
-        .update(
-            Uuid::new_v4().into(),
-            single_key_set(),
-            DidKeys::default(),
-            None,
-        )
+        .update(DidId::new(), single_key_set(), DidKeys::default(), None)
         .await;
     assert_matches!(result, Err(DidMethodError::InvalidNumberOfKeys));
 }
@@ -97,7 +87,7 @@ async fn test_did_web_update_rejects_unsupported_update_keys() {
     keys.update_keys = Some(vec![dummy_key()]);
 
     let result = method
-        .update(Uuid::new_v4().into(), single_key_set(), keys, None)
+        .update(DidId::new(), single_key_set(), keys, None)
         .await;
     assert_matches!(result, Err(DidMethodError::UnsupportedKeyType(_)));
 }
@@ -109,7 +99,7 @@ async fn test_did_web_update_rejects_invalid_authentication_key_type() {
     keys.authentication[0].key_type = "RSA".to_string();
 
     let result = method
-        .update(Uuid::new_v4().into(), single_key_set(), keys, None)
+        .update(DidId::new(), single_key_set(), keys, None)
         .await;
     assert_matches!(result, Err(DidMethodError::Nested(_)));
 }

@@ -1,4 +1,5 @@
 use one_core::model::history::HistoryAction;
+use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -13,7 +14,7 @@ async fn test_create_organisation_success_id_set() {
     let context = TestContext::new(None).await;
 
     // WHEN
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let resp = context
         .api
         .organisations
@@ -57,7 +58,7 @@ async fn test_create_organisation_success_id_not_set() {
 async fn test_create_organisation_reject_duplicate_id() {
     // GIVEN
     let context = TestContext::new(None).await;
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
 
     // WHEN
     let resp = context
@@ -90,7 +91,7 @@ async fn test_create_organisation_success_with_parent() {
     let parent = context.db.organisations.create().await;
 
     // WHEN
-    let child_id = Uuid::new_v4().into();
+    let child_id = OrganisationId::new();
     let resp = context
         .api
         .organisations
@@ -117,7 +118,7 @@ async fn test_create_organisation_fail_non_existing_parent() {
         .api
         .organisations
         .create(CreateParams {
-            parent_organisation: Some(Uuid::new_v4().into()),
+            parent_organisation: Some(OrganisationId::new()),
             ..Default::default()
         })
         .await;
@@ -162,7 +163,7 @@ async fn test_create_organisation_fail_self_as_parent() {
     let context = TestContext::new(None).await;
 
     // WHEN - id and parent_organisation both refer to the same (not-yet-existing) organisation.
-    let id = Uuid::new_v4().into();
+    let id = OrganisationId::new();
     let resp = context
         .api
         .organisations

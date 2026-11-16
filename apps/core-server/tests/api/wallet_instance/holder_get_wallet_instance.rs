@@ -1,6 +1,6 @@
 use one_core::model::instance::{InstanceStatus, WalletProviderType};
+use shared_types::{InstanceId, KeyId, ManagedInstanceId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
@@ -18,7 +18,7 @@ async fn test_get_wallet_unit_holder_details_successfully() {
         .create(
             &org,
             TestingKeyParams {
-                id: Some(Uuid::new_v4().into()),
+                id: Some(KeyId::new()),
                 created_date: Some(now),
                 last_modified: Some(now),
                 name: Some("test".to_string()),
@@ -40,7 +40,7 @@ async fn test_get_wallet_unit_holder_details_successfully() {
                 provider_type: Some(WalletProviderType::ProcivisOne),
                 provider_name: Some("PROCIVIS_ONE".to_string()),
                 provider_url: Some("https://wallet.provider".to_string()),
-                provider_wallet_unit_id: Some(Uuid::new_v4().into()),
+                provider_wallet_unit_id: Some(ManagedInstanceId::new()),
                 ..Default::default()
             },
         )
@@ -85,7 +85,7 @@ async fn test_get_wallet_unit_holder_details_not_found() {
     let resp = context
         .api
         .holder_wallet_instances
-        .holder_get_wallet_instance_details(&Uuid::new_v4().into())
+        .holder_get_wallet_instance_details(&InstanceId::new())
         .await;
 
     // THEN

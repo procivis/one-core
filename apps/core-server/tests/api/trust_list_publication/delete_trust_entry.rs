@@ -2,6 +2,7 @@ use core_server::endpoint::trust_list_publication::dto::TrustListRoleRestEnum;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entry::TrustEntryStateEnum;
 use one_core::model::trust_list_role::TrustListRoleEnum;
+use shared_types::{TrustEntryId, TrustListPublicationId};
 use uuid::Uuid;
 
 use crate::utils::api_clients::trust_list_publication::CreateTrustListPublicationTestParams;
@@ -105,7 +106,7 @@ async fn test_fail_to_delete_trust_entry_entry_does_not_belong_to_list() {
     let resp = context
         .api
         .trust_list_publication
-        .delete_trust_entry(Uuid::new_v4().into(), trust_entry.id)
+        .delete_trust_entry(TrustListPublicationId::new(), trust_entry.id)
         .await;
 
     // then
@@ -132,7 +133,7 @@ async fn test_fail_to_delete_trust_entry_not_found() {
             Some(certificate),
         )
         .await;
-    let non_existent_id = Uuid::new_v4().into();
+    let non_existent_id = TrustEntryId::new();
 
     // when
     let resp = context

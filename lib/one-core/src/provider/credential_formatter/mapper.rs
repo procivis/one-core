@@ -3,10 +3,12 @@ use std::collections::{BTreeMap, HashMap};
 use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 use one_dto_mapper::{convert_inner, try_convert_inner};
-use shared_types::{CredentialFormat, CredentialSchemaId};
+use shared_types::{
+    CredentialFormat, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId,
+    CredentialSchemaId,
+};
 use time::{Duration, OffsetDateTime};
 use url::Url;
-use uuid::Uuid;
 use uuid::fmt::Urn;
 
 use super::mdoc_formatter::MdocCredential;
@@ -556,11 +558,11 @@ pub(super) fn to_format_with_mappings(
     claim_schemas: &[ClaimSchema],
     now: OffsetDateTime,
 ) -> CredentialSchemaFormat {
-    let credential_schema_format_id = Uuid::new_v4().into();
+    let credential_schema_format_id = CredentialSchemaFormatId::new();
     let mut claim_mappings = Vec::with_capacity(claim_schemas.len());
     for claim_schema in claim_schemas {
         let mapping = CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: now,
             last_modified: now,
             credential_schema_format_id,
@@ -587,6 +589,7 @@ mod test {
     use indexmap::indexset;
     use serde_json::json;
     use similar_asserts::assert_eq;
+    use uuid::Uuid;
 
     use super::*;
     use crate::service::test_utilities::generic_config;
@@ -620,7 +623,7 @@ mod test {
             .into();
 
         let schema_format = CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatId::new(),
             created_date: now,
             last_modified: now,
             credential_schema_id: new_credential_schema_id,

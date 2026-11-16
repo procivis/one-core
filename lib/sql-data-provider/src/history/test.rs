@@ -15,8 +15,8 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, EntityId, IdentifierId, KeyId, OrganisationId,
-    ProofSchemaId,
+    BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId,
+    IdentifierId, KeyId, OrganisationId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -108,7 +108,7 @@ async fn setup_empty() -> TestSetup {
         identifier_id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         CredentialRole::Issuer,
     )
     .await
@@ -278,7 +278,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         identifier_id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         CredentialRole::Issuer,
     )
     .await
@@ -296,7 +296,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
@@ -318,7 +318,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
 
     let claim_value = "claim_value";
     let claims = vec![(
-        Uuid::new_v4().into(),
+        ClaimId::new(),
         new_claim_schemas[0].id,
         credential.common().id,
         Some(claim_value.as_bytes().to_vec()),
@@ -428,7 +428,7 @@ async fn test_create_history() {
         ..
     } = setup_empty().await;
 
-    let id = Uuid::new_v4().into();
+    let id = HistoryId::new();
     let result = provider
         .create_history(History {
             id,
@@ -437,7 +437,7 @@ async fn test_create_history() {
             name: "test_key".to_string(),
             source: HistorySource::Core,
             target: None,
-            entity_id: Some(Uuid::new_v4().into()),
+            entity_id: Some(EntityId::new()),
             entity_type: HistoryEntityType::Key,
             metadata: None,
             organisation_id: Some(organisation.id),
@@ -466,7 +466,7 @@ async fn test_get_history_list_simple() {
         insert_history(
             &db,
             HistoryAction::Created.into(),
-            Uuid::new_v4().into(),
+            EntityId::new(),
             HistoryEntityType::Organisation.into(),
             organisation.id,
             organisation.id.to_string(),
@@ -593,7 +593,7 @@ async fn test_get_history_list_schema_joins_credentials() {
             identifier_id,
             None,
             None,
-            Uuid::new_v4().into(),
+            BlobId::new(),
             CredentialRole::Issuer,
         )
         .await
@@ -1091,7 +1091,7 @@ async fn test_history_org_stats_ignore_irrelevant() {
         identifier_id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         CredentialRole::Holder,
     )
     .await
@@ -1637,7 +1637,7 @@ async fn test_issuer_org_history_stats_dummy_data() {
         identifier_id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         CredentialRole::Issuer,
     )
     .await
@@ -2175,7 +2175,7 @@ async fn holder_parent_history_includes_proofs_and_searches_using_item_claims() 
     parent.role = Set(CredentialRole::Holder);
     parent.r#type = Set(credential::CredentialType::BatchParent);
     let mut item = parent.update(db).await.unwrap().into_active_model();
-    let item_id: CredentialId = Uuid::new_v4().into();
+    let item_id: CredentialId = CredentialId::new();
     item.id = Set(item_id);
     item.parent_id = Set(Some(setup.credential_id));
     item.r#type = Set(credential::CredentialType::BatchItem);
@@ -2238,8 +2238,8 @@ async fn holder_item_history_uses_presented_item_with_shared_claims() {
     parent.role = Set(CredentialRole::Holder);
     parent.r#type = Set(credential::CredentialType::BatchParent);
     let parent = parent.update(db).await.unwrap();
-    let presented_id: CredentialId = Uuid::new_v4().into();
-    let sibling_id: CredentialId = Uuid::new_v4().into();
+    let presented_id: CredentialId = CredentialId::new();
+    let sibling_id: CredentialId = CredentialId::new();
     for id in [presented_id, sibling_id] {
         let mut item = parent.clone().into_active_model();
         item.id = Set(id);

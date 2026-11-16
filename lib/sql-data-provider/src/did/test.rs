@@ -15,7 +15,7 @@ use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use uuid::Uuid;
@@ -298,7 +298,7 @@ async fn test_update_did_keys_rolls_back_on_invalid_keys(#[case] duplicate: bool
     let before_keys = key_did::Entity::find().all(&setup.db).await.unwrap();
     let mut new_key = setup.key.clone();
     if !duplicate {
-        new_key.id = Uuid::new_v4().into();
+        new_key.id = KeyId::new();
     }
     let key = RelatedKey {
         key: new_key,
@@ -335,10 +335,7 @@ async fn test_update_did_keys_rolls_back_on_invalid_keys(#[case] duplicate: bool
 #[tokio::test]
 async fn test_update_did_keys_missing_did() {
     let setup = setup_empty(Repositories::default()).await;
-    let result = setup
-        .provider
-        .update_did_keys(&Uuid::new_v4().into(), vec![])
-        .await;
+    let result = setup.provider.update_did_keys(&DidId::new(), vec![]).await;
     assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }
 
@@ -352,7 +349,7 @@ async fn test_create_did() {
         ..
     } = setup_empty(Repositories::default()).await;
 
-    let id = Uuid::new_v4().into();
+    let id = DidId::new();
     let result = provider
         .create_did(Did {
             deleted_at: None,
@@ -407,7 +404,7 @@ async fn test_create_did_invalid_organisation() {
     let result = provider
         .create_did(Did {
             deleted_at: None,
-            id: Uuid::new_v4().into(),
+            id: DidId::new(),
             name: "Name".to_string(),
             organisation: non_existing_organisation.into(),
             did: "did:key:123".parse().unwrap(),
@@ -548,7 +545,7 @@ async fn test_get_did_existing() {
 async fn test_get_did_not_existing() {
     let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
-    let result = provider.get_did(&Uuid::new_v4().into(), None).await;
+    let result = provider.get_did(&DidId::new(), None).await;
 
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
@@ -609,7 +606,7 @@ async fn test_get_did_list_empty_incorrect_organisation() {
                 page_size: 1,
             }),
             filtering: Some(ListFilterCondition::Value(DidFilterValue::OrganisationId(
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             ))),
             ..Default::default()
         })
@@ -795,7 +792,7 @@ async fn test_get_did_list_sorting() {
     } = setup_empty(Repositories::default()).await;
 
     let older_a_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(DidId::new()),
         did_hash: Set(did_hash(&"did:did1:1".parse().unwrap())),
         did: Set("did:did1:1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
@@ -813,7 +810,7 @@ async fn test_get_did_list_sorting() {
     .unwrap();
 
     let newer_b_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(DidId::new()),
         did_hash: Set(did_hash(&"did:did2:2".parse().unwrap())),
         did: Set("did:did2:2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),
@@ -985,7 +982,7 @@ async fn test_get_did_list_complex_filter_condition() {
     } = setup_empty(Repositories::default()).await;
 
     let older_a_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(DidId::new()),
         did_hash: Set(did_hash(&"did:did1:1".parse().unwrap())),
         did: Set("did:did1:1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
@@ -1003,7 +1000,7 @@ async fn test_get_did_list_complex_filter_condition() {
     .unwrap();
 
     let newer_b_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(DidId::new()),
         did_hash: Set(did_hash(&"did:did2:2".parse().unwrap())),
         did: Set("did:did2:2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),

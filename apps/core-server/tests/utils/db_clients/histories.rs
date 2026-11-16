@@ -10,7 +10,6 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
 use shared_types::{BlobId, EntityId, HistoryId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Debug, Default)]
 pub struct TestingHistoryParams {
@@ -43,12 +42,12 @@ impl HistoriesDB {
     ) -> History {
         let now = one_core::clock::now_utc();
 
-        let history_id = params.id.unwrap_or(HistoryId::from(Uuid::new_v4()));
+        let history_id = params.id.unwrap_or(HistoryId::new());
         let history = History {
             id: history_id.to_owned(),
             created_date: params.created_date.unwrap_or(now),
             action: params.action.unwrap_or(HistoryAction::Accepted),
-            entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
+            entity_id: Some(params.entity_id.unwrap_or(EntityId::new())),
             entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
             metadata: params.metadata,
             organisation_id: Some(organisation.id),
@@ -70,12 +69,12 @@ impl HistoriesDB {
     pub async fn create_without_organisation(&self, params: TestingHistoryParams) -> History {
         let now = one_core::clock::now_utc();
 
-        let history_id = params.id.unwrap_or(HistoryId::from(Uuid::new_v4()));
+        let history_id = params.id.unwrap_or(HistoryId::new());
         let history = History {
             id: history_id.to_owned(),
             created_date: params.created_date.unwrap_or(now),
             action: params.action.unwrap_or(HistoryAction::Accepted),
-            entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
+            entity_id: Some(params.entity_id.unwrap_or(EntityId::new())),
             entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
             metadata: params.metadata,
             organisation_id: None,

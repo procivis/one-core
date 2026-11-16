@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use futures::future::BoxFuture;
-use uuid::Uuid;
+use shared_types::{CertificateId, ClaimId, ClaimSchemaId, DidId, IdentifierId, KeyId};
 
 use super::error::FormatterError;
 use super::model::{CredentialClaim, CredentialClaimValue};
@@ -114,14 +114,14 @@ async fn parse_claim_inner(
             let first_data_type = first.schema.as_ref().await?.data_type.to_owned();
 
             let mut result = vec![Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 created_date: now,
                 last_modified: now,
                 value: None,
                 path: claim_path.to_string(),
                 selectively_disclosable: claim_value.selectively_disclosable,
                 schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     created_date: now,
                     last_modified: now,
                     key: claim_schema_path.to_string(),
@@ -147,14 +147,14 @@ async fn parse_claim_inner(
             }
 
             result.push(Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 created_date: now,
                 last_modified: now,
                 value: None,
                 path: claim_path.to_string(),
                 selectively_disclosable: claim_value.selectively_disclosable,
                 schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     created_date: now,
                     last_modified: now,
                     key: claim_schema_path.to_string(),
@@ -177,14 +177,14 @@ async fn parse_claim_inner(
                 .error_while("extracting JSON claim")?;
 
             vec![Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 created_date: now,
                 last_modified: now,
                 value: Some(extracted.value),
                 path: claim_path.to_string(),
                 selectively_disclosable: claim_value.selectively_disclosable,
                 schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     created_date: now,
                     last_modified: now,
                     key: claim_schema_path.to_string(),
@@ -232,13 +232,13 @@ pub fn prepare_identifier(
     organisation: Organisation,
 ) -> Result<Identifier, FormatterError> {
     let now = crate::clock::now_utc();
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let name = format!("identifier {identifier_id}");
 
     let identifier_data = match detail {
         IdentifierDetails::Certificate(certificate) => {
             let cert = Certificate {
-                id: Uuid::new_v4().into(),
+                id: CertificateId::new(),
                 identifier_id,
                 organisation: organisation.to_owned().into(),
                 created_date: now,
@@ -264,7 +264,7 @@ pub fn prepare_identifier(
 
             let did_model = crate::model::did::Did {
                 deleted_at: None,
-                id: Uuid::new_v4().into(),
+                id: DidId::new(),
                 created_date: now,
                 last_modified: now,
                 name: format!("did {identifier_id}"),
@@ -283,7 +283,7 @@ pub fn prepare_identifier(
                 .parse_jwk(key)
                 .error_while("parsing JWK")?;
             let key_model = Key {
-                id: Uuid::new_v4().into(),
+                id: KeyId::new(),
                 created_date: now,
                 last_modified: now,
                 public_key: parsed_key.key.public_key_as_raw(),

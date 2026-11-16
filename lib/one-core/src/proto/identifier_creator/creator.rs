@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use shared_types::{BlobId, DidId, IdentifierId, OrganisationId};
+use shared_types::{BlobId, CertificateId, DidId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::mapper::build_identifier_translations;
 use super::{
@@ -260,7 +259,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
 
         self.tx_manager
             .tx(async move {
-                let identifier_id = IdentifierId::from(Uuid::new_v4());
+                let identifier_id = IdentifierId::new();
                 let now = crate::clock::now_utc();
                 let mut prepared: Vec<Certificate> = Vec::with_capacity(chains.len());
 
@@ -305,7 +304,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                     }
 
                     let cert = Certificate {
-                        id: Uuid::new_v4().into(),
+                        id: CertificateId::new(),
                         identifier_id,
                         organisation: Related::new(
                             organisation_id,
@@ -432,7 +431,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
-        let blob_id = Uuid::new_v4().into();
+        let blob_id = BlobId::new();
         blob_storage
             .create(Blob {
                 id: blob_id,

@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::dto::{
     CreateProofSchemaRequestDTO, ExportProofInputSchemaResponseDTO, ExportProofSchemaResponseDTO,
@@ -332,7 +331,7 @@ pub async fn proof_schema_from_create_request(
 
         input_schemas.push(proof_input_schema);
     }
-    let id = Uuid::new_v4().into();
+    let id = ProofSchemaId::new();
     Ok(ProofSchema {
         id,
         created_date: now,

@@ -12,6 +12,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use reqwest::header::WWW_AUTHENTICATE;
 use serde_json::json;
+use shared_types::InteractionId;
 use similar_asserts::assert_eq;
 use standardized_types::oauth2::dpop::DPOP_NONCE_HEADER;
 use uuid::Uuid;
@@ -31,7 +32,7 @@ async fn test_oidc_issuer_create_token() {
 
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],
@@ -100,7 +101,7 @@ async fn test_oidc_issuer_create_token_parallel_collision() {
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],
@@ -164,7 +165,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
 
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],
@@ -241,7 +242,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let refresh_token_expires_at = one_core::clock::now_utc() + time::Duration::seconds(60);
 
@@ -327,7 +328,7 @@ async fn test_oidc_issuer_create_token_with_tx_code_success() {
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let data = json!({
         "pre_authorized_code_used": false,
@@ -406,7 +407,7 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let data = json!({
         "pre_authorized_code_used": false,
@@ -503,7 +504,7 @@ async fn test_oidc_issuer_create_token_tx_code_missing() {
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let data = json!({
         "pre_authorized_code_used": false,
@@ -582,7 +583,7 @@ async fn test_oidc_issuer_create_token_fails_when_credential_is_expiring() {
     // credentials tied to that interaction can be (re)issued once one of them is expiring
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],
@@ -710,7 +711,7 @@ async fn test_oidc_issuer_create_token_binds_access_token_to_dpop_key() {
     );
     let (context, org, _, identifier, ..) = TestContext::new_with_did(enable_dpop).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],

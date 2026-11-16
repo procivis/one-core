@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use rcgen::{CertificateParams, KeyPair, KeyUsagePurpose};
 use rstest::rstest;
+use shared_types::RevocationListId;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::format_status_list_credential;
 use crate::model::certificate::{Certificate, CertificateState};
@@ -75,7 +75,7 @@ async fn test_format_status_list_with_deleted_issuer_certificate(
         Arc::new(MockKeyAlgorithmProvider::new());
 
     let result = format_status_list_credential(
-        &Uuid::new_v4().into(),
+        &RevocationListId::new(),
         &identifier,
         Some(&certificate),
         "encoded-list".to_string(),

@@ -2,6 +2,7 @@ use std::assert_matches;
 
 use one_core::model::credential::Clearable;
 use sea_orm::{ActiveModelTrait, IntoActiveModel, ModelTrait};
+use shared_types::CertificateId;
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -23,10 +24,10 @@ async fn create_variant(
         holder_identifier: Some(setup.identifier.clone().into()),
         ..template.into()
     };
-    builder.common.id = Uuid::new_v4().into();
+    builder.common.id = CredentialId::new();
     if kind == CredentialType::BatchItem {
         let mut parent = builder.clone();
-        parent.common.id = Uuid::new_v4().into();
+        parent.common.id = CredentialId::new();
         parent.r#type = CredentialType::BatchParent;
         let parent = parent.build();
         repository.create_credential(parent.clone()).await.unwrap();
@@ -89,7 +90,7 @@ async fn patches_respect_variant_fields(
     let repository = credential_repository(setup.db.clone(), None);
     let id = create_variant(&setup, &repository, role, kind).await;
     let template = row(&setup, setup.credential_id).await;
-    let certificate_id = Uuid::new_v4().into();
+    let certificate_id = CertificateId::new();
     certificate::ActiveModel {
         id: Set(certificate_id),
         created_date: Set(get_dummy_date()),
@@ -509,7 +510,7 @@ async fn patch_missing_credential_returns_record_not_updated() {
     let setup = setup_with_credential().await;
     let repository = credential_repository(setup.db.clone(), None);
     let result = repository
-        .update_credential(Uuid::new_v4().into(), UpdateCredentialRequest::default())
+        .update_credential(CredentialId::new(), UpdateCredentialRequest::default())
         .await;
     assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }

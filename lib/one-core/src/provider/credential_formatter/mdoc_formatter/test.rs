@@ -6,7 +6,7 @@ use ct_codecs::Base64UrlSafeNoPadding;
 use hex_literal::hex;
 use maplit::{hashmap, hashset};
 use serde_json::json;
-use shared_types::OrganisationId;
+use shared_types::{CertificateId, IdentifierId, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwkEc;
 use time::macros::datetime;
@@ -219,7 +219,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
             id: cert_id.into(),
-            identifier_id: Uuid::new_v4().into(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -486,8 +486,8 @@ async fn test_credential_formatting_uses_vcdm_valid_until_when_set() {
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
-            id: Uuid::new_v4().into(),
-            identifier_id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -644,8 +644,8 @@ async fn test_unverified_credential_extraction() {
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
-            id: Uuid::new_v4().into(),
-            identifier_id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -890,7 +890,7 @@ fn test_credential_schema_id() {
         name: "".to_string(),
         format: "".into(),
         revocation_method: None,
-        organisation_id: OrganisationId::from(Uuid::new_v4()),
+        organisation_id: OrganisationId::new(),
         claims: vec![],
         key_storage_security: None,
         layout_properties: None,
@@ -902,7 +902,7 @@ fn test_credential_schema_id() {
     };
 
     let result = formatter.credential_schema_id(
-        CredentialSchemaId::from(Uuid::new_v4()),
+        CredentialSchemaId::new(),
         request_dto.organisation_id,
         request_dto.schema_id.as_deref(),
         "https://example.com",
@@ -951,9 +951,13 @@ async fn test_parse_object_array_preserves_element_type() {
         ],
     )]);
 
-    let (claims, mappings) = parse_claims(namespaces, &datatype_provider, Uuid::new_v4().into())
-        .await
-        .unwrap();
+    let (claims, mappings) = parse_claims(
+        namespaces,
+        &datatype_provider,
+        CredentialSchemaFormatId::new(),
+    )
+    .await
+    .unwrap();
 
     assert_eq!(claims.len(), 5);
     let array = claims
@@ -1370,7 +1374,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 "#;
     let certificate = Certificate {
         chain: chain.to_string(),
-        ..dummy_certificate(Uuid::new_v4().into())
+        ..dummy_certificate(IdentifierId::new())
     };
 
     let formatted_list = run_with_mocked_time_async(datetime!(2026-01-01 0:00 UTC), async move {

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use mockall::Sequence;
+use shared_types::{InstanceId, ManagedInstanceId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::model::common::GetListResponse;
 use crate::model::instance::{Instance, InstanceRole, InstanceStatus, WalletProviderType};
@@ -48,13 +48,13 @@ async fn test_syncs_every_instance() {
 fn dummy_instance() -> Instance {
     let now = crate::clock::now_utc();
     Instance {
-        id: Uuid::new_v4().into(),
+        id: InstanceId::new(),
         created_date: now,
         last_modified: now,
         provider_type: WalletProviderType::ProcivisOne,
         provider_name: "wallet-provider".to_string(),
         provider_url: "https://wallet-provider.org".to_string(),
-        provider_instance_id: Uuid::new_v4().into(),
+        provider_instance_id: ManagedInstanceId::new(),
         status: InstanceStatus::Active,
         role: InstanceRole::Wallet,
         organisation: dummy_organisation(None).into(),

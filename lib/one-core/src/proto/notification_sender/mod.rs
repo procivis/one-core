@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use num_traits::pow;
-use shared_types::NotificationId;
+use shared_types::{HistoryId, NotificationId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
-use uuid::Uuid;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::common::LockType;
@@ -263,7 +262,7 @@ impl NotificationSenderImpl {
 
             self.history_repository
                 .create_history(History {
-                    id: Uuid::new_v4().into(),
+                    id: HistoryId::new(),
                     created_date: crate::clock::now_utc(),
                     action,
                     name: "".to_string(),

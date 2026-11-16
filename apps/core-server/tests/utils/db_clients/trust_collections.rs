@@ -7,7 +7,6 @@ use shared_types::{EcosystemId, TrustCollectionId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use url::Url;
-use uuid::Uuid;
 
 pub struct TrustCollectionDB {
     repository: Arc<dyn TrustCollectionRepository>,
@@ -34,7 +33,7 @@ impl TrustCollectionDB {
     ) -> TrustCollection {
         let trust_collection = TrustCollection {
             ecosystem: params.ecosystem.unwrap_or("EUDI".into()),
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(TrustCollectionId::new()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: params.name.unwrap_or("collection".to_string()),

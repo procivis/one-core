@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use indexmap::IndexMap;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
-use uuid::Uuid;
 
 use super::CredentialSchemaService;
 use super::dto::{
@@ -188,7 +187,7 @@ impl CredentialSchemaService {
         )
         .error_while("validating ecosystem")?;
 
-        let credential_schema_id = CredentialSchemaId::from(Uuid::new_v4());
+        let credential_schema_id = CredentialSchemaId::new();
         let now = crate::clock::now_utc();
 
         let mut formats = Vec::with_capacity(request.formats.len());

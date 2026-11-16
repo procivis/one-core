@@ -60,8 +60,8 @@ mod test {
 
     use rstest::rstest;
     use serde_json::json;
+    use shared_types::CredentialSchemaFormatId;
     use similar_asserts::assert_eq;
-    use uuid::Uuid;
 
     use super::*;
     use crate::config::core_config::CoreConfig;
@@ -99,7 +99,7 @@ mod test {
             .to_owned();
         let first = schema.formats.as_ref().await.unwrap()[0].clone();
         let mut selected = first.clone();
-        selected.id = Uuid::new_v4().into();
+        selected.id = CredentialSchemaFormatId::new();
         selected.format = "MDOC".into();
         selected.ecosystem_schema_id = "mdoc-pid".into();
         schema.formats = vec![first, selected.clone()].into();
@@ -173,7 +173,7 @@ mod test {
                 &claims,
                 &credential.format,
                 &issuer,
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
             )
             .await
             .unwrap();

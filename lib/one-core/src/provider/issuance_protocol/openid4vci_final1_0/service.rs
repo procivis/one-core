@@ -796,6 +796,7 @@ pub(crate) fn parse_access_token(access_token: &str) -> Result<InteractionId, Op
 #[cfg(test)]
 mod metadata_path_tests {
     use serde_json::json;
+    use shared_types::{CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId};
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -816,10 +817,10 @@ mod metadata_path_tests {
     ) -> CredentialSchemaFormatClaimSchema {
         let now = crate::clock::now_utc();
         CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: now,
             last_modified: now,
-            credential_schema_format_id: Uuid::new_v4().into(),
+            credential_schema_format_id: CredentialSchemaFormatId::new(),
             claim_schema_id,
             technical_key: technical_key.to_owned(),
             namespace: namespace.map(str::to_owned),

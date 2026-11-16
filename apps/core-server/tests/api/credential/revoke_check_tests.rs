@@ -14,7 +14,7 @@ use one_core::service::test_utilities::dummy_organisation;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
-use shared_types::{CredentialFormat, CredentialId, SerializedCredential};
+use shared_types::{CredentialFormat, CredentialId, DidId, IdentifierId, SerializedCredential};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
@@ -551,7 +551,7 @@ async fn test_revoke_check_mdoc_update() {
         )
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -708,7 +708,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         )
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -868,7 +868,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         )
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -1027,7 +1027,7 @@ async fn test_revoke_check_token_update() {
         )
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -1194,7 +1194,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         )
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -1475,7 +1475,7 @@ async fn test_suspended_to_valid_mdoc() {
         )
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -1669,7 +1669,7 @@ async fn test_suspended_to_suspended_update_failed() {
         )
         .await;
 
-    let credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_id: CredentialId = CredentialId::new();
     let format_id = credential_schema.formats.as_ref().await.unwrap()[0].id;
     let interaction_data = dummy_holder_issuance_interaction_data(
         &context,
@@ -2480,14 +2480,14 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
             claims: IssuedClaims::new(),
         }),
         holder_identifier: Some(Identifier {
-            id: Uuid::new_v4().into(),
+            id: IdentifierId::new(),
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),
             name: "holder".to_string(),
             data: IdentifierData::Did(
                 (Did {
                     deleted_at: None,
-                    id: Uuid::new_v4().into(),
+                    id: DidId::new(),
                     created_date: one_core::clock::now_utc(),
                     last_modified: one_core::clock::now_utc(),
                     name: "holder".to_string(),

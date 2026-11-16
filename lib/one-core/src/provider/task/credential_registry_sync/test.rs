@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use serde_json::json;
+use shared_types::CredentialSchemaFormatClaimSchemaId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -95,7 +96,7 @@ async fn test_synchronize_mdoc_single() {
         format.format = "MDOC".into();
         format.ecosystem_schema_id = "doctype".to_string();
         format.claim_mappings = vec![CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             credential_schema_format_id: format.id,
@@ -196,7 +197,7 @@ async fn test_synchronize_sdjwtvc_single() {
         format.format = "SD_JWT_VC".into();
         format.ecosystem_schema_id = "vct".to_string();
         format.claim_mappings = vec![CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             credential_schema_format_id: format.id,

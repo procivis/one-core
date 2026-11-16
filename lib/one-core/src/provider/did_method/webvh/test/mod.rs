@@ -395,7 +395,7 @@ async fn append_signed_state_update(
 
 #[tokio::test]
 async fn create_and_resolve_v1_log() {
-    let id: DidId = Uuid::new_v4().into();
+    let id: DidId = DidId::new();
     let setup = setup(MockHttpClient::new());
     let created = setup
         .method
@@ -456,7 +456,7 @@ async fn genesis_scid_survives_dropping_witness_parameter() {
     let setup = setup(MockHttpClient::new());
     let created = setup
         .method
-        .create(Uuid::new_v4().into(), &None, did_keys(&setup))
+        .create(DidId::new(), &None, did_keys(&setup))
         .await
         .unwrap();
     let mut entry: Value = serde_json::from_str(&created.log.unwrap()).unwrap();
@@ -484,7 +484,7 @@ async fn swiss_profile_marker_is_configurable_and_signed() {
 
     let created = setup
         .method
-        .create(Uuid::new_v4().into(), &None, did_keys(&setup))
+        .create(DidId::new(), &None, did_keys(&setup))
         .await
         .unwrap();
     let log = created.log.unwrap();
@@ -502,7 +502,7 @@ async fn swiss_profile_marker_is_configurable_and_signed() {
 
 #[tokio::test]
 async fn reject_profile_excluded_parameters() {
-    let id: DidId = Uuid::new_v4().into();
+    let id: DidId = DidId::new();
     let setup = setup(MockHttpClient::new());
     let created = setup
         .method
@@ -548,7 +548,7 @@ async fn reject_unsupported_creation_options() {
     let result = setup
         .method
         .create(
-            Uuid::new_v4().into(),
+            DidId::new(),
             &Some(json!({"portable": true})),
             did_keys(&setup),
         )
@@ -559,7 +559,7 @@ async fn reject_unsupported_creation_options() {
     assert!(
         setup
             .method
-            .create(Uuid::new_v4().into(), &None, keys)
+            .create(DidId::new(), &None, keys)
             .await
             .is_err()
     );
@@ -578,7 +578,7 @@ async fn creation_params_match_tdw_object_handling() {
     ] {
         let created = setup
             .method
-            .create(Uuid::new_v4().into(), &params, did_keys(&setup))
+            .create(DidId::new(), &params, did_keys(&setup))
             .await
             .unwrap();
         assert!(
@@ -594,7 +594,7 @@ async fn creation_params_match_tdw_object_handling() {
     let params = Some(json!({"externalHostingUrl": "https://hosting.example/dids"}));
     let created = setup
         .method
-        .create(Uuid::new_v4().into(), &params, did_keys(&setup))
+        .create(DidId::new(), &params, did_keys(&setup))
         .await
         .unwrap();
     assert!(created.did.as_str().ends_with(":hosting.example:dids"));
@@ -602,7 +602,7 @@ async fn creation_params_match_tdw_object_handling() {
 
 #[tokio::test]
 async fn reject_signed_updates_enabling_excluded_features() {
-    let id: DidId = Uuid::new_v4().into();
+    let id: DidId = DidId::new();
     let setup = setup(MockHttpClient::new());
     let created = setup
         .method
@@ -641,7 +641,7 @@ async fn reject_signed_updates_enabling_excluded_features() {
 
 #[tokio::test]
 async fn reject_invalid_hash_proof_and_identifier() {
-    let id: DidId = Uuid::new_v4().into();
+    let id: DidId = DidId::new();
     let setup = setup(MockHttpClient::new());
     let created = setup
         .method
@@ -675,7 +675,7 @@ async fn reject_invalid_hash_proof_and_identifier() {
 
 #[tokio::test]
 async fn deactivation_uses_active_key() {
-    let id: DidId = Uuid::new_v4().into();
+    let id: DidId = DidId::new();
     let setup = setup(MockHttpClient::new());
     let created = setup
         .method

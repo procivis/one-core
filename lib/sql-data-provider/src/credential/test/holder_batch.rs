@@ -4,6 +4,7 @@ use assert2::let_assert;
 use one_core::model::credential::{HolderBinding, HolderCredentialData, IssuerIdentity};
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, ColumnTrait, IntoActiveModel, QueryFilter};
+use shared_types::ClaimId;
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -21,12 +22,12 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
         .await
         .unwrap();
     let mut common = template.common().clone();
-    common.id = Uuid::new_v4().into();
+    common.id = CredentialId::new();
     common.state = CredentialStateEnum::Accepted;
     let parent = Credential::HolderBatchParent { common };
     let parent_id = parent.common().id;
     let claim = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("holder batch value".into()),
@@ -44,7 +45,7 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
     let key = template.issuer().unwrap().data.signing_key.clone();
     let format = template.issuer_credential().unwrap().data.format.clone();
     let mut common = parent.common().clone();
-    common.id = Uuid::new_v4().into();
+    common.id = CredentialId::new();
     common.interaction = None;
     let item = Credential::HolderBatchItem {
         common,
@@ -194,7 +195,7 @@ async fn invalid_holder_batch_item_rows_return_mapping_errors(
         .await
         .unwrap();
     let mut common = template.common().clone();
-    common.id = Uuid::new_v4().into();
+    common.id = CredentialId::new();
     let parent_id = repository
         .create_credential(Credential::HolderBatchParent { common })
         .await

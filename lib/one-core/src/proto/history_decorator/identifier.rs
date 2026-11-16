@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{DidId, IdentifierId, KeyId, OrganisationId};
-use uuid::Uuid;
+use shared_types::{DidId, HistoryId, IdentifierId, KeyId, OrganisationId};
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{
@@ -29,7 +28,7 @@ impl IdentifierHistoryDecorator {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action,
                 name,

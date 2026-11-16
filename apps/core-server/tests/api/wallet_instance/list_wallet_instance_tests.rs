@@ -6,9 +6,9 @@ use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId, OrganisationId};
 use similar_asserts::assert_eq;
 use time::Duration;
-use uuid::Uuid;
 
 use crate::api_wallet_unit_tests::create_wallet_instance_attestation;
 use crate::utils::api_clients::managed_instances::ListFilters;
@@ -143,8 +143,8 @@ async fn test_list_wallet_instance_by_attestation_success() {
         .await;
         let attestation_hash = SHA256.hash_base64(attestation.as_bytes()).unwrap();
 
-        let wallet_unit_id = Uuid::new_v4().into();
-        let attestation_id = Uuid::new_v4().into();
+        let wallet_unit_id = ManagedInstanceId::new();
+        let attestation_id = ManagedInstanceAttestationId::new();
         let wallet_unit = context
             .db
             .managed_instances
@@ -233,7 +233,7 @@ async fn test_list_wallet_instance_empty_success() {
     let resp = context
         .api
         .managed_instances
-        .list(ListFilters::new(Uuid::new_v4().into()))
+        .list(ListFilters::new(OrganisationId::new()))
         .await;
 
     // THEN
@@ -392,7 +392,7 @@ async fn test_list_wallet_instance_org_success() {
     let resp = context
         .api
         .managed_instances
-        .list(ListFilters::new(Uuid::new_v4().into())) // different org
+        .list(ListFilters::new(OrganisationId::new())) // different org
         .await;
 
     // THEN

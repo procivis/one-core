@@ -2,6 +2,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::identifier::IdentifierType;
 use one_core::repository::DataRepository;
 use rstest::rstest;
+use shared_types::IdentifierId;
 use sql_data_provider::DataLayer;
 
 use crate::fixtures::{TestingCredentialParams, TestingIdentifierParams};
@@ -87,7 +88,7 @@ async fn test_binding_cleanup_preserves_credential_references(
     );
     assert!(
         !repository
-            .has_credential_references(&uuid::Uuid::new_v4().into())
+            .has_credential_references(&IdentifierId::new())
             .await
             .unwrap()
     );

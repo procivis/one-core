@@ -5,9 +5,8 @@ use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection};
-use shared_types::CredentialSchemaId;
+use shared_types::{ClaimSchemaId, CredentialSchemaId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::ClaimSchemaProvider;
 use crate::entity;
@@ -59,7 +58,7 @@ async fn test_get_claim_schema_list() {
 
     let schemas = [
         ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "key1".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
@@ -70,7 +69,7 @@ async fn test_get_claim_schema_list() {
             translations: Default::default(),
         },
         ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "key2".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
@@ -129,7 +128,7 @@ async fn test_get_claim_schema_list() {
 
     // one item missing
     let result = repository
-        .get_claim_schema_list(vec![schemas[0].id, Uuid::new_v4().into()])
+        .get_claim_schema_list(vec![schemas[0].id, ClaimSchemaId::new()])
         .await;
     assert_matches!(
         result,

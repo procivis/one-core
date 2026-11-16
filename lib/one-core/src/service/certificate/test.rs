@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use shared_types::{CertificateId, IdentifierId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{Certificate, CertificateState};
@@ -20,8 +20,8 @@ async fn test_get_cert_fail_session_org_mismatch() {
     let mut cert_repo = MockCertificateRepository::new();
     cert_repo.expect_get().returning(|_| {
         Ok(Certificate {
-            id: Uuid::new_v4().into(),
-            identifier_id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -41,19 +41,19 @@ async fn test_get_cert_fail_session_org_mismatch() {
         session_provider: Arc::new(StaticSessionProvider::new_random()),
     };
 
-    let result = service.get_certificate(Uuid::new_v4().into()).await;
+    let result = service.get_certificate(CertificateId::new()).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
 async fn test_get_certificate_authority_invalid_identifier() {
-    let id = Uuid::new_v4().into();
+    let id = CertificateId::new();
 
     let mut certificate_repository = MockCertificateRepository::new();
     certificate_repository.expect_get().returning(|id| {
         Ok(Certificate {
             id,
-            identifier_id: Uuid::new_v4().into(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -98,13 +98,13 @@ GsPNAYTwQu1egNMnoBk0k0cwNJCBJmS3zEGaDw==
 
 #[tokio::test]
 async fn test_get_certificate_content_pem_success() {
-    let id = Uuid::new_v4().into();
+    let id = CertificateId::new();
 
     let mut certificate_repository = MockCertificateRepository::new();
     certificate_repository.expect_get().returning(|id| {
         Ok(Certificate {
             id,
-            identifier_id: Uuid::new_v4().into(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -142,13 +142,13 @@ async fn test_get_certificate_content_pem_success() {
 
 #[tokio::test]
 async fn test_get_certificate_content_cose_x509_success() {
-    let id = Uuid::new_v4().into();
+    let id = CertificateId::new();
 
     let mut certificate_repository = MockCertificateRepository::new();
     certificate_repository.expect_get().returning(|id| {
         Ok(Certificate {
             id,
-            identifier_id: Uuid::new_v4().into(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -187,13 +187,13 @@ async fn test_get_certificate_content_cose_x509_success() {
 
 #[tokio::test]
 async fn test_get_certificate_content_invalid_identifier() {
-    let id = Uuid::new_v4().into();
+    let id = CertificateId::new();
 
     let mut certificate_repository = MockCertificateRepository::new();
     certificate_repository.expect_get().returning(|id| {
         Ok(Certificate {
             id,
-            identifier_id: Uuid::new_v4().into(),
+            identifier_id: IdentifierId::new(),
             organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

@@ -2,9 +2,9 @@ use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use shared_types::{CredentialSchemaFormatClaimSchemaId, InteractionId};
 use similar_asserts::assert_eq;
 use time::Duration;
-use uuid::Uuid;
 
 use super::{ValidatedProofCredential, accept_proof, validate_proof};
 use crate::mapper::ValidatedProofClaim;
@@ -193,7 +193,7 @@ async fn test_validate_proof_rejects_mismatching_doctype() {
     let mut credential_schema = dummy_credential_schema_with_format("MDOC");
     let mut formats = credential_schema.formats.as_ref().await.unwrap().to_vec();
     formats[0].claim_mappings = vec![CredentialSchemaFormatClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatClaimSchemaId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_format_id: formats[0].id,
@@ -350,7 +350,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
         credential_schema.claim_schemas = vec![claim_schema.clone()].into();
         let mut formats = credential_schema.formats.as_ref().await.unwrap().to_vec();
         formats[0].claim_mappings = vec![CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id: formats[0].id,
@@ -397,7 +397,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
     let interaction = Interaction {
         dpop_key: None,
         client_attestation_key: None,
-        id: Uuid::new_v4().into(),
+        id: InteractionId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         data: None,

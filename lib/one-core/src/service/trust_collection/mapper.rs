@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use one_dto_mapper::convert_inner;
-use uuid::Uuid;
+use shared_types::{TrustCollectionId, TrustListSubscriptionId};
 
 use super::OrganisationRepository;
 use super::dto::{
@@ -58,7 +58,7 @@ pub(super) fn map_create_trust_collection_request(
 ) -> TrustCollection {
     let now = crate::clock::now_utc();
     TrustCollection {
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: request.name,
         created_date: now,
         last_modified: now,
@@ -76,7 +76,7 @@ pub(super) fn map_create_trust_list_subscription_request(
 ) -> Result<TrustListSubscription, TrustCollectionServiceError> {
     let now = crate::clock::now_utc();
     Ok(TrustListSubscription {
-        id: Uuid::new_v4().into(),
+        id: TrustListSubscriptionId::new(),
         created_date: now,
         last_modified: now,
         deactivated_at: None,

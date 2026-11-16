@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use shared_types::{OrganisationId, ProofSchemaId};
+use shared_types::{HistoryId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::proof_schema::{GetProofSchemaList, ProofSchema, ProofSchemaListQuery};
@@ -98,7 +97,7 @@ impl ProofSchemaHistoryDecorator {
         if let Err(error) = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action,
                 name,

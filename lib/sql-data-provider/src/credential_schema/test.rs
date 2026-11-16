@@ -21,9 +21,11 @@ use one_core::repository::organisation_repository::{
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use rstest::rstest;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set, Unchanged};
-use shared_types::{ClaimSchemaId, CredentialSchemaId};
+use shared_types::{
+    ClaimSchemaId, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId,
+    CredentialSchemaId,
+};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::CredentialSchemaProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
@@ -105,7 +107,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("key-{i}"),
             required: i % 2 == 0,
             order: i as u32,
@@ -184,10 +186,10 @@ async fn test_create_credential_schema_success() {
         ..
     } = setup_empty(Repositories::default()).await;
 
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
     let claim_schemas = vec![
         ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             key: "key1".to_string(),
@@ -198,7 +200,7 @@ async fn test_create_credential_schema_success() {
             translations: Default::default(),
         },
         ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             key: "key2".to_string(),
@@ -230,7 +232,7 @@ async fn test_create_credential_schema_success() {
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: CredentialSchemaFormatId::new(),
                 created_date: now_utc(),
                 last_modified: now_utc(),
                 credential_schema_id,
@@ -474,7 +476,7 @@ async fn test_get_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema(&Uuid::new_v4().into())
+        .get_credential_schema(&CredentialSchemaId::new())
         .await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
@@ -502,7 +504,7 @@ async fn test_delete_credential_schema_success() {
 async fn test_delete_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let result = repository
         .delete_credential_schema(&CredentialSchema {
             expiration: None,
@@ -515,7 +517,7 @@ async fn test_delete_credential_schema_not_found() {
             last_modified: now_utc(),
             name: "Test".to_string(),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: CredentialSchemaFormatId::new(),
                 created_date: now_utc(),
                 last_modified: now_utc(),
                 credential_schema_id,
@@ -589,7 +591,7 @@ async fn test_update_credential_schema_claims_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let now = now_utc();
-    let claim_schema_id = Uuid::new_v4().into();
+    let claim_schema_id = ClaimSchemaId::new();
     let result = repository
         .update_credential_schema(
             &credential_schema.id,
@@ -675,7 +677,7 @@ async fn test_update_credential_schema_existing_and_new_claims() {
     };
     let new_claims: Vec<_> = (0..2)
         .map(|index| ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("new claim {index}"),
             translations: Default::default(),
             ..updated_claim.clone()
@@ -823,7 +825,7 @@ async fn test_update_credential_schema_rejects_claim_from_another_schema() {
         ..credential_schema.claim_schemas.as_ref().await.unwrap()[0].clone()
     };
     let new_claim = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         ..foreign_claim.clone()
     };
 
@@ -1040,7 +1042,7 @@ async fn test_get_credential_schema_list_batches_relations() {
     )
     .await
     .unwrap();
-    let other_claim_schema_id = Uuid::new_v4().into();
+    let other_claim_schema_id = ClaimSchemaId::new();
     insert_many_claims_schema_to_database(
         &db,
         &ProofInput {
@@ -1120,7 +1122,7 @@ async fn test_get_credential_schema_list_batches_relations() {
         &ProofInput {
             credential_schema_id: other_schema_id,
             claims: &vec![ClaimInsertInfo {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 key: "added-later".to_string(),
                 required: true,
                 order: 1,
@@ -1167,8 +1169,8 @@ async fn test_update_credential_schema_formats_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let now = now_utc();
-    let format_id = Uuid::new_v4().into();
-    let mapping_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
+    let mapping_id = CredentialSchemaFormatClaimSchemaId::new();
     let claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     repository
         .update_credential_schema(

@@ -3,14 +3,14 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use shared_types::{
-    ClaimSchemaId, CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId, EntityId,
+    ClaimSchemaId, CredentialFormat, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId,
+    CredentialSchemaId, EntityId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::openid4vci::{
     ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialMetadata,
 };
 use standardized_types::openid4vp::dcql::PathSegment;
-use uuid::Uuid;
 
 use super::{
     apply_issuer_metadata_to_schema, ensure_required_claims, issuer_mandatory_claim_ids,
@@ -49,9 +49,9 @@ async fn validates_mandatory_issuer_metadata_without_changing_required_flag() {
     let mut claim = claim_schema("localKey", "STRING");
     claim.required = false;
     let claim_id = claim.id;
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![claim],
@@ -125,9 +125,9 @@ async fn applies_wildcard_metadata_to_array_children_and_skips_concrete_indices(
     degree_type.required = false;
     let mut university = claim_schema("degrees/university", "STRING");
     university.required = false;
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let mut schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![
@@ -222,9 +222,9 @@ async fn array_child_path_without_wildcard_is_skipped() {
     degrees.array = true;
     let mut degree_type = claim_schema("degrees/type", "STRING");
     degree_type.required = false;
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let mut schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![degrees.clone(), degree_type.clone()],
@@ -283,9 +283,9 @@ async fn wildcard_metadata_requires_an_array_parent() {
     parent.array = false;
     let mut child = claim_schema("degrees/type", "STRING");
     child.required = false;
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let mut schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![parent.clone(), child.clone()],
@@ -339,9 +339,9 @@ async fn wildcard_metadata_requires_an_array_parent() {
 async fn errors_when_mandatory_issuer_metadata_claims_are_missing_from_parsed_schema() {
     let claim = claim_schema("present", "STRING");
     let claim_id = claim.id;
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let mut schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![claim],
@@ -407,9 +407,9 @@ async fn errors_when_mandatory_issuer_metadata_claims_are_missing_from_parsed_sc
 async fn returns_all_issuer_metadata_translations_for_persistence() {
     let claim = claim_schema("givenName", "STRING");
     let claim_id = claim.id;
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let mut schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "JWT",
         vec![claim],
@@ -488,9 +488,9 @@ async fn returns_all_issuer_metadata_translations_for_persistence() {
 async fn filters_out_forbidden_technical_keys_from_issuer_metadata() {
     let claim = claim_schema("givenName", "STRING");
     let claim_id = claim.id;
-    let format_id = Uuid::new_v4().into();
+    let format_id = CredentialSchemaFormatId::new();
     let schema = credential_schema(
-        Uuid::new_v4().into(),
+        CredentialSchemaId::new(),
         format_id,
         "SD_JWT_VC",
         vec![claim],
@@ -564,7 +564,7 @@ async fn filters_out_forbidden_technical_keys_from_issuer_metadata() {
 fn claim_schema(key: &str, data_type: &str) -> ClaimSchema {
     let now = now_utc();
     ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: key.to_string(),
         data_type: data_type.to_string(),
         created_date: now,
@@ -584,7 +584,7 @@ fn mapping(
 ) -> CredentialSchemaFormatClaimSchema {
     let now = now_utc();
     CredentialSchemaFormatClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatClaimSchemaId::new(),
         created_date: now,
         last_modified: now,
         credential_schema_format_id: format_id,

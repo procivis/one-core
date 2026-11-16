@@ -13,8 +13,8 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, QueryFilter, Set,
 };
 use shared_types::{
-    CertificateId, CredentialId, CredentialSchemaId, DidId, DidValue, IdentifierId, KeyId,
-    OrganisationId,
+    CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue,
+    IdentifierId, KeyId, OrganisationId,
 };
 use similar_asserts::assert_eq;
 use tempfile::NamedTempFile;
@@ -47,7 +47,7 @@ async fn insert_key_to_database(
 ) -> KeyId {
     let public_key = Uuid::new_v4().as_bytes().to_vec();
     key::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(KeyId::new()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(Uuid::new_v4().to_string()),
@@ -86,7 +86,7 @@ async fn insert_credential_to_database(
     let credential_id = credential::ActiveModel {
         expires_at: Set(None),
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CredentialId::new()),
         credential_schema_id: Set(schema_id),
         organisation_id: Set(organisation_id),
         created_date: Set(get_dummy_date()),
@@ -134,7 +134,7 @@ async fn insert_credential_to_database(
     let claim_schema_id = if let Some(stored_model) = stored_model {
         stored_model.id
     } else {
-        let claim_schema_id = Uuid::new_v4().into();
+        let claim_schema_id = ClaimSchemaId::new();
         let claim = ClaimInsertInfo {
             id: claim_schema_id,
             key: "name".to_string(),
@@ -160,7 +160,7 @@ async fn insert_credential_to_database(
     insert_many_claims_to_database(
         database,
         &[(
-            Uuid::new_v4().into(),
+            ClaimId::new(),
             claim_schema_id,
             credential_id,
             Some(vec![255]),
@@ -182,7 +182,7 @@ async fn insert_did_to_database(
 ) -> DidId {
     let did: DidValue = format!("did:example:{}", Uuid::new_v4()).parse().unwrap();
     let did_id = did::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(DidId::new()),
         did_hash: Set(did_hash(&did)),
         did: Set(did),
         created_date: Set(get_dummy_date()),
@@ -219,7 +219,7 @@ async fn insert_certificate_to_database(
     deleted: bool,
 ) -> CertificateId {
     certificate::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CertificateId::new()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         expiry_date: Set(get_dummy_date()),
@@ -252,7 +252,7 @@ async fn insert_identifier_to_database(
     r#type: IdentifierType,
 ) -> IdentifierId {
     identifier::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(IdentifierId::new()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(Uuid::new_v4().to_string()),
@@ -1177,7 +1177,7 @@ async fn holder_parent_backup_materializes_item_claims_from_snapshot() {
         .into_active_model();
     parent.r#type = Set(CredentialType::BatchParent);
     let mut item = parent.update(&setup.db).await.unwrap().into_active_model();
-    let item_id: CredentialId = Uuid::new_v4().into();
+    let item_id: CredentialId = CredentialId::new();
     item.id = Set(item_id);
     item.parent_id = Set(Some(parent_id));
     item.r#type = Set(CredentialType::BatchItem);

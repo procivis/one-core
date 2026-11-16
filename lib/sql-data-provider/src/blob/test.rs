@@ -3,7 +3,6 @@ use one_core::repository::blob_repository::BlobRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use shared_types::BlobId;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::blob::BlobProvider;
 use crate::entity;
@@ -31,7 +30,7 @@ async fn setup() -> TestSetup {
 async fn test_create_blob() {
     // given
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = BlobId::new();
 
     let blob = dummy_blob(id);
 
@@ -55,7 +54,7 @@ async fn test_create_blob() {
 async fn test_get_blob() {
     // given
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = BlobId::new();
 
     let blob = dummy_blob(id);
 
@@ -73,7 +72,7 @@ async fn test_get_blob() {
 async fn test_update_blob() {
     // given
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = BlobId::new();
 
     let blob = dummy_blob(id);
     insert_blob(&setup.db, &blob).await;
@@ -106,7 +105,7 @@ async fn test_update_blob() {
 async fn test_delete_blob() {
     // given
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = BlobId::new();
 
     let blob = dummy_blob(id);
     insert_blob(&setup.db, &blob).await;

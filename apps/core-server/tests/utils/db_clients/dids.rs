@@ -5,7 +5,6 @@ use one_core::model::did::{Did, DidType};
 use one_core::model::organisation::Organisation;
 use one_core::repository::did_repository::DidRepository;
 use shared_types::{DidId, DidValue};
-use uuid::Uuid;
 
 use crate::fixtures::{TestingDidParams, unwrap_or_random};
 
@@ -21,7 +20,7 @@ impl DidsDB {
     pub async fn create(&self, organisation: Organisation, params: TestingDidParams) -> Did {
         let now = one_core::clock::now_utc();
 
-        let did_id = params.id.unwrap_or(DidId::from(Uuid::new_v4()));
+        let did_id = params.id.unwrap_or(DidId::new());
         let did = Did {
             deleted_at: None,
             id: did_id.to_owned(),

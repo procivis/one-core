@@ -1,8 +1,8 @@
 use one_core::error::ErrorCode;
 use one_core::model::history::{HistoryErrorMetadata, HistoryMetadata};
 use one_core::service::backup::dto::UnexportableEntitiesResponseDTO;
+use shared_types::HistoryId;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
@@ -111,7 +111,7 @@ async fn test_fail_to_get_history_entry_unknown_id() {
     let context = TestContext::new(None).await;
 
     // WHEN
-    let resp = context.api.histories.get(Uuid::new_v4().into()).await;
+    let resp = context.api.histories.get(HistoryId::new()).await;
 
     // THEN
     assert_eq!(resp.status(), 404);

@@ -2,9 +2,8 @@ use std::assert_matches;
 use std::sync::Arc;
 
 use assert2::check;
-use shared_types::{InstanceId, ManagedInstanceId, OrganisationId};
+use shared_types::{HistoryId, InstanceId, ManagedInstanceId, OrganisationId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::InstanceService;
 use super::dto::{HolderRegisterInstanceRequestDTO, InstanceProviderDTO};
@@ -74,7 +73,7 @@ fn mock_instance_service() -> InstanceService {
 #[tokio::test]
 async fn holder_register_success() {
     // given
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -138,7 +137,7 @@ async fn holder_register_success() {
         .once()
         .return_once(|| OSName::Android);
 
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_provider_client = MockWalletProviderClient::new();
     wallet_provider_client
         .expect_register()
@@ -214,7 +213,7 @@ async fn holder_register_success() {
     history_repository
         .expect_create_history()
         .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(HistoryId::new()));
 
     let service = InstanceService {
         organisation_repository: Arc::new(organisation_repository),
@@ -252,7 +251,7 @@ async fn holder_register_success() {
 #[tokio::test]
 async fn holder_register_aligns_organisation_configuration_with_provider() {
     // given
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -336,7 +335,7 @@ async fn holder_register_aligns_organisation_configuration_with_provider() {
         .once()
         .return_once(|| OSName::Android);
 
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_provider_client = MockWalletProviderClient::new();
     wallet_provider_client
         .expect_register()
@@ -409,7 +408,7 @@ async fn holder_register_aligns_organisation_configuration_with_provider() {
     history_repository
         .expect_create_history()
         .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(HistoryId::new()));
 
     let service = InstanceService {
         organisation_repository: Arc::new(organisation_repository),
@@ -457,7 +456,7 @@ fn ecosystem_metadata(name: &str, default_selected: bool) -> EcosystemMetadataDT
 #[tokio::test]
 async fn holder_register_key_attestation_not_supported() {
     // given
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -490,7 +489,7 @@ async fn holder_register_key_attestation_not_supported() {
         .once()
         .return_once(|| OSName::Android);
 
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_provider_client = MockWalletProviderClient::new();
     wallet_provider_client
         .expect_register()
@@ -556,7 +555,7 @@ async fn holder_register_key_attestation_not_supported() {
     history_repository
         .expect_create_history()
         .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(HistoryId::new()));
 
     let service = InstanceService {
         organisation_repository: Arc::new(organisation_repository),
@@ -590,7 +589,7 @@ async fn holder_register_key_attestation_not_supported() {
 #[tokio::test]
 async fn holder_instance_status_check_still_valid() {
     // given
-    let wallet_unit_id: shared_types::InstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::InstanceId = InstanceId::new();
 
     let mut holder_wallet_unit_repository = MockInstanceRepository::new();
     holder_wallet_unit_repository
@@ -606,7 +605,7 @@ async fn holder_instance_status_check_still_valid() {
                 provider_type: WalletProviderType::ProcivisOne,
                 provider_name: "PROCIVIS_ONE".to_string(),
                 provider_url: "https://wallet.provider".to_string(),
-                provider_instance_id: Uuid::new_v4().into(),
+                provider_instance_id: ManagedInstanceId::new(),
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
                 wallet_attestations: Default::default(),
@@ -640,7 +639,7 @@ async fn holder_instance_status_check_still_valid() {
 #[tokio::test]
 async fn holder_instance_status_check_revocation() {
     // given
-    let wallet_unit_id: shared_types::InstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::InstanceId = InstanceId::new();
 
     let mut holder_wallet_unit_repository = MockInstanceRepository::new();
     holder_wallet_unit_repository
@@ -656,7 +655,7 @@ async fn holder_instance_status_check_revocation() {
                 provider_type: WalletProviderType::ProcivisOne,
                 provider_name: "PROCIVIS_ONE".to_string(),
                 provider_url: "https://wallet.provider".to_string(),
-                provider_instance_id: Uuid::new_v4().into(),
+                provider_instance_id: ManagedInstanceId::new(),
                 organisation: Organisation {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -689,7 +688,7 @@ async fn holder_instance_status_check_revocation() {
     history_repository
         .expect_create_history()
         .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|_| Ok(HistoryId::new()));
 
     let service = InstanceService {
         instance_repository: Arc::new(holder_wallet_unit_repository),
@@ -711,7 +710,7 @@ async fn holder_instance_status_check_revocation() {
 #[tokio::test]
 async fn holder_instance_status_check_not_found() {
     // given
-    let wallet_unit_id: shared_types::InstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::InstanceId = InstanceId::new();
 
     let mut holder_wallet_unit_repository = MockInstanceRepository::new();
     holder_wallet_unit_repository
@@ -739,7 +738,7 @@ async fn holder_instance_status_check_not_found() {
 #[tokio::test]
 async fn holder_instance_status_check_already_revoked() {
     // given
-    let wallet_unit_id: shared_types::InstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::InstanceId = InstanceId::new();
 
     let mut holder_wallet_unit_repository = MockInstanceRepository::new();
     holder_wallet_unit_repository
@@ -755,7 +754,7 @@ async fn holder_instance_status_check_already_revoked() {
                 provider_type: WalletProviderType::ProcivisOne,
                 provider_name: "PROCIVIS_ONE".to_string(),
                 provider_url: "https://wallet.provider".to_string(),
-                provider_instance_id: Uuid::new_v4().into(),
+                provider_instance_id: ManagedInstanceId::new(),
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
                 wallet_attestations: Default::default(),
@@ -786,9 +785,9 @@ async fn holder_instance_status_check_already_revoked() {
 #[tokio::test]
 async fn holder_register_already_exists() {
     // given
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
-    let existing_instance_id: InstanceId = Uuid::new_v4().into();
+    let existing_instance_id: InstanceId = InstanceId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -818,7 +817,7 @@ async fn holder_register_already_exists() {
                     provider_type: WalletProviderType::ProcivisOne,
                     provider_name: "PROCIVIS_ONE".to_string(),
                     provider_url: "https://wallet.provider".to_string(),
-                    provider_instance_id: Uuid::new_v4().into(),
+                    provider_instance_id: ManagedInstanceId::new(),
                     organisation: dummy_organisation(None).into(),
                     authentication_key: None,
                     wallet_attestations: Default::default(),

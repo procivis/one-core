@@ -15,7 +15,7 @@ use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use sea_orm::ExprTrait;
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, CredentialSchemaFormatId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::MockBuilder;
@@ -729,7 +729,7 @@ async fn setup_mixed_format_batch(
     let schema = parent.common().schema.as_ref().await.unwrap();
     // BBS sorts before JWT in the schema, so using the first schema format would be wrong.
     let mut bbs_format = schema.formats.as_ref().await.unwrap()[0].clone();
-    bbs_format.id = Uuid::new_v4().into();
+    bbs_format.id = CredentialSchemaFormatId::new();
     bbs_format.format = "JSON_LD_BBSPLUS".into();
     bbs_format.ecosystem_schema_id = "other-schema-id".into();
     bbs_format.claim_mappings = Default::default();

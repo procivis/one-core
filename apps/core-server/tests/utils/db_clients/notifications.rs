@@ -6,7 +6,6 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::notification_repository::NotificationRepository;
 use shared_types::{NotificationId, OrganisationId, TaskId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub struct NotificationsDB {
     repository: Arc<dyn NotificationRepository>,
@@ -35,7 +34,7 @@ impl NotificationsDB {
         params: TestingNotificationParams,
     ) -> Notification {
         let notification = Notification {
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(NotificationId::new()),
             url: params.url.unwrap_or("url".to_string()),
             payload: params.payload.unwrap_or_default(),
             created_date: params.created_date.unwrap_or(one_core::clock::now_utc()),

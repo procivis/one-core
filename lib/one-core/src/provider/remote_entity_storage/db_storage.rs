@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use shared_types::RemoteEntityCacheEntryId;
-use uuid::Uuid;
 
 use crate::model::remote_entity_cache::RemoteEntityCacheEntry;
 use crate::provider::remote_entity_storage::{
@@ -77,7 +76,7 @@ impl RemoteEntityStorage for DbStorage {
         } else {
             self.remote_entity_cache_repository
                 .create(storage_context_to_db_context(
-                    Uuid::new_v4().into(),
+                    RemoteEntityCacheEntryId::new(),
                     request,
                 ))
                 .await

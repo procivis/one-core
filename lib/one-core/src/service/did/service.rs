@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use serde_json::json;
 use shared_types::{DidId, DidValue, KeyId};
-use uuid::Uuid;
 
 use super::DidService;
 use super::dto::{
@@ -354,7 +353,7 @@ pub(crate) async fn generate_update_key(
     let key_storage_type = KeyStorageType::Internal;
     let key_storage = key_provider.get_key_storage(key_storage_type.as_ref())?;
 
-    let key_id = Uuid::new_v4().into();
+    let key_id = KeyId::new();
     let key = key_storage
         .generate(key_id, update_key_type, json!({}))
         .await

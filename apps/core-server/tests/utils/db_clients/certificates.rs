@@ -9,7 +9,6 @@ use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
 use shared_types::{CertificateId, IdentifierId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::fixtures::unwrap_or_random;
 
@@ -66,7 +65,7 @@ impl CertificatesDB {
         let now = one_core::clock::now_utc();
 
         let certificate = Certificate {
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(CertificateId::new()),
             identifier_id,
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),

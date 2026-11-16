@@ -25,9 +25,10 @@ use one_core::repository::organisation_repository::{
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
-use shared_types::{OrganisationId, ProofSchemaId};
+use shared_types::{
+    ClaimSchemaId, CredentialSchemaFormatId, CredentialSchemaId, OrganisationId, ProofSchemaId,
+};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::ProofSchemaProvider;
 use crate::entity::proof_schema;
@@ -161,7 +162,7 @@ async fn test_create_proof_schema_already_exists() {
     )
     .await;
 
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let result = repository
         .create_proof_schema(ProofSchema {
             ecosystem: None,
@@ -177,7 +178,7 @@ async fn test_create_proof_schema_already_exists() {
                 formats: vec!["JWT".into()],
                 claim_schemas: vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
+                        id: ClaimSchemaId::new(),
                         key: "key".to_string(),
                         data_type: "STRING".to_string(),
                         created_date: get_dummy_date(),
@@ -210,7 +211,7 @@ async fn test_create_proof_schema_already_exists() {
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
                     formats: vec![CredentialSchemaFormat {
-                        id: Uuid::new_v4().into(),
+                        id: CredentialSchemaFormatId::new(),
                         created_date: one_core::clock::now_utc(),
                         last_modified: one_core::clock::now_utc(),
                         credential_schema_id,
@@ -267,7 +268,7 @@ async fn test_create_proof_schema_success() {
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
@@ -286,7 +287,7 @@ async fn test_create_proof_schema_success() {
         .await
         .unwrap();
 
-    let id = Uuid::new_v4().into();
+    let id = ProofSchemaId::new();
     let result = repository
         .create_proof_schema(ProofSchema {
             ecosystem: None,
@@ -335,7 +336,7 @@ async fn test_create_proof_schema_success() {
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
                     formats: vec![CredentialSchemaFormat {
-                        id: Uuid::new_v4().into(),
+                        id: CredentialSchemaFormatId::new(),
                         created_date: one_core::clock::now_utc(),
                         last_modified: one_core::clock::now_utc(),
                         credential_schema_id,
@@ -434,7 +435,7 @@ async fn test_delete_proof_schema_missing() {
     .await;
 
     let result = repository
-        .delete_proof_schema(&Uuid::new_v4().into(), get_dummy_date())
+        .delete_proof_schema(&ProofSchemaId::new(), get_dummy_date())
         .await;
     assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }
@@ -448,7 +449,7 @@ async fn test_get_proof_schema_missing() {
     )
     .await;
 
-    let result = repository.get_proof_schema(&Uuid::new_v4().into()).await;
+    let result = repository.get_proof_schema(&ProofSchemaId::new()).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
@@ -554,7 +555,7 @@ async fn test_get_proof_schema_with_relations() {
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
@@ -670,7 +671,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
@@ -682,7 +683,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
 
     let new_claim_schemas2: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("test-{i}"),
             required: i % 2 == 0,
             order: 2 + i as u32,
@@ -841,7 +842,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     let date_now = one_core::clock::now_utc();
     let schema1_id = crate::entity::proof_schema::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofSchemaId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         imported_source_url: Set(Some("CORE_URL".to_string())),
@@ -858,7 +859,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     let date_later = date_now + time::Duration::seconds(1);
     let schema2_id = crate::entity::proof_schema::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofSchemaId::new()),
         created_date: Set(date_later),
         imported_source_url: Set(Some("CORE_URL".to_string())),
         last_modified: Set(date_later),
@@ -1070,7 +1071,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         preferred_key_storage_attestation_lifetime: Set(None),
         preferred_instance_attestation_lifetime: Set(None),
         allow_revocation: Set(false),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CredentialSchemaId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         name: Set("jwt".to_string()),
@@ -1093,7 +1094,7 @@ async fn test_get_proof_schema_list_filter_formats() {
     .id;
 
     crate::entity::credential_schema_format::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CredentialSchemaFormatId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         credential_schema_id: Set(cred_schema_jwt_id),
@@ -1111,7 +1112,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         preferred_key_storage_attestation_lifetime: Set(None),
         preferred_instance_attestation_lifetime: Set(None),
         allow_revocation: Set(false),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CredentialSchemaId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         name: Set("mdoc".to_string()),
@@ -1134,7 +1135,7 @@ async fn test_get_proof_schema_list_filter_formats() {
     .id;
 
     crate::entity::credential_schema_format::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(CredentialSchemaFormatId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         credential_schema_id: Set(cred_schema_mdoc_id),
@@ -1147,7 +1148,7 @@ async fn test_get_proof_schema_list_filter_formats() {
 
     let schema_jwt_only_id = crate::entity::proof_schema::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofSchemaId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         imported_source_url: Set(Some("CORE_URL".to_string())),
@@ -1176,7 +1177,7 @@ async fn test_get_proof_schema_list_filter_formats() {
 
     let schema_mdoc_only_id = crate::entity::proof_schema::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofSchemaId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         imported_source_url: Set(Some("CORE_URL".to_string())),
@@ -1205,7 +1206,7 @@ async fn test_get_proof_schema_list_filter_formats() {
 
     let schema_mdoc_and_jwt_id = crate::entity::proof_schema::ActiveModel {
         ecosystem: Set(None),
-        id: Set(Uuid::new_v4().into()),
+        id: Set(ProofSchemaId::new()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         imported_source_url: Set(Some("CORE_URL".to_string())),

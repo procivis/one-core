@@ -183,7 +183,6 @@ mod test {
 
     use assert2::let_assert;
     use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
-    use uuid::Uuid;
 
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
@@ -205,11 +204,7 @@ mod test {
         let provider = CapabilityCheckedKeyStorage { inner };
 
         let result = provider
-            .generate(
-                Uuid::new_v4().into(),
-                KeyAlgorithmType::MlDsa,
-                serde_json::json!({}),
-            )
+            .generate(KeyId::new(), KeyAlgorithmType::MlDsa, serde_json::json!({}))
             .await;
         let_assert!(Err(error) = result);
         assert_matches!(error, KeyStorageError::UnsupportedKeyType { .. });
@@ -230,7 +225,7 @@ mod test {
 
         let result = provider
             .import(
-                Uuid::new_v4().into(),
+                KeyId::new(),
                 KeyAlgorithmType::Ecdsa,
                 PrivateJwk::Okp(PrivateJwkEc {
                     r#use: None,

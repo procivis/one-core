@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use shared_types::{
-    InteractionId, OrganisationId, RevocationListEntryId, SerializedCredential, TaskId,
+    CredentialId, InteractionId, OrganisationId, RevocationListEntryId, SerializedCredential,
+    TaskId,
 };
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::error::IssuanceProtocolError;
 use crate::model::credential::Credential;
@@ -116,7 +116,7 @@ impl CredentialWithBlob {
             credential: Credential::HolderBatchParent {
                 common: {
                     let mut common = self.credential.common().clone();
-                    common.id = Uuid::new_v4().into();
+                    common.id = CredentialId::new();
                     if refreshable {
                         common.expires_at = None;
                     }

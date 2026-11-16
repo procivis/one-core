@@ -1,10 +1,9 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde::Serialize;
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, ManagedInstanceAttestationId};
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
-use uuid::Uuid;
 
 use super::ProcivisWalletProvider;
 use crate::config::core_config::KeyAlgorithmType;
@@ -63,7 +62,7 @@ impl ProcivisWalletProvider {
             ka_expiration_date
         };
         let attestation = ManagedInstanceAttestation {
-            id: Uuid::new_v4().into(),
+            id: ManagedInstanceAttestationId::new(),
             instance_id: managed_instance.id,
             created_date: now,
             last_modified: now,
@@ -175,7 +174,7 @@ impl ProcivisWalletProvider {
             wia_expiration_date
         };
         let attestation = ManagedInstanceAttestation {
-            id: Uuid::new_v4().into(),
+            id: ManagedInstanceAttestationId::new(),
             instance_id: managed_instance.id,
             created_date: now,
             last_modified: now,

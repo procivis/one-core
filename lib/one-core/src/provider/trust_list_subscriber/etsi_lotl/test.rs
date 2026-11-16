@@ -324,7 +324,7 @@ async fn resolve_entries_delegates_to_lote_when_local_miss() {
     let sub = subscriber_with_delegate(validator, Arc::new(delegate));
 
     // Build a Certificate identifier with one active cert whose chain = TRUSTED_CERT.
-    let identifier_id = shared_types::IdentifierId::from(uuid::Uuid::new_v4());
+    let identifier_id = shared_types::IdentifierId::new();
     let mut identifier = crate::service::test_utilities::dummy_identifier();
     identifier.id = identifier_id;
     let mut cert = crate::service::test_utilities::dummy_certificate(identifier_id);

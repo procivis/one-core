@@ -4,6 +4,7 @@ use std::sync::Arc;
 use mockall::predicate::{self, eq};
 use secrecy::SecretSlice;
 use serde_json::json;
+use shared_types::DidId;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use uuid::Uuid;
@@ -54,12 +55,7 @@ async fn test_did_key_update_is_not_supported() {
     );
     for method in [method.clone(), Arc::new(CapabilityChecked(method))] {
         let result = method
-            .update(
-                Uuid::new_v4().into(),
-                DidKeys::default(),
-                DidKeys::default(),
-                None,
-            )
+            .update(DidId::new(), DidKeys::default(), DidKeys::default(), None)
             .await;
         assert_matches!(result, Err(DidMethodError::OperationNotSupported));
     }
@@ -450,7 +446,7 @@ async fn test_create_did_success() {
     let keys = vec![key];
     let result = did_method
         .create(
-            Uuid::new_v4().into(),
+            DidId::new(),
             &None,
             DidKeys {
                 authentication: keys.clone(),

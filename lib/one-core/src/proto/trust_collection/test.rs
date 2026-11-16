@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, TrustCollectionId};
 use similar_asserts::assert_eq;
 use url::Url;
-use uuid::Uuid;
 
 use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
 use crate::proto::transaction_manager::NoTransactionManager;
@@ -19,7 +18,7 @@ use crate::service::test_utilities::dummy_organisation;
 const DUMMY_URL: &str = "https://example.com/trust-collection";
 #[tokio::test]
 async fn test_collection_sync() {
-    let org_id = Uuid::new_v4().into();
+    let org_id = OrganisationId::new();
     let mut repository = MockTrustCollectionRepository::new();
 
     let to_keep = test_collection("to_keep", org_id, true);
@@ -75,7 +74,7 @@ async fn test_collection_sync() {
 
 #[tokio::test]
 async fn test_skip_already_existing() {
-    let org_id = Uuid::new_v4().into();
+    let org_id = OrganisationId::new();
     let mut repository = MockTrustCollectionRepository::new();
     repository
         .expect_create()
@@ -103,7 +102,7 @@ async fn test_skip_already_existing() {
 
 fn remote_test_collection(name: &str) -> RemoteTrustCollectionInfoDTO {
     RemoteTrustCollectionInfoDTO {
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: name.to_string(),
         ecosystem: "EUDI".into(),
     }
@@ -117,7 +116,7 @@ fn test_collection(
     let now = crate::clock::now_utc();
     TrustCollection {
         ecosystem: "EUDI".into(),
-        id: Uuid::new_v4().into(),
+        id: TrustCollectionId::new(),
         name: name.to_owned(),
         created_date: now,
         last_modified: now,

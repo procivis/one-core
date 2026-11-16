@@ -11,7 +11,6 @@ use sea_orm::{ActiveModelTrait, Set};
 use shared_types::NotificationId;
 use similar_asserts::assert_eq;
 use time::macros::datetime;
-use uuid::Uuid;
 
 use super::NotificationProvider;
 use crate::entity::notification;
@@ -35,7 +34,7 @@ async fn setup() -> TestSetup {
     let now = one_core::clock::now_utc();
     let organisation = dummy_organisation(Some(organisation_id));
 
-    let notification_id = Uuid::new_v4().into();
+    let notification_id = NotificationId::new();
     notification::ActiveModel {
         id: Set(notification_id),
         url: Set("url".to_string()),
@@ -72,7 +71,7 @@ async fn test_create_notification_success() {
 
     let now = one_core::clock::now_utc();
 
-    let id = Uuid::new_v4().into();
+    let id = NotificationId::new();
     let result = provider
         .create(Notification {
             id,

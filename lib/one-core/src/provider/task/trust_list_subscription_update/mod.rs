@@ -7,9 +7,8 @@ mod test;
 use std::sync::Arc;
 
 use serde_json::Value;
-use shared_types::TrustListSubscriptionId;
+use shared_types::{HistoryId, TrustListSubscriptionId};
 use url::Url;
-use uuid::Uuid;
 
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin};
 use crate::model::common::SortDirection;
@@ -81,7 +80,7 @@ impl TrustListSubscriptionUpdateTask {
             let result = self
                 .history_repository
                 .create_history(History {
-                    id: Uuid::new_v4().into(),
+                    id: HistoryId::new(),
                     created_date: crate::clock::now_utc(),
                     action: state.action(),
                     name: subscription.name.clone(),

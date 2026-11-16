@@ -11,7 +11,6 @@ use shared_types::{
     RevocationListEntryId, RevocationListId, RevocationMethodId, SerializedCredential, SignerId,
 };
 use util::w3c_status_check;
-use uuid::Uuid;
 
 use self::model::StatusPurpose;
 use self::resolver::StatusListCachingLoader;
@@ -440,7 +439,7 @@ impl BitstringStatusList {
         issuer_identifier: &Identifier,
         purpose: RevocationListPurpose,
     ) -> Result<RevocationList, RevocationError> {
-        let revocation_list_id = Uuid::new_v4().into();
+        let revocation_list_id = RevocationListId::new();
         let formatted_list = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,

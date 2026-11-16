@@ -1,6 +1,5 @@
-use shared_types::{EcosystemId, ProofId};
+use shared_types::{EcosystemId, InteractionId, ProofId};
 use standardized_types::openid4vp::dc_api::IsoMdocResponse;
-use uuid::Uuid;
 
 use super::ProofService;
 use super::error::ProofServiceError;
@@ -95,7 +94,7 @@ impl ProofService {
         let interaction = Interaction {
             dpop_key: None,
             client_attestation_key: None,
-            id: Uuid::new_v4().into(),
+            id: InteractionId::new(),
             created_date: now,
             last_modified: now,
             data: None,
@@ -112,7 +111,7 @@ impl ProofService {
 
         let proof = Proof {
             ecosystem,
-            id: Uuid::new_v4().into(),
+            id: ProofId::new(),
             created_date: now,
             last_modified: now,
             protocol: exchange.to_owned(),

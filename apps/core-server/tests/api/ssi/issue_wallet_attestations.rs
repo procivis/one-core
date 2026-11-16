@@ -6,10 +6,10 @@ use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
+use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vci::SecurityLevel;
 use time::Duration;
-use uuid::Uuid;
 
 use crate::fixtures::assert_history_count;
 use crate::fixtures::wallet_provider::{
@@ -170,7 +170,12 @@ async fn test_issue_wallet_attestations_failed_with_non_existing_wallet_unit() {
     let resp = context
         .api
         .wallet_provider
-        .issue_attestation(Uuid::new_v4().into(), &auth_key_pop, vec![wia_pop], vec![])
+        .issue_attestation(
+            ManagedInstanceId::new(),
+            &auth_key_pop,
+            vec![wia_pop],
+            vec![],
+        )
         .await;
 
     // then
@@ -303,7 +308,7 @@ async fn test_issue_wia_only_with_existing_key_attestation_success() {
     let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
 
     let now = one_core::clock::now_utc();
-    let wallet_unit_id = Uuid::new_v4().into();
+    let wallet_unit_id = ManagedInstanceId::new();
     let wallet_unit = context
         .db
         .managed_instances
@@ -313,7 +318,7 @@ async fn test_issue_wia_only_with_existing_key_attestation_success() {
                 id: Some(wallet_unit_id),
                 public_key: Some(holder_public_jwk),
                 attestations: Some(vec![ManagedInstanceAttestation {
-                    id: Uuid::new_v4().into(),
+                    id: ManagedInstanceAttestationId::new(),
                     instance_id: wallet_unit_id,
                     created_date: now,
                     last_modified: now,

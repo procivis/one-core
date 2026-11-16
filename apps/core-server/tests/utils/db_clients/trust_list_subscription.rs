@@ -7,7 +7,6 @@ use one_core::repository::trust_collection_repository::TrustCollectionRepository
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use shared_types::{TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId};
 use sql_data_provider::test_utilities::get_dummy_date;
-use uuid::Uuid;
 
 pub struct TrustListSubscriptionDB {
     repository: Arc<dyn TrustListSubscriptionRepository>,
@@ -35,7 +34,7 @@ impl TrustListSubscriptionDB {
         trust_collection_id: TrustCollectionId,
     ) -> TrustListSubscription {
         let trust_list_subscription = TrustListSubscription {
-            id: Uuid::new_v4().into(),
+            id: TrustListSubscriptionId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_string(),

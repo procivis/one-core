@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use one_dto_mapper::convert_inner;
-use shared_types::{DidId, IdentifierId, KeyId};
+use shared_types::{CertificateId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use x509_parser::oid_registry::OID_X509_EXT_KEY_USAGE;
@@ -58,7 +58,7 @@ impl IdentifierCreatorProto {
             None
         };
 
-        let id = Uuid::new_v4().into();
+        let id = IdentifierId::new();
         let identifier = Identifier {
             id,
             created_date: now,
@@ -102,7 +102,7 @@ impl IdentifierCreatorProto {
         } else {
             None
         };
-        let id = Uuid::new_v4().into();
+        let id = IdentifierId::new();
         let identifier = Identifier {
             id,
             created_date: now,
@@ -136,7 +136,7 @@ impl IdentifierCreatorProto {
         requests: Vec<CreateCertificateRequestDTO>,
         params: CreateLocalIdentifierRequestParams,
     ) -> Result<Identifier, Error> {
-        let id = Uuid::new_v4().into();
+        let id = IdentifierId::new();
         let organisation = Related::new(
             params.organisation_id,
             self.organisation_repository.to_owned(),
@@ -196,7 +196,7 @@ impl IdentifierCreatorProto {
         requests: Vec<CreateCertificateAuthorityRequestDTO>,
         params: CreateLocalIdentifierRequestParams,
     ) -> Result<Identifier, Error> {
-        let id = Uuid::new_v4().into();
+        let id = IdentifierId::new();
         let organisation = Related::new(
             params.organisation_id,
             self.organisation_repository.to_owned(),
@@ -594,7 +594,7 @@ impl IdentifierCreatorProto {
 
         let now = crate::clock::now_utc();
         Ok(Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation,
             created_date: now,
@@ -692,7 +692,7 @@ impl IdentifierCreatorProto {
 
         let now = crate::clock::now_utc();
         Ok(Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation,
             created_date: now,

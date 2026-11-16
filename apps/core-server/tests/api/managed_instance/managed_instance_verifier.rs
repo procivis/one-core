@@ -6,8 +6,8 @@ use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryState, StatusListCredentialFormat,
 };
 use rcgen::{CertificateParams, KeyUsagePurpose};
+use shared_types::{CertificateId, IdentifierId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::fixtures::TestingIdentifierParams;
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
@@ -34,10 +34,10 @@ async fn new_with_crl_certificate_identifier(
     leaf_params.key_usages = vec![KeyUsagePurpose::CrlSign];
     let cert = create_cert(&mut leaf_params, ecdsa::Key, &ca_issuer, &ca_params);
 
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = one_core::clock::now_utc();
     let certificate = Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id,
         organisation: organisation.clone().into(),
         created_date: now,

@@ -17,7 +17,7 @@ use one_core::model::revocation_list::{RevocationListPurpose, StatusListCredenti
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
-use shared_types::{CredentialId, CredentialSchemaFormatId};
+use shared_types::{CredentialId, CredentialSchemaFormatId, InteractionId};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vci::NotificationEvent;
 use time::macros::format_description;
@@ -151,7 +151,7 @@ struct MultiFormatBatch {
 /// Accepted BATCH_PARENT with one accepted batch item per issued format.
 /// Notification ids: `n-sd-jwt-vc` and `n-mdoc`.
 async fn setup_multi_format_batch(issued_formats: &[&str]) -> MultiFormatBatch {
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let access_token = format!("{interaction_id}.test");
     let context = TestContext::new_with_token(&access_token, None).await;
     let organisation = context.db.organisations.create().await;
@@ -436,7 +436,7 @@ async fn test_post_notification_unknown_notification_id() {
 }
 
 async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSchema) {
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let access_token = format!("{interaction_id}.test");
 
     let context = TestContext::new_with_token(&access_token, None).await;

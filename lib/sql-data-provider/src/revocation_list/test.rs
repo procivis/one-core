@@ -19,7 +19,10 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::{ActiveModelTrait, Set};
-use shared_types::{CredentialId, ManagedInstanceAttestationId, RevocationListId};
+use shared_types::{
+    BlobId, CredentialId, DidId, ManagedInstanceAttestationId, RevocationListEntryId,
+    RevocationListId,
+};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -63,7 +66,7 @@ async fn setup() -> TestSetup {
         data: IdentifierData::Did(
             Did {
                 deleted_at: None,
-                id: Uuid::new_v4().into(),
+                id: DidId::new(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "did".to_string(),
@@ -135,7 +138,7 @@ async fn setup_with_list() -> TestSetupWithList {
 async fn test_create_revocation_list() {
     let setup = setup().await;
 
-    let id = Uuid::new_v4().into();
+    let id = RevocationListId::new();
     let result = setup
         .provider
         .create_revocation_list(RevocationList {
@@ -191,7 +194,7 @@ async fn test_get_latest_list_by_issuer_picks_highest_sequence_number() {
     let setup = setup().await;
 
     let new_list = |sequence_number| RevocationList {
-        id: Uuid::new_v4().into(),
+        id: RevocationListId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         formatted_list: vec![],
@@ -289,7 +292,7 @@ async fn test_get_revocation_lists_by_wallet_instance_attestation() {
         "wallet".to_string(),
     )
     .await;
-    let attestation_id: ManagedInstanceAttestationId = Uuid::new_v4().into();
+    let attestation_id: ManagedInstanceAttestationId = ManagedInstanceAttestationId::new();
     managed_instance_attestation::ActiveModel {
         id: Set(attestation_id),
         created_date: Set(get_dummy_date()),
@@ -499,7 +502,7 @@ async fn test_link_credential_entries_fails_for_linked_or_missing_entry() {
         .await
         .unwrap();
 
-    for other_entry_id in [linked_entry_id, Uuid::new_v4().into()] {
+    for other_entry_id in [linked_entry_id, RevocationListEntryId::new()] {
         let result = setup
             .provider
             .link_credential_entries(vec![
@@ -734,7 +737,7 @@ async fn create_dummy_credential(
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         CredentialRole::Issuer,
     )
     .await

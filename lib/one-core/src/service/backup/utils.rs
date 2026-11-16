@@ -3,8 +3,7 @@ use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 use one_crypto::hasher::sha256::SHA256;
-use shared_types::OrganisationId;
-use uuid::Uuid;
+use shared_types::{HistoryId, OrganisationId};
 use zip::write::SimpleFileOptions;
 
 use super::dto::MetadataDTO;
@@ -100,7 +99,7 @@ pub(super) fn create_backup_history_event(
     metadata: Option<HistoryMetadata>,
 ) -> History {
     History {
-        id: Uuid::new_v4().into(),
+        id: HistoryId::new(),
         created_date: crate::clock::now_utc(),
         action,
         name,

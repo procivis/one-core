@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use futures::FutureExt;
 use mockall::predicate::{always, eq};
 use serde_json::json;
-use shared_types::DidValue;
+use shared_types::{CertificateId, DidId, DidValue, IdentifierId, InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::AuthorizationRequest;
@@ -165,7 +165,7 @@ async fn test_handle_invitation_success() {
             };
             let verifier_did = Did {
                 deleted_at: None,
-                id: Uuid::new_v4().into(),
+                id: DidId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
@@ -179,7 +179,7 @@ async fn test_handle_invitation_success() {
             };
             Ok((
                 Identifier {
-                    id: Uuid::new_v4().into(),
+                    id: IdentifierId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     name: "verifier".to_string(),
@@ -197,7 +197,7 @@ async fn test_handle_invitation_success() {
             ))
         });
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_create_interaction()
@@ -317,8 +317,8 @@ async fn test_handle_invitation_success() {
 fn dummy_verifier_certificate() -> Certificate {
     let now = crate::clock::now_utc();
     Certificate {
-        id: Uuid::new_v4().into(),
-        identifier_id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
+        identifier_id: IdentifierId::new(),
         created_date: now,
         last_modified: now,
         deleted_at: None,
@@ -445,7 +445,7 @@ async fn test_handle_invitation_certificate_verifier() {
             }
         });
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_create_interaction()
@@ -623,14 +623,14 @@ async fn test_share_proof_for_mqtt_returns_url() {
     });
 
     let key_agreement = KeyAgreementKey::generate().unwrap();
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
 
     let url = protocol
         .schedule_verifier_flow(
             &key_agreement,
             custom_url_scheme,
             interaction_id,
-            Uuid::new_v4().into(),
+            ProofId::new(),
             |_| async {}.boxed(),
         )
         .await

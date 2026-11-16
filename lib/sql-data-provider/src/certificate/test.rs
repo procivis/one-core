@@ -11,7 +11,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::service::test_utilities::dummy_organisation;
-use shared_types::{IdentifierId, OrganisationId};
+use shared_types::{CertificateId, IdentifierId, OrganisationId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -59,7 +59,7 @@ async fn setup() -> TestSetup {
 #[tokio::test]
 async fn test_create_certificate() {
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = CertificateId::new();
 
     let certificate = Certificate {
         id,
@@ -85,7 +85,7 @@ async fn test_get_certificate() {
     let setup = setup().await;
 
     let certificate = Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id: setup.identifier_id,
         organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
@@ -105,7 +105,7 @@ async fn test_get_certificate() {
 
     setup.provider.create(certificate.clone()).await.unwrap();
 
-    let non_existent_id = Uuid::new_v4().into();
+    let non_existent_id = CertificateId::new();
     assert_matches!(
         setup.provider.get(non_existent_id).await,
         Err(DataLayerError::EntityNotFound { .. })
@@ -127,7 +127,7 @@ async fn test_update_certificate() {
     let setup = setup().await;
 
     let certificate = Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id: setup.identifier_id,
         organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
@@ -164,7 +164,7 @@ async fn test_update_certificate() {
 #[tokio::test]
 async fn test_get_returns_soft_deleted_certificate() {
     let setup = setup().await;
-    let id: shared_types::CertificateId = Uuid::new_v4().into();
+    let id: shared_types::CertificateId = CertificateId::new();
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
@@ -195,7 +195,7 @@ async fn test_get_returns_soft_deleted_certificate() {
 #[tokio::test]
 async fn test_delete_certificate_sets_deleted_at() {
     let setup = setup().await;
-    let id = Uuid::new_v4().into();
+    let id = CertificateId::new();
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
@@ -230,8 +230,8 @@ async fn test_list_filters_soft_deleted_certificates() {
     use one_core::model::list_query::{ListPagination, ListSorting};
 
     let setup = setup().await;
-    let live_id: shared_types::CertificateId = Uuid::new_v4().into();
-    let dead_id: shared_types::CertificateId = Uuid::new_v4().into();
+    let live_id: shared_types::CertificateId = CertificateId::new();
+    let dead_id: shared_types::CertificateId = CertificateId::new();
 
     let mk = |id, fp: &str| Certificate {
         id,
@@ -284,8 +284,8 @@ async fn test_list_includes_soft_deleted_certificates() {
     use one_core::model::list_query::{ListPagination, ListSorting};
 
     let setup = setup().await;
-    let live_id: shared_types::CertificateId = Uuid::new_v4().into();
-    let dead_id: shared_types::CertificateId = Uuid::new_v4().into();
+    let live_id: shared_types::CertificateId = CertificateId::new();
+    let dead_id: shared_types::CertificateId = CertificateId::new();
 
     let mk = |id, fp: &str| Certificate {
         id,
@@ -334,7 +334,7 @@ async fn test_list_includes_soft_deleted_certificates() {
 async fn test_unique_fingerprint_allows_reuse_after_soft_delete() {
     let setup = setup().await;
     let mk = |name: &str, fp: &str| Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id: setup.identifier_id,
         organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),

@@ -104,7 +104,7 @@ async fn test_validate_dpop_proof_returns_key_thumbprint() {
 
     let result = handler
         .validate_proof(
-            Uuid::new_v4().into(),
+            InteractionId::new(),
             proof.as_str(),
             Some("access-token"),
             ExpectedProofValues {
@@ -148,7 +148,7 @@ async fn test_validate_dpop_proof_rejects_invalid_proof_payloads() {
     ] {
         let result = handler
             .validate_proof(
-                Uuid::new_v4().into(),
+                InteractionId::new(),
                 proof.as_str(),
                 access_token,
                 ExpectedProofValues {
@@ -187,7 +187,7 @@ async fn test_validate_dpop_proof_rejects_invalid_header_or_claims() {
 
         let result = handler
             .validate_proof(
-                Uuid::new_v4().into(),
+                InteractionId::new(),
                 proof.as_str(),
                 None,
                 ExpectedProofValues {
@@ -215,7 +215,7 @@ async fn test_validate_dpop_proof_rejects_invalid_signature() {
 
     let result = handler
         .validate_proof(
-            Uuid::new_v4().into(),
+            InteractionId::new(),
             tampered.as_str(),
             None,
             ExpectedProofValues {
@@ -242,7 +242,7 @@ async fn test_validate_dpop_proof_iat_out_of_window_reports_details() {
 
     let err = handler
         .validate_proof(
-            Uuid::new_v4().into(),
+            InteractionId::new(),
             proof.as_str(),
             None,
             ExpectedProofValues {

@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_list_subscription::TrustListSubscriptionState;
+use shared_types::EntityId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -23,7 +24,7 @@ async fn test_get_history_list_simple() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Accepted),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Credential),
                 ..Default::default()
             },
@@ -170,7 +171,7 @@ async fn test_get_history_filter_by_entity_types() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Accepted),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Credential),
                 ..Default::default()
             },
@@ -184,7 +185,7 @@ async fn test_get_history_filter_by_entity_types() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Accepted),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Did),
                 ..Default::default()
             },
@@ -198,7 +199,7 @@ async fn test_get_history_filter_by_entity_types() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Accepted),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Proof),
                 ..Default::default()
             },
@@ -239,7 +240,7 @@ async fn test_get_history_filter_by_actions() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Deleted),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Credential),
                 ..Default::default()
             },
@@ -253,7 +254,7 @@ async fn test_get_history_filter_by_actions() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Deactivated),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Did),
                 ..Default::default()
             },
@@ -267,7 +268,7 @@ async fn test_get_history_filter_by_actions() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Shared),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Proof),
                 ..Default::default()
             },
@@ -308,7 +309,7 @@ async fn test_get_history_filter_by_user() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Deleted),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Credential),
                 user: Some("TestUser".to_string()),
                 ..Default::default()
@@ -323,7 +324,7 @@ async fn test_get_history_filter_by_user() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Deactivated),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Did),
                 user: Some("TestUser".to_string()),
                 ..Default::default()
@@ -338,7 +339,7 @@ async fn test_get_history_filter_by_user() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Shared),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Proof),
                 user: Some("TestUser2".to_string()),
                 ..Default::default()
@@ -380,7 +381,7 @@ async fn test_get_history_show_system_history() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Created),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Credential),
                 ..Default::default()
             },
@@ -392,7 +393,7 @@ async fn test_get_history_show_system_history() {
         .histories
         .create_without_organisation(TestingHistoryParams {
             action: Some(HistoryAction::Deactivated),
-            entity_id: Some(Uuid::new_v4().into()),
+            entity_id: Some(EntityId::new()),
             entity_type: Some(HistoryEntityType::Did),
             ..Default::default()
         })
@@ -445,7 +446,7 @@ async fn test_get_history_list_by_proof_id() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Delivered),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Notification),
                 target: Some(proof_id.to_string()),
                 ..Default::default()
@@ -659,7 +660,7 @@ async fn test_get_history_search_by_credential_schema_name() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Created),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Did),
                 ..Default::default()
             },
@@ -761,7 +762,7 @@ async fn test_get_history_search_no_match() {
             &organisation,
             TestingHistoryParams {
                 action: Some(HistoryAction::Created),
-                entity_id: Some(Uuid::new_v4().into()),
+                entity_id: Some(EntityId::new()),
                 entity_type: Some(HistoryEntityType::Credential),
                 ..Default::default()
             },

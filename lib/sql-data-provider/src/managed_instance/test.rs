@@ -87,7 +87,7 @@ async fn test_create_wallet_instance_success() {
     let test_setup = setup(0).await;
     let provider = test_setup.provider;
 
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
 
     let result = provider.create(wallet_unit.clone()).await;
@@ -113,7 +113,7 @@ async fn test_create_wallet_instance_duplicate_id() {
     let test_setup = setup(0).await;
     let provider = test_setup.provider;
 
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let wallet_unit1 = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
 
     // Create first wallet unit
@@ -121,7 +121,7 @@ async fn test_create_wallet_instance_duplicate_id() {
     assert!(result1.is_ok());
 
     // Try to create second wallet unit with same ID - should fail
-    let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id, Uuid::new_v4().into());
+    let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id, OrganisationId::new());
     wallet_unit2.authentication_key_jwk = Some(random_jwk());
 
     let result2 = provider.create(wallet_unit2).await;
@@ -133,8 +133,8 @@ async fn test_create_wallet_instance_duplicate_public_key() {
     let test_setup = setup(0).await;
     let provider = test_setup.provider;
 
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id1: ManagedInstanceId = ManagedInstanceId::new();
+    let wallet_unit_id2: ManagedInstanceId = ManagedInstanceId::new();
 
     let wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
 
@@ -156,7 +156,7 @@ async fn test_create_wallet_instance_different_statuses() {
     let provider = test_setup.provider;
 
     // Test creating with ACTIVE status
-    let active_id: ManagedInstanceId = Uuid::new_v4().into();
+    let active_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut active_wallet_instance = dummy_managed_instance(active_id, test_setup.organisation_id);
     active_wallet_instance.status = InstanceStatus::Active;
 
@@ -164,7 +164,7 @@ async fn test_create_wallet_instance_different_statuses() {
     assert!(result_active.is_ok());
 
     // Test creating with REVOKED status
-    let revoked_id: ManagedInstanceId = Uuid::new_v4().into();
+    let revoked_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut revoked_wallet_instance =
         dummy_managed_instance(revoked_id, test_setup.organisation_id);
     revoked_wallet_instance.status = InstanceStatus::Revoked;
@@ -186,7 +186,7 @@ async fn test_create_wallet_instance_different_os_types() {
     let provider = test_setup.provider;
 
     // Test creating with ANDROID OS
-    let android_id: ManagedInstanceId = Uuid::new_v4().into();
+    let android_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut android_wallet_instance =
         dummy_managed_instance(android_id, test_setup.organisation_id);
     android_wallet_instance.os = ManagedInstanceOs::Android;
@@ -195,7 +195,7 @@ async fn test_create_wallet_instance_different_os_types() {
     assert!(result_android.is_ok());
 
     // Test creating with iOS OS
-    let ios_id: ManagedInstanceId = Uuid::new_v4().into();
+    let ios_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut ios_wallet_instance = dummy_managed_instance(ios_id, test_setup.organisation_id);
     ios_wallet_instance.os = ManagedInstanceOs::Ios;
 
@@ -219,7 +219,7 @@ async fn test_create_and_list_wallet_instances() {
     let mut created_ids = Vec::new();
 
     for i in 0..3 {
-        let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+        let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
         let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = format!("wallet_{i}");
 
@@ -277,7 +277,7 @@ async fn test_get_wallet_instance_success() {
 async fn test_get_wallet_instance_missing() {
     let TestSetup { provider, .. } = setup(0).await;
 
-    let result = provider.get(&Uuid::new_v4().into()).await;
+    let result = provider.get(&ManagedInstanceId::new()).await;
 
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
@@ -693,7 +693,7 @@ async fn test_update_wallet_instance_status_success() {
     let provider = test_setup.provider;
 
     // Create a wallet unit first with ACTIVE status
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
     wallet_unit.status = InstanceStatus::Active;
     let original_name = wallet_unit.name.clone();
@@ -736,7 +736,7 @@ async fn test_update_wallet_instance_nonexistent() {
     let test_setup = setup(0).await;
     let provider = test_setup.provider;
 
-    let nonexistent_id: ManagedInstanceId = Uuid::new_v4().into();
+    let nonexistent_id: ManagedInstanceId = ManagedInstanceId::new();
     let update_request = UpdateManagedInstanceRequest {
         status: Some(InstanceStatus::Revoked),
         ..Default::default()
@@ -754,7 +754,7 @@ async fn test_update_wallet_instance_empty_request() {
     let provider = test_setup.provider;
 
     // Create a wallet unit first
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
     let original_status = wallet_unit.status;
     provider.create(wallet_unit).await.unwrap();
@@ -782,7 +782,7 @@ async fn test_update_wallet_instance_status_changes() {
     let provider = test_setup.provider;
 
     // Create wallet unit with ACTIVE status
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
     wallet_unit.status = InstanceStatus::Active;
     provider.create(wallet_unit).await.unwrap();
@@ -819,7 +819,7 @@ async fn test_update_wallet_instance_public_key_changes() {
     let test_setup = setup(0).await;
     let provider = test_setup.provider;
 
-    let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
     wallet_unit.authentication_key_jwk = None;
     provider.create(wallet_unit).await.unwrap();
@@ -851,7 +851,7 @@ async fn test_update_and_list_wallet_instances() {
     // Create multiple wallet units
     let mut wallet_unit_ids = Vec::new();
     for i in 0..3 {
-        let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+        let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
         let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = format!("wallet_{i}");
         wallet_unit.status = InstanceStatus::Active;
@@ -911,7 +911,7 @@ async fn test_sort_by_name_ascending() {
     // Create wallet units with different names
     let names = vec!["zebra_wallet", "alpha_wallet", "beta_wallet"];
     for name in &names {
-        let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+        let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
         let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = name.to_string();
         provider.create(wallet_unit).await.unwrap();
@@ -949,7 +949,7 @@ async fn test_sort_by_name_descending() {
     // Create wallet units with different names
     let names = vec!["zebra_wallet", "alpha_wallet", "beta_wallet"];
     for name in &names {
-        let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+        let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
         let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = name.to_string();
         provider.create(wallet_unit).await.unwrap();
@@ -985,13 +985,13 @@ async fn test_sort_by_status_ascending() {
     let provider = test_setup.provider;
 
     // Create wallet units with different statuses
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id1: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "revoked_wallet".to_string();
     wallet_unit1.status = InstanceStatus::Revoked;
     provider.create(wallet_unit1).await.unwrap();
 
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id2: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "active_wallet".to_string();
     wallet_unit2.status = InstanceStatus::Active;
@@ -1025,13 +1025,13 @@ async fn test_sort_by_status_descending() {
     let provider = test_setup.provider;
 
     // Create wallet units with different statuses
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id1: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "revoked_wallet".to_string();
     wallet_unit1.status = InstanceStatus::Revoked;
     provider.create(wallet_unit1).await.unwrap();
 
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id2: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "active_wallet".to_string();
     wallet_unit2.status = InstanceStatus::Active;
@@ -1065,13 +1065,13 @@ async fn test_sort_by_os_ascending() {
     let provider = test_setup.provider;
 
     // Create wallet units with different OS values
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id1: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "ios_wallet".to_string();
     wallet_unit1.os = ManagedInstanceOs::Ios;
     provider.create(wallet_unit1).await.unwrap();
 
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id2: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "android_wallet".to_string();
     wallet_unit2.os = ManagedInstanceOs::Android;
@@ -1105,13 +1105,13 @@ async fn test_sort_by_os_descending() {
     let provider = test_setup.provider;
 
     // Create wallet units with different OS values
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id1: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "ios_wallet".to_string();
     wallet_unit1.os = ManagedInstanceOs::Ios;
     provider.create(wallet_unit1).await.unwrap();
 
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id2: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "android_wallet".to_string();
     wallet_unit2.os = ManagedInstanceOs::Android;
@@ -1190,12 +1190,12 @@ async fn test_sort_by_last_modified_after_updates() {
     let provider = test_setup.provider;
 
     // Create two wallet units
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id1: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "first_wallet".to_string();
     provider.create(wallet_unit1).await.unwrap();
 
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id2: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "second_wallet".to_string();
     provider.create(wallet_unit2).await.unwrap();
@@ -1244,7 +1244,7 @@ async fn test_sort_with_pagination() {
     // Create 5 wallet units with alphabetical names
     let names = vec!["echo", "alpha", "delta", "bravo", "charlie"];
     for name in &names {
-        let wallet_unit_id: ManagedInstanceId = Uuid::new_v4().into();
+        let wallet_unit_id: ManagedInstanceId = ManagedInstanceId::new();
         let mut wallet_unit = dummy_managed_instance(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = name.to_string();
         provider.create(wallet_unit).await.unwrap();
@@ -1307,19 +1307,19 @@ async fn test_sort_with_filtering() {
     let provider = test_setup.provider;
 
     // Create wallet units with different statuses and names
-    let wallet_unit_id1: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id1: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit1 = dummy_managed_instance(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "zebra_active".to_string();
     wallet_unit1.status = InstanceStatus::Active;
     provider.create(wallet_unit1).await.unwrap();
 
-    let wallet_unit_id2: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id2: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit2 = dummy_managed_instance(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "alpha_active".to_string();
     wallet_unit2.status = InstanceStatus::Active;
     provider.create(wallet_unit2).await.unwrap();
 
-    let wallet_unit_id3: ManagedInstanceId = Uuid::new_v4().into();
+    let wallet_unit_id3: ManagedInstanceId = ManagedInstanceId::new();
     let mut wallet_unit3 = dummy_managed_instance(wallet_unit_id3, test_setup.organisation_id);
     wallet_unit3.name = "beta_revoked".to_string();
     wallet_unit3.status = InstanceStatus::Revoked;

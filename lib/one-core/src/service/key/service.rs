@@ -1,8 +1,7 @@
 use std::str::FromStr;
 
-use shared_types::KeyId;
+use shared_types::{HistoryId, KeyId};
 use standardized_types::jwk::PrivateJwk;
-use uuid::Uuid;
 
 use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyFilterParamsDTO, KeyRequestDTO};
@@ -71,7 +70,7 @@ impl KeyService {
             return Err(KeyServiceError::UnsupportedKeyType { key_type });
         }
         let (request, jwk) = extract_jwk(request).error_while("extracting jwk")?;
-        let key_id = Uuid::new_v4().into();
+        let key_id = KeyId::new();
         let key = match jwk {
             None => provider
                 .generate(key_id, key_type, request.storage_params.clone())
@@ -157,7 +156,7 @@ impl KeyService {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 action: HistoryAction::CsrGenerated,
                 name: key.name,

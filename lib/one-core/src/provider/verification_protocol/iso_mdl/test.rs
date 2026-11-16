@@ -6,6 +6,11 @@ use coset::{AsCborValue, CborSerializable};
 use hex_literal::hex;
 use maplit::hashmap;
 use secrecy::SecretSlice;
+use shared_types::{
+    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatClaimSchemaId,
+    CredentialSchemaFormatId, CredentialSchemaId, InteractionId, OrganisationId, ProofId,
+    ProofSchemaId,
+};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -147,7 +152,7 @@ async fn test_presentation_reject_ble() {
     .unwrap();
 
     let ecosystem_schema_id = "org.iso.18013.5.1".to_string();
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let device_request_bytes = to_cbor(&DeviceRequest {
         version: Default::default(),
         doc_requests: vec![DocRequest {
@@ -187,10 +192,10 @@ async fn test_presentation_reject_ble() {
         }),
     })
     .unwrap();
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let proof = Proof {
         ecosystem: None,
-        id: Uuid::new_v4().into(),
+        id: ProofId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: "ISO_MDL".to_string(),
@@ -203,7 +208,7 @@ async fn test_presentation_reject_ble() {
         schema: Some(
             ProofSchema {
                 ecosystem: None,
-                id: Uuid::new_v4().into(),
+                id: ProofSchemaId::new(),
                 created_date: crate::clock::now_utc(),
                 imported_source_url: Some("CORE_URL".to_string()),
                 last_modified: crate::clock::now_utc(),
@@ -224,7 +229,7 @@ async fn test_presentation_reject_ble() {
                         deleted_at: None,
                         name: "".to_string(),
                         formats: vec![CredentialSchemaFormat {
-                            id: Uuid::new_v4().into(),
+                            id: CredentialSchemaFormatId::new(),
                             created_date: crate::clock::now_utc(),
                             last_modified: crate::clock::now_utc(),
                             credential_schema_id,
@@ -258,7 +263,7 @@ async fn test_presentation_reject_ble() {
             Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: crate::clock::now_utc(),
                 data: Some(interaction_data),
                 last_modified: crate::clock::now_utc(),
@@ -487,10 +492,10 @@ async fn test_presentation_submit_dc_api() {
             vec![FormattedCredentialPresentation {
                 presentation: "presentation-token".to_string(),
                 credential_format: CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
-                    credential_schema_id: Uuid::new_v4().into(),
+                    credential_schema_id: CredentialSchemaId::new(),
                     format: "MDOC".into(),
                     ecosystem_schema_id,
                     claim_mappings: Default::default(),
@@ -551,7 +556,7 @@ async fn test_get_presentation_definition_v2(
     transport: &str,
     config: CoreConfig,
 ) {
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let ecosystem_schema_id = "org.iso.18013.5.1".to_string();
     let device_request = DeviceRequest {
         version: Default::default(),
@@ -575,7 +580,7 @@ async fn test_get_presentation_definition_v2(
 
     let interaction_data = interaction_data(device_request);
 
-    let proof_id = Uuid::new_v4().into();
+    let proof_id = ProofId::new();
     let proof = Proof {
         ecosystem: None,
         id: proof_id,
@@ -597,7 +602,7 @@ async fn test_get_presentation_definition_v2(
             Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 data: Some(interaction_data.to_string().as_bytes().to_vec()),
@@ -616,12 +621,12 @@ async fn test_get_presentation_definition_v2(
         subscriber_information: None,
     };
 
-    let credential_id = Uuid::new_v4().into();
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_id = CredentialId::new();
+    let credential_schema_id = CredentialSchemaId::new();
 
     let claim_schemas = hashmap![
         "org.iso.18013.5.1.mDL_name" => ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "org.iso.18013.5.1.mDL_name".to_string(),
             data_type: "STRING".to_string(),
             created_date: crate::clock::now_utc(),
@@ -632,7 +637,7 @@ async fn test_get_presentation_definition_v2(
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_age" => ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "org.iso.18013.5.1.mDL_age".to_string(),
             data_type: "NUMBER".to_string(),
             created_date: crate::clock::now_utc(),
@@ -643,7 +648,7 @@ async fn test_get_presentation_definition_v2(
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_country" => ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "org.iso.18013.5.1.mDL_country".to_string(),
             data_type: "STRING".to_string(),
             created_date: crate::clock::now_utc(),
@@ -654,7 +659,7 @@ async fn test_get_presentation_definition_v2(
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_country_code" => ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "org.iso.18013.5.1.mDL_country_code".to_string(),
             data_type: "STRING".to_string(),
             created_date: crate::clock::now_utc(),
@@ -665,7 +670,7 @@ async fn test_get_presentation_definition_v2(
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_info" => ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "org.iso.18013.5.1.mDL_info".to_string(),
             data_type: "OBJECT".to_string(),
             created_date: crate::clock::now_utc(),
@@ -676,7 +681,7 @@ async fn test_get_presentation_definition_v2(
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_info/code" => ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "org.iso.18013.5.1.mDL_info/code".to_string(),
             data_type: "STRING".to_string(),
             created_date: crate::clock::now_utc(),
@@ -687,10 +692,10 @@ async fn test_get_presentation_definition_v2(
             translations: Default::default(),
         },
     ];
-    let credential_schema_format_id = Uuid::new_v4().into();
+    let credential_schema_format_id = CredentialSchemaFormatId::new();
     let claim_mappings = vec![
         CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id,
@@ -699,7 +704,7 @@ async fn test_get_presentation_definition_v2(
             namespace: Some("org.iso.18013.5.1.mDL".to_string()),
         },
         CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id,
@@ -708,7 +713,7 @@ async fn test_get_presentation_definition_v2(
             namespace: Some("org.iso.18013.5.1.mDL".to_string()),
         },
         CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id,
@@ -717,7 +722,7 @@ async fn test_get_presentation_definition_v2(
             namespace: Some("org.iso.18013.5.1.mDL".to_string()),
         },
         CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id,
@@ -726,7 +731,7 @@ async fn test_get_presentation_definition_v2(
             namespace: Some("org.iso.18013.5.1.mDL".to_string()),
         },
         CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id,
@@ -735,7 +740,7 @@ async fn test_get_presentation_definition_v2(
             namespace: Some("org.iso.18013.5.1.mDL".to_string()),
         },
         CredentialSchemaFormatClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatClaimSchemaId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_format_id,
@@ -782,7 +787,7 @@ async fn test_get_presentation_definition_v2(
 
     let claims = vec![
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_name"].clone().into(),
@@ -791,7 +796,7 @@ async fn test_get_presentation_definition_v2(
             selectively_disclosable: true,
         },
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_age"].clone().into(),
@@ -800,7 +805,7 @@ async fn test_get_presentation_definition_v2(
             selectively_disclosable: true,
         },
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_country"]
@@ -811,7 +816,7 @@ async fn test_get_presentation_definition_v2(
             selectively_disclosable: true,
         },
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_country_code"]
@@ -822,7 +827,7 @@ async fn test_get_presentation_definition_v2(
             selectively_disclosable: true,
         },
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_info"].clone().into(),
@@ -831,7 +836,7 @@ async fn test_get_presentation_definition_v2(
             selectively_disclosable: true,
         },
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             schema: claim_schemas["org.iso.18013.5.1.mDL_info/code"]

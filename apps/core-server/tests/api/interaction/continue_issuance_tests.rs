@@ -1,6 +1,7 @@
 use axum::http::Method;
 use one_core::model::interaction::InteractionType;
 use serde_json::json;
+use shared_types::InteractionId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 use wiremock::matchers::{header, method, path};
@@ -16,7 +17,7 @@ async fn test_continue_issuance_endpoint() {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let authorization_code = "aUtH_CoDe";
     let credential_schema_id = Uuid::new_v4();
 
@@ -432,7 +433,7 @@ async fn test_continue_issuance_endpoint_fails_wallet_instance_required() {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let interaction_id = Uuid::new_v4().into();
+    let interaction_id = InteractionId::new();
     let credential_schema_id = Uuid::new_v4();
 
     let credential_issuer = format!(

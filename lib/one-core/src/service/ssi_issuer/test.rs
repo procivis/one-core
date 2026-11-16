@@ -4,7 +4,6 @@ use std::sync::Arc;
 use shared_types::{CredentialSchemaId, IdentifierId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
-use uuid::Uuid;
 
 use super::SSIIssuerService;
 use crate::config::core_config::CoreConfig;
@@ -56,8 +55,8 @@ fn issuer_metadata_fixtures() -> (
     CredentialSchema,
 ) {
     let protocol_id = "OPENID4VCI".to_string();
-    let identifier_id: IdentifierId = Uuid::new_v4().into();
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let identifier_id: IdentifierId = IdentifierId::new();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
 
     let mut identifier = dummy_identifier();
     identifier.id = identifier_id;
@@ -257,8 +256,8 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_core_base_url_is_missing(
     let result = service
         .get_sd_jwt_vc_issuer_metadata(
             &"OPENID4VCI".to_string(),
-            &Uuid::new_v4().into(),
-            &Uuid::new_v4().into(),
+            &IdentifierId::new(),
+            &CredentialSchemaId::new(),
         )
         .await;
 
@@ -297,7 +296,11 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_protocol_not_found() {
 
     // when
     let result = service
-        .get_sd_jwt_vc_issuer_metadata(&protocol_id, &Uuid::new_v4().into(), &Uuid::new_v4().into())
+        .get_sd_jwt_vc_issuer_metadata(
+            &protocol_id,
+            &IdentifierId::new(),
+            &CredentialSchemaId::new(),
+        )
         .await;
 
     // then
@@ -333,14 +336,14 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_identifier_not_found() {
         Some("https://core.example".to_string()),
     );
 
-    let identifier_id: IdentifierId = Uuid::new_v4().into();
+    let identifier_id: IdentifierId = IdentifierId::new();
 
     // when
     let result = service
         .get_sd_jwt_vc_issuer_metadata(
             &"OPENID4VCI".to_string(),
             &identifier_id,
-            &Uuid::new_v4().into(),
+            &CredentialSchemaId::new(),
         )
         .await;
 
@@ -383,13 +386,13 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_credential_schema_not_fou
         Some("https://core.example".to_string()),
     );
 
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
 
     // when
     let result = service
         .get_sd_jwt_vc_issuer_metadata(
             &"OPENID4VCI".to_string(),
-            &Uuid::new_v4().into(),
+            &IdentifierId::new(),
             &credential_schema_id,
         )
         .await;

@@ -6,10 +6,12 @@ use std::sync::{Arc, LazyLock, Mutex};
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
 use rstest::rstest;
-use shared_types::{CredentialId, RevocationMethodId};
+use shared_types::{
+    BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
+    DidId, IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
+};
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
@@ -110,7 +112,7 @@ async fn test_check_revocation_non_revocable() {
         .expect_get_revocation_method()
         .returning(|_| Ok(Arc::new(MockRevocationMethod::default())));
 
-    let credential_blob_id = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
@@ -253,7 +255,7 @@ async fn test_check_revocation_updates_state(
         .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
-    let credential_blob_id = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = current_state;
@@ -358,9 +360,9 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
         .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
-    let credential_blob_id = Uuid::new_v4().into();
-    let parent_credential_id = Uuid::new_v4().into();
-    let item_credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
+    let parent_credential_id = CredentialId::new();
+    let item_credential_id: CredentialId = CredentialId::new();
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
@@ -482,9 +484,9 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
     let revocation_method_provider = MockRevocationMethodProvider::default();
     let formatter_provider = MockCredentialFormatterProvider::default();
 
-    let credential_blob_id = Uuid::new_v4().into();
-    let parent_credential_id = Uuid::new_v4().into();
-    let item_credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
+    let parent_credential_id = CredentialId::new();
+    let item_credential_id: CredentialId = CredentialId::new();
 
     let refresh_token_expires_at = crate::clock::now_utc() - Duration::hours(1);
     let interaction_data = holder_interaction_data(refresh_token_expires_at);
@@ -496,7 +498,7 @@ async fn test_check_revocation_batch_parent_expires_when_all_items_and_refresh_t
             crate::model::interaction::Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 data: Some(interaction_data),
@@ -664,9 +666,9 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
         .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
-    let credential_blob_id = Uuid::new_v4().into();
-    let parent_credential_id = Uuid::new_v4().into();
-    let item_credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
+    let parent_credential_id = CredentialId::new();
+    let item_credential_id: CredentialId = CredentialId::new();
 
     let refresh_token_expires_at = crate::clock::now_utc() - Duration::hours(1);
     let interaction_data = holder_interaction_data(refresh_token_expires_at);
@@ -678,7 +680,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
             crate::model::interaction::Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 data: Some(interaction_data),
@@ -844,9 +846,9 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
         .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
-    let credential_blob_id = Uuid::new_v4().into();
-    let parent_credential_id = Uuid::new_v4().into();
-    let item_credential_id: CredentialId = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
+    let parent_credential_id = CredentialId::new();
+    let item_credential_id: CredentialId = CredentialId::new();
 
     // refresh token is still valid, and won't expire for a while
     let refresh_token_expires_at = crate::clock::now_utc() + Duration::hours(1);
@@ -862,7 +864,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
             crate::model::interaction::Interaction {
                 dpop_key: None,
                 client_attestation_key: None,
-                id: Uuid::new_v4().into(),
+                id: InteractionId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 data: Some(interaction_data),
@@ -1012,9 +1014,9 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
         .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
-    let credential_blob_id = Uuid::new_v4().into();
-    let parent_credential_id = Uuid::new_v4().into();
-    let item_credential_id = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
+    let parent_credential_id = CredentialId::new();
+    let item_credential_id = CredentialId::new();
     let credential = {
         let mut updated_credential = generic_credential();
         updated_credential.common_mut().state = CredentialStateEnum::Accepted;
@@ -2008,7 +2010,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
     base_credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let sdjwtvc_format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id: base_credential.common().schema.id(),
@@ -2017,7 +2019,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         claim_mappings: Default::default(),
     };
     let mdoc_format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id: base_credential.common().schema.id(),
@@ -2223,7 +2225,7 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
     base_credential.common_mut().state = CredentialStateEnum::Accepted;
 
     let sdjwtvc_format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id: base_credential.common().schema.id(),
@@ -2232,7 +2234,7 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
         claim_mappings: Default::default(),
     };
     let mdoc_format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id: base_credential.common().schema.id(),
@@ -2379,11 +2381,11 @@ async fn test_credential_ops_session_org_mismatch() {
     });
 
     let result = validity_manager
-        .change_credential_state(&Uuid::new_v4().into(), ChangeCredentialState::Accepted)
+        .change_credential_state(&CredentialId::new(), ChangeCredentialState::Accepted)
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
     let result = validity_manager
-        .check_holder_credential_validity(Uuid::new_v4().into(), false)
+        .check_holder_credential_validity(CredentialId::new(), false)
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
@@ -2393,7 +2395,7 @@ fn generic_credential() -> Credential {
 
     let claim_schema = ClaimSchema {
         array: false,
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "NUMBER".to_string(),
         data_type: "NUMBER".to_string(),
         created_date: now,
@@ -2404,10 +2406,10 @@ fn generic_credential() -> Credential {
     };
     let organisation = dummy_organisation(None);
 
-    let credential_id = Uuid::new_v4().into();
+    let credential_id = CredentialId::new();
     let issuer_did = Did {
         deleted_at: None,
-        id: Uuid::new_v4().into(),
+        id: DidId::new(),
         created_date: now,
         last_modified: now,
         name: "did1".to_string(),
@@ -2419,7 +2421,7 @@ fn generic_credential() -> Credential {
             role: KeyRole::AssertionMethod,
             key: Key {
                 autogenerated: false,
-                id: Uuid::new_v4().into(),
+                id: KeyId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 public_key: vec![],
@@ -2436,9 +2438,9 @@ fn generic_credential() -> Credential {
         log: None,
     };
 
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id,
@@ -2451,7 +2453,7 @@ fn generic_credential() -> Credential {
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
         claims: vec![Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: now,
             last_modified: now,
             value: Some("123".to_string()),
@@ -2462,7 +2464,7 @@ fn generic_credential() -> Credential {
         .into(),
         issuer_identifier: Some(
             Identifier {
-                id: Uuid::new_v4().into(),
+                id: IdentifierId::new(),
                 created_date: now,
                 last_modified: now,
                 name: "identifier".to_string(),
@@ -2471,7 +2473,7 @@ fn generic_credential() -> Credential {
                 state: IdentifierState::Active,
                 deleted_at: None,
                 autogenerated: false,
-                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
+                organisation: dummy_organisation(Some(OrganisationId::new())).into(),
                 trust_information: Default::default(),
                 logo: None,
                 translations: Default::default(),
@@ -3245,7 +3247,7 @@ async fn test_check_validity_mdoc_refresh_skipped_for_unknown_protocol(
             .into())
         });
 
-    let credential_blob_id = Uuid::new_v4().into();
+    let credential_blob_id = BlobId::new();
     let credential = {
         let mut credential = generic_credential();
         credential.common_mut().state = CredentialStateEnum::Accepted;
@@ -3253,7 +3255,7 @@ async fn test_check_validity_mdoc_refresh_skipped_for_unknown_protocol(
         let holder = credential.holder_mut().unwrap();
         holder.data.credential_blob_id = Some(credential_blob_id);
         holder.data.format = CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id,

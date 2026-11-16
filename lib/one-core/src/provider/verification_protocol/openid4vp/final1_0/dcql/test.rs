@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use serde_json::json;
+use shared_types::{CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::*;
 use crate::model::proof_schema::ProofInputSchema;
@@ -36,14 +36,14 @@ async fn input(required: bool) -> ProofInputSchema {
     let template = schema.formats.as_ref().await.unwrap()[0].clone();
     let formats = ["JWT", "SD_JWT_VC", "MDOC"].map(|name| {
         let mut format = template.clone();
-        format.id = Uuid::new_v4().into();
+        format.id = CredentialSchemaFormatId::new();
         format.format = name.into();
         format.ecosystem_schema_id = format!("{name}-schema");
         format.claim_mappings = [&claim, &optional_claim]
             .into_iter()
             .enumerate()
             .map(|(index, claim)| CredentialSchemaFormatClaimSchema {
-                id: Uuid::new_v4().into(),
+                id: CredentialSchemaFormatClaimSchemaId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 credential_schema_format_id: format.id,

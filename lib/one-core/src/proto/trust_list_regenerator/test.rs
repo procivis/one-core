@@ -2,7 +2,6 @@ use std::assert_matches;
 
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::*;
 use crate::model::common::GetListResponse;
@@ -43,7 +42,7 @@ fn publications_for_identifier(
 
 #[tokio::test]
 async fn regenerates_all_lists_with_their_respective_publishers() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let publications: Vec<_> = ["LOTE_JWT", "LOTE_XML", "LOTE_JWT"]
         .into_iter()
         .map(|publisher| TrustListPublication {
@@ -90,7 +89,7 @@ async fn regenerates_all_lists_with_their_respective_publishers() {
 
 #[tokio::test]
 async fn unpublished_identifier_does_not_call_any_publisher() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let proto = TrustListRegeneratorImpl::new(
         Arc::new(publications_for_identifier(identifier_id, vec![])),
         Arc::new(MockTrustListPublisherProvider::new()),
@@ -103,7 +102,7 @@ async fn unpublished_identifier_does_not_call_any_publisher() {
 
 #[tokio::test]
 async fn missing_publisher_is_reported() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let publication = dummy_trust_list_publication();
     let publisher_id = publication.r#type.clone();
     let mut provider = MockTrustListPublisherProvider::new();
@@ -124,7 +123,7 @@ async fn missing_publisher_is_reported() {
 
 #[tokio::test]
 async fn regeneration_failure_is_propagated() {
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let mut publisher = MockTrustListPublisher::new();
     publisher
         .expect_regenerate_content()
@@ -164,7 +163,7 @@ async fn listing_failure_is_propagated() {
 
     assert!(
         proto
-            .regenerate_for_identifier(Uuid::new_v4().into())
+            .regenerate_for_identifier(IdentifierId::new())
             .await
             .is_err()
     );

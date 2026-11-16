@@ -3,7 +3,7 @@ use std::assert_matches;
 use one_core::repository::DataRepository;
 use one_core::service::test_utilities::CredentialBuilder;
 use sea_orm::{ActiveModelTrait, ColumnTrait, IntoActiveModel, QueryFilter};
-use shared_types::{ClaimId, ProofId};
+use shared_types::{BlobId, ClaimId, ClaimSchemaId, ProofId};
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -36,7 +36,7 @@ impl BatchSetup {
             identifier.id,
             None,
             None,
-            Uuid::new_v4().into(),
+            BlobId::new(),
             role.into(),
         )
         .await
@@ -44,7 +44,7 @@ impl BatchSetup {
         let repositories = crate::DataLayer::build(db.clone(), vec![]);
         let parent = Credential::HolderBatchParent {
             common: CredentialCommon {
-                id: Uuid::new_v4().into(),
+                id: CredentialId::new(),
                 ..template.common().clone()
             },
         };
@@ -54,7 +54,7 @@ impl BatchSetup {
             .await
             .unwrap();
         let claim = Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: Some("value".into()),
@@ -76,7 +76,7 @@ impl BatchSetup {
     fn item(&self, claims: Vec<Claim>) -> Credential {
         {
             let mut updated_credential = self.template.clone();
-            updated_credential.common_mut().id = Uuid::new_v4().into();
+            updated_credential.common_mut().id = CredentialId::new();
             updated_credential = CredentialBuilder {
                 r#type: CredentialType::BatchItem,
                 parent: Some(self.parent.clone().into()),
@@ -108,7 +108,7 @@ impl BatchSetup {
     }
 
     async fn proof(&self, references: &[(CredentialId, ClaimId)]) -> ProofId {
-        let proof_id = Uuid::new_v4().into();
+        let proof_id = ProofId::new();
         proof::ActiveModel {
             id: Set(proof_id),
             created_date: Set(get_dummy_date()),
@@ -152,7 +152,7 @@ async fn reuse_requires_equal_claim_contents(#[case] difference: &str, #[case] r
     let setup = BatchSetup::new().await;
     let mut first = setup.claim.clone();
     let mut second = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: first.created_date + Duration::days(1),
         ..first.clone()
     };
@@ -215,12 +215,12 @@ async fn claims_are_not_reused_across_batches() {
     let setup = BatchSetup::new().await;
     let first = setup.create_item(vec![setup.claim.clone()]).await;
     let different = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         ..setup.claim.clone()
     };
     let other_parent = {
         let mut updated_credential = setup.parent.clone();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         updated_credential
     };
     setup
@@ -260,7 +260,7 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
     let setup = BatchSetup::new().await;
     setup.create_item(vec![setup.claim.clone()]).await;
     let different = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         ..setup.claim.clone()
     };
     let single = {
@@ -332,7 +332,7 @@ async fn single_credentials_do_not_reuse_batch_claims(#[case] role: CredentialRo
 async fn refresh_reuses_common_claims_but_preserves_changed_metadata() {
     let setup = BatchSetup::new().await;
     let old_metadata = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         path: "expiry".into(),
         value: Some("old".into()),
         ..setup.claim.clone()
@@ -350,14 +350,14 @@ async fn refresh_reuses_common_claims_but_preserves_changed_metadata() {
     old_item.consumed_at = Set(Some(get_dummy_date()));
     old_item.update(&setup.db).await.unwrap();
     let new_metadata = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         value: Some("new".into()),
         ..old_metadata.clone()
     };
     let next = setup
         .create_item(vec![
             Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 ..setup.claim.clone()
             },
             new_metadata.clone(),
@@ -380,7 +380,7 @@ async fn reuse_preserves_existing_proof_references() {
     let proof_id = setup.proof(&[(first, setup.claim.id)]).await;
     let second = setup
         .create_item(vec![Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             ..setup.claim.clone()
         }])
         .await;
@@ -406,7 +406,7 @@ async fn concurrent_batch_items_share_claims() {
         (0..3)
             .map(|_| {
                 setup.item(vec![Claim {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimId::new(),
                     ..setup.claim.clone()
                 }])
             })
@@ -429,7 +429,7 @@ async fn reuse_does_not_hide_conflicting_requested_claim_ids() {
     let setup = BatchSetup::new().await;
     setup.create_item(vec![setup.claim.clone()]).await;
     let conflicting = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         value: Some("different".into()),
         ..setup.claim.clone()
     };
@@ -476,7 +476,7 @@ async fn bulk_creation_query_count_does_not_grow_per_item(#[case] refresh: bool)
         if refresh {
             setup.create_item(vec![setup.claim.clone()]).await;
         } else {
-            setup.parent.common_mut().id = Uuid::new_v4().into();
+            setup.parent.common_mut().id = CredentialId::new();
         }
         let statements = Arc::new(Mutex::new(Vec::new()));
         let captured = statements.clone();
@@ -487,7 +487,7 @@ async fn bulk_creation_query_count_does_not_grow_per_item(#[case] refresh: bool)
         let mut requests: Vec<_> = (0..size)
             .map(|_| {
                 setup.item(vec![Claim {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimId::new(),
                     ..setup.claim.clone()
                 }])
             })
@@ -547,15 +547,15 @@ async fn bulk_creation_query_count_does_not_grow_per_item(#[case] refresh: bool)
 #[tokio::test]
 async fn bulk_creation_crosses_all_insert_chunk_boundaries() {
     let mut setup = BatchSetup::new().await;
-    setup.parent.common_mut().id = Uuid::new_v4().into();
+    setup.parent.common_mut().id = CredentialId::new();
     let mut requests: Vec<_> = (0..65)
         .map(|index| {
             let mut claims = vec![Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 ..setup.claim.clone()
             }];
             claims.extend((0..6).map(|field| Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 path: format!("metadata/{field}"),
                 value: Some(format!("{index}-{field}")),
                 ..setup.claim.clone()
@@ -595,10 +595,10 @@ async fn bulk_creation_crosses_all_insert_chunk_boundaries() {
 #[tokio::test]
 async fn bulk_creation_failure_leaves_no_credentials_or_claims(#[case] conflict: &str) {
     let mut setup = BatchSetup::new().await;
-    setup.parent.common_mut().id = Uuid::new_v4().into();
+    setup.parent.common_mut().id = CredentialId::new();
     let first = setup.item(vec![setup.claim.clone()]);
     let mut second_claim = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         ..setup.claim.clone()
     };
     match conflict {
@@ -610,7 +610,7 @@ async fn bulk_creation_failure_leaves_no_credentials_or_claims(#[case] conflict:
         "repeated_id" => second_claim.id = setup.claim.id,
         "schema" => {
             let mut schema = second_claim.schema.as_ref().await.unwrap().clone();
-            schema.id = Uuid::new_v4().into();
+            schema.id = ClaimSchemaId::new();
             second_claim.schema = schema.into();
         }
         "credential" | "repeated_contents" => {}
@@ -664,13 +664,13 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
     for _ in 0..2 {
         let parent = {
             let mut updated_credential = setup.parent.clone();
-            updated_credential.common_mut().id = Uuid::new_v4().into();
+            updated_credential.common_mut().id = CredentialId::new();
             updated_credential
         };
         let mut ids = Vec::new();
         for _ in 0..2 {
             let mut item = setup.item(vec![Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 ..setup.claim.clone()
             }]);
             item = CredentialBuilder {
@@ -692,7 +692,7 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
         setup.template.holder().unwrap().data.issuer.identifier.id(),
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -705,7 +705,7 @@ async fn bulk_creation_keeps_batch_scopes_separate() {
         .unwrap();
     let issuer = {
         let mut issuer = issuer_template;
-        issuer.common_mut().id = Uuid::new_v4().into();
+        issuer.common_mut().id = CredentialId::new();
         CredentialBuilder {
             claims: vec![setup.claim.clone()].into(),
             ..issuer.into()

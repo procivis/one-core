@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use shared_types::ManagedInstanceId;
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::dto::{
     DisplayNameDTO, ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO,
@@ -38,7 +38,7 @@ pub(crate) fn wallet_unit_from_request(
         _ => InstanceStatus::Pending,
     };
     Ok(ManagedInstance {
-        id: Uuid::new_v4().into(),
+        id: ManagedInstanceId::new(),
         name: format!("{}-{}-{}", provider_label, request.os, now.unix_timestamp()),
         created_date: now,
         last_modified: now,

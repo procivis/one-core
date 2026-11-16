@@ -4,7 +4,7 @@ use one_core::model::identifier::IdentifierType;
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::model::trust_list_subscription::TrustListSubscriptionState;
-use shared_types::TrustListSubscriberId;
+use shared_types::{IdentifierId, RemoteEntityCacheEntryId, TrustListSubscriberId};
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_602::{MultiLangString, TrustedEntityInformation};
 use standardized_types::x509::KeyIdentifier;
@@ -44,7 +44,7 @@ async fn test_resolve_trust_entries_unauthorized() {
 async fn test_resolve_trust_entries_success_empty() {
     // GIVEN
     let context = TestContext::new(None).await;
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
 
     // WHEN
     let resp = context
@@ -156,7 +156,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
             .db
             .remote_entities
             .add_entry(RemoteEntityCacheEntry {
-                id: Uuid::new_v4().into(),
+                id: RemoteEntityCacheEntryId::new(),
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
                 last_used: one_core::clock::now_utc(),

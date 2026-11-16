@@ -6,7 +6,6 @@ use rstest::rstest;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use tokio::sync::oneshot;
-use uuid::Uuid;
 
 use super::*;
 use crate::proto::notification_sender::{MockNotificationSender, NotificationResult};
@@ -36,19 +35,34 @@ impl TransactionManager for DeferredCommit {
 }
 
 #[rstest]
-#[case::accepted(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Accepted), "ACCEPTED")]
-#[case::suspended(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Suspended { suspend_end_date: None }), "SUSPENDED")]
-#[case::revoked(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Revoked), "REVOKED")]
-#[case::rejected(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Rejected), "REJECTED")]
-#[case::error(NotificationPayload::Credential(Uuid::new_v4().into(), CredentialStateEnum::Error), "ERROR")]
-#[case::proof(NotificationPayload::Proof(Uuid::new_v4().into(), ProofStateEnum::Accepted), "ACCEPTED")]
+#[case::accepted(
+    NotificationPayload::Credential(CredentialId::new(), CredentialStateEnum::Accepted),
+    "ACCEPTED"
+)]
+#[case::suspended(NotificationPayload::Credential(CredentialId::new(), CredentialStateEnum::Suspended { suspend_end_date: None }), "SUSPENDED")]
+#[case::revoked(
+    NotificationPayload::Credential(CredentialId::new(), CredentialStateEnum::Revoked),
+    "REVOKED"
+)]
+#[case::rejected(
+    NotificationPayload::Credential(CredentialId::new(), CredentialStateEnum::Rejected),
+    "REJECTED"
+)]
+#[case::error(
+    NotificationPayload::Credential(CredentialId::new(), CredentialStateEnum::Error),
+    "ERROR"
+)]
+#[case::proof(
+    NotificationPayload::Proof(ProofId::new(), ProofStateEnum::Accepted),
+    "ACCEPTED"
+)]
 #[tokio::test]
 async fn notification_dispatch_waits_for_commit(
     #[case] payload: NotificationPayload,
     #[case] status: &'static str,
     #[values(false, true)] in_transaction: bool,
 ) {
-    let id = Uuid::new_v4().into();
+    let id = NotificationId::new();
     let mut repository = MockNotificationRepository::new();
     repository
         .expect_create()
@@ -97,7 +111,7 @@ async fn notification_dispatch_waits_for_commit(
                 "https://example.com/webhook",
                 payload,
                 "WEBHOOK_NOTIFY".into(),
-                Uuid::new_v4().into(),
+                OrganisationId::new(),
                 None,
             )
             .await

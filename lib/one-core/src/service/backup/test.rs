@@ -2,9 +2,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use secrecy::SecretString;
+use shared_types::{
+    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, EntityId,
+    HistoryId,
+};
 use similar_asserts::assert_eq;
 use tempfile::NamedTempFile;
-use uuid::Uuid;
 
 use super::BackupService;
 use crate::mapper::credential_schema_claim::backfill_default_translations;
@@ -49,11 +52,11 @@ fn setup_service(repositories: Repositories) -> BackupService {
 }
 
 async fn dummy_unexportable_entities() -> UnexportableEntities {
-    let claim_schema_id = Uuid::new_v4().into();
+    let claim_schema_id = ClaimSchemaId::new();
 
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id,
@@ -66,7 +69,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
-                id: Uuid::new_v4().into(),
+                id: CredentialId::new(),
                 created_date: crate::clock::now_utc(),
                 issuance_date: None,
                 last_modified: crate::clock::now_utc(),
@@ -125,7 +128,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
             role: CredentialRole::Holder,
             r#type: CredentialType::Single,
             claims: vec![Claim {
-                id: Uuid::new_v4().into(),
+                id: ClaimId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 value: Some("value".to_string()),
@@ -153,13 +156,13 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
         dids: vec![dummy_did()],
         identifiers: vec![dummy_identifier()],
         histories: vec![History {
-            id: Uuid::new_v4().into(),
+            id: HistoryId::new(),
             created_date: get_dummy_date(),
             action: HistoryAction::Accepted,
             name: "test".to_string(),
             source: HistorySource::Core,
             target: None,
-            entity_id: Some(Uuid::new_v4().into()),
+            entity_id: Some(EntityId::new()),
             entity_type: HistoryEntityType::Instance,
             metadata: None,
             organisation_id: None,
@@ -227,7 +230,7 @@ async fn test_finalize_import() {
             assert_eq!(event.entity_id, None);
             assert_eq!(event.entity_type, HistoryEntityType::Backup);
             assert_eq!(event.organisation_id, Some(organisation.id));
-            Ok(Uuid::new_v4().into())
+            Ok(HistoryId::new())
         });
 
     let service = setup_service(repositories);
@@ -239,7 +242,7 @@ async fn test_backup_flow() {
     let mut repositories = Repositories::default();
     let organisation = dummy_organisation(None);
     let db_version = "10".into();
-    let history_id = Uuid::new_v4().into();
+    let history_id = HistoryId::new();
 
     repositories
         .backup_repository

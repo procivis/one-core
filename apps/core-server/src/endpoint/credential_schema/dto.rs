@@ -1173,7 +1173,7 @@ mod test {
             name: "name".to_string(),
             format: "format".into(),
             revocation_method: Some("method".into()),
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             claims: vec![CredentialClaimSchemaResponseRestDTO {
                 id: Uuid::new_v4(),
                 created_date: one_core::clock::now_utc(),
@@ -1232,7 +1232,7 @@ mod test {
     #[test]
     fn test_shared_schema_v2_deserializes_into_import_schema_v2() {
         let shared = CredentialSchemaV2ResponseRestDTO {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaId::new(),
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),
             name: "name".to_string(),
@@ -1241,9 +1241,9 @@ mod test {
                 ecosystem_schema_id: "schema_id".to_string(),
                 dcql: None,
             }],
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             claims: vec![CredentialClaimSchemaV2ResponseRestDTO {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
                 key: "key".to_string(),

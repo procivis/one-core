@@ -14,9 +14,8 @@ use one_core::repository::trust_collection_repository::MockTrustCollectionReposi
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use one_core::service::test_utilities::{dummy_organisation, dummy_trust_collection};
 use sea_orm::DatabaseConnection;
-use shared_types::TrustCollectionId;
+use shared_types::{TrustCollectionId, TrustListSubscriptionId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::test_utilities::{
     get_dummy_date, insert_organisation_to_database, insert_trust_collection_to_database,
@@ -51,7 +50,7 @@ async fn setup() -> TestSetup {
 
 fn dummy_trust_list_subscription(trust_collection_id: TrustCollectionId) -> TrustListSubscription {
     TrustListSubscription {
-        id: Uuid::new_v4().into(),
+        id: TrustListSubscriptionId::new(),
         name: "test-subscription".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -88,7 +87,7 @@ async fn test_create_trust_list_subscription() {
 async fn test_get_trust_list_subscription_missing() {
     let TestSetup { provider, .. } = setup().await;
 
-    let result = provider.get(&Uuid::new_v4().into()).await;
+    let result = provider.get(&TrustListSubscriptionId::new()).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 

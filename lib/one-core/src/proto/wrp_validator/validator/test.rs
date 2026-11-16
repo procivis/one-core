@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use shared_types::{
     DidValue, EcosystemId, OrganisationId, TrustCollectionId, TrustListSubscriberId,
+    TrustListSubscriptionId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_475::registration_certificate::{
@@ -83,7 +84,7 @@ fn make_validator_with_subscription(
 ) -> WRPValidatorImpl {
     let collection = TrustCollection {
         ecosystem: TEST_ECOSYSTEM.into(),
-        id: TrustCollectionId::from(uuid::Uuid::new_v4()),
+        id: TrustCollectionId::new(),
         name: "collection".to_string(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -154,7 +155,7 @@ const TEST_ECOSYSTEM: &str = "EUDI";
 
 fn trust_scope(ecosystem: &str) -> TrustScope {
     TrustScope {
-        organisation_id: OrganisationId::from(uuid::Uuid::new_v4()),
+        organisation_id: OrganisationId::new(),
         ecosystem: ecosystem.into(),
     }
 }
@@ -192,7 +193,7 @@ fn filtered_trust_collection_ids(
 
 fn dummy_subscription(role: Option<TrustListRoleEnum>) -> TrustListSubscription {
     TrustListSubscription {
-        id: uuid::Uuid::new_v4().into(),
+        id: TrustListSubscriptionId::new(),
         name: "subscription".to_string(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),

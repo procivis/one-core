@@ -40,7 +40,7 @@ use one_core::service::test_utilities::CredentialBuilder;
 use one_dto_mapper::convert_inner;
 use rstest::rstest;
 use sea_orm::{DatabaseConnection, EntityTrait, Set};
-use shared_types::CredentialId;
+use shared_types::{BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -104,7 +104,7 @@ async fn suspension_date_follows_state(
     let suspended = CredentialStateEnum::Suspended {
         suspend_end_date: Some(end_date),
     };
-    request.common_mut().id = Uuid::new_v4().into();
+    request.common_mut().id = CredentialId::new();
     request.common_mut().state = suspended;
     let id = repository.create_credential(request).await.unwrap();
     assert_eq!(
@@ -213,7 +213,7 @@ async fn test_lock_credential_not_found() {
     let setup = setup_with_credential().await;
     let repository = credential_repository(setup.db.clone(), None);
 
-    let result = repository.lock_credential(&Uuid::new_v4().into()).await;
+    let result = repository.lock_credential(&CredentialId::new()).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
@@ -245,7 +245,7 @@ async fn setup_empty() -> TestSetup {
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("key-{i}"),
             required: i % 2 == 0,
             order: i as u32,
@@ -398,7 +398,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -483,11 +483,11 @@ async fn test_create_credential_success() {
         }),
     );
 
-    let credential_id = Uuid::new_v4().into();
+    let credential_id = CredentialId::new();
     let claim_schema = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = vec![
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: Some("value1".to_string()),
@@ -496,7 +496,7 @@ async fn test_create_credential_success() {
             selectively_disclosable: false,
         },
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: Some("value2".to_string()),
@@ -562,7 +562,7 @@ async fn test_create_credential_empty_claims() {
 
     let provider = credential_repository(db.clone(), None);
 
-    let credential_id = Uuid::new_v4().into();
+    let credential_id = CredentialId::new();
     let format = credential_schema.formats.as_ref().await.unwrap()[0].clone();
     let result = provider
         .create_credential(Credential::HolderSingle {
@@ -622,7 +622,7 @@ async fn test_create_credential_already_exists() {
 
     let claim_schema = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = vec![Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("value1".to_string()),
@@ -688,7 +688,7 @@ async fn test_delete_credential_success() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -725,7 +725,7 @@ async fn test_get_credential_list_success() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -738,7 +738,7 @@ async fn test_get_credential_list_success() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -752,7 +752,7 @@ async fn test_get_credential_list_success() {
         identifier.id,
         Some(one_core::clock::now_utc()),
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -819,7 +819,7 @@ async fn test_get_credential_list_formats_or_batch_parent() {
         .unwrap()
         .unwrap()
         .into_active_model();
-    let parent_id = Uuid::new_v4().into();
+    let parent_id = CredentialId::new();
     parent_row.id = Set(parent_id);
     parent_row.r#type = Set(credential::CredentialType::BatchParent);
     parent_row.format = Set(None);
@@ -876,7 +876,7 @@ async fn test_get_credential_list_success_filter_state() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -890,7 +890,7 @@ async fn test_get_credential_list_success_filter_state() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -956,7 +956,7 @@ async fn test_get_credential_list_filter_schema_name_without_pagination() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -1022,7 +1022,7 @@ async fn test_get_credential_list_filter_wua_monitor_credential_lifetime() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -1036,7 +1036,7 @@ async fn test_get_credential_list_filter_wua_monitor_credential_lifetime() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -1144,7 +1144,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
 
     let claim_schema = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = [Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("test_value".to_string()),
@@ -1262,7 +1262,7 @@ async fn holder_parent_claim_search_uses_only_newest_nondeleted_item(
         insert_many_claims_to_database(
             &db,
             &[(
-                Uuid::new_v4().into(),
+                ClaimId::new(),
                 schema_id,
                 item_id,
                 Some(value.as_bytes().to_vec()),
@@ -1310,7 +1310,7 @@ async fn test_get_credential_success() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -1322,7 +1322,7 @@ async fn test_get_credential_success() {
     let claim_schema2 = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = [
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: Some("value1".to_string()),
@@ -1331,7 +1331,7 @@ async fn test_get_credential_success() {
             selectively_disclosable: false,
         },
         Claim {
-            id: Uuid::new_v4().into(),
+            id: ClaimId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: Some("value2".to_string()),
@@ -1416,7 +1416,7 @@ async fn test_get_credential_fail_not_found() {
 
     let provider = credential_repository(db.clone(), None);
 
-    let credential = provider.get_credential(&Uuid::new_v4().into()).await;
+    let credential = provider.get_credential(&CredentialId::new()).await;
 
     assert_matches!(credential, Err(DataLayerError::EntityNotFound { .. }));
 }
@@ -1430,7 +1430,7 @@ async fn test_update_credential_success() {
         ..
     } = setup_empty().await;
 
-    let blob_id = Uuid::new_v4().into();
+    let blob_id = BlobId::new();
 
     let credential_id = insert_credential(
         &db,
@@ -1536,7 +1536,7 @@ async fn test_delete_credential_blobs_success() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -1550,7 +1550,7 @@ async fn test_delete_credential_blobs_success() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
@@ -1641,7 +1641,7 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
         identifier.id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Holder,
     )
     .await
@@ -1661,7 +1661,7 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
         TransactionManagerImpl::new(db.clone()),
     );
     let mdoc_format = CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         format: "MDOC".into(),
         ecosystem_schema_id: "other-format".into(),
         claim_mappings: Default::default(),
@@ -1674,7 +1674,7 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
 
     let new_parent = || {
         let mut updated_credential = template.clone();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         updated_credential = CredentialBuilder {
             r#type: CredentialType::BatchParent,
             format: None,
@@ -1691,7 +1691,7 @@ async fn earliest_expiring_batch_item_is_grouped_by_parent_and_format() {
     let expiry = now_utc() + Duration::days(1);
     let new_item = |parent: &Credential, format: &CredentialSchemaFormat, seconds| {
         let mut updated_credential = template.clone();
-        updated_credential.common_mut().id = Uuid::new_v4().into();
+        updated_credential.common_mut().id = CredentialId::new();
         // Creation order deliberately disagrees with expiry order.
         updated_credential.common_mut().created_date =
             get_dummy_date() - Duration::seconds(seconds);

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use serde_json::Value;
-use uuid::Uuid;
+use shared_types::HistoryId;
 
 use self::dto::InteractionExpirationCheckResultDTO;
 use super::Task;
@@ -66,7 +66,7 @@ impl Task for InteractionExpirationCheckProvider {
 
             self.history_repository
                 .create_history(History {
-                    id: Uuid::new_v4().into(),
+                    id: HistoryId::new(),
                     created_date: now,
                     action: HistoryAction::InteractionExpired,
                     name: schema.name,
@@ -115,7 +115,7 @@ impl Task for InteractionExpirationCheckProvider {
 
             self.history_repository
                 .create_history(History {
-                    id: Uuid::new_v4().into(),
+                    id: HistoryId::new(),
                     created_date: now,
                     action: HistoryAction::InteractionExpired,
                     name,

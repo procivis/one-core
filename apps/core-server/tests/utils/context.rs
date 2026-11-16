@@ -9,12 +9,11 @@ use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use rcgen::CertificateParams;
-use shared_types::DidValue;
+use shared_types::{CertificateId, DidValue, IdentifierId};
 use time::Duration;
 use tokio::task::JoinHandle;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use uuid::Uuid;
 
 use super::api_clients::Client;
 use super::db_clients::DbClient;
@@ -186,10 +185,10 @@ impl TestContext {
             &ca_params,
         );
 
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let now = one_core::clock::now_utc();
         let certificate = Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation: organisation.clone().into(),
             created_date: now,
@@ -244,10 +243,10 @@ impl TestContext {
         let mut ca_params = CertificateParams::default();
         let (ca_cert, _) = create_ca_cert(&mut ca_params, ecdsa::Key);
 
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let now = one_core::clock::now_utc();
         let certificate = Certificate {
-            id: Uuid::new_v4().into(),
+            id: CertificateId::new(),
             identifier_id,
             organisation: organisation.clone().into(),
             created_date: now,

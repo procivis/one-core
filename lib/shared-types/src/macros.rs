@@ -1,7 +1,7 @@
 /// Declares one or more newtypes wrapping a [`uuid::Uuid`].
 ///
 /// Each generated type is `Copy` and `Ord`, (de)serializes transparently as the inner UUID and
-/// gets: a random `new_v4()` constructor, [`std::str::FromStr`], [`std::fmt::Display`],
+/// gets: a random `new()` constructor, [`std::str::FromStr`], [`std::fmt::Display`],
 /// `From<Uuid>`, `From<Self> for Uuid`, `PartialEq<Uuid>`, a `utoipa::ToSchema` derive (feature
 /// `utoipa`) and the sea-orm conversions from [`impls_for_seaorm_newtype`] (feature `sea-orm`).
 ///
@@ -35,8 +35,12 @@ macro_rules! uuid_ids {
             pub struct $name(uuid::Uuid);
 
             impl $name {
-                /// Creates a new random (version 4) identifier.
-                pub fn new_v4() -> Self {
+                /// Generates a new random identifier.
+                #[expect(
+                    clippy::new_without_default,
+                    reason = "a default value should not be a random identifier"
+                )]
+                pub fn new() -> Self {
                     Self(uuid::Uuid::new_v4())
                 }
             }
@@ -308,7 +312,7 @@ mod tests {
         assert_eq!(Uuid::from(id), Uuid::from_str(UUID).unwrap());
         assert!(id == Uuid::from_str(UUID).unwrap());
         assert!(CredentialId::from_str("not-a-uuid").is_err());
-        assert_ne!(CredentialId::new_v4(), CredentialId::new_v4());
+        assert_ne!(CredentialId::new(), CredentialId::new());
     }
 
     #[test]

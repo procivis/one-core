@@ -197,7 +197,7 @@ mod test {
 
     use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
     use serde_json::json;
-    use shared_types::BlobId;
+    use shared_types::{BlobId, IdentifierId};
     use similar_asserts::assert_eq;
     use standardized_types::etsi_119_475::Credential;
     use standardized_types::etsi_119_475::registration_certificate::{
@@ -205,7 +205,6 @@ mod test {
     };
     use standardized_types::openid4vp::dcql::{CredentialFormat, SdJwtVcMeta};
     use url::Url;
-    use uuid::Uuid;
 
     use super::*;
     use crate::config::core_config::CoreConfig;
@@ -380,13 +379,13 @@ mod test {
 
     #[tokio::test]
     async fn test_find_orphaned_trust_information_returns_all_when_no_certificates() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let mut identifier = identifier_with_certificates(vec![]);
-        let trust_info_id = Uuid::new_v4().into();
+        let trust_info_id = IdentifierTrustInformationId::new();
         identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
             trust_info_id,
             identifier_id,
-            Uuid::new_v4().into(),
+            BlobId::new(),
         )]);
 
         let ecosystem = setup(Mocks {
@@ -404,13 +403,13 @@ mod test {
 
     #[tokio::test]
     async fn test_find_orphaned_trust_information_keeps_matching_sub() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let mut identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
-        let trust_info_id = Uuid::new_v4().into();
+        let trust_info_id = IdentifierTrustInformationId::new();
         identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
             trust_info_id,
             identifier_id,
-            Uuid::new_v4().into(),
+            BlobId::new(),
         )]);
 
         let ecosystem = setup(Mocks {
@@ -428,13 +427,13 @@ mod test {
 
     #[tokio::test]
     async fn test_find_orphaned_trust_information_keeps_matching_intermediary() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let mut identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
-        let trust_info_id = Uuid::new_v4().into();
+        let trust_info_id = IdentifierTrustInformationId::new();
         identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
             trust_info_id,
             identifier_id,
-            Uuid::new_v4().into(),
+            BlobId::new(),
         )]);
 
         let ecosystem = setup(Mocks {
@@ -454,7 +453,7 @@ mod test {
 
     #[tokio::test]
     async fn test_parse_trust_information_selects_rp_by_intermediary() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
 
         let mut wrp_validator = access_certificate_validator("intermediary");
@@ -492,13 +491,13 @@ mod test {
 
     #[tokio::test]
     async fn test_find_orphaned_trust_information_flags_mismatched_sub() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let mut identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
-        let trust_info_id = Uuid::new_v4().into();
+        let trust_info_id = IdentifierTrustInformationId::new();
         identifier.trust_information = RelatedVec::from(vec![dummy_trust_info(
             trust_info_id,
             identifier_id,
-            Uuid::new_v4().into(),
+            BlobId::new(),
         )]);
 
         let ecosystem = setup(Mocks {
@@ -516,7 +515,7 @@ mod test {
 
     #[tokio::test]
     async fn test_find_orphaned_trust_information_keeps_all_remaining_relying_parties() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let certificates = [("rp1", false), ("rp2", false), ("rp1", true), ("rp3", true)].map(
             |(rp_id, deleted)| {
                 let mut cert = dummy_certificate(identifier_id);
@@ -528,7 +527,11 @@ mod test {
         let mut identifier = identifier_with_certificates(certificates.into());
         let trust_information = ["rp1", "rp2", "rp3"].map(|rp_id| {
             (
-                dummy_trust_info(Uuid::new_v4().into(), identifier_id, Uuid::new_v4().into()),
+                dummy_trust_info(
+                    IdentifierTrustInformationId::new(),
+                    identifier_id,
+                    BlobId::new(),
+                ),
                 rp_id,
             )
         });
@@ -585,7 +588,7 @@ mod test {
 
     #[tokio::test]
     async fn test_parse_trust_information_accepts_valid_registration_certificate() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
 
         let mut wrp_validator = MockWRPValidator::new();
@@ -635,7 +638,7 @@ mod test {
 
     #[tokio::test]
     async fn test_parse_trust_information_accepts_multiple_relying_parties() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let mut cert_a = dummy_certificate(identifier_id);
         cert_a.chain = "chain-a".to_string();
         let mut cert_b = dummy_certificate(identifier_id);
@@ -704,7 +707,7 @@ mod test {
 
     #[tokio::test]
     async fn test_parse_trust_information_rejects_inconsistent_certificates_for_same_rp() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
         let mut wrp_validator = access_certificate_validator("rp1");
         wrp_validator
@@ -753,7 +756,7 @@ mod test {
     async fn test_parse_trust_information_rejects_subject_without_access_certificate(
         #[case] payload: serde_json::Value,
     ) {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let mut deleted_cert = dummy_certificate(identifier_id);
         deleted_cert.chain = "deleted-rp".to_string();
         deleted_cert.deleted_at = Some(crate::clock::now_utc());
@@ -780,7 +783,7 @@ mod test {
 
     #[tokio::test]
     async fn test_parse_trust_information_propagates_registration_certificate_validation_error() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let identifier = identifier_with_certificates(vec![dummy_certificate(identifier_id)]);
         let mut wrp_validator = access_certificate_validator("rp1");
         wrp_validator
@@ -811,7 +814,7 @@ mod test {
 
     #[tokio::test]
     async fn test_parse_trust_information_fails_when_no_access_certificate() {
-        let identifier_id = Uuid::new_v4().into();
+        let identifier_id = IdentifierId::new();
         let mut cert = dummy_certificate(identifier_id);
         cert.chain = "not an access certificate".to_string();
         let identifier = identifier_with_certificates(vec![cert]);

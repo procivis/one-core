@@ -3,9 +3,11 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialSchemaId};
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId,
+    CredentialSchemaId,
+};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::Error;
 use super::dto::{
@@ -184,7 +186,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         let claim_schemas_with_raw_mappings =
             self.parse_all_claim_schemas_v2(now, dto.schema.claims, formatters.as_ref())?;
 
-        let credential_schema_id = Uuid::new_v4().into();
+        let credential_schema_id = CredentialSchemaId::new();
         if !self.config.global_settings.rehost_imported_schemas || self.core_base_url.is_none() {
             validate_imported_source_url(&dto.schema.imported_source_url)
                 .error_while("validating imported source URL")?;
@@ -493,7 +495,7 @@ impl CredentialSchemaImportParserImpl {
         formatter: &dyn CredentialFormatter,
         metadata_claim_schemas: &mut IndexMap<String, ClaimSchema>,
     ) -> Result<CredentialSchemaFormat, Error> {
-        let format_id = Uuid::new_v4().into();
+        let format_id = CredentialSchemaFormatId::new();
         let uses_namespaces = formatter
             .get_capabilities()
             .features
@@ -521,7 +523,7 @@ impl CredentialSchemaImportParserImpl {
             };
 
             mappings.push(CredentialSchemaFormatClaimSchema {
-                id: Uuid::new_v4().into(),
+                id: CredentialSchemaFormatClaimSchemaId::new(),
                 created_date: now,
                 last_modified: now,
                 credential_schema_format_id: format_id,
@@ -538,7 +540,7 @@ impl CredentialSchemaImportParserImpl {
                 .or_insert_with(|| claim_schema_from_metadata_claim_schema(metadata_claim, now));
 
             mappings.push(CredentialSchemaFormatClaimSchema {
-                id: Uuid::new_v4().into(),
+                id: CredentialSchemaFormatClaimSchemaId::new(),
                 created_date: now,
                 last_modified: now,
                 credential_schema_format_id: format_id,
@@ -575,7 +577,7 @@ impl CredentialSchemaImportParserImpl {
         let mut flattened_claim_schemas = vec![];
         let key = claim_schema_dto.key.clone();
         let flattened_key = self.parse_claim_schema_key(parent_key, claim_schema_dto.key)?;
-        let id = Uuid::new_v4().into();
+        let id = ClaimSchemaId::new();
         let translations = match &claim_schema_dto.translations {
             Some(t) => claim_name_translations_from_dto(id, t, now).into(),
             None => Default::default(),
@@ -918,6 +920,7 @@ mod test {
     use std::sync::Arc;
 
     use assert2::{assert, let_assert};
+    use shared_types::ClaimSchemaId;
     use similar_asserts::assert_eq;
     use uuid::Uuid;
 
@@ -1141,7 +1144,7 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
             created_date: now,
@@ -1214,7 +1217,7 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
             created_date: now,
@@ -1424,7 +1427,7 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "code_claim".to_string(),
             data_type: "STRING".to_string(),
             created_date: now,

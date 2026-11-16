@@ -60,7 +60,6 @@ use standardized_types::openid4vci::{
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 use time::OffsetDateTime;
 use url::Url;
-use uuid::Uuid;
 
 use self::dpop::DpopContext;
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
@@ -2318,7 +2317,7 @@ impl OpenID4VCIFinal1_0 {
         name: &str,
     ) -> Result<Key, IssuanceProtocolError> {
         let key_storage = self.key_provider.get_key_storage(key_storage_id)?;
-        let key_id = Uuid::new_v4().into();
+        let key_id = KeyId::new();
         let generated_key = key_storage
             .generate(key_id, alg_type, serde_json::json!({}))
             .await
@@ -2937,7 +2936,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))?;
 
-        let interaction_id: InteractionId = Uuid::new_v4().into();
+        let interaction_id: InteractionId = InteractionId::new();
         let mut query = if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
                 protocol_base_url,

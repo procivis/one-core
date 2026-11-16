@@ -1,5 +1,6 @@
 use one_core::model::history::HistoryAction;
 use rcgen::CertificateParams;
+use shared_types::CertificateId;
 use similar_asserts::assert_eq;
 
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
@@ -169,7 +170,7 @@ async fn test_remove_certificate_not_found() {
         create_two_cert_identifier(&context, &organisation, "test-identifier").await;
 
     // when: deleting a certificate id that does not belong to this (or any) identifier
-    let foreign_certificate_id: shared_types::CertificateId = uuid::Uuid::new_v4().into();
+    let foreign_certificate_id: shared_types::CertificateId = CertificateId::new();
     let result = context
         .api
         .identifiers

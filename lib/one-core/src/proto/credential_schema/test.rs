@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use mockall::predicate::*;
-use shared_types::CredentialFormat;
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId, OrganisationId,
+};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -74,13 +76,13 @@ async fn test_parse_import_credential_schema_success() {
     let request = ImportCredentialSchemaRequestDTO {
         organisation: dummy_organisation(None),
         schema: ImportCredentialSchemaRequestSchemaDTO {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
                 created_date: get_dummy_date(),
@@ -151,13 +153,13 @@ async fn test_parse_import_with_nested_claims_success() {
     let request = ImportCredentialSchemaRequestDTO {
         organisation: dummy_organisation(None),
         schema: ImportCredentialSchemaRequestSchemaDTO {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaId::new(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
                 created_date: crate::clock::now_utc(),
@@ -204,7 +206,7 @@ async fn test_parse_import_with_nested_claims_success() {
 #[tokio::test]
 async fn test_importer_import_credential_schema_success() {
     // given
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let credential_schema = CredentialSchema {
         expiration: None,
         ecosystem: None,
@@ -224,7 +226,7 @@ async fn test_importer_import_credential_schema_success() {
         },
         name: "Test Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
@@ -234,7 +236,7 @@ async fn test_importer_import_credential_schema_success() {
         }]
         .into(),
         claim_schemas: vec![ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
@@ -286,7 +288,7 @@ async fn test_importer_import_credential_schema_success() {
 #[tokio::test]
 async fn test_importer_import_credential_schema_success_duplicate_name() {
     // given
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let mut existing_schema = CredentialSchema {
         expiration: None,
         ecosystem: None,
@@ -306,7 +308,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         },
         name: "Existing Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
@@ -348,7 +350,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
     );
 
     existing_schema.formats = vec![CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: CredentialSchemaFormatId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         format: "JWT".into(),
@@ -370,7 +372,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
 #[tokio::test]
 async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
     // given
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     let existing_schema = CredentialSchema {
         expiration: None,
         ecosystem: None,
@@ -390,7 +392,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         },
         name: "Existing Schema".to_string(),
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: CredentialSchemaFormatId::new(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id,

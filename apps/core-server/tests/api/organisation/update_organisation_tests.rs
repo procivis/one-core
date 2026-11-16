@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use maplit::hashset;
 use one_core::model::history::HistoryAction;
+use shared_types::{IdentifierId, OrganisationId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -178,7 +179,7 @@ async fn test_update_organisation_fail_non_existing_identifier() {
             &organisation.id,
             UpdateParams {
                 wallet_provider: Some(Some(ProviderParams {
-                    issuer: Some(Uuid::new_v4().into()),
+                    issuer: Some(IdentifierId::new()),
                     ..Default::default()
                 })),
                 ..Default::default()
@@ -466,7 +467,7 @@ async fn test_update_organisation_fail_non_existing_parent_organisation() {
         .update(
             &organisation.id,
             UpdateParams {
-                parent_organisation: Some(Some(Uuid::new_v4().into())),
+                parent_organisation: Some(Some(OrganisationId::new())),
                 ..Default::default()
             },
         )

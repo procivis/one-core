@@ -8,7 +8,6 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use shared_types::OrganisationId;
 use sql_data_provider::test_utilities::dummy_organisation;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub struct OrganisationsDB {
     repository: Arc<dyn OrganisationRepository>,
@@ -46,7 +45,7 @@ impl OrganisationsDB {
 
     pub async fn create_with(&self, params: TestingOrganisationParams) -> Organisation {
         let organisation = Organisation {
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(OrganisationId::new()),
             parent_organisation: params
                 .parent_organisation
                 .map(|parent_id| Related::new(parent_id, self.repository.clone())),

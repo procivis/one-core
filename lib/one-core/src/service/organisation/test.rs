@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
 use serde_json::json;
-use shared_types::{EcosystemId, OrganisationId};
+use shared_types::{EcosystemId, ManagedInstanceId, OrganisationId, TrustCollectionId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -104,7 +104,7 @@ async fn test_create_organisation_id_set() {
         organisation_repository,
         ..Default::default()
     });
-    let id = Uuid::new_v4().into();
+    let id = OrganisationId::new();
     let result = service
         .create_organisation(CreateOrganisationRequestDTO {
             id: Some(id),
@@ -133,7 +133,7 @@ async fn test_create_organisation_already_exists() {
         organisation_repository,
         ..Default::default()
     });
-    let id = Uuid::new_v4().into();
+    let id = OrganisationId::new();
     let result = service
         .create_organisation(CreateOrganisationRequestDTO {
             id: Some(id),
@@ -186,7 +186,7 @@ async fn test_get_organisation_success() {
 /// reporting provider does not know about stay `false`.
 #[tokio::test]
 async fn test_get_organisation_reports_provider_feature_flags() {
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let organisation = dummy_organisation(Some(organisation_id));
 
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -282,7 +282,7 @@ async fn test_get_organisation_failure() {
         organisation_repository,
         ..Default::default()
     });
-    let result = service.get_organisation(&Uuid::new_v4().into()).await;
+    let result = service.get_organisation(&OrganisationId::new()).await;
 
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0022);
 }
@@ -361,7 +361,7 @@ fn dummy_instance(
         provider_type: WalletProviderType::ProcivisOne,
         provider_name: "PROCIVIS_ONE".to_string(),
         provider_url: "https://provider.example".to_string(),
-        provider_instance_id: Uuid::new_v4().into(),
+        provider_instance_id: ManagedInstanceId::new(),
         status: InstanceStatus::Active,
         role,
         nonce: None,
@@ -392,7 +392,7 @@ fn named_ecosystem(name: &str, collection_name: &str) -> EcosystemMetadataDTO {
         logo: "logo".to_string(),
         default_selected: true,
         trust_collections: vec![EcosystemTrustCollectionDTO {
-            id: Uuid::new_v4().into(),
+            id: TrustCollectionId::new(),
             name: collection_name.to_string(),
         }],
         credential_schemas: vec![],
@@ -494,7 +494,7 @@ fn config_with_eudi_ecosystem() -> CoreConfig {
 
 #[tokio::test]
 async fn test_get_organisation_ecosystems_merges_providers_and_filters_unknown_ecosystems() {
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let wallet_instance_id = Uuid::new_v4();
     let verifier_instance_id = Uuid::new_v4();
 
@@ -600,7 +600,7 @@ async fn test_get_organisation_ecosystems_merges_providers_and_filters_unknown_e
 
 #[tokio::test]
 async fn test_get_organisation_ecosystems_reports_unselected_ecosystem() {
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let wallet_instance_id = Uuid::new_v4();
 
     let organisation = dummy_organisation(Some(organisation_id));
@@ -658,7 +658,7 @@ async fn test_get_organisation_ecosystems_reports_unselected_ecosystem() {
 
 #[tokio::test]
 async fn test_get_organisation_ecosystems_without_instances_lists_configured_ecosystems() {
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
 
     let mut organisation = dummy_organisation(Some(organisation_id));
     organisation.configuration.selected_ecosystems = vec!["EUDI".into()];
@@ -700,7 +700,7 @@ async fn test_get_organisation_ecosystems_without_instances_lists_configured_eco
 /// must keep enforcing, so the flags cannot be turned off while it is linked.
 #[tokio::test]
 async fn test_update_organisation_cannot_disable_enforcement_mandated_by_provider() {
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
     let organisation = organisation_selecting(organisation_id, &["EUDI"]);
 
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -749,7 +749,7 @@ async fn test_update_organisation_cannot_disable_enforcement_mandated_by_provide
 /// A provider leaving enforcement to the organisation lets it turn the flags off.
 #[tokio::test]
 async fn test_update_organisation_disables_enforcement_provider_leaves_optional() {
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
     let organisation = organisation_selecting(organisation_id, &["EUDI"]);
 
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -812,7 +812,7 @@ async fn test_update_organisation_disables_enforcement_provider_leaves_optional(
 /// provider alone, the wallet provider has no say in it.
 #[tokio::test]
 async fn test_update_organisation_disables_enforcement_of_role_without_mandating_provider() {
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
@@ -859,7 +859,7 @@ async fn test_update_organisation_disables_enforcement_of_role_without_mandating
 /// to wait for the next run of the periodic task.
 #[tokio::test]
 async fn test_update_organisation_syncs_on_changed_ecosystem_selection() {
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository

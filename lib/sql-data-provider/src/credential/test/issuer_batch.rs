@@ -4,6 +4,7 @@ use one_core::model::credential::IssuerCredentialData;
 use one_core::model::relation::Related;
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, IntoActiveModel};
+use shared_types::ClaimId;
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -19,7 +20,7 @@ fn batch_parent(single: Credential) -> (Credential, IssuerCredentialData) {
     else {
         panic!("expected issuer single")
     };
-    common.id = Uuid::new_v4().into();
+    common.id = CredentialId::new();
     common.state = CredentialStateEnum::Suspended {
         suspend_end_date: Some(get_dummy_date() + Duration::days(1)),
     };
@@ -42,7 +43,7 @@ fn batch_item(parent: &Credential, credential: IssuerCredentialData) -> Credenti
     };
     Credential::IssuerBatchItem {
         common: CredentialCommon {
-            id: Uuid::new_v4().into(),
+            id: CredentialId::new(),
             ..common.clone()
         },
         issuer: issuer.clone(),
@@ -62,7 +63,7 @@ async fn issuer_batch_round_trip_keeps_parent_and_item_data_separate() {
         .unwrap();
     let (mut parent, mut data) = batch_parent(single);
     let claim = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("shared claim".into()),

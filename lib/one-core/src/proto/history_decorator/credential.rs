@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use shared_types::{CredentialId, InteractionId};
-use uuid::Uuid;
+use shared_types::{CredentialId, HistoryId, InteractionId};
 
 use crate::model::credential::{
     Credential, CredentialListQuery, CredentialStateEnum, GetCredentialList,
@@ -66,7 +65,7 @@ impl CredentialHistoryDecorator {
         };
 
         let entry = History {
-            id: Uuid::new_v4().into(),
+            id: HistoryId::new(),
             created_date: crate::clock::now_utc(),
             action,
             name: credential_schema.name.to_owned(),

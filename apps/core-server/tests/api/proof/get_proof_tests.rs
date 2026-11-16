@@ -13,6 +13,7 @@ use one_core::model::proof::ProofStateEnum;
 use rstest::rstest;
 use serde_json::json;
 use serde_json_path::JsonPath;
+use shared_types::ClaimSchemaId;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -812,7 +813,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
 
     let root_claim = ClaimSchema {
         array: false,
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root".to_string(),
         data_type: "STRING".to_string(),
         created_date: get_dummy_date(),
@@ -823,7 +824,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
     };
     let obj_claim = ClaimSchema {
         array: false,
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "obj".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: get_dummy_date(),
@@ -834,7 +835,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
     };
     let nested_claim = ClaimSchema {
         array: false,
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "obj/nested".to_string(),
         data_type: "STRING".to_string(),
         created_date: get_dummy_date(),

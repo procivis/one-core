@@ -7,10 +7,9 @@ use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use rcgen::CertificateParams;
 use serde_json::{Value, json};
-use shared_types::{IdentifierId, KeyId};
+use shared_types::{CertificateId, IdentifierId, KeyId};
 use similar_asserts::assert_eq;
 use time::Duration;
-use uuid::Uuid;
 
 use crate::fixtures::TestingIdentifierParams;
 use crate::fixtures::certificate::{create_ca_cert, ecdsa};
@@ -41,10 +40,10 @@ async fn setup() -> Setup {
 
     let mut ca_params = CertificateParams::default();
     let (ca_cert, _) = create_ca_cert(&mut ca_params, ecdsa::Key);
-    let identifier_id = Uuid::new_v4().into();
+    let identifier_id = IdentifierId::new();
     let now = one_core::clock::now_utc();
     let certificate = Certificate {
-        id: Uuid::new_v4().into(),
+        id: CertificateId::new(),
         identifier_id,
         organisation: organisation.clone().into(),
         created_date: now,

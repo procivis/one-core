@@ -108,7 +108,7 @@ fn interaction(earlier_outcomes: EcosystemOutcomes) -> Interaction {
     Interaction {
         dpop_key: None,
         client_attestation_key: None,
-        id: Uuid::new_v4().into(),
+        id: InteractionId::new(),
         created_date: now_utc(),
         last_modified: now_utc(),
         data: None,

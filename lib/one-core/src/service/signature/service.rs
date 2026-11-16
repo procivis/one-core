@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
-use shared_types::SignerId;
+use shared_types::{HistoryId, SignerId};
 use uuid::Uuid;
 
 use super::SignatureService;
@@ -112,7 +112,7 @@ impl SignatureService {
         if let Err(error) = self
             .history
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 source: HistorySource::Core,
                 action: HistoryAction::Revoked,
@@ -158,7 +158,7 @@ impl SignatureService {
 
         self.history
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: crate::clock::now_utc(),
                 source: HistorySource::Core,
                 action: HistoryAction::Created,

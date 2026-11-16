@@ -4,6 +4,7 @@ use core_server::endpoint::trust_list_publication::dto::{
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::trust_entry::TrustEntryStateEnum;
 use one_core::model::trust_list_role::TrustListRoleEnum;
+use shared_types::TrustEntryId;
 use uuid::Uuid;
 
 use crate::utils::api_clients::trust_list_publication::CreateTrustListPublicationTestParams;
@@ -98,7 +99,7 @@ async fn test_fail_to_update_trust_entry_not_found() {
             Some(certificate),
         )
         .await;
-    let non_existent_id = Uuid::new_v4().into();
+    let non_existent_id = TrustEntryId::new();
 
     // when
     let resp = context

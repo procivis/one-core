@@ -2,11 +2,10 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{EcosystemId, InstanceId, ManagedInstanceId};
+use shared_types::{EcosystemId, HistoryId, InstanceId, KeyId, ManagedInstanceId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
-use uuid::Uuid;
 
 use super::InstanceService;
 use super::dto::{
@@ -232,7 +231,7 @@ impl InstanceService {
         );
         self.history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: now,
                 action: HistoryAction::Created,
                 name,
@@ -534,7 +533,7 @@ impl InstanceService {
     ) -> Result<Option<Key>, HolderInstanceError> {
         let key_storage = self.key_provider.get_key_storage(key_storage_id)?;
 
-        let key_id = Uuid::new_v4().into();
+        let key_id = KeyId::new();
         let attestation_key = match key_storage.generate_attestation_key(key_id, nonce).await {
             Ok(key) => key,
             Err(KeyStorageError::NotSupported(description)) => {
@@ -624,7 +623,7 @@ impl InstanceService {
 
             self.history_repository
                 .create_history(History {
-                    id: Uuid::new_v4().into(),
+                    id: HistoryId::new(),
                     action: HistoryAction::Revoked,
                     name: instance.provider_name.clone(),
                     source: HistorySource::Core,
@@ -910,7 +909,7 @@ impl InstanceService {
         organisation: Organisation,
         key_storage: &Arc<dyn KeyStorage>,
     ) -> Result<Key, HolderInstanceError> {
-        let key_id = Uuid::new_v4().into();
+        let key_id = KeyId::new();
         let key = key_storage
             .generate(key_id, key_type, serde_json::json!({}))
             .await
@@ -1192,7 +1191,7 @@ impl InstanceService {
                 ))
             })?;
 
-        let key_id = Uuid::new_v4().into();
+        let key_id = KeyId::new();
         let key = key_storage
             .generate(key_id, key_type, Default::default())
             .await
@@ -1305,7 +1304,7 @@ impl RegistrationStatus {
 
         let now = crate::clock::now_utc();
         Instance {
-            id: Uuid::new_v4().into(),
+            id: InstanceId::new(),
             created_date: now,
             last_modified: now,
             status,

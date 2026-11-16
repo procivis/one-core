@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use one_core::model::claim_schema::ClaimSchema;
 use rstest::rstest;
 use serde_json::json;
-use shared_types::ProofSchemaId;
+use shared_types::{ClaimSchemaId, CredentialSchemaId, ProofSchemaId};
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::format_description::well_known::Rfc3339;
@@ -79,7 +79,7 @@ async fn test_import_proof_schema_ok() {
     let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
 
     let (context, source_organisation) = TestContext::new_with_organisation(None).await;
-    let original_credential_schema_id = Uuid::new_v4().into();
+    let original_credential_schema_id = CredentialSchemaId::new();
     let original_credential_schema = context
         .db
         .credential_schemas
@@ -109,7 +109,7 @@ async fn test_import_proof_schema_ok() {
 
     let target_organisation = context.db.organisations.create().await;
 
-    let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
+    let old_proof_schema_id: ProofSchemaId = ProofSchemaId::new();
 
     let proof_schema = json!({
         "id": old_proof_schema_id,
@@ -266,7 +266,7 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
 async fn test_import_proof_schema_for_existing_credential_schema() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
+    let old_proof_schema_id: ProofSchemaId = ProofSchemaId::new();
     let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
 
     let original_credential_schema = context
@@ -377,11 +377,11 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
 async fn test_import_proof_schema_nested_array() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
+    let old_proof_schema_id: ProofSchemaId = ProofSchemaId::new();
     let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
 
     let root_object_array_claim = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: get_dummy_date(),
@@ -402,7 +402,7 @@ async fn test_import_proof_schema_nested_array() {
                 claim_schemas: Some(vec![
                     root_object_array_claim.clone(),
                     ClaimSchema {
-                        id: Uuid::new_v4().into(),
+                        id: ClaimSchemaId::new(),
                         key: "root/field".to_string(),
                         data_type: "STRING".to_string(),
                         created_date: get_dummy_date(),

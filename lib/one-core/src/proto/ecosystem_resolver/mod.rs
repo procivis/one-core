@@ -8,8 +8,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
-use shared_types::{EcosystemId, EntityId, InteractionId};
-use uuid::Uuid;
+use shared_types::{EcosystemId, EntityId, HistoryId, InteractionId};
 
 use crate::error::ContextWithErrorCode;
 use crate::model::ecosystem::EcosystemOutcomes;
@@ -352,7 +351,7 @@ impl EcosystemResolverProto {
             let result = self
                 .history_repository
                 .create_history(History {
-                    id: Uuid::new_v4().into(),
+                    id: HistoryId::new(),
                     created_date: crate::clock::now_utc(),
                     action: HistoryAction::EcosystemsResolved,
                     name: Default::default(),

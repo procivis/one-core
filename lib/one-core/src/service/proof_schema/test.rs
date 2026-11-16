@@ -4,7 +4,10 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use mockall::PredicateBooleanExt;
 use mockall::predicate::*;
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId};
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialSchemaFormatId, CredentialSchemaId, OrganisationId,
+    ProofSchemaId,
+};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -180,7 +183,7 @@ async fn test_get_proof_schema_missing() {
         ..Default::default()
     });
 
-    let result = service.get_proof_schema(&Uuid::new_v4().into()).await;
+    let result = service.get_proof_schema(&ProofSchemaId::new()).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0014);
 }
 
@@ -190,7 +193,7 @@ async fn test_get_proof_schema_list_success() {
 
     let proof_schema = ProofSchema {
         ecosystem: None,
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         imported_source_url: Some("CORE_URL".to_string()),
@@ -219,7 +222,7 @@ async fn test_get_proof_schema_list_success() {
         ..Default::default()
     });
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let result = service
         .get_proof_schema_list(ListQueryDTO {
             page: 0,
@@ -265,7 +268,7 @@ async fn test_get_proof_schema_list_failure() {
         ..Default::default()
     });
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let result = service
         .get_proof_schema_list(ListQueryDTO {
             page: 0,
@@ -300,7 +303,7 @@ async fn test_delete_proof_schema_success() {
         .returning(|_| {
             Ok(ProofSchema {
                 ecosystem: None,
-                id: Uuid::new_v4().into(),
+                id: ProofSchemaId::new(),
                 imported_source_url: Some("CORE_URL".to_string()),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -312,7 +315,7 @@ async fn test_delete_proof_schema_success() {
             })
         });
 
-    let proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
+    let proof_schema_id: ProofSchemaId = ProofSchemaId::new();
     proof_schema_repository
         .expect_delete_proof_schema()
         .times(1)
@@ -341,7 +344,7 @@ async fn test_delete_proof_schema_failure() {
         .returning(|_| {
             Ok(ProofSchema {
                 ecosystem: None,
-                id: Uuid::new_v4().into(),
+                id: ProofSchemaId::new(),
                 created_date: crate::clock::now_utc(),
                 imported_source_url: Some("CORE_URL".to_string()),
                 last_modified: crate::clock::now_utc(),
@@ -367,13 +370,13 @@ async fn test_delete_proof_schema_failure() {
         ..Default::default()
     });
 
-    let result = service.delete_proof_schema(&Uuid::new_v4().into()).await;
+    let result = service.delete_proof_schema(&ProofSchemaId::new()).await;
     assert_matches!(result, Err(ProofSchemaServiceError::NotFound(_)));
 }
 
 #[tokio::test]
 async fn test_create_proof_schema_success() {
-    let claim_schema_id = Uuid::new_v4().into();
+    let claim_schema_id = ClaimSchemaId::new();
     let claim_schema = ClaimSchema {
         id: claim_schema_id,
         key: "key".to_string(),
@@ -398,7 +401,7 @@ async fn test_create_proof_schema_success() {
         .once()
         .return_once(move |_| Ok(Arc::new(formatter)));
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -406,7 +409,7 @@ async fn test_create_proof_schema_success() {
         .with(eq(organisation_id))
         .returning(|id| Ok(dummy_organisation(Some(*id))));
 
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -424,7 +427,7 @@ async fn test_create_proof_schema_success() {
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
@@ -515,7 +518,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
             params: None,
         },
     );
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -523,7 +526,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         .with(eq(organisation_id))
         .returning(|id| Ok(dummy_organisation(Some(*id))));
 
-    let claim_schema_software_id = Uuid::new_v4().into();
+    let claim_schema_software_id = ClaimSchemaId::new();
     let claim_schema_software = ClaimSchema {
         id: claim_schema_software_id,
         key: "key".to_string(),
@@ -536,14 +539,14 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         translations: Default::default(),
     };
 
-    let claim_schema_hardware_id = Uuid::new_v4().into();
+    let claim_schema_hardware_id = ClaimSchemaId::new();
     let claim_schema_hardware = ClaimSchema {
         id: claim_schema_hardware_id,
         ..claim_schema_software.clone()
     };
 
-    let credential_schema_software_id: CredentialSchemaId = Uuid::new_v4().into();
-    let credential_schema_hardware_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_software_id: CredentialSchemaId = CredentialSchemaId::new();
+    let credential_schema_hardware_id: CredentialSchemaId = CredentialSchemaId::new();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -561,7 +564,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 name: "software".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id: credential_schema_software_id,
@@ -679,7 +682,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
 
 #[tokio::test]
 async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
-    let claim_schema_id = Uuid::new_v4().into();
+    let claim_schema_id = ClaimSchemaId::new();
     let claim_schema = ClaimSchema {
         id: claim_schema_id,
         key: "key".to_string(),
@@ -692,7 +695,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         translations: Default::default(),
     };
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -700,7 +703,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         .with(eq(organisation_id))
         .returning(|id| Ok(dummy_organisation(Some(*id))));
 
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -718,7 +721,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
@@ -792,7 +795,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
 #[tokio::test]
 async fn test_create_proof_schema_array_object_fail() {
     let claim_schema_root = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: crate::clock::now_utc(),
@@ -804,7 +807,7 @@ async fn test_create_proof_schema_array_object_fail() {
     };
 
     let claim_schema_array = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root/nested_array".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: crate::clock::now_utc(),
@@ -816,7 +819,7 @@ async fn test_create_proof_schema_array_object_fail() {
     };
 
     let claim_schema_array_object = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root/nested_array/0".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: crate::clock::now_utc(),
@@ -828,7 +831,7 @@ async fn test_create_proof_schema_array_object_fail() {
     };
 
     let claim_schema_array_object_item = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root/nested_array/0/item".to_string(),
         data_type: "STRING".to_string(),
         created_date: crate::clock::now_utc(),
@@ -856,7 +859,7 @@ async fn test_create_proof_schema_array_object_fail() {
         .once()
         .return_once(move |_| Ok(Arc::new(formatter)));
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -864,7 +867,7 @@ async fn test_create_proof_schema_array_object_fail() {
         .with(eq(organisation_id))
         .returning(|id| Ok(dummy_organisation(Some(*id))));
 
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -882,7 +885,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
@@ -960,7 +963,7 @@ async fn test_create_proof_schema_array_object_fail() {
 #[tokio::test]
 async fn test_create_proof_schema_array_success() {
     let claim_schema_root = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: crate::clock::now_utc(),
@@ -972,7 +975,7 @@ async fn test_create_proof_schema_array_success() {
     };
 
     let claim_schema_array = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root/nested_array".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: crate::clock::now_utc(),
@@ -984,7 +987,7 @@ async fn test_create_proof_schema_array_success() {
     };
 
     let claim_schema_array_object = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root/nested_array/0".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: crate::clock::now_utc(),
@@ -996,7 +999,7 @@ async fn test_create_proof_schema_array_success() {
     };
 
     let claim_schema_array_object_item = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "root/nested_array/0/item".to_string(),
         data_type: "STRING".to_string(),
         created_date: crate::clock::now_utc(),
@@ -1025,7 +1028,7 @@ async fn test_create_proof_schema_array_success() {
         .once()
         .return_once(move |_| Ok(Arc::new(formatter)));
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -1033,7 +1036,7 @@ async fn test_create_proof_schema_array_success() {
         .with(eq(organisation_id))
         .returning(|id| Ok(dummy_organisation(Some(*id))));
 
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -1051,7 +1054,7 @@ async fn test_create_proof_schema_array_success() {
                 last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
@@ -1137,8 +1140,8 @@ async fn test_create_proof_schema_array_success() {
 
 #[tokio::test]
 async fn test_create_proof_schema_unique_name_error() {
-    let claim_schema_id = Uuid::new_v4().into();
-    let organisation_id = Uuid::new_v4().into();
+    let claim_schema_id = ClaimSchemaId::new();
+    let organisation_id = OrganisationId::new();
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
@@ -1146,7 +1149,7 @@ async fn test_create_proof_schema_unique_name_error() {
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
             formats: None,
-            credential_schema_id: Uuid::new_v4().into(),
+            credential_schema_id: CredentialSchemaId::new(),
 
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_schema_id,
@@ -1183,8 +1186,8 @@ async fn test_create_proof_schema_unique_name_error() {
 
 #[tokio::test]
 async fn test_create_proof_schema_claims_dont_exist() {
-    let claim_schema_id = Uuid::new_v4().into();
-    let credential_schema_id = Uuid::new_v4().into();
+    let claim_schema_id = ClaimSchemaId::new();
+    let credential_schema_id = CredentialSchemaId::new();
 
     let formatter = MockCredentialFormatter::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
@@ -1210,7 +1213,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,
@@ -1221,7 +1224,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 .into(),
                 wallet_attestation: Default::default(),
                 claim_schemas: vec![ClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: crate::clock::now_utc(),
@@ -1260,7 +1263,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
             })
         });
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -1307,10 +1310,10 @@ async fn test_create_proof_schema_no_claims() {
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
             expire_duration: Some(0),
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 formats: None,
-                credential_schema_id: Uuid::new_v4().into(),
+                credential_schema_id: CredentialSchemaId::new(),
 
                 claim_schemas: vec![],
             }],
@@ -1328,13 +1331,13 @@ async fn test_create_proof_schema_no_required_claims() {
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
             expire_duration: Some(0),
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 formats: None,
-                credential_schema_id: Uuid::new_v4().into(),
+                credential_schema_id: CredentialSchemaId::new(),
 
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     required: false,
                 }],
             }],
@@ -1349,17 +1352,17 @@ async fn test_create_proof_schema_duplicit_claims() {
     let service = setup_service(Default::default());
 
     let claim_schema = CreateProofSchemaClaimRequestDTO {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         required: true,
     };
     let result = service
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
             expire_duration: Some(0),
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 formats: None,
-                credential_schema_id: Uuid::new_v4().into(),
+                credential_schema_id: CredentialSchemaId::new(),
 
                 claim_schemas: vec![claim_schema.clone(), claim_schema],
             }],
@@ -1372,7 +1375,7 @@ async fn test_create_proof_schema_duplicit_claims() {
 #[tokio::test]
 async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let now = crate::clock::now_utc();
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -1393,13 +1396,13 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     proof_schema_repository
         .expect_create_proof_schema()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(ProofSchemaId::new()));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_create_credential_schema()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(CredentialSchemaId::new()));
     credential_schema_repository
         .expect_get_credential_schema_list()
         .once()
@@ -1412,7 +1415,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         });
 
     let schema = ImportProofSchemaDTO {
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: now,
         last_modified: now,
         imported_source_url: "https://source.example/proof-schema".to_string(),
@@ -1421,7 +1424,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 requested: true,
                 required: true,
                 key: "field".to_string(),
@@ -1537,7 +1540,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
 #[tokio::test]
 async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     let now = crate::clock::now_utc();
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -1558,11 +1561,11 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     proof_schema_repository
         .expect_create_proof_schema()
         .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_| Ok(ProofSchemaId::new()));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
 
-    let existing_schema_id = Uuid::new_v4().into();
+    let existing_schema_id = CredentialSchemaId::new();
 
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -1580,7 +1583,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 last_modified: get_dummy_date(),
                 name: "test-credential-schema".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id: existing_schema_id,
@@ -1598,7 +1601,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 },
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     key: "root/name".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: get_dummy_date(),
@@ -1618,7 +1621,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         });
 
     let schema = ImportProofSchemaDTO {
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: now,
         imported_source_url: "https://source.example/proof-schema".to_string(),
         last_modified: now,
@@ -1627,13 +1630,13 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 requested: false,
                 required: false,
                 key: "root".to_string(),
                 data_type: "OBJECT".to_string(),
                 claims: vec![ImportProofSchemaClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     requested: true,
                     required: true,
                     key: "name".to_string(),
@@ -1765,7 +1768,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
 #[tokio::test]
 async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
     let now = crate::clock::now_utc();
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -1798,7 +1801,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
 
-    let existing_schema_id = Uuid::new_v4().into();
+    let existing_schema_id = CredentialSchemaId::new();
 
     credential_schema_repository
         .expect_get_credential_schema_list()
@@ -1816,7 +1819,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                 last_modified: get_dummy_date(),
                 name: "test-credential-schema".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id: existing_schema_id,
@@ -1834,7 +1837,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                 },
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     key: "root/name".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: get_dummy_date(),
@@ -1854,7 +1857,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         });
 
     let schema = ImportProofSchemaDTO {
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: now,
         imported_source_url: "https://other-core/ssi/proof-schema/v1/external".to_string(),
         last_modified: now,
@@ -1863,13 +1866,13 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 requested: false,
                 required: false,
                 key: "root".to_string(),
                 data_type: "OBJECT".to_string(),
                 claims: vec![ImportProofSchemaClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
+                    id: ClaimSchemaId::new(),
                     requested: true,
                     required: true,
                     key: "name".to_string(),
@@ -2006,7 +2009,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
 #[tokio::test]
 async fn test_import_proof_failed_existing_proof_schema() {
     let now = crate::clock::now_utc();
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -2026,7 +2029,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         });
 
     let schema = ImportProofSchemaDTO {
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: now,
         last_modified: now,
         imported_source_url: "https://source.example/proof-schema".to_string(),
@@ -2035,7 +2038,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 requested: true,
                 required: true,
                 key: "root/name".to_string(),
@@ -2120,7 +2123,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
 #[tokio::test]
 async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
     let now = crate::clock::now_utc();
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
@@ -2128,7 +2131,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
         .return_once(move |_| Ok(dummy_organisation(Some(organisation_id))));
 
     let schema = ImportProofSchemaDTO {
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: now,
         last_modified: now,
         imported_source_url: "https://source.example/proof-schema".to_string(),
@@ -2137,7 +2140,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 requested: true,
                 required: true,
                 key: "name".to_string(),
@@ -2208,7 +2211,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
 #[tokio::test]
 async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
     let now = crate::clock::now_utc();
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
+    let organisation_id: OrganisationId = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
@@ -2216,7 +2219,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         .return_once(move |_| Ok(dummy_organisation(Some(organisation_id))));
 
     let schema = ImportProofSchemaDTO {
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: now,
         last_modified: now,
         imported_source_url: "https://source.example/proof-schema".to_string(),
@@ -2225,7 +2228,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             formats: None,
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: ClaimSchemaId::new(),
                 requested: true,
                 required: true,
                 key: "root".to_string(),
@@ -2296,7 +2299,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
 fn generic_proof_schema() -> ProofSchema {
     ProofSchema {
         ecosystem: None,
-        id: Uuid::new_v4().into(),
+        id: ProofSchemaId::new(),
         created_date: crate::clock::now_utc(),
         imported_source_url: Some("CORE_URL".to_string()),
         last_modified: crate::clock::now_utc(),
@@ -2312,7 +2315,7 @@ fn generic_proof_schema() -> ProofSchema {
 async fn test_get_proof_schema_success_nested_claims() {
     let now = crate::clock::now_utc();
     let location_claim_schema = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "location".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: now,
@@ -2323,7 +2326,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         translations: Default::default(),
     };
     let location_x_claim_schema = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "location/X".to_string(),
         data_type: "STRING".to_string(),
         created_date: now,
@@ -2376,7 +2379,7 @@ async fn test_get_proof_schema_success_nested_claims() {
 async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
     let now = crate::clock::now_utc();
     let location_cs = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "location".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: now,
@@ -2387,7 +2390,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         translations: Default::default(),
     };
     let location_x_cs = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "location/X".to_string(),
         data_type: "STRING".to_string(),
         created_date: now,
@@ -2398,7 +2401,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         translations: Default::default(),
     };
     let location_foo_cs = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "location/foo".to_string(),
         data_type: "STRING".to_string(),
         created_date: now,
@@ -2452,7 +2455,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
 async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
     let now = crate::clock::now_utc();
     let bar_cs = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "bar".to_string(),
         data_type: "STRING".to_string(),
         created_date: now,
@@ -2463,7 +2466,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         translations: Default::default(),
     };
     let location_cs = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "location".to_string(),
         data_type: "OBJECT".to_string(),
         created_date: now,
@@ -2474,7 +2477,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         translations: Default::default(),
     };
     let location_x_cs = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "location/X".to_string(),
         data_type: "STRING".to_string(),
         created_date: now,
@@ -2549,7 +2552,7 @@ fn proof_schema_repo_expecting_get(proof_schema: ProofSchema) -> MockProofSchema
 
 async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSchema {
     let now = crate::clock::now_utc();
-    let credential_schema_id = Uuid::new_v4().into();
+    let credential_schema_id = CredentialSchemaId::new();
     backfill_default_translations(
         CredentialSchema {
             expiration: None,
@@ -2562,7 +2565,7 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
             last_modified: now,
             name: "".to_string(),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: CredentialSchemaFormatId::new(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id,
@@ -2664,7 +2667,7 @@ async fn test_create_proof_schema_failure_session_org_mismatch() {
     let result = service
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "".to_string(),
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
             expire_duration: None,
             proof_input_schemas: vec![],
             ecosystem: None,
@@ -2675,7 +2678,7 @@ async fn test_create_proof_schema_failure_session_org_mismatch() {
     let result = service
         .import_proof_schema(ImportProofSchemaRequestDTO {
             schema: ImportProofSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: ProofSchemaId::new(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "".to_string(),
@@ -2684,7 +2687,7 @@ async fn test_create_proof_schema_failure_session_org_mismatch() {
                 imported_source_url: "".to_string(),
                 ecosystem: None,
             },
-            organisation_id: Uuid::new_v4().into(),
+            organisation_id: OrganisationId::new(),
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
@@ -2706,7 +2709,7 @@ async fn test_list_proof_schema_failure_session_org_mismatch() {
             filter: ProofSchemaFilterParamsDTO {
                 name: None,
                 exact: None,
-                organisation_id: Uuid::new_v4().into(),
+                organisation_id: OrganisationId::new(),
                 ids: None,
                 formats: None,
                 ecosystems: None,
@@ -2754,7 +2757,7 @@ async fn test_create_proof_schema_verify_nested_generic(
     let claim_schemas: Vec<_> = keys
         .iter()
         .map(|key| ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: key.to_string(),
             data_type: "OBJECT".to_string(),
             created_date: crate::clock::now_utc(),
@@ -2781,7 +2784,7 @@ async fn test_create_proof_schema_verify_nested_generic(
         .once()
         .return_once(move |_| Ok(Arc::new(formatter)));
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -2789,7 +2792,7 @@ async fn test_create_proof_schema_verify_nested_generic(
         .with(eq(organisation_id))
         .returning(|id| Ok(dummy_organisation(Some(*id))));
 
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let claim_schemas_cloned = claim_schemas.clone();
     credential_schema_repository
@@ -2808,7 +2811,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 last_modified: crate::clock::now_utc(),
                 name: "credential-schema".to_string(),
                 formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaFormatId::new(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     credential_schema_id,

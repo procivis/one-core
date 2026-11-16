@@ -3,6 +3,7 @@ use std::assert_matches;
 use one_core::model::credential::{HolderBinding, HolderCredentialData, IssuerIdentity};
 use one_core::repository::DataRepository;
 use sea_orm::{ActiveModelTrait, IntoActiveModel};
+use shared_types::ClaimId;
 use similar_asserts::assert_eq;
 
 use super::*;
@@ -20,12 +21,12 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
         .await
         .unwrap();
     let mut common = template.common().clone();
-    common.id = Uuid::new_v4().into();
+    common.id = CredentialId::new();
     common.state = CredentialStateEnum::Accepted;
     let key = template.issuer().unwrap().data.signing_key.clone();
     let format = template.issuer_credential().unwrap().data.format.clone();
     let claim = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("holder value".into()),

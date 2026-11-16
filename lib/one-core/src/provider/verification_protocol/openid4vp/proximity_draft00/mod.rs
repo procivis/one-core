@@ -14,7 +14,6 @@ use standardized_types::openid4vp::VpTokenResponse;
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use time::Duration;
 use url::Url;
-use uuid::Uuid;
 
 use super::dcql::get_presentation_definition_v2;
 use super::final1_0::dcql::create_dcql_query;
@@ -406,7 +405,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed("Missing verifier key".to_string()),
         )?;
 
-        let interaction_id = Uuid::new_v4().into();
+        let interaction_id = InteractionId::new();
         let key_agreement =
             KeyAgreementKey::generate().map_err(VerificationProtocolError::Other)?;
 
@@ -717,7 +716,7 @@ pub(super) async fn create_interaction_and_proof(
     let interaction = Interaction {
         dpop_key: None,
         client_attestation_key: None,
-        id: Uuid::new_v4().into(),
+        id: InteractionId::new(),
         created_date: now,
         last_modified: now,
         data: interaction_data,
@@ -733,7 +732,7 @@ pub(super) async fn create_interaction_and_proof(
         .await
         .error_while("creating interaction")?;
 
-    let proof_id: ProofId = Uuid::new_v4().into();
+    let proof_id: ProofId = ProofId::new();
     Ok((
         interaction_id,
         proof_from_handle_invitation(

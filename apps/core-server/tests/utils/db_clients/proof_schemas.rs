@@ -88,7 +88,7 @@ impl ProofSchemasDB {
 
         let proof_schema = ProofSchema {
             ecosystem,
-            id: Uuid::new_v4().into(),
+            id: ProofSchemaId::new(),
             created_date: get_dummy_date(),
             imported_source_url: Some("CORE_URL".to_string()),
             last_modified: get_dummy_date(),

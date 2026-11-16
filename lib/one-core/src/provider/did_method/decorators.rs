@@ -217,7 +217,6 @@ mod test {
     use std::sync::Arc;
 
     use similar_asserts::assert_eq;
-    use uuid::Uuid;
 
     use super::*;
     use crate::provider::did_method::MockDidMethod;
@@ -266,7 +265,7 @@ mod test {
 
         let result = method
             .update(
-                Uuid::new_v4().into(),
+                DidId::new(),
                 DidKeys::default(),
                 authentication_keys(vec![dummy_key()]),
                 None,
@@ -291,7 +290,7 @@ mod test {
         };
         let result = method
             .update(
-                Uuid::new_v4().into(),
+                DidId::new(),
                 DidKeys::default(),
                 authentication_keys(vec![key]),
                 None,
@@ -315,7 +314,7 @@ mod test {
         };
         let result = method
             .update(
-                Uuid::new_v4().into(),
+                DidId::new(),
                 DidKeys::default(),
                 DidKeys {
                     authentication: vec![dummy_key()],
@@ -340,7 +339,7 @@ mod test {
 
         let result = method
             .update(
-                Uuid::new_v4().into(),
+                DidId::new(),
                 DidKeys::default(),
                 authentication_keys(vec![dummy_key(), dummy_key()]),
                 None,
@@ -367,7 +366,7 @@ mod test {
 
         let update = method
             .update(
-                Uuid::new_v4().into(),
+                DidId::new(),
                 DidKeys::default(),
                 authentication_keys(vec![dummy_key()]),
                 None,

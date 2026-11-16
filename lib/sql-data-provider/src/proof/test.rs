@@ -35,8 +35,8 @@ use one_core::repository::proof_schema_repository::{
 use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{
-    ClaimId, ClaimSchemaId, DidId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId,
-    ProofSchemaId,
+    BlobId, ClaimId, ClaimSchemaId, CredentialId, DidId, IdentifierId, InteractionId, KeyId,
+    OrganisationId, ProofId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -72,7 +72,7 @@ async fn setup(
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = Uuid::new_v4().into();
+    let organisation_id = OrganisationId::new();
     insert_organisation_to_database(&db, Some(organisation_id))
         .await
         .unwrap();
@@ -94,7 +94,7 @@ async fn setup(
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
-            id: Uuid::new_v4().into(),
+            id: ClaimSchemaId::new(),
             key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
@@ -345,7 +345,7 @@ async fn test_create_proof_success() {
     )
     .await;
 
-    let proof_id = Uuid::new_v4().into();
+    let proof_id = ProofId::new();
     let proof = Proof {
         ecosystem: None,
         id: proof_id,
@@ -510,7 +510,7 @@ async fn test_get_proof_missing() {
     )
     .await;
 
-    let result = repository.get_proof(&Uuid::new_v4().into(), None).await;
+    let result = repository.get_proof(&ProofId::new(), None).await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
 
@@ -538,8 +538,8 @@ async fn test_get_proof_no_relations() {
 
 #[tokio::test]
 async fn test_get_proof_with_relations() {
-    let credential_id = Uuid::new_v4().into();
-    let claim_id: ClaimId = Uuid::new_v4().into();
+    let credential_id = CredentialId::new();
+    let claim_id: ClaimId = ClaimId::new();
     let mut claim_repository = MockClaimRepository::default();
     claim_repository
         .expect_get_claim_list()
@@ -552,7 +552,7 @@ async fn test_get_proof_with_relations() {
                 last_modified: get_dummy_date(),
                 value: Some("value".to_string()),
                 path: String::new(),
-                schema: dummy_claim_schema(Uuid::new_v4().into()).into(),
+                schema: dummy_claim_schema(ClaimSchemaId::new()).into(),
                 selectively_disclosable: false,
             }])
         });
@@ -593,7 +593,7 @@ async fn test_get_proof_with_relations() {
         .await
         .unwrap();
 
-    let blob_id = Uuid::new_v4().into();
+    let blob_id = BlobId::new();
     blob::ActiveModel {
         id: Set(blob_id),
         created_date: Set(get_dummy_date()),
@@ -675,7 +675,7 @@ async fn test_get_proof_by_interaction_id_missing() {
     .await;
 
     let result = repository
-        .get_proof_by_interaction_id(&Uuid::new_v4().into())
+        .get_proof_by_interaction_id(&InteractionId::new())
         .await;
     assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
 }
@@ -751,14 +751,14 @@ async fn test_set_proof_claims_success() {
         identifier_id,
         None,
         None,
-        Uuid::new_v4().into(),
+        BlobId::new(),
         credential::CredentialRole::Issuer,
     )
     .await
     .unwrap();
 
     let claim = Claim {
-        id: Uuid::new_v4().into(),
+        id: ClaimId::new(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: Some("value".to_string()),

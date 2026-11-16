@@ -12,6 +12,7 @@ use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::{Value, json};
+use shared_types::RemoteEntityCacheEntryId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -531,7 +532,7 @@ async fn test_direct_post_json_ld_classic_no_holder_binding() {
         .db
         .remote_entities
         .add_entry(RemoteEntityCacheEntry {
-            id: Uuid::new_v4().into(),
+            id: RemoteEntityCacheEntryId::new(),
             created_date: now,
             last_modified: now,
             last_used: now,

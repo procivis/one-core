@@ -4,9 +4,8 @@ use one_core::model::interaction::{Interaction, InteractionEcosystems, Interacti
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
-use shared_types::{EcosystemId, InteractionId};
+use shared_types::{EcosystemId, InteractionId, NonceId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Debug, Default)]
 pub struct TestingInteractionParams {
@@ -37,7 +36,7 @@ impl InteractionsDB {
         let interaction = Interaction {
             dpop_key: None,
             client_attestation_key: None,
-            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            id: params.id.unwrap_or(InteractionId::new()),
             created_date: params.created_date.unwrap_or(one_core::clock::now_utc()),
             last_modified: params.last_modified.unwrap_or(one_core::clock::now_utc()),
             data: params.data,
@@ -58,7 +57,7 @@ impl InteractionsDB {
 
     pub async fn mark_nonce_as_used(&self, interaction_id: &InteractionId) {
         self.repository
-            .mark_nonces_as_used(interaction_id, vec![Uuid::new_v4().into()])
+            .mark_nonces_as_used(interaction_id, vec![NonceId::new()])
             .await
             .unwrap();
     }

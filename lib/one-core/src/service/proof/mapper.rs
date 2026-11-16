@@ -4,9 +4,8 @@ use std::time::Duration;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialId, CredentialSchemaId, EcosystemId};
+use shared_types::{CredentialId, CredentialSchemaId, EcosystemId, ProofId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
@@ -735,7 +734,7 @@ pub(super) fn proof_from_create_request(
 ) -> Proof {
     Proof {
         ecosystem: request.ecosystem,
-        id: Uuid::new_v4().into(),
+        id: ProofId::new(),
         created_date: now,
         last_modified: now,
         protocol: request.protocol,

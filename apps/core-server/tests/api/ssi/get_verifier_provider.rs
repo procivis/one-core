@@ -1,9 +1,9 @@
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::organisation::{OrganisationConfiguration, UpdateOrganisationRequest};
 use serde_json::json;
+use shared_types::ClaimSchemaId;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
-use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -107,7 +107,7 @@ async fn test_get_verifier_provider_with_ecosystems() {
         .await;
 
     let claim_schema = ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id: ClaimSchemaId::new(),
         key: "firstName".to_string(),
         data_type: "STRING".to_string(),
         created_date: get_dummy_date(),

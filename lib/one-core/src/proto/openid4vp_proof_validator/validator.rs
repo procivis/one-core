@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::{DidValue, SerializedCredential};
+use shared_types::{CredentialId, DidValue, SerializedCredential};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dcql::{
     CredentialFormat, CredentialQuery, CredentialQueryId, DcqlQuery, TrustedAuthority,
@@ -823,7 +823,7 @@ async fn validate_claims(
     let mut proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
     // Several presentations may satisfy the same query; their claims must stay
     // attached to the credential instance from which they were extracted.
-    let credential_instance_id = uuid::Uuid::new_v4().into();
+    let credential_instance_id = CredentialId::new();
 
     for expected_credential_claim in &expected_credential_claims {
         let resolved = resolve_claim(

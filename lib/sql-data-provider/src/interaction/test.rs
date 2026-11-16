@@ -12,9 +12,8 @@ use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
-use shared_types::{EcosystemId, InteractionId};
+use shared_types::{EcosystemId, InteractionId, NonceId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use super::InteractionProvider;
 use crate::test_utilities::{
@@ -90,7 +89,7 @@ async fn test_create_interaction() {
 
     let organisation = dummy_organisation(Some(organisation_id));
 
-    let id = Uuid::new_v4().into();
+    let id = InteractionId::new();
     let interaction = Interaction {
         dpop_key: None,
         client_attestation_key: None,
@@ -143,7 +142,7 @@ async fn test_mark_nonces_as_used_success() {
     .await
     .unwrap();
 
-    let nonce_id = Uuid::new_v4().into();
+    let nonce_id = NonceId::new();
     setup
         .provider
         .mark_nonces_as_used(&interaction_id, vec![nonce_id])
@@ -158,7 +157,7 @@ async fn test_mark_nonces_as_used_already_used() {
     let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
-    let nonce_id = Uuid::new_v4().into();
+    let nonce_id = NonceId::new();
     let interaction_id = insert_interaction(
         &setup.db,
         &[],
@@ -186,7 +185,7 @@ async fn test_mark_nonces_as_used_already_used_different_interaction() {
     let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
-    let nonce_id = Uuid::new_v4().into();
+    let nonce_id = NonceId::new();
     let other_interaction_id = insert_interaction(
         &setup.db,
         &[],
@@ -241,7 +240,7 @@ async fn test_update_interaction() {
 #[tokio::test]
 async fn test_delete_interaction() {
     let setup = setup_with_interaction().await;
-    insert_used_nonce(&setup.db, Uuid::new_v4().into(), setup.interaction_id)
+    insert_used_nonce(&setup.db, NonceId::new(), setup.interaction_id)
         .await
         .unwrap();
 

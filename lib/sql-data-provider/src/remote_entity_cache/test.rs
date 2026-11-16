@@ -72,7 +72,7 @@ async fn insert_json_ld_context(
     expiration_date: Option<OffsetDateTime>,
 ) -> Result<RemoteEntityCacheEntryId, DbErr> {
     let json_ld_context = remote_entity_cache::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(RemoteEntityCacheEntryId::new()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(last_used),
         expiration_date: Set(expiration_date),
@@ -140,7 +140,10 @@ async fn test_get_context_success() {
 async fn test_get_context_failed_wrong_id() {
     let setup = setup_with_context().await;
 
-    let result = setup.provider.get_by_id(&Uuid::new_v4().into()).await;
+    let result = setup
+        .provider
+        .get_by_id(&RemoteEntityCacheEntryId::new())
+        .await;
 
     assert_matches!(
         result,

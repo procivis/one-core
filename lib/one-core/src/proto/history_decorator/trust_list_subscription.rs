@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use shared_types::{OrganisationId, TrustListSubscriptionId};
+use shared_types::{HistoryId, OrganisationId, TrustListSubscriptionId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::list_filter::ListFilterValue;
@@ -153,7 +152,7 @@ impl TrustListSubscriptionHistoryDecorator {
         let result = self
             .history_repository
             .create_history(History {
-                id: Uuid::new_v4().into(),
+                id: HistoryId::new(),
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,

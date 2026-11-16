@@ -3,7 +3,6 @@ use one_core::model::wallet_attestation::AttestationType;
 use one_core::repository::managed_instance_attestation_repository::ManagedInstanceAttestationRepository;
 use shared_types::{ManagedInstanceAttestationId, ManagedInstanceId};
 use similar_asserts::assert_eq;
-use uuid::Uuid;
 
 use crate::managed_instance_attestation::ManagedInstanceAttestationProvider;
 use crate::test_utilities::{
@@ -17,7 +16,7 @@ async fn test_get_attestation_by_wallet_instance() {
     let test_setup = setup(1).await;
     let provider = test_setup.provider;
 
-    let id: ManagedInstanceAttestationId = Uuid::new_v4().into();
+    let id: ManagedInstanceAttestationId = ManagedInstanceAttestationId::new();
     let now = one_core::clock::now_utc();
     let attested_key = ManagedInstanceAttestation {
         id,

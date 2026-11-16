@@ -357,7 +357,7 @@ pub(crate) struct ExportProofInputSchemaResponseRestDTO {
 
 #[cfg(test)]
 mod test {
-    use shared_types::I18nString;
+    use shared_types::{ClaimSchemaId, CredentialSchemaId, I18nString};
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -373,7 +373,7 @@ mod test {
     #[test]
     fn test_shared_schema_deserializes_into_import_schema() {
         let shared = ExportProofSchemaResponseRestDTO {
-            id: Uuid::new_v4().into(),
+            id: ProofSchemaId::new(),
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),
             name: "name".to_string(),
@@ -392,7 +392,7 @@ mod test {
                     array: true,
                 }],
                 credential_schema: CredentialSchemaV2ResponseRestDTO {
-                    id: Uuid::new_v4().into(),
+                    id: CredentialSchemaId::new(),
                     created_date: one_core::clock::now_utc(),
                     last_modified: one_core::clock::now_utc(),
                     name: "name".to_string(),
@@ -427,9 +427,9 @@ mod test {
                         description: None,
                     },
                     ecosystem: Some("EUDI".into()),
-                    organisation_id: Uuid::new_v4().into(),
+                    organisation_id: OrganisationId::new(),
                     claims: vec![CredentialClaimSchemaV2ResponseRestDTO {
-                        id: Uuid::new_v4().into(),
+                        id: ClaimSchemaId::new(),
                         created_date: one_core::clock::now_utc(),
                         last_modified: one_core::clock::now_utc(),
                         key: "attribute".to_string(),

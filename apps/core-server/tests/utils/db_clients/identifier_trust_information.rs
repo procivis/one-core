@@ -3,7 +3,6 @@ use std::sync::Arc;
 use one_core::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use shared_types::{BlobId, IdentifierId, IdentifierTrustInformationId};
-use uuid::Uuid;
 
 #[derive(Debug, Default)]
 pub struct TestingIdentifierTrustInformationParams {
@@ -33,9 +32,7 @@ impl IdentifierTrustInformationDB {
         let now = one_core::clock::now_utc();
 
         let trust_info = IdentifierTrustInformation {
-            id: params
-                .id
-                .unwrap_or(IdentifierTrustInformationId::from(Uuid::new_v4())),
+            id: params.id.unwrap_or(IdentifierTrustInformationId::new()),
             created_date: now,
             last_modified: now,
             valid_from: params.valid_from,

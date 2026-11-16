@@ -10,7 +10,6 @@ use shared_types::{
 use time::OffsetDateTime;
 use tracing::warn;
 use url::Url;
-use uuid::Uuid;
 
 use super::IdentifierService;
 use super::dto::{
@@ -491,7 +490,7 @@ impl IdentifierService {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
         for (trust_info, parsed_info) in trust_information.into_iter().zip(parsed) {
-            let blob_id = Uuid::new_v4().into();
+            let blob_id = BlobId::new();
             blob_storage
                 .create(Blob {
                     id: blob_id,
@@ -505,7 +504,7 @@ impl IdentifierService {
 
             self.identifier_trust_information_repository
                 .create(IdentifierTrustInformation {
-                    id: Uuid::new_v4().into(),
+                    id: IdentifierTrustInformationId::new(),
                     created_date: now,
                     last_modified: now,
                     valid_from: parsed_info.valid_from,
