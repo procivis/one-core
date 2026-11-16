@@ -275,7 +275,7 @@ async fn test_update_organisation_success_wallet_provider() {
     // THEN
     assert_eq!(resp.status(), 204);
     let org = context.db.organisations.get(&org.id).await;
-    assert_eq!(org.wallet_provider, Some("PROCIVIS_ONE".to_string()));
+    assert_eq!(org.wallet_provider, Some("PROCIVIS_ONE".into()));
     let history = context.db.histories.get_by_entity_id(&org.id.into()).await;
     assert_eq!(
         history.values.first().unwrap().action,
@@ -623,7 +623,7 @@ async fn test_update_organisation_success_wallet_provider_issuer_rotation() {
     // THEN
     assert_eq!(resp.status(), 204);
     let org = context.db.organisations.get(&org.id).await;
-    assert_eq!(org.wallet_provider, Some("PROCIVIS_ONE".to_string()));
+    assert_eq!(org.wallet_provider, Some("PROCIVIS_ONE".into()));
     assert_eq!(org.wallet_provider_issuer, Some(identifier.id));
 }
 
@@ -708,7 +708,7 @@ async fn test_update_organisation_success_verifier_provider_issuer_rotation() {
     // THEN
     assert_eq!(resp.status(), 204);
     let org = context.db.organisations.get(&org.id).await;
-    assert_eq!(org.verifier_provider, Some("PROCIVIS_ONE".to_string()));
+    assert_eq!(org.verifier_provider, Some("PROCIVIS_ONE".into()));
     assert_eq!(org.verifier_provider_issuer, Some(identifier.id));
 }
 

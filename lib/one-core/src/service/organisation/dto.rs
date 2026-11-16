@@ -1,5 +1,7 @@
 use one_dto_mapper::From;
-use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId};
+use shared_types::{
+    EcosystemId, IdentifierId, InstanceId, OrganisationId, VerifierProviderId, WalletProviderId,
+};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -34,9 +36,9 @@ pub struct CreateOrganisationRequestDTO {
 pub struct UpdateOrganisationRequestDTO {
     pub id: OrganisationId,
     pub deactivate: Option<bool>,
-    pub wallet_provider: Option<Option<String>>,
+    pub wallet_provider: Option<Option<WalletProviderId>>,
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
-    pub verifier_provider: Option<Option<String>>,
+    pub verifier_provider: Option<Option<VerifierProviderId>>,
     pub verifier_provider_issuer: Option<Option<IdentifierId>>,
     pub configuration: Option<SetOrganisationConfigurationDTO>,
     pub parent_organisation: Option<Option<OrganisationId>>,
@@ -105,13 +107,13 @@ pub struct VerifierInstanceFeatureFlagsDTO {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WalletProviderDetailResponseDTO {
-    pub provider_name: Option<String>,
+    pub provider_name: Option<WalletProviderId>,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifierProviderDetailResponseDTO {
-    pub provider_name: Option<String>,
+    pub provider_name: Option<VerifierProviderId>,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
 }
 

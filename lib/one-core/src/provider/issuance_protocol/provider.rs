@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
+use shared_types::IssuanceProtocolId;
 use url::Url;
 
 use super::IssuanceProtocol;
@@ -38,22 +39,34 @@ use crate::repository::wallet_attestation_repository::WalletAttestationRepositor
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub(crate) trait IssuanceProtocolProvider: Send + Sync {
-    fn get_protocol(&self, protocol_id: &str) -> Result<Arc<dyn IssuanceProtocol>, NestedError>;
+    fn get_protocol(
+        &self,
+        protocol_id: &IssuanceProtocolId,
+    ) -> Result<Arc<dyn IssuanceProtocol>, NestedError>;
 
     /// The protocol that handles `url`, if any.
-    async fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn IssuanceProtocol>)>;
+    async fn detect_protocol(
+        &self,
+        url: &Url,
+    ) -> Option<(IssuanceProtocolId, Arc<dyn IssuanceProtocol>)>;
 }
 
 #[async_trait::async_trait]
 impl IssuanceProtocolProvider
-    for ProviderDirectory<String, Fields<IssuanceProtocolType>, dyn IssuanceProtocol>
+    for ProviderDirectory<IssuanceProtocolId, Fields<IssuanceProtocolType>, dyn IssuanceProtocol>
 {
-    fn get_protocol(&self, protocol_id: &str) -> Result<Arc<dyn IssuanceProtocol>, NestedError> {
+    fn get_protocol(
+        &self,
+        protocol_id: &IssuanceProtocolId,
+    ) -> Result<Arc<dyn IssuanceProtocol>, NestedError> {
         self.provider(protocol_id)
     }
 
-    async fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn IssuanceProtocol>)> {
-        let get_order = |id: &String| {
+    async fn detect_protocol(
+        &self,
+        url: &Url,
+    ) -> Option<(IssuanceProtocolId, Arc<dyn IssuanceProtocol>)> {
+        let get_order = |id: &IssuanceProtocolId| {
             self.config(id)
                 .ok()
                 .and_then(|entry| entry.order)
@@ -75,7 +88,7 @@ impl IssuanceProtocolProvider
 
 #[expect(clippy::too_many_arguments)]
 fn initialize_provider(
-    name: &str,
+    name: &IssuanceProtocolId,
     fields: &Fields<IssuanceProtocolType>,
     core_config: &Arc<CoreConfig>,
     core_base_url: &Option<String>,
@@ -172,7 +185,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
 
     let directory = ProviderDirectory::initialize(
         config.issuance_protocol.iter_mut(),
-        |name: &String, fields: &Fields<IssuanceProtocolType>| {
+        |name: &IssuanceProtocolId, fields: &Fields<IssuanceProtocolType>| {
             let provider = initialize_provider(
                 name,
                 fields,

@@ -9,7 +9,7 @@ use proc_macros::Provider;
 use reqwest::Identity;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
-use shared_types::KeyId;
+use shared_types::{KeyId, KeyStorageId};
 use standardized_types::csc::{CredentialInfoResponse, HashAlgorithm, SignatureAlgorithm};
 use standardized_types::jwk::PrivateJwk;
 
@@ -81,7 +81,7 @@ enum AuthParams {
 
 #[derive(Clone, Provider)]
 pub(crate) struct CscKeyProvider {
-    config_id: String,
+    config_id: KeyStorageId,
     csc_base_url: String,
     sign_hash_base_url: String,
     certificate: String,
@@ -93,7 +93,7 @@ pub(crate) struct CscKeyProvider {
 
 impl CscKeyProvider {
     pub(crate) fn new(
-        config_id: String,
+        config_id: KeyStorageId,
         client: Arc<dyn HttpClient>,
         certificate_validator: Arc<dyn CertificateValidator>,
         params: serde_json::Value,
@@ -106,7 +106,7 @@ impl CscKeyProvider {
             auth,
         } = serde_json::from_value(params).map_err(|source| {
             InitializationError::InvalidParams {
-                key: config_id.clone(),
+                key: config_id.to_string(),
                 source,
             }
         })?;
@@ -217,7 +217,7 @@ impl KeyStorage for CscKeyProvider {
         }
     }
 
-    fn config_name(&self) -> String {
+    fn config_name(&self) -> KeyStorageId {
         self.config_id.clone()
     }
 

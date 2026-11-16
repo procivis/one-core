@@ -64,13 +64,13 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
         public_key: params.public_key.unwrap_or_default(),
         name: "test-key".to_string(),
         key_reference: params.key_reference,
-        storage_type: params.storage_type.unwrap_or_default(),
+        storage_type: params.storage_type.unwrap_or_default().into(),
         key_type: params.key_type.unwrap_or_default(),
         organisation: dummy_organisation(None).into(),
     };
 
     let key_provider = InternalKeyProvider::new(
-        "test",
+        &"test".into(),
         Arc::new(key_algorithm_provider),
         json!({
             "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"

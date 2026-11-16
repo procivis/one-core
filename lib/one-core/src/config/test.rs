@@ -216,7 +216,7 @@ rusty_fork_test! {
             .document_signer_provider
             .get_key_by_type(DocumentSignerType::WalletCentric)
             .unwrap();
-        assert_eq!(wallet_centric_key, "SIGN8");
+        assert_eq!(wallet_centric_key.as_str(), "SIGN8");
     }
 }
 

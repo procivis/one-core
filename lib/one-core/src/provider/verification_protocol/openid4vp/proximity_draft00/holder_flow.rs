@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use async_trait::async_trait;
-use shared_types::DidValue;
+use shared_types::{DidValue, TransportId};
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{AuthorizationRequest, ClientIdPrefix, VpTokenResponse};
 use url::Url;
@@ -72,7 +72,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
     interaction_repository: &dyn InteractionRepository,
     identifier_creator: &dyn IdentifierCreator,
     transport_handler: &dyn ProximityHolderTransport<Context = T>,
-    transport_id: String,
+    transport_id: TransportId,
     verification_fn: VerificationFn,
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {

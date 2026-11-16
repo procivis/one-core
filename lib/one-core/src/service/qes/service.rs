@@ -1,4 +1,4 @@
-use shared_types::{HistoryId, OrganisationId};
+use shared_types::{DocumentSignerProviderId, HistoryId, OrganisationId};
 
 use super::QesService;
 use super::dto::{
@@ -84,7 +84,10 @@ impl QesService {
         }
     }
 
-    fn resolve(&self, provider: &str) -> Result<std::sync::Arc<dyn DocumentSigner>, ServiceError> {
+    fn resolve(
+        &self,
+        provider: &DocumentSignerProviderId,
+    ) -> Result<std::sync::Arc<dyn DocumentSigner>, ServiceError> {
         self.document_signer_provider.get(provider).map_err(|_| {
             QesError::ProviderNotFound(provider.to_string())
                 .error_while("resolving document signer")
@@ -137,7 +140,7 @@ mod test {
 
         let response = service_with(signer)
             .authorize(QesAuthorizeRequestDTO {
-                provider: "SIGN8".to_string(),
+                provider: "SIGN8".into(),
                 document: pdf_bytes(),
                 redirect_uri: None,
                 organisation_id: None,
@@ -163,7 +166,7 @@ mod test {
 
         let response = service_with(signer)
             .sign(QesSignRequestDTO {
-                provider: "SIGN8".to_string(),
+                provider: "SIGN8".into(),
                 code: "c".to_string(),
                 code_verifier: "v".to_string(),
                 document: pdf_bytes(),
@@ -209,7 +212,7 @@ mod test {
 
         service
             .sign(QesSignRequestDTO {
-                provider: "SIGN8".to_string(),
+                provider: "SIGN8".into(),
                 code: "c".to_string(),
                 code_verifier: "v".to_string(),
                 document: pdf_bytes(),

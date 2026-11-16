@@ -80,8 +80,8 @@ async fn test_create_proof_success_without_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.protocol, "OPENID4VP_FINAL1");
-    assert_eq!(proof.transport, "HTTP");
+    assert_eq!(proof.protocol.as_str(), "OPENID4VP_FINAL1");
+    assert_eq!(proof.transport.as_str(), "HTTP");
     assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }
 
@@ -134,7 +134,7 @@ async fn test_create_proof_success_with_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.protocol, "OPENID4VP_FINAL1");
+    assert_eq!(proof.protocol.as_str(), "OPENID4VP_FINAL1");
 }
 
 #[tokio::test]
@@ -619,8 +619,8 @@ async fn test_create_proof_success_with_profile() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.protocol, "OPENID4VP_FINAL1");
-    assert_eq!(proof.transport, "HTTP");
+    assert_eq!(proof.protocol.as_str(), "OPENID4VP_FINAL1");
+    assert_eq!(proof.transport.as_str(), "HTTP");
 
     // Verify the profile is correctly stored
     assert_eq!(proof.profile.as_ref().unwrap(), test_profile);

@@ -571,7 +571,7 @@ mod tests {
                         public_key: vec![],
                         name: "".to_string(),
                         key_reference: None,
-                        storage_type: "".to_string(),
+                        storage_type: "".into(),
                         key_type: "EDDSA".to_string(),
                         organisation: dummy_organisation(None).into(),
                     }
@@ -1025,7 +1025,7 @@ mod tests {
             public_key: vec![1, 2, 3],
             name: "TestKey".to_string(),
             key_reference: None,
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             key_type: key_type.to_string(),
             organisation: dummy_organisation(None).into(),
         }

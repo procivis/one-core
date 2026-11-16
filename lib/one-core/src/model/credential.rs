@@ -1,7 +1,8 @@
 use proc_macros::Model;
 use shared_types::{
     BlobId, CertificateId, CredentialFormat, CredentialId, CredentialSchemaFormatId,
-    CredentialSchemaId, EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId,
+    CredentialSchemaId, EcosystemId, IdentifierId, InteractionId, IssuanceProtocolId, KeyId,
+    OrganisationId,
 };
 use strum::{Display, EnumString, IntoStaticStr};
 use time::OffsetDateTime;
@@ -87,7 +88,7 @@ pub struct CredentialCommon {
     pub deleted_at: Option<OffsetDateTime>,
     pub issuance_date: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub interaction: Option<Related<Interaction>>,
     pub redirect_uri: Option<String>,
     pub profile: Option<String>,

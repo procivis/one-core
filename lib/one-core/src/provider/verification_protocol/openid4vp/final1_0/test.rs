@@ -104,7 +104,7 @@ struct TestInputs {
 
 fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
     OpenID4VPFinal1_0::new(
-        "final1".to_string(),
+        "final1".into(),
         Some("http://base_url".to_string()),
         Arc::new(inputs.credential_formatter_provider),
         Arc::new(inputs.presentation_formatter_provider),
@@ -181,7 +181,7 @@ fn test_key(key_type: &str) -> Key {
         public_key: vec![],
         name: "test_key".to_string(),
         key_reference: None,
-        storage_type: "INTERNAL".to_string(),
+        storage_type: "INTERNAL".into(),
         key_type: key_type.to_string(),
         organisation: dummy_organisation(None).into(),
     }
@@ -198,8 +198,8 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         id: ProofId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
+        protocol: "OPENID4VP_FINAL1".into(),
+        transport: "HTTP".into(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
         role: ProofRole::Verifier,
@@ -326,8 +326,8 @@ fn test_holder_proof(interaction_data: OpenID4VPHolderInteractionData) -> Proof 
         id: ProofId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
+        protocol: "OPENID4VP_FINAL1".into(),
+        transport: "HTTP".into(),
         redirect_uri: None,
         state: ProofStateEnum::Requested,
         role: ProofRole::Holder,
@@ -564,7 +564,7 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
             public_key: vec![],
             name: "key".to_string(),
             key_reference: None,
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             key_type: "ECDSA".to_string(),
             organisation: dummy_organisation(None).into(),
         },
@@ -645,7 +645,7 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
             public_key: vec![],
             name: "key".to_string(),
             key_reference: None,
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             key_type: "EDDSA".to_string(),
             organisation: dummy_organisation(None).into(),
         },
@@ -1503,13 +1503,13 @@ async fn test_holder_handle_invitation_and_reject_dc_api_unsigned_request() {
                 response_handler: Arc::new(response_handler),
             },
             dummy_organisation(None),
-            "DC_API".to_string(),
+            "DC_API".into(),
         )
         .await
         .unwrap();
 
     let proof = invitation.proof;
-    assert_eq!("DC_API", proof.transport);
+    assert_eq!("DC_API", proof.transport.as_str());
     assert_eq!(ProofRole::Holder, proof.role);
     assert_eq!(ProofStateEnum::Requested, proof.state);
 

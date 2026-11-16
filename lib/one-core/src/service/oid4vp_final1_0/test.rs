@@ -532,7 +532,7 @@ async fn test_get_client_metadata_success() {
         public_key: vec![],
         name: "verifier_key1".to_string(),
         key_reference: None,
-        storage_type: "INTERNAL".to_string(),
+        storage_type: "INTERNAL".into(),
         key_type: "EDDSA".to_string(),
         organisation: dummy_organisation(None).into(),
     };
@@ -541,8 +541,10 @@ async fn test_get_client_metadata_success() {
         id: proof_id,
         created_date: now,
         last_modified: now,
-        protocol: VerificationProtocolType::OpenId4VpFinal1_0.to_string(),
-        transport: "HTTP".to_string(),
+        protocol: VerificationProtocolType::OpenId4VpFinal1_0
+            .to_string()
+            .into(),
+        transport: "HTTP".into(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
         role: ProofRole::Verifier,

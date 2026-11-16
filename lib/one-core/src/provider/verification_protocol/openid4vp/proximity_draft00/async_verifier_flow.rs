@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use futures::future::{BoxFuture, Shared};
 use one_crypto::utilities;
 use serde::Serialize;
-use shared_types::{DidValue, InteractionId, ProofId};
+use shared_types::{DidValue, InteractionId, ProofId, TransportId};
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{
     AuthorizationRequest, ClientIdPrefix, VerifierInfoAttestation, VpTokenResponse,
@@ -214,7 +214,8 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
         .update_proof(
             &params.proof_id,
             UpdateProofRequest {
-                transport: Some(transport_type.to_string()),
+                // TODO ONE-9647: stores the transport type name instead of the transport config entry name
+                transport: Some(TransportId::from(transport_type.as_ref())),
                 ..Default::default()
             },
             None,

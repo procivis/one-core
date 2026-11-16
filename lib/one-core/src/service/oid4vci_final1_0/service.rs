@@ -9,7 +9,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{
     BlobId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DpopNonce, IdentifierId,
-    InteractionId, NonceId,
+    InteractionId, IssuanceProtocolId, NonceId,
 };
 use standardized_types::iana::EncryptionKeyManagementAlgorithm;
 use standardized_types::oauth2::TokenType;
@@ -105,7 +105,7 @@ use crate::validator::throw_if_credential_state_not_eq;
 impl OID4VCIFinal1_0Service {
     pub async fn get_issuer_metadata(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
         response_type: IssuerMetadataResponseTypeEnum,
@@ -147,7 +147,7 @@ impl OID4VCIFinal1_0Service {
     /// protocol runs in swiyu mode.
     fn swiss_profile_header(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
     ) -> Result<SwissProfileHeader, OID4VCIFinal1_0ServiceError> {
         let params: OpenID4VCIFinal1Params = self
             .config
@@ -171,7 +171,7 @@ impl OID4VCIFinal1_0Service {
 
     pub async fn oauth_authorization_server(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<AuthorizationServerMetadata, OID4VCIFinal1_0ServiceError> {
@@ -1735,7 +1735,7 @@ impl OID4VCIFinal1_0Service {
         client_attestation: Option<&ValidatedClientAttestation>,
         dpop_proof: Option<&str>,
         params: &OpenID4VCIFinal1Params,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<Option<ProofValidationOutput>, OID4VCIFinal1_0ServiceError> {
         // Refresh tokens are bound to the Client Instance they were issued to
@@ -1806,7 +1806,7 @@ impl OID4VCIFinal1_0Service {
 
     fn expected_dpop_values<'a>(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         endpoint: &str,
         jkt: Option<&'a str>,
     ) -> Result<ExpectedProofValues<'a>, OID4VCIFinal1_0ServiceError> {
@@ -1828,7 +1828,7 @@ impl OID4VCIFinal1_0Service {
 
     fn dpop_params(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
     ) -> Result<Option<DpopParams>, OID4VCIFinal1_0ServiceError> {
         let params: OpenID4VCIFinal1Params = self
             .config
@@ -1846,7 +1846,7 @@ impl OID4VCIFinal1_0Service {
         jkt: Option<&str>,
         access_token: &str,
         dpop_proof: Option<&str>,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         endpoint: &str,
     ) -> Result<Option<DpopNonce>, OID4VCIFinal1_0ServiceError> {
         let Some(params) = self.dpop_params(protocol_id)? else {
@@ -2038,7 +2038,7 @@ impl OID4VCIFinal1_0Service {
 
     pub async fn generate_nonce(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
     ) -> Result<NonceResponse, OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
@@ -2071,7 +2071,7 @@ impl OID4VCIFinal1_0Service {
 
     pub async fn generate_oauth_attestation_challenge(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
     ) -> Result<ChallengeResponse, OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
@@ -2496,7 +2496,7 @@ impl OID4VCIFinal1_0Service {
     async fn protocol_from_interaction_lenient(
         &self,
         interaction_id: &InteractionId,
-    ) -> Option<String> {
+    ) -> Option<IssuanceProtocolId> {
         let credential = self
             .credential_repository
             .get_credentials_by_interaction_id(interaction_id)

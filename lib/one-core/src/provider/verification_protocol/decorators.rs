@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
+use shared_types::{TransportId, VerificationProtocolId};
 
 use super::dto::{
     FormattedCredentialPresentation, InvitationRequest, InvitationResponseDTO,
@@ -37,7 +38,7 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
         &self,
         _request: InvitationRequest,
         _organisation: Organisation,
-        _transport: String,
+        _transport: TransportId,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         self.disabled_error()
     }
@@ -79,7 +80,7 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
         self.inner().get_capabilities()
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &VerificationProtocolId {
         self.inner().config_name()
     }
 }
@@ -106,7 +107,7 @@ impl VerificationProtocol for CapabilityChecked {
         &self,
         request: InvitationRequest,
         organisation: Organisation,
-        transport: String,
+        transport: TransportId,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         self.inner
             .holder_handle_invitation(request, organisation, transport)
@@ -197,7 +198,7 @@ impl VerificationProtocol for CapabilityChecked {
         self.inner.get_capabilities()
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &VerificationProtocolId {
         self.inner.config_name()
     }
 }

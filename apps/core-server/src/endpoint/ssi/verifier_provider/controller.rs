@@ -4,6 +4,7 @@ use axum_extra::extract::WithRejection;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use proc_macros::endpoint;
 use reqwest::StatusCode;
+use shared_types::VerifierProviderId;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{ErrorResponse, OkOrErrorResponse};
@@ -26,12 +27,12 @@ use crate::router::AppState;
 )]
 pub(crate) async fn get_verification_provider(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<VerifierProviderId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
         .verifier_provider_service
-        .get_verifier_by_id(id.as_str())
+        .get_verifier_by_id(&id)
         .await;
 
     match result {

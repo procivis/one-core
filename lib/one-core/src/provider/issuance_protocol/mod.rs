@@ -7,7 +7,8 @@ use proc_macros::provider_mock;
 use serde::Serialize;
 use serde::de::Deserialize;
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, KeyId,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, IssuanceProtocolId,
+    KeyId,
 };
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
@@ -143,7 +144,7 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
 
     async fn issuer_metadata(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
         issuer_identifier: &Identifier,
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError>;
@@ -154,7 +155,7 @@ pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
     /// or `None` when no core base URL is configured.
     fn protocol_base_url(&self) -> Option<String>;
 
-    fn config_name(&self) -> &str;
+    fn config_name(&self) -> &IssuanceProtocolId;
 }
 
 impl Display for dyn IssuanceProtocol {

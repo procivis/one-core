@@ -527,7 +527,7 @@ mod test {
             public_key,
             name: "test-key".to_string(),
             key_reference: None,
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             key_type: key_type.to_string(),
             organisation: dummy_organisation(None).into(),
         }

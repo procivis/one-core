@@ -5,7 +5,7 @@ use coset::{CoseKey, CoseKeyBuilder, iana};
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
 use proc_macros::Provider;
-use shared_types::KeyId;
+use shared_types::{KeyId, KeyStorageId};
 use standardized_types::jwk::{PrivateJwk, PublicJwk};
 
 use super::secure_element::NativeKeyStorage;
@@ -26,7 +26,7 @@ use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, Stor
 #[derive(Provider)]
 pub struct RemoteSecureElementKeyProvider {
     native_storage: Arc<dyn NativeKeyStorage>,
-    name: String,
+    name: KeyStorageId,
 }
 
 #[async_trait::async_trait]
@@ -38,7 +38,7 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
         }
     }
 
-    fn config_name(&self) -> String {
+    fn config_name(&self) -> KeyStorageId {
         self.name.clone()
     }
     async fn generate(
@@ -107,7 +107,7 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
 }
 
 impl RemoteSecureElementKeyProvider {
-    pub fn new(name: &str, native_storage: Arc<dyn NativeKeyStorage>) -> Self {
+    pub fn new(name: &KeyStorageId, native_storage: Arc<dyn NativeKeyStorage>) -> Self {
         Self {
             native_storage,
             name: name.to_owned(),

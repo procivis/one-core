@@ -54,7 +54,7 @@ impl CredentialNotificationDecorator {
 
         let Some(task_id) = params.webhook_task else {
             return Err(ValidationError::NotificationsNotAllowed {
-                protocol: common.protocol.to_owned(),
+                protocol: common.protocol.to_string(),
             }
             .error_while("getting webhook task")
             .into());

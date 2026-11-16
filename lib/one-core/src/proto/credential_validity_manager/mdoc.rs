@@ -36,7 +36,7 @@ impl CredentialValidityManagerImpl {
                 tracing::warn!(
                     %err,
                     credential_id = %common.id,
-                    protocol = common.protocol,
+                    protocol = %common.protocol,
                     "Skipping mdoc refresh: issuance protocol not available"
                 );
                 if credential_expired(&detail_credential) {

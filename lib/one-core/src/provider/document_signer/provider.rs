@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Deserialize;
+use shared_types::DocumentSignerProviderId;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigEntryDisplay, CoreConfig, DocumentSignerType, Fields};
@@ -31,16 +32,22 @@ struct DocumentSignerPublicParams {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub(crate) trait DocumentSignerProvider: Send + Sync {
-    fn metadata(&self, name: &str) -> Result<DocumentSignerMetadata, NestedError>;
+    fn metadata(
+        &self,
+        name: &DocumentSignerProviderId,
+    ) -> Result<DocumentSignerMetadata, NestedError>;
 
-    fn get(&self, name: &str) -> Result<Arc<dyn DocumentSigner>, NestedError>;
+    fn get(&self, name: &DocumentSignerProviderId) -> Result<Arc<dyn DocumentSigner>, NestedError>;
 }
 
 impl DocumentSignerProvider
-    for ProviderDirectory<String, Fields<DocumentSignerType>, dyn DocumentSigner>
+    for ProviderDirectory<DocumentSignerProviderId, Fields<DocumentSignerType>, dyn DocumentSigner>
 {
-    fn metadata(&self, name: &str) -> Result<DocumentSignerMetadata, NestedError> {
-        let fields = self.config(&name.to_string())?;
+    fn metadata(
+        &self,
+        name: &DocumentSignerProviderId,
+    ) -> Result<DocumentSignerMetadata, NestedError> {
+        let fields = self.config(name)?;
         let public: DocumentSignerPublicParams = fields
             .params
             .as_ref()
@@ -62,7 +69,7 @@ impl DocumentSignerProvider
         })
     }
 
-    fn get(&self, name: &str) -> Result<Arc<dyn DocumentSigner>, NestedError> {
+    fn get(&self, name: &DocumentSignerProviderId) -> Result<Arc<dyn DocumentSigner>, NestedError> {
         self.provider(name)
     }
 }
@@ -73,10 +80,10 @@ pub(crate) fn document_signer_provider_from_config(
 ) -> Result<Arc<dyn DocumentSignerProvider>, ConfigValidationError> {
     let directory = ProviderDirectory::initialize(
         config.document_signer_provider.iter_mut(),
-        |name: &str, fields: &Fields<DocumentSignerType>| {
+        |name: &DocumentSignerProviderId, fields: &Fields<DocumentSignerType>| {
             let provider: Arc<dyn DocumentSigner> = match fields.r#type {
                 DocumentSignerType::WalletCentric => Arc::new(Sign8::new(
-                    name.to_string(),
+                    name.to_owned(),
                     fields.merge_fields(),
                     client.clone(),
                 )?),
@@ -127,11 +134,11 @@ mod test {
     fn configured_provider() -> Arc<dyn DocumentSignerProvider> {
         let mut config = DocumentSignerProviderConfig::default();
         config.insert(
-            "EUDI".to_string(),
+            "EUDI".into(),
             fields(DocumentSignerType::RpCentric, 1, None),
         );
         config.insert(
-            "SIGN8".to_string(),
+            "SIGN8".into(),
             fields(
                 DocumentSignerType::WalletCentric,
                 2,
@@ -148,7 +155,7 @@ mod test {
 
         let directory = ProviderDirectory::initialize(
             config.iter_mut(),
-            |_name: &str, _fields: &Fields<DocumentSignerType>| {
+            |_name: &DocumentSignerProviderId, _fields: &Fields<DocumentSignerType>| {
                 let mut signer = MockDocumentSigner::new();
                 signer.expect_capabilities().returning(|| None);
                 Ok::<Arc<dyn DocumentSigner>, InitializationError>(Arc::new(signer))
@@ -163,22 +170,22 @@ mod test {
     fn get_by_name_returns_signer() {
         let provider = configured_provider();
 
-        assert!(provider.get("SIGN8").is_ok());
-        assert!(provider.get("EUDI").is_ok());
+        assert!(provider.get(&"SIGN8".into()).is_ok());
+        assert!(provider.get(&"EUDI".into()).is_ok());
     }
 
     #[test]
     fn get_by_unknown_name_errors() {
         let provider = configured_provider();
 
-        assert!(provider.get("UNKNOWN").is_err());
+        assert!(provider.get(&"UNKNOWN".into()).is_err());
     }
 
     #[test]
     fn from_config_builds_wallet_centric_sign8() {
         let mut config = generic_config().core;
         config.document_signer_provider.insert(
-            "SIGN8".to_string(),
+            "SIGN8".into(),
             fields(
                 DocumentSignerType::WalletCentric,
                 2,
@@ -198,14 +205,14 @@ mod test {
             document_signer_provider_from_config(&mut config, Arc::new(MockCscClient::new()))
                 .unwrap();
 
-        assert!(provider.get("SIGN8").is_ok());
+        assert!(provider.get(&"SIGN8".into()).is_ok());
     }
 
     #[test]
     fn metadata_reads_type_display_description_logo_from_config() {
         let mut config = generic_config().core;
         config.document_signer_provider.insert(
-            "SIGN8".to_string(),
+            "SIGN8".into(),
             Fields {
                 r#type: DocumentSignerType::WalletCentric,
                 display: ConfigEntryDisplay::Translated(std::collections::HashMap::from([(
@@ -234,7 +241,7 @@ mod test {
         let provider =
             document_signer_provider_from_config(&mut config, Arc::new(MockCscClient::new()))
                 .unwrap();
-        let meta = provider.metadata("SIGN8").unwrap();
+        let meta = provider.metadata(&"SIGN8".into()).unwrap();
 
         assert_eq!(meta.r#type, DocumentSignerType::WalletCentric);
         assert_eq!(meta.logo, "sign8-logo");
@@ -253,7 +260,7 @@ mod test {
     fn metadata_returns_type() {
         let provider = configured_provider();
 
-        let meta = provider.metadata("SIGN8").unwrap();
+        let meta = provider.metadata(&"SIGN8".into()).unwrap();
         assert_eq!(meta.r#type, DocumentSignerType::WalletCentric);
     }
 
@@ -261,14 +268,14 @@ mod test {
     fn metadata_unknown_name_errors() {
         let provider = configured_provider();
 
-        assert!(provider.metadata("UNKNOWN").is_err());
+        assert!(provider.metadata(&"UNKNOWN".into()).is_err());
     }
 
     #[test]
     fn from_config_rejects_rp_centric() {
         let mut config = generic_config().core;
         config.document_signer_provider.insert(
-            "EUDI".to_string(),
+            "EUDI".into(),
             fields(DocumentSignerType::RpCentric, 1, None),
         );
 

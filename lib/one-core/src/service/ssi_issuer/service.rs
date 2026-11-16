@@ -2,7 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use convert_case::{Case, Casing};
-use shared_types::{CredentialFormat, CredentialSchemaId, IdentifierId, OrganisationId};
+use shared_types::{
+    CredentialFormat, CredentialSchemaId, IdentifierId, IssuanceProtocolId, OrganisationId,
+};
 use standardized_types::jwk::{JwkUse, PublicJwk};
 use url::Url;
 
@@ -350,7 +352,7 @@ impl SSIIssuerService {
 
     pub async fn get_sd_jwt_vc_issuer_metadata(
         &self,
-        protocol_id: &String,
+        protocol_id: &IssuanceProtocolId,
         identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<SdJwtVcIssuerMetadata, IssuerServiceError> {

@@ -1,6 +1,8 @@
 use futures::future::join_all;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
-use shared_types::{CredentialId, InteractionId, OrganisationId, ProofId};
+use shared_types::{
+    CredentialId, InteractionId, OrganisationId, ProofId, TransportId, VerificationProtocolId,
+};
 use standardized_types::openid4vp::dcql::CredentialSet;
 use standardized_types::openid4vp::{VerifierInfoAttestation, VerifierInfoAttestationFormat};
 use time::OffsetDateTime;
@@ -51,10 +53,10 @@ pub(super) fn interaction_from_handle_invitation(
 
 pub(super) fn proof_from_handle_invitation(
     proof_id: ProofId,
-    protocol: &str,
+    protocol: &VerificationProtocolId,
     verifier_identifier: Option<Identifier>,
     interaction: Interaction,
-    transport: String,
+    transport: TransportId,
 ) -> Proof {
     let now = now_utc();
     Proof {

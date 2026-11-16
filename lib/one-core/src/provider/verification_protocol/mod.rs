@@ -8,7 +8,7 @@ use error::VerificationProtocolError;
 use futures::future::BoxFuture;
 use proc_macros::provider_mock;
 use serde::de::Deserialize;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, TransportId, VerificationProtocolId};
 
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -53,7 +53,7 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
         &self,
         request: InvitationRequest,
         organisation: Organisation,
-        transport: String,
+        transport: TransportId,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError>;
 
     /// Rejects a verifier's request for credential presentation.
@@ -94,7 +94,7 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities;
 
-    fn config_name(&self) -> &str;
+    fn config_name(&self) -> &VerificationProtocolId;
 }
 
 impl Display for dyn VerificationProtocol {

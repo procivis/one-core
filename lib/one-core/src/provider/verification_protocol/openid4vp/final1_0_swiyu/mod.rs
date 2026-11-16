@@ -5,6 +5,7 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as};
+use shared_types::{TransportId, VerificationProtocolId};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::{
     AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix,
@@ -162,7 +163,7 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         &self,
         request: InvitationRequest,
         organisation: Organisation,
-        transport: String,
+        transport: TransportId,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         let InvitationRequest::Url(url) = &request else {
             return Err(VerificationProtocolError::Failed(
@@ -289,7 +290,7 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
             .await
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &VerificationProtocolId {
         self.inner.config_name()
     }
 }

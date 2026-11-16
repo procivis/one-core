@@ -157,7 +157,7 @@ async fn test_azure_vault_generate() {
     generate_key_mock(&mock_server, 2).await;
 
     let vault = AzureVaultKeyProvider::new(
-        "azure_vault",
+        &"azure_vault".into(),
         get_params(mock_server.uri()),
         Arc::new(ReqwestClient::default()),
     )
@@ -180,7 +180,7 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
     generate_key_mock(&mock_server, 2).await;
 
     let vault = AzureVaultKeyProvider::new(
-        "azure_vault",
+        &"azure_vault".into(),
         get_params(mock_server.uri()),
         Arc::new(ReqwestClient::default()),
     )
@@ -198,7 +198,7 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
 #[tokio::test]
 async fn test_azure_vault_generate_failed_unsupported_key_type() {
     let vault = AzureVaultKeyProvider::new(
-        "azure_vault",
+        &"azure_vault".into(),
         get_params("http://127.0.0.1".to_string()),
         Arc::new(ReqwestClient::default()),
     )
@@ -220,7 +220,7 @@ async fn test_azure_vault_sign() {
     let key_reference = format!("{}/keys/uuid/keyid", mock_server.uri());
 
     let vault = AzureVaultKeyProvider::new(
-        "azure_vault",
+        &"azure_vault".into(),
         get_params(mock_server.uri()),
         Arc::new(ReqwestClient::default()),
     )
@@ -234,7 +234,7 @@ async fn test_azure_vault_sign() {
             public_key: vec![],
             name: "".to_string(),
             key_reference: Some(key_reference.as_bytes().to_vec()),
-            storage_type: "".to_string(),
+            storage_type: "".into(),
             key_type: "".to_string(),
             organisation: dummy_organisation(None).into(),
         })
@@ -252,7 +252,7 @@ async fn test_azure_vault_import() {
     import_key_mock(&mock_server, 1).await;
 
     let vault = AzureVaultKeyProvider::new(
-        "azure_vault",
+        &"azure_vault".into(),
         get_params(mock_server.uri()),
         Arc::new(ReqwestClient::default()),
     )
@@ -278,7 +278,7 @@ async fn test_azure_vault_import() {
 #[tokio::test]
 async fn test_azure_vault_import_unsupported_key_type() {
     let vault = AzureVaultKeyProvider::new(
-        "azure_vault",
+        &"azure_vault".into(),
         get_params("http://127.0.0.1".to_string()),
         Arc::new(ReqwestClient::default()),
     )
@@ -305,7 +305,7 @@ async fn test_azure_vault_import_unsupported_key_type() {
 #[tokio::test]
 async fn test_azure_vault_import_jwk_invalid_key_type() {
     let vault = AzureVaultKeyProvider::new(
-        "azure_vault",
+        &"azure_vault".into(),
         get_params("http://127.0.0.1".to_string()),
         Arc::new(ReqwestClient::default()),
     )

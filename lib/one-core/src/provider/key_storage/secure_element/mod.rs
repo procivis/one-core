@@ -5,7 +5,7 @@ use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use proc_macros::Provider;
 use serde::Deserialize;
-use shared_types::KeyId;
+use shared_types::{KeyId, KeyStorageId};
 use standardized_types::jwk::{PrivateJwk, PublicJwk};
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -50,7 +50,7 @@ pub trait NativeKeyStorage: Send + Sync {
 pub struct SecureElementKeyProvider {
     native_storage: Arc<dyn NativeKeyStorage>,
     params: Params,
-    name: String,
+    name: KeyStorageId,
 }
 
 #[derive(Deserialize)]
@@ -67,7 +67,7 @@ impl KeyStorage for SecureElementKeyProvider {
             features: vec![Features::Attestation],
         }
     }
-    fn config_name(&self) -> String {
+    fn config_name(&self) -> KeyStorageId {
         self.name.clone()
     }
 
@@ -157,7 +157,7 @@ impl KeyStorage for SecureElementKeyProvider {
 
 impl SecureElementKeyProvider {
     pub fn new(
-        name: &str,
+        name: &KeyStorageId,
         native_storage: Arc<dyn NativeKeyStorage>,
         params: serde_json::Value,
     ) -> Result<Self, InitializationError> {
@@ -169,7 +169,7 @@ impl SecureElementKeyProvider {
         Ok(SecureElementKeyProvider {
             native_storage,
             params,
-            name: name.to_string(),
+            name: name.to_owned(),
         })
     }
 }

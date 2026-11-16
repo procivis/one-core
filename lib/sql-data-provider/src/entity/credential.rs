@@ -7,7 +7,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CertificateId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DidId,
-    EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId,
+    EcosystemId, IdentifierId, InteractionId, IssuanceProtocolId, KeyId, OrganisationId,
 };
 use time::OffsetDateTime;
 
@@ -30,7 +30,7 @@ pub struct Model {
     pub deleted_at: Option<OffsetDateTime>,
     pub consumed_at: Option<OffsetDateTime>,
 
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub redirect_uri: Option<String>,
 
     pub role: CredentialRole,

@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use futures::FutureExt;
 use one_crypto::utilities::generate_alphanumeric;
-use shared_types::{EntityId, HistoryId, ManagedInstanceId, RevocationMethodId};
+use shared_types::{
+    EntityId, HistoryId, ManagedInstanceId, RevocationMethodId, VerifierProviderId,
+    WalletProviderId,
+};
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
 
@@ -123,13 +126,13 @@ impl ManagedInstanceService {
             InstanceRole::Wallet => self
                 .config
                 .wallet_provider
-                .get_type(&instance.provider)
+                .get_type(instance.provider.as_str())
                 .map(|r#type| r#type.to_string())
                 .unwrap_or_else(|_| instance.provider.clone()),
             InstanceRole::Verifier => self
                 .config
                 .verifier_provider
-                .get_type(&instance.provider)
+                .get_type(instance.provider.as_str())
                 .map(|r#type| r#type.to_string())
                 .unwrap_or_else(|_| instance.provider.clone()),
         }
@@ -257,13 +260,13 @@ impl ManagedInstanceService {
         let (organisation, not_associated_error) = match role {
             InstanceRole::Wallet => (
                 self.organisation_repository
-                    .get_organisation_for_wallet_provider(provider)
+                    .get_organisation_for_wallet_provider(&WalletProviderId::from(provider))
                     .await,
                 ManagedInstanceError::WalletProviderNotAssociatedWithOrganisation,
             ),
             InstanceRole::Verifier => (
                 self.organisation_repository
-                    .get_organisation_for_verifier_provider(provider)
+                    .get_organisation_for_verifier_provider(&VerifierProviderId::from(provider))
                     .await,
                 ManagedInstanceError::VerifierProviderNotAssociatedWithOrganisation,
             ),
@@ -284,13 +287,17 @@ impl ManagedInstanceService {
     ) -> Result<ProviderRegistrationParams, ManagedInstanceError> {
         Ok(match role {
             InstanceRole::Wallet => {
-                let wallet_provider = self.wallet_provider_directory.get_provider(provider)?;
+                let wallet_provider = self
+                    .wallet_provider_directory
+                    .get_provider(&WalletProviderId::from(provider))?;
                 wallet_provider
                     .get_registration_params()
                     .error_while("getting provider params")?
             }
             InstanceRole::Verifier => {
-                let verifier_provider = self.verifier_provider_directory.get_provider(provider)?;
+                let verifier_provider = self
+                    .verifier_provider_directory
+                    .get_provider(&VerifierProviderId::from(provider))?;
                 verifier_provider
                     .get_registration_params()
                     .error_while("getting provider params")?
@@ -603,7 +610,7 @@ impl ManagedInstanceService {
 
             let verifier_provider = self
                 .verifier_provider_directory
-                .get_provider(&wallet_unit.provider)?;
+                .get_provider(&VerifierProviderId::from(wallet_unit.provider.as_str()))?;
 
             Some(
                 verifier_provider
@@ -785,7 +792,7 @@ impl ManagedInstanceService {
 
         let wallet_provider = self
             .wallet_provider_directory
-            .get_provider(&managed_instance.provider)?;
+            .get_provider(&WalletProviderId::from(managed_instance.provider.as_str()))?;
 
         let mut result = IssueWalletUnitAttestationResponseDTO::default();
         // Relies on the default READ COMMITTED isolation, so the status list index read includes entries committed while waiting for the lock
@@ -1082,7 +1089,7 @@ impl ManagedInstanceService {
 
     pub async fn get_wallet_provider_metadata(
         &self,
-        wallet_provider: String,
+        wallet_provider: WalletProviderId,
     ) -> Result<WalletProviderMetadataResponseDTO, ManagedInstanceError> {
         let wallet_provider = self
             .wallet_provider_directory

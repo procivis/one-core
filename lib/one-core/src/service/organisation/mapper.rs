@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, VerifierProviderId, WalletProviderId};
 
 use crate::model::identifier::Identifier;
 use crate::model::instance::Instance;
@@ -154,7 +154,7 @@ pub(super) fn apply_configuration_update(
 }
 
 fn map_to_wallet_provider(
-    provider_name: Option<String>,
+    provider_name: Option<WalletProviderId>,
     wallet_provider_issuer: Option<Identifier>,
 ) -> Option<WalletProviderDetailResponseDTO> {
     if provider_name.is_some() || wallet_provider_issuer.is_some() {
@@ -168,7 +168,7 @@ fn map_to_wallet_provider(
 }
 
 fn map_to_verifier_provider(
-    provider_name: Option<String>,
+    provider_name: Option<VerifierProviderId>,
     verifier_provider_issuer: Option<Identifier>,
 ) -> Option<VerifierProviderDetailResponseDTO> {
     if provider_name.is_some() || verifier_provider_issuer.is_some() {

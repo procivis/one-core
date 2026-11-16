@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialId, CredentialSchemaId, EcosystemId, ProofId};
+use shared_types::{CredentialId, CredentialSchemaId, EcosystemId, ProofId, TransportId};
 use time::OffsetDateTime;
 
 use super::dto::{
@@ -726,7 +726,7 @@ pub(super) fn proof_from_create_request(
     request: CreateProofRequestDTO,
     now: OffsetDateTime,
     schema: ProofSchema,
-    transport: String,
+    transport: TransportId,
     verifier_identifier: Identifier,
     verifier_key: Key,
     verifier_certificate: Option<Certificate>,

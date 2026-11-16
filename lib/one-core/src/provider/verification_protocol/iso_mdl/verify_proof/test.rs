@@ -468,7 +468,7 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
         .times(2)
         .returning(move |credential| {
             assert_matches!(credential, Credential::Verifier { .. });
-            assert_eq!(credential.common().protocol, "ISO_MDL");
+            assert_eq!(credential.common().protocol.as_str(), "ISO_MDL");
             assert_eq!(
                 credential.verifier().unwrap().data.issuer.identifier.id(),
                 issuer_identifier_id

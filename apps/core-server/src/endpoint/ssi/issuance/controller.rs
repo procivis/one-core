@@ -6,7 +6,7 @@ use axum_extra::extract::WithRejection;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::ssi_issuer::error::IssuerServiceError;
 use proc_macros::endpoint;
-use shared_types::{CredentialSchemaId, IdentifierId};
+use shared_types::{CredentialSchemaId, IdentifierId, IssuanceProtocolId};
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::issuance::dto::SdJwtVcIssuerMetadataRestDTO;
@@ -37,7 +37,7 @@ use crate::router::AppState;
 pub(crate) async fn oid4vci_get_jwt_vc_issuer_metadata(
     state: State<AppState>,
     WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
-        Path<(String, IdentifierId, CredentialSchemaId)>,
+        Path<(IssuanceProtocolId, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {

@@ -183,7 +183,7 @@ impl CredentialsDB {
                 last_modified: get_dummy_date(),
                 issuance_date,
                 deleted_at: params.deleted_at,
-                protocol: protocol.to_owned(),
+                protocol: protocol.into(),
                 redirect_uri: None,
                 state,
                 schema: credential_schema.to_owned().into(),

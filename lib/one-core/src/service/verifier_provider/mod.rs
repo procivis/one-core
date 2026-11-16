@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use dto::VerifierProviderMetadataResponseDTO;
+use shared_types::VerifierProviderId;
 
 use crate::error::ContextWithErrorCode;
 use crate::provider::verifier::error::VerifierProviderError;
@@ -21,7 +22,7 @@ impl VerifierProviderService {
 
     pub async fn get_verifier_by_id(
         &self,
-        id: &str,
+        id: &VerifierProviderId,
     ) -> Result<VerifierProviderMetadataResponseDTO, VerifierProviderError> {
         let verifier_provider = self
             .verifier_provider_directory

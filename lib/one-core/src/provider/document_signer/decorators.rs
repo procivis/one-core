@@ -1,6 +1,8 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
+use shared_types::DocumentSignerProviderId;
+
 use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
 use crate::provider::document_signer::DocumentSigner;
@@ -18,7 +20,7 @@ impl WithDisabledDecorator for dyn DocumentSigner {
 
 #[async_trait::async_trait]
 impl<T: Provider + DocumentSigner + Display + ?Sized> DocumentSigner for DisabledProvider<T> {
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &DocumentSignerProviderId {
         self.inner().config_name()
     }
 

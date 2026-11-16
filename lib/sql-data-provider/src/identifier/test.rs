@@ -191,7 +191,7 @@ async fn test_get_identifier_of_type_key_resolves_key_lazily() {
         public_key: vec![0, 1, 2, 3],
         name: format!("{key_id}-key"),
         key_reference: Some(vec![4, 5, 6, 7]),
-        storage_type: "INTERNAL".to_string(),
+        storage_type: "INTERNAL".into(),
         key_type: "EDDSA".to_string(),
         organisation: setup.organisation.clone().into(),
     };
@@ -256,7 +256,7 @@ async fn test_get_newest_from_key_id() {
             public_key: vec![0, 1, 2, 3],
             name: format!("{key_id}-key"),
             key_reference: Some(vec![4, 5, 6, 7]),
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             key_type: "EDDSA".to_string(),
             organisation: setup.organisation.clone().into(),
         };

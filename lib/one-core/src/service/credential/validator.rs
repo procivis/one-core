@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use itertools::Itertools;
 use regex::Regex;
-use shared_types::DidMethodId;
+use shared_types::{DidMethodId, IssuanceProtocolId};
 use url::Url;
 
 use super::dto::CredentialRequestClaimDTO;
@@ -35,7 +35,7 @@ pub(crate) fn throw_if_credential_state_eq(
 }
 
 pub(crate) async fn validate_create_request(
-    exchange: &str,
+    exchange: &IssuanceProtocolId,
     claims: &mut [CredentialRequestClaimDTO],
     schema: &CredentialSchema,
     formatter_capabilities: &FormatterCapabilities,
@@ -113,7 +113,7 @@ pub(crate) async fn validate_create_request(
 }
 
 pub(super) fn validate_redirect_uri(
-    exchange: &str,
+    exchange: &IssuanceProtocolId,
     redirect_uri: Option<&str>,
     config: &CoreConfig,
 ) -> Result<(), CredentialServiceError> {
@@ -138,7 +138,7 @@ pub(super) fn validate_redirect_uri(
 
 pub(super) fn validate_webhook_url(
     url: Option<&String>,
-    issuance_protocol: &str,
+    issuance_protocol: &IssuanceProtocolId,
     config: &CoreConfig,
     notification_scheduler: &dyn NotificationScheduler,
 ) -> Result<(), CredentialServiceError> {
@@ -551,7 +551,7 @@ fn adapt_required_state_based_on_claim_presence(
 }
 
 fn validate_format_and_exchange_protocol_compatibility(
-    exchange: &str,
+    exchange: &IssuanceProtocolId,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), CredentialServiceError> {

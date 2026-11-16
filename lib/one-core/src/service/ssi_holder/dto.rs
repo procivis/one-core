@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, EcosystemId, InteractionId, OrganisationId, ProofId, TransactionDataId,
+    CredentialId, EcosystemId, InteractionId, IssuanceProtocolId, OrganisationId, ProofId,
+    TransactionDataId, TransportId, VerificationProtocolId,
 };
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode};
 use url::Url;
@@ -17,7 +18,7 @@ use crate::proto::native_credential_manager::NativeDcApiResponseHandler;
 pub struct HandleInvitationRequestDTO {
     pub data: HandleInvitationRequestDataDTO,
     pub organisation_id: OrganisationId,
-    pub transport: Option<Vec<String>>,
+    pub transport: Option<Vec<TransportId>>,
     pub redirect_uri: Option<String>,
     pub ecosystem: Option<EcosystemId>,
 }
@@ -79,21 +80,21 @@ pub enum HandleInvitationResultDTO {
         tx_code: Option<TxCode>,
         key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
         key_algorithms: Option<Vec<String>>,
-        protocol: String,
+        protocol: IssuanceProtocolId,
         ecosystem: Option<EcosystemId>,
         ecosystem_outcomes: EcosystemOutcomes,
     },
     AuthorizationCodeFlow {
         interaction_id: InteractionId,
         authorization_code_flow_url: String,
-        protocol: String,
+        protocol: IssuanceProtocolId,
         ecosystem: Option<EcosystemId>,
         ecosystem_outcomes: EcosystemOutcomes,
     },
     ProofRequest {
         interaction_id: InteractionId,
         proof_id: ProofId,
-        protocol: String,
+        protocol: VerificationProtocolId,
         ecosystem: Option<EcosystemId>,
         ecosystem_outcomes: EcosystemOutcomes,
     },
@@ -105,14 +106,14 @@ pub struct ContinueIssuanceResponseDTO {
     pub interaction_type: InteractionType,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
     pub key_algorithms: Option<Vec<String>>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InitiateIssuanceRequestDTO {
     pub organisation_id: OrganisationId,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub issuer: String,
     pub client_id: String,
     pub redirect_uri: Option<String>,

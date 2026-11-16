@@ -661,7 +661,7 @@ async fn holder_register_wallet_unit_accepts_metadata_served_by_this_core() {
         .update(
             &org.id,
             UpdateOrganisationRequest {
-                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                wallet_provider: Some(Some("PROCIVIS_ONE".into())),
                 configuration: Some(OrganisationConfiguration {
                     selected_ecosystems: vec!["EUDI".into()],
                     ..Default::default()

@@ -49,7 +49,7 @@ impl ProofNotificationDecorator {
 
         let Some(task_id) = params.webhook_task else {
             return Err(ValidationError::NotificationsNotAllowed {
-                protocol: proof.protocol.to_owned(),
+                protocol: proof.protocol.to_string(),
             }
             .error_while("getting webhook task")
             .into());

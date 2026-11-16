@@ -125,7 +125,7 @@ async fn test_presentation_reject_ble() {
         .return_once(|_| Ok(Arc::new(Ecdsa)));
 
     let provider = IsoMdl::new(
-        "ISO_MDL".to_string(),
+        "ISO_MDL".into(),
         serde_json::json!({
             "holder": {
                 "sessionEncryptionAlgorithm": "ECDSA",
@@ -198,8 +198,8 @@ async fn test_presentation_reject_ble() {
         id: ProofId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "ISO_MDL".to_string(),
-        transport: "BLE".to_string(),
+        protocol: "ISO_MDL".into(),
+        transport: "BLE".into(),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
         role: ProofRole::Verifier,
@@ -306,7 +306,7 @@ async fn test_presentation_reject_dc_api() {
         .return_once(|_| Ok(Arc::new(Ecdsa)));
 
     let provider = IsoMdl::new(
-        "ISO_MDL".to_string(),
+        "ISO_MDL".into(),
         serde_json::json!({
             "holder": {
                 "sessionEncryptionAlgorithm": "ECDSA",
@@ -359,7 +359,7 @@ async fn test_presentation_reject_dc_api() {
                 response_handler: Arc::new(response_handler),
             },
             dummy_organisation(None),
-            "DC_API".to_string(),
+            "DC_API".into(),
         )
         .await
         .unwrap();
@@ -426,7 +426,7 @@ async fn test_presentation_submit_dc_api() {
         .returning(move |_| Some(("MSO_MDOC".to_string(), presentation_formatter.clone())));
 
     let provider = IsoMdl::new(
-        "ISO_MDL".to_string(),
+        "ISO_MDL".into(),
         serde_json::json!({
             "holder": {
                 "sessionEncryptionAlgorithm": "ECDSA",
@@ -481,7 +481,7 @@ async fn test_presentation_submit_dc_api() {
                 response_handler: Arc::new(response_handler),
             },
             dummy_organisation(None),
-            "DC_API".to_string(),
+            "DC_API".into(),
         )
         .await
         .unwrap();
@@ -586,8 +586,8 @@ async fn test_get_presentation_definition_v2(
         id: proof_id,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "ISO_MDL".to_string(),
-        transport: transport.to_string(),
+        protocol: "ISO_MDL".into(),
+        transport: transport.into(),
         redirect_uri: None,
         state: ProofStateEnum::Requested,
         role: ProofRole::Holder,
@@ -856,7 +856,7 @@ async fn test_get_presentation_definition_v2(
             created_date: crate::clock::now_utc(),
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
-            protocol: "ISO_MDL".to_string(),
+            protocol: "ISO_MDL".into(),
             schema: credential_schema.into(),
             deleted_at: None,
             redirect_uri: None,
@@ -917,7 +917,7 @@ async fn test_get_presentation_definition_v2(
         .return_once(|_| Ok(Arc::new(Ecdsa)));
 
     let service = IsoMdl::new(
-        "ISO_MDL".to_string(),
+        "ISO_MDL".into(),
         serde_json::json!({
             "holder": {
                 "sessionEncryptionAlgorithm": "ECDSA",
@@ -1073,7 +1073,7 @@ AiEA2qL6LXVORA2r2VZjSEknfciwIG7laA12kjnyGAD3V/A=
 fn config_with_ble() -> CoreConfig {
     let mut config = generic_config().core;
     config.transport.insert(
-        "BLE".to_string(),
+        "BLE".into(),
         Fields {
             r#type: TransportType::Ble,
             display: "ble".into(),
@@ -1090,7 +1090,7 @@ fn config_with_ble() -> CoreConfig {
 fn config_with_dc_api() -> CoreConfig {
     let mut config = generic_config().core;
     config.transport.insert(
-        "DC_API".to_string(),
+        "DC_API".into(),
         Fields {
             r#type: TransportType::DcApi,
             display: "dcApi".into(),

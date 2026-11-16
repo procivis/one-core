@@ -549,7 +549,7 @@ oyFraWVIyd/dganmrduC1bmTBGwD
         let mut config = CoreConfig::default();
         config
             .wallet_provider
-            .insert("PROCIVIS_ONE".to_string(), wallet_provider_config());
+            .insert("PROCIVIS_ONE".into(), wallet_provider_config());
         let cert = "-----BEGIN CERTIFICATE-----
 MIIDVjCCAtygAwIBAgIGAZkzmWcEMAoGCCqGSM49BAMCME8xIzAhBgNVBAMMGkFw
 cGxlIEFwcCBBdHRlc3RhdGlvbiBDQSAxMRMwEQYDVQQKDApBcHBsZSBJbmMuMRMw

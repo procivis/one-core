@@ -9,7 +9,7 @@ use one_core::service::key::dto::{
 use one_dto_mapper::{From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{KeyId, OrganisationId};
+use shared_types::{KeyId, KeyStorageId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
@@ -47,7 +47,7 @@ pub(crate) struct KeyRequestRestDTO {
     /// configuration instance.
     #[modify_schema(field = key_storage)]
     #[try_into(infallible)]
-    pub storage_type: String,
+    pub storage_type: KeyStorageId,
     /// The parameters passed into the storage type.
     #[schema(value_type = Object)]
     #[try_into(infallible)]
@@ -77,7 +77,7 @@ pub(crate) struct KeyResponseRestDTO {
     #[try_from(infallible)]
     pub key_type: String,
     #[try_from(infallible)]
-    pub storage_type: String,
+    pub storage_type: KeyStorageId,
     #[try_from(infallible)]
     pub is_remote: bool,
     #[try_from(infallible)]
@@ -105,7 +105,7 @@ pub(crate) struct KeyListItemResponseRestDTO {
     #[try_from(infallible)]
     pub key_type: String,
     #[try_from(infallible)]
-    pub storage_type: String,
+    pub storage_type: KeyStorageId,
     #[try_from(infallible)]
     pub is_remote: bool,
     #[try_from(infallible)]

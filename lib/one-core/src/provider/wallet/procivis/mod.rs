@@ -3,7 +3,7 @@ use std::sync::Arc;
 use model::{Params, WalletRegistrationRequirement};
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, WalletProviderId};
 use validator::validate_params;
 
 use super::WalletProvider;
@@ -38,7 +38,7 @@ mod validator;
 
 #[derive(Provider)]
 pub struct ProcivisWalletProvider {
-    config_name: String,
+    config_name: WalletProviderId,
     config: Arc<CoreConfig>,
     params: Params,
     core_base_url: Option<String>,
@@ -56,7 +56,7 @@ pub struct ProcivisWalletProvider {
 impl ProcivisWalletProvider {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
-        config_name: String,
+        config_name: WalletProviderId,
         config: Arc<CoreConfig>,
         params: serde_json::Value,
         core_base_url: Option<String>,
@@ -126,7 +126,7 @@ impl WalletProvider for ProcivisWalletProvider {
 
     fn get_registration_params(&self) -> Result<ProviderRegistrationParams, WalletProviderError> {
         Ok(ProviderRegistrationParams {
-            name_label: self.config_name.to_owned(),
+            name_label: self.config_name.to_string(),
             integrity_check: self.params.integrity_check.to_owned(),
             device_auth_leeway: self.params.device_auth_leeway_seconds,
             user_authentication: self.params.user_authentication.to_owned(),
@@ -192,7 +192,7 @@ impl WalletProvider for ProcivisWalletProvider {
                 enabled,
                 required,
             },
-            name: self.config_name.to_owned(),
+            name: self.config_name.to_string(),
             app_version: self.params.app_version.to_owned(),
             trust_collections: provider_trust_collections(&ecosystems),
             feature_flags: FeatureFlags {
@@ -214,7 +214,7 @@ impl WalletProvider for ProcivisWalletProvider {
         })
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &WalletProviderId {
         &self.config_name
     }
 }

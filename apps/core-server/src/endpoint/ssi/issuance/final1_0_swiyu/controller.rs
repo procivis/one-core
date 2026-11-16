@@ -13,7 +13,7 @@ use one_core::service::oid4vci_final1_0::dto::{
 };
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
-use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
+use shared_types::{CredentialId, CredentialSchemaId, IdentifierId, IssuanceProtocolId};
 use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::attestation_based_client_auth::ChallengeResponse;
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
@@ -67,7 +67,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
     accept: Option<TypedHeader<Accept>>,
     state: State<AppState>,
     WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
-        Path<(String, IdentifierId, CredentialSchemaId)>,
+        Path<(IssuanceProtocolId, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
@@ -152,7 +152,7 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
     accept: Option<TypedHeader<Accept>>,
     state: State<AppState>,
     WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
-        Path<(String, IdentifierId, CredentialSchemaId)>,
+        Path<(IssuanceProtocolId, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
@@ -484,7 +484,10 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
     state: State<AppState>,
-    WithRejection(Path(issuance_protocol_id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+    WithRejection(Path(issuance_protocol_id), _): WithRejection<
+        Path<IssuanceProtocolId>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     let result = state
         .core
@@ -527,7 +530,10 @@ pub(crate) async fn oid4vci_final1_0_swiyu_nonce(
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_oauth_attestation_challenge(
     state: State<AppState>,
-    WithRejection(Path(issuance_protocol_id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+    WithRejection(Path(issuance_protocol_id), _): WithRejection<
+        Path<IssuanceProtocolId>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     let result = state
         .core

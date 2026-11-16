@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use itertools::Itertools;
+use shared_types::TransportId;
 
 use crate::config::core_config::{ConfigExt, Fields, TransportConfig, TransportType};
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
@@ -8,14 +9,14 @@ use crate::service::error::ValidationError;
 
 #[derive(Debug)]
 pub(crate) enum SelectedTransportType {
-    Single(String),
-    Multiple(Vec<String>),
+    Single(TransportId),
+    Multiple(Vec<TransportId>),
 }
 
 pub(crate) fn get_first_available_transport<'config>(
     config: &'config TransportConfig,
     supported_options: &[TransportType],
-) -> Result<(&'config String, TransportType), ValidationError> {
+) -> Result<(&'config TransportId, TransportType), ValidationError> {
     config
         .iter()
         .filter(|(_, fields)| fields.enabled)
@@ -27,15 +28,15 @@ pub(crate) fn get_first_available_transport<'config>(
 }
 
 pub(crate) fn validate_and_select_transport_type(
-    transport: &Option<Vec<String>>,
+    transport: &Option<Vec<TransportId>>,
     config: &TransportConfig,
     exchange_protocol_capabilities: &VerificationProtocolCapabilities,
 ) -> Result<SelectedTransportType, ValidationError> {
-    let check_transport_capabilities = |transport: &str| {
+    let check_transport_capabilities = |transport: &TransportId| {
         let r#type = config
             .get_fields(transport)
             .map_err(|e| ValidationError::InvalidTransportType {
-                value: transport.into(),
+                value: transport.to_string(),
                 source: e.into(),
             })?
             .r#type;
@@ -91,13 +92,13 @@ pub(crate) fn validate_and_select_transport_type(
 }
 
 fn validate_transport_type<'a>(
-    transport: &str,
+    transport: &TransportId,
     config: &'a TransportConfig,
 ) -> Result<&'a Fields<TransportType>, ValidationError> {
     config
         .get_if_enabled(transport)
         .map_err(|err| ValidationError::InvalidTransportType {
-            value: transport.into(),
+            value: transport.to_string(),
             source: err.into(),
         })
 }
@@ -132,7 +133,7 @@ mod test {
 
         assert_matches!(
             selected,
-            SelectedTransportType::Single(transport) if transport == "BLE"
+            SelectedTransportType::Single(transport) if transport == "BLE".into()
         )
     }
 
@@ -157,7 +158,7 @@ mod test {
 
         assert_matches!(
             selected,
-            SelectedTransportType::Single(transport) if transport == "MQTT"
+            SelectedTransportType::Single(transport) if transport == "MQTT".into()
         )
     }
 
@@ -243,7 +244,7 @@ mod test {
 
         for (order, transport) in transports.iter().enumerate() {
             config.transport.insert(
-                transport.to_string(),
+                (*transport).into(),
                 Fields {
                     r#type: TransportType::try_from(*transport).unwrap(),
                     display: "".into(),

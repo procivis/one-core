@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, WalletProviderId};
 
 use super::WalletProvider;
 use super::dto::{CreatedAttestation, WalletProviderCapabilities};
@@ -53,7 +53,7 @@ impl<T: Provider + WalletProvider + Display + ?Sized> WalletProvider for Disable
         self.inner().get_capabilities()
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &WalletProviderId {
         self.inner().config_name()
     }
 }

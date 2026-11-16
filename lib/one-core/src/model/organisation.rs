@@ -1,5 +1,7 @@
 use proc_macros::Model;
-use shared_types::{EcosystemId, IdentifierId, OrganisationId};
+use shared_types::{
+    EcosystemId, IdentifierId, OrganisationId, VerifierProviderId, WalletProviderId,
+};
 use time::OffsetDateTime;
 
 use super::common::GetListResponse;
@@ -15,10 +17,10 @@ pub struct Organisation {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deactivated_at: Option<OffsetDateTime>,
-    pub wallet_provider: Option<String>,
+    pub wallet_provider: Option<WalletProviderId>,
     pub wallet_provider_issuer: Option<IdentifierId>,
     pub parent_organisation: Option<Related<Organisation>>,
-    pub verifier_provider: Option<String>,
+    pub verifier_provider: Option<VerifierProviderId>,
     pub verifier_provider_issuer: Option<IdentifierId>,
     pub configuration: OrganisationConfiguration,
 }
@@ -34,10 +36,10 @@ pub struct OrganisationConfiguration {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateOrganisationRequest {
     pub deactivate: Option<bool>,
-    pub wallet_provider: Option<Option<String>>,
+    pub wallet_provider: Option<Option<WalletProviderId>>,
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
     pub parent_organisation: Option<Option<OrganisationId>>,
-    pub verifier_provider: Option<Option<String>>,
+    pub verifier_provider: Option<Option<VerifierProviderId>>,
     pub verifier_provider_issuer: Option<Option<IdentifierId>>,
     pub configuration: Option<OrganisationConfiguration>,
 }

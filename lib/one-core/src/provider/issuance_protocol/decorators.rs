@@ -3,7 +3,8 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use shared_types::{
-    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, KeyId,
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, InteractionId, IssuanceProtocolId,
+    KeyId,
 };
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::openid4vci::CredentialIssuerMetadata;
@@ -118,7 +119,7 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
 
     async fn issuer_metadata(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
         issuer_identifier: &Identifier,
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
@@ -135,7 +136,7 @@ impl<T: Provider + IssuanceProtocol + Display + ?Sized> IssuanceProtocol for Dis
         self.inner().protocol_base_url()
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &IssuanceProtocolId {
         self.inner().config_name()
     }
 }
@@ -261,7 +262,7 @@ impl IssuanceProtocol for CapabilityChecked {
 
     async fn issuer_metadata(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
         issuer_identifier: &Identifier,
     ) -> Result<CredentialIssuerMetadata, IssuanceProtocolError> {
@@ -278,7 +279,7 @@ impl IssuanceProtocol for CapabilityChecked {
         self.0.protocol_base_url()
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &IssuanceProtocolId {
         self.0.config_name()
     }
 }

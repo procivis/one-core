@@ -15,7 +15,9 @@ use one_crypto::utilities::generate_random_bytes;
 use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{InteractionId, KeyId, ProofId};
+use shared_types::{
+    InteractionId, KeyId, KeyStorageId, ProofId, TransportId, VerificationProtocolId,
+};
 use standardized_types::openid4vp::dc_api::{DigitalCredentialGetRequest, IsoMdocRequest};
 use time::Duration;
 use tokio::sync::Mutex;
@@ -110,7 +112,7 @@ pub(crate) struct HolderParams {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DcApiVerifierParams {
-    pub encryption_key_storage: String,
+    pub encryption_key_storage: KeyStorageId,
     #[serde(default)]
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub interaction_expires_in_seconds: Option<Duration>,
@@ -126,7 +128,7 @@ pub(crate) enum BleMode {
 
 #[derive(Provider)]
 pub(crate) struct IsoMdl {
-    config_id: String,
+    config_id: VerificationProtocolId,
     params: Params,
     config: Arc<CoreConfig>,
     credential_repository: Arc<dyn CredentialRepository>,
@@ -152,7 +154,7 @@ pub(crate) struct IsoMdl {
 impl IsoMdl {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
-        config_id: String,
+        config_id: VerificationProtocolId,
         params: serde_json::Value,
         config: Arc<CoreConfig>,
         credential_repository: Arc<dyn CredentialRepository>,
@@ -185,7 +187,7 @@ impl IsoMdl {
                 .contains(&crate::provider::key_algorithm::model::Features::KeyAgreement)
         {
             return Err(InitializationError::UnsupportedConfiguration {
-                key: config_id,
+                key: config_id.to_string(),
                 detail: format!(
                     "Key algorithm `{}` does not support key agreement",
                     holder_params.session_encryption_algorithm
@@ -203,7 +205,7 @@ impl IsoMdl {
                 .contains(&crate::provider::key_storage::model::Features::KeyAgreement)
             {
                 return Err(InitializationError::UnsupportedConfiguration {
-                    key: config_id,
+                    key: config_id.to_string(),
                     detail: format!(
                         "Key storage `{}` does not support key agreement",
                         dc_api_verifier_params.encryption_key_storage
@@ -212,7 +214,7 @@ impl IsoMdl {
             }
             if !capabilities.algorithms.contains(&KeyAlgorithmType::Ecdsa) {
                 return Err(InitializationError::UnsupportedConfiguration {
-                    key: config_id,
+                    key: config_id.to_string(),
                     detail: format!(
                         "Key storage `{}` does not support ECDSA",
                         dc_api_verifier_params.encryption_key_storage
@@ -246,7 +248,7 @@ impl IsoMdl {
 
     fn get_transport_type(
         &self,
-        transport: &str,
+        transport: &TransportId,
     ) -> Result<TransportType, VerificationProtocolError> {
         Ok(self
             .config
@@ -275,7 +277,7 @@ impl VerificationProtocol for IsoMdl {
         &self,
         request: InvitationRequest,
         organisation: Organisation,
-        transport: String,
+        transport: TransportId,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         let InvitationRequest::IsoDcApi {
             origin,
@@ -819,7 +821,7 @@ impl VerificationProtocol for IsoMdl {
         }
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &VerificationProtocolId {
         &self.config_id
     }
 }

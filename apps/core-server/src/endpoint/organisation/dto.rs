@@ -8,7 +8,9 @@ use one_core::service::organisation::dto::{
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{EcosystemId, IdentifierId, InstanceId, OrganisationId};
+use shared_types::{
+    EcosystemId, IdentifierId, InstanceId, OrganisationId, VerifierProviderId, WalletProviderId,
+};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -202,7 +204,7 @@ pub(crate) struct VerifierInstanceFeatureFlagsRestDTO {
 pub(crate) struct WalletProviderDetailResponseRestDTO {
     /// Wallet Provider configuration used by this organization to provide
     /// wallets.
-    pub provider_name: Option<String>,
+    pub provider_name: Option<WalletProviderId>,
     /// Identifier used by this organization to provide wallets.
     #[from(with_fn = convert_inner)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
@@ -214,7 +216,7 @@ pub(crate) struct WalletProviderDetailResponseRestDTO {
 #[from(VerifierProviderDetailResponseDTO)]
 pub(crate) struct VerifierProviderDetailResponseRestDTO {
     /// Verifier Provider configuration used by this organization.
-    pub provider_name: Option<String>,
+    pub provider_name: Option<VerifierProviderId>,
     /// Identifier used by this organization to authenticate to the
     /// verifier provider.
     #[from(with_fn = convert_inner)]

@@ -249,7 +249,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         public_key: vec![],
         name: "key".to_string(),
         key_reference: None,
-        storage_type: "INTERNAL".to_string(),
+        storage_type: "INTERNAL".into(),
         key_type: "EDDSA".to_string(),
         organisation: dummy_organisation(None).into(),
     };
@@ -259,8 +259,8 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         id: proof_id.to_owned(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
+        protocol: "OPENID4VP_FINAL1".into(),
+        transport: "HTTP".into(),
         redirect_uri: None,
         state,
         role: ProofRole::Verifier,
@@ -382,8 +382,8 @@ async fn test_get_proof_exists() {
         id: ProofId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
+        protocol: "OPENID4VP_FINAL1".into(),
+        transport: "HTTP".into(),
         state: ProofStateEnum::Created,
         redirect_uri: None,
         requested_date: None,
@@ -549,7 +549,7 @@ async fn proof_detail_with_claims(
     let root_schema = claim_schemas[0].clone();
     let mut credential = credential_with_claims("JWT", claim_schemas, claims.clone()).await;
     credential.common_mut().state = CredentialStateEnum::Accepted;
-    credential.common_mut().protocol = String::new();
+    credential.common_mut().protocol = "".into();
     credential = CredentialBuilder {
         role: CredentialRole::Holder,
         key: None,
@@ -805,8 +805,8 @@ async fn test_get_proof_list_success() {
         id: ProofId::new(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_FINAL1".to_string(),
-        transport: "HTTP".to_string(),
+        protocol: "OPENID4VP_FINAL1".into(),
+        transport: "HTTP".into(),
         redirect_uri: None,
         state: ProofStateEnum::Created,
         role: ProofRole::Verifier,
@@ -936,7 +936,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -1034,7 +1034,7 @@ async fn test_create_proof_using_invalid_did_method() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -1091,7 +1091,7 @@ async fn test_create_proof_using_invalid_did_method() {
                 public_key: vec![],
                 name: "key".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -1168,7 +1168,7 @@ async fn test_create_proof_using_identifier() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: None,
         verifier_identifier_id: Some(IdentifierId::new()),
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -1222,7 +1222,7 @@ async fn test_create_proof_using_identifier() {
                 public_key: vec![],
                 name: "key".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -1266,7 +1266,7 @@ async fn test_create_proof_using_identifier() {
         .expect_create_proof()
         .once()
         .withf(move |proof| {
-            proof.protocol == exchange_type.to_string() && proof.engagement.is_none()
+            proof.protocol.as_str() == exchange_type.to_string() && proof.engagement.is_none()
         })
         .returning(move |_| Ok(proof_id));
 
@@ -1310,7 +1310,7 @@ async fn test_create_proof_fails_with_verifier_identifier_of_other_organisation(
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: None,
         verifier_identifier_id: Some(verifier_identifier_id),
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -1410,7 +1410,7 @@ async fn test_create_proof_without_related_key() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -1468,7 +1468,7 @@ async fn test_create_proof_without_related_key() {
                 public_key: vec![],
                 name: "key".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -1513,7 +1513,7 @@ async fn test_create_proof_without_related_key() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.protocol == exchange_type.to_string())
+        .withf(move |proof| proof.protocol.as_str() == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -1556,7 +1556,7 @@ async fn test_create_proof_with_related_key() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
         verifier_certificate: None,
@@ -1611,7 +1611,7 @@ async fn test_create_proof_with_related_key() {
                 public_key: vec![],
                 name: "key".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -1656,7 +1656,7 @@ async fn test_create_proof_with_related_key() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.protocol == exchange_type.to_string())
+        .withf(move |proof| proof.protocol.as_str() == exchange_type.to_string())
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -1705,7 +1705,7 @@ async fn test_create_proof_fail_duplicit_transaction_data() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
         verifier_certificate: None,
@@ -1759,7 +1759,7 @@ async fn test_create_proof_fail_duplicit_transaction_data() {
                 public_key: vec![],
                 name: "key".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -1858,7 +1858,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -1921,7 +1921,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
                 public_key: vec![],
                 name: "key".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -1998,7 +1998,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2111,7 +2111,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange.to_owned(),
+        protocol: exchange.into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2177,7 +2177,7 @@ async fn test_create_proof_did_deactivated_error() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2315,7 +2315,7 @@ async fn test_create_proof_schema_deleted() {
             proof_schema_id: ProofSchemaId::new(),
             verifier_did_id: Some(DidId::new()),
             verifier_identifier_id: None,
-            protocol: "OPENID4VP_FINAL1".to_string(),
+            protocol: "OPENID4VP_FINAL1".into(),
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
@@ -2341,7 +2341,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: Some(DidId::new()),
         verifier_identifier_id: None,
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2398,7 +2398,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
                 public_key: vec![],
                 name: "key".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -2479,7 +2479,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             proof_schema_id: ProofSchemaId::new(),
             verifier_did_id: Some(DidId::new()),
             verifier_identifier_id: None,
-            protocol: "OPENID4VP_FINAL1".to_string(),
+            protocol: "OPENID4VP_FINAL1".into(),
             redirect_uri: Some("invalid://domain.com".to_string()),
             verifier_key: None,
             verifier_certificate: None,
@@ -2503,7 +2503,7 @@ async fn test_create_proof_fail_webhook_not_allowed() {
         proof_schema_id: ProofSchemaId::new(),
         verifier_did_id: None,
         verifier_identifier_id: Some(IdentifierId::new()),
-        protocol: exchange_type.to_string(),
+        protocol: exchange_type.to_string().into(),
         redirect_uri: None,
         verifier_key: None,
         verifier_certificate: None,
@@ -2945,8 +2945,8 @@ async fn test_delete_proof_ok_for_allowed_state(
     let interaction_id = InteractionId::new();
 
     let mut proof = construct_proof_with_state(&proof_id, state);
-    proof.protocol = "OPENID4VP_FINAL1".to_string();
-    proof.transport = "HTTP".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".into();
+    proof.transport = "HTTP".into();
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3017,8 +3017,8 @@ async fn test_delete_proof_ok_for_requested_state() {
     let interaction_id = InteractionId::new();
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Requested);
-    proof.protocol = "OPENID4VP_FINAL1".to_string();
-    proof.transport = "HTTP".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".into();
+    proof.transport = "HTTP".into();
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3092,8 +3092,8 @@ async fn test_delete_proof_fails_for_invalid_state(
     let interaction_id = InteractionId::new();
 
     let mut proof = construct_proof_with_state(&proof_id, state);
-    proof.protocol = "OPENID4VP_FINAL1".to_string();
-    proof.transport = "HTTP".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".into();
+    proof.transport = "HTTP".into();
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3144,8 +3144,8 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let device_address = "00000001-5026-444A-9E0E-F6F2450F3A77";
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    proof.protocol = "OPENID4VP_FINAL1".to_string();
-    proof.transport = "BLE".to_string();
+    proof.protocol = "OPENID4VP_FINAL1".into();
+    proof.transport = "BLE".into();
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3237,7 +3237,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
 
     let mut config = generic_config().core;
     config.transport.insert(
-        "BLE".to_string(),
+        "BLE".into(),
         Fields {
             r#type: TransportType::Ble,
             display: "".into(),
@@ -3267,7 +3267,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     let proof_id = ProofId::new();
     let interaction_id = InteractionId::new();
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    proof.protocol = "ISO_MDL".to_string();
+    proof.protocol = "ISO_MDL".into();
     proof.schema = None;
     proof.role = ProofRole::Holder;
     proof.interaction = Some(
@@ -3364,7 +3364,7 @@ async fn test_create_proof_session_org_mismatch() {
             proof_schema_id: ProofSchemaId::new(),
             verifier_did_id: Some(DidId::new()),
             verifier_identifier_id: None,
-            protocol: "OPENID4VP_FINAL1".to_string(),
+            protocol: "OPENID4VP_FINAL1".into(),
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
@@ -3456,7 +3456,7 @@ async fn test_proof_ops_session_org_mismatch() {
 
     let result = service
         .propose_proof(ProposeProofRequestDTO {
-            protocol: "exchange".to_string(),
+            protocol: "exchange".into(),
             organisation_id: OrganisationId::new(),
             engagement: vec![],
             ui_message: None,

@@ -2,7 +2,7 @@ use serde::Serialize;
 use shared_types::DidMethodId;
 
 use crate::config::core_config::{
-    ConfigBlock, ConfigExt, DidConfig, DidType, IdentifierConfig, IdentifierType,
+    ConfigBlock, ConfigExt, ConfigKey, DidConfig, DidType, IdentifierConfig, IdentifierType,
 };
 use crate::error::ContextWithErrorCode;
 use crate::model::identifier::Identifier;
@@ -29,13 +29,13 @@ pub fn validate_identifier(
     Ok(())
 }
 
-pub fn validate_protocol_type<T: Serialize + Clone>(
-    exchange: &str,
-    config: &ConfigBlock<String, T>,
+pub fn validate_protocol_type<K: ConfigKey, T: Serialize + Clone>(
+    exchange: &K,
+    config: &ConfigBlock<K, T>,
 ) -> Result<(), ValidationError> {
     config.get_if_enabled(exchange).map(|_| ()).map_err(|err| {
         ValidationError::InvalidExchangeType {
-            value: exchange.into(),
+            value: exchange.to_string(),
             source: err.into(),
         }
     })

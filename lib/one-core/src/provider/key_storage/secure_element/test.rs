@@ -40,7 +40,8 @@ async fn test_generate_success() {
         });
 
     let provider =
-        SecureElementKeyProvider::new("test", Arc::new(native_storage), get_params()).unwrap();
+        SecureElementKeyProvider::new(&"test".into(), Arc::new(native_storage), get_params())
+            .unwrap();
 
     let result = provider
         .generate(key_id.into(), KeyAlgorithmType::Ecdsa, json!({}))
@@ -60,7 +61,8 @@ async fn test_sign_success() {
         .return_once(|_, _| Ok(b"signature".into()));
 
     let provider =
-        SecureElementKeyProvider::new("test", Arc::new(native_storage), get_params()).unwrap();
+        SecureElementKeyProvider::new(&"test".into(), Arc::new(native_storage), get_params())
+            .unwrap();
 
     let key_handle = provider
         .key_handle(&Key {
@@ -71,7 +73,7 @@ async fn test_sign_success() {
             last_modified: crate::clock::now_utc(),
             public_key: b"public_key".to_vec(),
             name: "".to_string(),
-            storage_type: "SECURE_ELEMENT".to_string(),
+            storage_type: "SECURE_ELEMENT".into(),
             key_type: "ECDSA".to_string(),
             organisation: dummy_organisation(None).into(),
         })
@@ -88,7 +90,8 @@ async fn test_import_failure() {
     let key_id = Uuid::new_v4();
 
     let provider =
-        SecureElementKeyProvider::new("test", Arc::new(native_storage), get_params()).unwrap();
+        SecureElementKeyProvider::new(&"test".into(), Arc::new(native_storage), get_params())
+            .unwrap();
 
     let result = provider
         .import(

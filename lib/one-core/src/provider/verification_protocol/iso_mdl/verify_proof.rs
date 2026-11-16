@@ -442,7 +442,7 @@ pub(super) async fn accept_proof(
             issuer_identifier,
             issuer_identifier_relation,
             Some(holder_identifier),
-            proof.protocol.to_owned(),
+            &proof.protocol,
             credential.issuance_date,
             Some(format),
         )?;

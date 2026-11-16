@@ -1,4 +1,4 @@
-use shared_types::{EcosystemId, InteractionId, ProofId};
+use shared_types::{EcosystemId, InteractionId, ProofId, VerificationProtocolId};
 use standardized_types::openid4vp::dc_api::IsoMdocResponse;
 
 use super::ProofService;
@@ -33,7 +33,7 @@ impl ProofService {
     pub(super) async fn handle_iso_mdl_ble_verifier(
         &self,
         schema: ProofSchema,
-        exchange: String,
+        exchange: VerificationProtocolId,
         iso_mdl_engagement: String,
         engagement_type: VerificationEngagement,
         profile: Option<String>,

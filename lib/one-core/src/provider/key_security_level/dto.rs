@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::KeyStorageId;
 use standardized_types::openid4vci::SecurityLevel;
 
 #[derive(Clone, Serialize)]
@@ -19,5 +20,5 @@ pub struct HolderParams {
     #[serde(default)]
     pub priority: u64,
     #[serde(default)]
-    pub key_storages: Vec<String>,
+    pub key_storages: Vec<KeyStorageId>,
 }

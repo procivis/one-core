@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use dto::{CreatedAttestation, WalletProviderCapabilities};
 use error::WalletProviderError;
 use proc_macros::provider_mock;
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, WalletProviderId};
 
 use crate::model::managed_instance::ManagedInstance;
 use crate::provider::Provider;
@@ -42,7 +42,7 @@ pub(crate) trait WalletProvider: Provider + Send + Sync {
 
     async fn get_metadata(&self) -> Result<WalletProviderMetadataResponseDTO, WalletProviderError>;
 
-    fn config_name(&self) -> &str;
+    fn config_name(&self) -> &WalletProviderId;
 }
 
 impl Display for dyn WalletProvider {

@@ -70,7 +70,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
             public_key: vec![],
             name: "test_key".to_string(),
             key_reference: Some("private".to_string().bytes().collect()),
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             key_type: "ED25519".to_string(),
             organisation: dummy_organisation(Some(organisation_id)).into(),
         },
@@ -504,7 +504,7 @@ async fn test_get_did_existing() {
             public_key: vec![],
             name: "test_key".to_string(),
             key_reference: Some("private".to_string().bytes().collect()),
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             key_type: "ED25519".to_string(),
             organisation: dummy_organisation(None).into(),
         })

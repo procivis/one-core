@@ -129,7 +129,7 @@ async fn test_update_organisation() {
         .unwrap();
 
     let request = UpdateOrganisationRequest {
-        wallet_provider: Some(Some("TEST".to_string())),
+        wallet_provider: Some(Some("TEST".into())),
         ..Default::default()
     };
 
@@ -141,7 +141,7 @@ async fn test_update_organisation() {
         .await
         .unwrap();
     assert_eq!(organisations.len(), 1);
-    assert_eq!(organisations[0].wallet_provider, Some("TEST".to_string()));
+    assert_eq!(organisations[0].wallet_provider, Some("TEST".into()));
     // last_modified has been updated
     assert!(organisations[0].last_modified > organisations[0].created_date);
 }

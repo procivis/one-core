@@ -18,7 +18,8 @@ pub async fn initialize_core(
 
     let data_repository = Arc::new(DataLayer::build(
         db_conn,
-        vec!["INTERNAL".to_string(), "AZURE_VAULT".to_owned()],
+        // TODO ONE-9647: hard-coded key storage names instead of the config entries of the exportable key storage types
+        vec!["INTERNAL".into(), "AZURE_VAULT".into()],
     ));
 
     let core_base_url = app_config.app.core_base_url.to_owned();

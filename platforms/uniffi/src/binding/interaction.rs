@@ -144,7 +144,7 @@ pub struct HandleInvitationRequestBindingDTO {
     /// For configurations with multiple transport protocols enabled you
     /// can specify which one to use for this interaction. For example:
     /// "HTTP".
-    #[try_into(infallible)]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub transport: Option<Vec<String>>,
     /// For issuer-initiated Authorization Code Flows, provide the
     /// authorization server with the URI it should return the user

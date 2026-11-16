@@ -1,6 +1,8 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
+use shared_types::VerifierProviderId;
+
 use super::VerifierProvider;
 use super::dto::{AccessCertificateProvisioningResponse, VerifierProviderCapabilities};
 use super::error::VerifierProviderError;
@@ -43,7 +45,7 @@ impl<T: Provider + VerifierProvider + Display + ?Sized> VerifierProvider for Dis
         self.disabled_error()
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &VerifierProviderId {
         self.inner().config_name()
     }
 }

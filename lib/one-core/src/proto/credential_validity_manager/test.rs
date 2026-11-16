@@ -8,7 +8,8 @@ use mockall::predicate::{always, eq};
 use rstest::rstest;
 use shared_types::{
     BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
-    DidId, IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
+    DidId, IdentifierId, InteractionId, IssuanceProtocolId, KeyId, OrganisationId,
+    RevocationMethodId,
 };
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -2427,7 +2428,7 @@ fn generic_credential() -> Credential {
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -2498,7 +2499,7 @@ fn generic_credential() -> Credential {
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_DRAFT13".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             schema: CredentialSchema {
@@ -3238,7 +3239,7 @@ async fn test_check_validity_mdoc_refresh_skipped_for_unknown_protocol(
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .with(eq("OPENID4VCI_DRAFT13"))
+        .with(eq(IssuanceProtocolId::from("OPENID4VCI_DRAFT13")))
         .returning(|protocol| {
             Err(ProviderError::MissingProvider {
                 config_key: protocol.to_string(),

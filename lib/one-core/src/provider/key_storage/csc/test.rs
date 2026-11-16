@@ -120,7 +120,7 @@ async fn mount_sign8_authorization(mock_server: &MockServer) {
 
 fn sign8_provider(url: &str, certificate_validator: MockCertificateValidator) -> CscKeyProvider {
     CscKeyProvider::new(
-        "SIGN8".to_string(),
+        "SIGN8".into(),
         Arc::new(ReqwestClient::default()),
         Arc::new(certificate_validator),
         sign8_params(url),
@@ -138,7 +138,7 @@ fn test_key(key_reference: Option<Vec<u8>>) -> Key {
         public_key: parsed_certificate().public_key.public_key_as_raw(),
         name: "sign8-key".to_string(),
         key_reference,
-        storage_type: "SIGN8".to_string(),
+        storage_type: "SIGN8".into(),
         key_type: "ECDSA".to_string(),
         organisation: dummy_organisation(None).into(),
     }
@@ -337,7 +337,7 @@ fn dvv_params(url: &str) -> serde_json::Value {
 
 fn dvv_provider(url: &str, certificate_validator: MockCertificateValidator) -> CscKeyProvider {
     CscKeyProvider::new(
-        "DVV".to_string(),
+        "DVV".into(),
         Arc::new(ReqwestClient::default()),
         Arc::new(certificate_validator),
         dvv_params(url),

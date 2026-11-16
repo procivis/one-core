@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use proc_macros::provider_mock;
+use shared_types::DocumentSignerProviderId;
 
 use crate::provider::Provider;
 use crate::provider::document_signer::error::DocumentSignerError;
@@ -18,7 +19,7 @@ mod sign8;
 #[provider_mock]
 #[async_trait]
 pub trait DocumentSigner: Provider + Send + Sync {
-    fn config_name(&self) -> &str;
+    fn config_name(&self) -> &DocumentSignerProviderId;
 
     fn get_capabilities(&self) -> DocumentSignerCapabilities;
 

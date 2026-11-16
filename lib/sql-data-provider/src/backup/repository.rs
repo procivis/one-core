@@ -21,6 +21,7 @@ use sea_orm::{
     Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
     Statement, UpdateResult, Values,
 };
+use shared_types::KeyStorageId;
 use time::OffsetDateTime;
 
 use super::BackupProvider;
@@ -43,7 +44,7 @@ impl BackupProvider {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: TransactionManagerImpl,
-        exportable_storages: Vec<String>,
+        exportable_storages: Vec<KeyStorageId>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         did_repository: Arc<dyn DidRepository>,
         key_repository: Arc<dyn KeyRepository>,

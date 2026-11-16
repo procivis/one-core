@@ -15,7 +15,8 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
-    EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
+    EcosystemId, IdentifierId, InteractionId, IssuanceProtocolId, KeyId, OrganisationId,
+    RevocationMethodId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -71,7 +72,7 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     /// Profile associated with this credential
     #[from(with_fn = convert_inner)]
     pub profile: Option<String>,
@@ -191,7 +192,7 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     /// Credential holder metadata.
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
     /// Issuance protocol used to issue this credential.
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     /// Country profile associated with this credential.
     pub profile: Option<String>,
 
@@ -554,7 +555,7 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// your `issuanceProtocol` configuration for supported options and
     /// reference the configured instance name.
     #[modify_schema(field = issuance_protocol)]
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     /// Attribute from the credential schema, together with the
     /// corresponding claim being made.
     #[into(with_fn = convert_inner)]

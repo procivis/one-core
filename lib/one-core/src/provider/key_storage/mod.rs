@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use proc_macros::provider_mock;
-use shared_types::KeyId;
+use shared_types::{KeyId, KeyStorageId};
 use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -26,7 +26,7 @@ pub trait KeyStorage: Provider + Send + Sync {
     /// [ksc]: https://docs.procivis.ch/api/resources/keys#key-storage-capabilities
     fn get_capabilities(&self) -> model::KeyStorageCapabilities;
 
-    fn config_name(&self) -> String;
+    fn config_name(&self) -> KeyStorageId;
 
     /// Generates a key pair and returns the key reference. Does not expose the private key.
     async fn generate(

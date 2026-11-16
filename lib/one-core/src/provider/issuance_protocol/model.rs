@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use shared_types::{
-    CredentialId, InteractionId, OrganisationId, RevocationListEntryId, SerializedCredential,
-    TaskId,
+    CredentialId, InteractionId, IssuanceProtocolId, OrganisationId, RevocationListEntryId,
+    SerializedCredential, TaskId,
 };
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode};
 use time::OffsetDateTime;
@@ -162,6 +162,6 @@ pub(crate) struct ContinueIssuanceResponseDTO<'a> {
     pub interaction_id: InteractionId,
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
     pub key_algorithms: Option<Vec<String>>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub ecosystem_artifact: ProtocolArtifact<'a>,
 }

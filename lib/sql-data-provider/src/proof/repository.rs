@@ -8,8 +8,8 @@ use one_core::model::proof::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_repository::ProofRepository;
 use sea_orm::{
-    ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
-    SqlErr, Unchanged,
+    ColumnTrait, EntityTrait, NotSet, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select,
+    Set, SqlErr, Unchanged,
 };
 use shared_types::{InteractionId, ProofId};
 
@@ -209,7 +209,7 @@ impl ProofRepository for ProofProvider {
         };
 
         let transport = match proof.transport {
-            None => Unchanged(Default::default()),
+            None => NotSet,
             Some(transport) => Set(transport),
         };
 

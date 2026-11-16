@@ -8,7 +8,7 @@ use serde_json::json;
 use shared_types::{
     BlobId, ClaimId, ClaimSchemaId, CredentialFormat, CredentialId,
     CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId, CredentialSchemaId, DidId,
-    EcosystemId, IdentifierId, InteractionId, OrganisationId, ProofId,
+    EcosystemId, IdentifierId, InteractionId, IssuanceProtocolId, OrganisationId, ProofId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::oauth2::authorization_server_metadata::{
@@ -108,7 +108,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .return_once(move |_| {
             Ok(Proof {
                 id: proof_id,
-                protocol: protocol.to_string(),
+                protocol: protocol.into(),
                 state: ProofStateEnum::Requested,
                 interaction: Some(
                     Interaction {
@@ -154,7 +154,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
     verification_protocol_provider
         .expect_get_protocol()
         .withf(move |_protocol| {
-            assert_eq!(_protocol, protocol);
+            assert_eq!(_protocol.as_str(), protocol);
             true
         })
         .once()
@@ -266,7 +266,7 @@ async fn test_handling_a_proof_invitation_records_the_resolved_ecosystems() {
         .once()
         .return_once(move |_| {
             Some((
-                "OPENID4VP_FINAL1".to_string(),
+                "OPENID4VP_FINAL1".into(),
                 Arc::new(verification_protocol_mock) as _,
             ))
         });
@@ -337,7 +337,7 @@ async fn test_rejecting_a_proof_consults_no_ecosystem_and_records_nothing() {
         .return_once(move |_| {
             Ok(Proof {
                 id: proof_id,
-                protocol: protocol.to_string(),
+                protocol: protocol.into(),
                 state: ProofStateEnum::Requested,
                 ..dummy_proof()
             })
@@ -395,7 +395,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
             .return_once(move |_| {
                 Ok(Proof {
                     id: proof_id,
-                    protocol: protocol.to_string(),
+                    protocol: protocol.into(),
                     state,
                     interaction: Some(
                         Interaction {
@@ -451,7 +451,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
         .return_once(move |_| {
             Ok(Proof {
                 id: proof_id,
-                protocol: protocol.to_string(),
+                protocol: protocol.into(),
                 state: ProofStateEnum::Requested,
                 interaction: Some(
                     Interaction {
@@ -497,7 +497,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
     verification_protocol_provider
         .expect_get_protocol()
         .withf(move |_protocol| {
-            assert_eq!(_protocol, protocol);
+            assert_eq!(_protocol.as_str(), protocol);
             true
         })
         .once()
@@ -634,7 +634,7 @@ async fn test_accept_credential() {
             Ok(Arc::new(Basic::new(Params {
                 holder: HolderParams {
                     priority: 0,
-                    key_storages: vec!["foo".to_string()],
+                    key_storages: vec!["foo".into()],
                 },
             })))
         });
@@ -788,7 +788,7 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
             Ok(Arc::new(Basic::new(Params {
                 holder: HolderParams {
                     priority: 0,
-                    key_storages: vec!["foo".to_string()],
+                    key_storages: vec!["foo".into()],
                 },
             })))
         });
@@ -987,7 +987,7 @@ async fn test_accept_credential_with_did() {
             Ok(Arc::new(Basic::new(Params {
                 holder: HolderParams {
                     priority: 0,
-                    key_storages: vec!["foo".to_string()],
+                    key_storages: vec!["foo".into()],
                 },
             })))
         });
@@ -1402,7 +1402,7 @@ async fn test_initiate_issuance() {
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
             organisation_id: OrganisationId::new(),
-            protocol: "OPENID4VCI_FINAL1".to_string(),
+            protocol: "OPENID4VCI_FINAL1".into(),
             issuer,
             client_id: "clientId".to_string(),
             redirect_uri: Some("http://redirect.uri".to_string()),
@@ -1444,7 +1444,7 @@ async fn test_continue_issuance() {
     let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
         request: InitiateIssuanceRequestDTO {
             organisation_id: organisation.id,
-            protocol: "protocol".to_string(),
+            protocol: "protocol".into(),
             issuer: "issuer".to_string(),
             client_id: "client_id".to_string(),
             redirect_uri: None,
@@ -1488,7 +1488,7 @@ async fn test_continue_issuance() {
                 interaction_id,
                 key_storage_security_levels: None,
                 key_algorithms: None,
-                protocol: "protocol".to_string(),
+                protocol: "protocol".into(),
                 ecosystem_artifact: ProtocolArtifact::HolderIssuanceInvitation {
                     issuer_metadata: IssuerMetadataRepresentation::Unsigned(Box::new(
                         CredentialIssuerMetadata {
@@ -1601,7 +1601,7 @@ async fn test_initiate_issuance_pkce() {
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
             organisation_id: OrganisationId::new(),
-            protocol: "OPENID4VCI_FINAL1".to_string(),
+            protocol: "OPENID4VCI_FINAL1".into(),
             issuer,
             client_id: "clientId".to_string(),
             redirect_uri: Some("http://redirect.uri".to_string()),
@@ -1671,7 +1671,7 @@ fn protocol_provider_preparing_dpop_key(
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .with(eq("OPENID4VCI_FINAL1"))
+        .with(eq(IssuanceProtocolId::from("OPENID4VCI_FINAL1")))
         .returning(move |_| Ok(issuance_protocol.clone()));
     issuance_protocol_provider
 }
@@ -1739,7 +1739,7 @@ async fn test_initiate_issuance_dpop_bound_par() {
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
             organisation_id: OrganisationId::new(),
-            protocol: "OPENID4VCI_FINAL1".to_string(),
+            protocol: "OPENID4VCI_FINAL1".into(),
             issuer,
             client_id: "clientId".to_string(),
             redirect_uri: None,
@@ -1768,7 +1768,7 @@ async fn test_continue_issuance_hands_over_dpop_key() {
     let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
         request: InitiateIssuanceRequestDTO {
             organisation_id: organisation.id,
-            protocol: "protocol".to_string(),
+            protocol: "protocol".into(),
             issuer: "issuer".to_string(),
             client_id: "client_id".to_string(),
             redirect_uri: None,
@@ -1816,7 +1816,7 @@ async fn test_continue_issuance_hands_over_dpop_key() {
                 interaction_id: continued_interaction_id,
                 key_storage_security_levels: None,
                 key_algorithms: None,
-                protocol: "protocol".to_string(),
+                protocol: "protocol".into(),
                 ecosystem_artifact: ProtocolArtifact::HolderIssuanceInvitation {
                     issuer_metadata: IssuerMetadataRepresentation::Unsigned(Box::new(
                         CredentialIssuerMetadata {
@@ -1956,7 +1956,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
+            protocol: "OPENID4VCI_FINAL1".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Pending,
             profile: None,
@@ -2257,7 +2257,7 @@ async fn test_initiate_issuance_session_org_mismatch() {
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
             organisation_id: OrganisationId::new(),
-            protocol: "".to_string(),
+            protocol: "".into(),
             issuer: "".to_string(),
             client_id: "".to_string(),
             redirect_uri: None,

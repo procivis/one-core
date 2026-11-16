@@ -1,7 +1,7 @@
 use std::assert_matches;
 use std::sync::Arc;
 
-use shared_types::{CredentialSchemaId, IdentifierId};
+use shared_types::{CredentialSchemaId, IdentifierId, IssuanceProtocolId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
 
@@ -48,13 +48,13 @@ fn setup_service(
 }
 
 fn issuer_metadata_fixtures() -> (
-    String,
+    IssuanceProtocolId,
     IdentifierId,
     CredentialSchemaId,
     Identifier,
     CredentialSchema,
 ) {
-    let protocol_id = "OPENID4VCI".to_string();
+    let protocol_id = IssuanceProtocolId::from("OPENID4VCI");
     let identifier_id: IdentifierId = IdentifierId::new();
     let credential_schema_id: CredentialSchemaId = CredentialSchemaId::new();
 
@@ -82,7 +82,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
 
     let mut did: Did = dummy_did();
     let mut key = dummy_key();
-    key.storage_type = "INTERNAL".to_string();
+    key.storage_type = "INTERNAL".into();
     did.keys = vec![RelatedKey {
         role: KeyRole::AssertionMethod,
         key,
@@ -165,7 +165,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success() {
 
     // Use a Key-type identifier (no DID) to trigger the fallback URL path
     let mut key = dummy_key();
-    key.storage_type = "INTERNAL".to_string();
+    key.storage_type = "INTERNAL".into();
     identifier.data = IdentifierData::Key(Related::from(key));
 
     let mut protocol_provider = MockIssuanceProtocolProvider::new();
@@ -255,7 +255,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_core_base_url_is_missing(
     // when
     let result = service
         .get_sd_jwt_vc_issuer_metadata(
-            &"OPENID4VCI".to_string(),
+            &"OPENID4VCI".into(),
             &IdentifierId::new(),
             &CredentialSchemaId::new(),
         )
@@ -292,7 +292,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_protocol_not_found() {
         Some("https://core.example".to_string()),
     );
 
-    let protocol_id = "UNKNOWN".to_string();
+    let protocol_id = IssuanceProtocolId::from("UNKNOWN");
 
     // when
     let result = service
@@ -306,7 +306,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_protocol_not_found() {
     // then
     assert_matches!(
         result,
-        Err(IssuerServiceError::MissingProtocol(value)) if value == protocol_id
+        Err(IssuerServiceError::MissingProtocol(value)) if value == protocol_id.as_str()
     );
 }
 
@@ -341,7 +341,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_identifier_not_found() {
     // when
     let result = service
         .get_sd_jwt_vc_issuer_metadata(
-            &"OPENID4VCI".to_string(),
+            &"OPENID4VCI".into(),
             &identifier_id,
             &CredentialSchemaId::new(),
         )
@@ -391,7 +391,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_credential_schema_not_fou
     // when
     let result = service
         .get_sd_jwt_vc_issuer_metadata(
-            &"OPENID4VCI".to_string(),
+            &"OPENID4VCI".into(),
             &IdentifierId::new(),
             &credential_schema_id,
         )

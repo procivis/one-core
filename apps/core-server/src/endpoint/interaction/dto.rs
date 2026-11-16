@@ -12,8 +12,8 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, DidId, EcosystemId, IdentifierId, InstanceId, InteractionId, KeyId,
-    OrganisationId, ProofId, TransactionDataId,
+    CredentialId, DidId, EcosystemId, IdentifierId, InstanceId, InteractionId, IssuanceProtocolId,
+    KeyId, OrganisationId, ProofId, TransactionDataId, TransportId, VerificationProtocolId,
 };
 use standardized_types::openid4vci::{AuthorizationDetail, TxCode, TxCodeInputMode};
 use strum::Display;
@@ -43,7 +43,7 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     /// specify which one to use for this interaction.
     #[modify_schema(field = transport)]
     #[try_into(infallible)]
-    pub transport: Option<Vec<String>>,
+    pub transport: Option<Vec<TransportId>>,
     /// For issuer-initiated Authorization Code Flow, provide the authorization server
     /// with the URI it should return the user to once authorization is complete.
     #[try_into(infallible)]
@@ -96,7 +96,7 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     #[from(with_fn = convert_inner_of_inner)]
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
     pub key_algorithms: Option<Vec<String>>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub ecosystem: Option<EcosystemId>,
 }
 
@@ -255,7 +255,7 @@ pub(crate) struct PresentationSubmitV2CredentialRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ProposeProofRequestRestDTO {
     #[try_into(infallible)]
-    pub protocol: String,
+    pub protocol: VerificationProtocolId,
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
@@ -289,7 +289,7 @@ pub(crate) struct InitiateIssuanceRequestRestDTO {
     /// authentication, this value is derived from the token.
     pub organisation_id: Option<OrganisationId>,
     /// Selected issuance protocol.
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     /// OpenID4VCI authorization request parameter.
     pub issuer: String,
     /// OpenID4VCI authorization request parameter.

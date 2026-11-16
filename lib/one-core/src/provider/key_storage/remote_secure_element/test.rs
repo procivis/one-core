@@ -34,7 +34,7 @@ async fn test_generate_success() {
             })
         });
 
-    let provider = RemoteSecureElementKeyProvider::new("test", Arc::new(native_storage));
+    let provider = RemoteSecureElementKeyProvider::new(&"test".into(), Arc::new(native_storage));
 
     let result = provider
         .generate(key_id.into(), KeyAlgorithmType::Eddsa, json!({}))
@@ -53,7 +53,7 @@ async fn test_sign_success() {
         .with(eq(b"key_reference".to_vec()), eq(b"message".to_vec()))
         .return_once(|_, _| Ok(b"signature".into()));
 
-    let provider = RemoteSecureElementKeyProvider::new("test", Arc::new(native_storage));
+    let provider = RemoteSecureElementKeyProvider::new(&"test".into(), Arc::new(native_storage));
 
     let key_handle = provider
         .key_handle(&Key {
@@ -64,7 +64,7 @@ async fn test_sign_success() {
             last_modified: crate::clock::now_utc(),
             public_key: b"public_key".to_vec(),
             name: "".to_string(),
-            storage_type: "REMOTE_SECURE_ELEMENT".to_string(),
+            storage_type: "REMOTE_SECURE_ELEMENT".into(),
             key_type: "EDDSA".to_string(),
             organisation: dummy_organisation(None).into(),
         })
@@ -80,7 +80,7 @@ async fn test_import_failure() {
 
     let key_id = Uuid::new_v4();
 
-    let provider = RemoteSecureElementKeyProvider::new("test", Arc::new(native_storage));
+    let provider = RemoteSecureElementKeyProvider::new(&"test".into(), Arc::new(native_storage));
 
     let result = provider
         .import(

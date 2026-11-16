@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{EcosystemId, HistoryId, InstanceId, KeyId, ManagedInstanceId};
+use shared_types::{EcosystemId, HistoryId, InstanceId, KeyId, KeyStorageId, ManagedInstanceId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -526,7 +526,7 @@ impl InstanceService {
 
     async fn generate_attestation_key(
         &self,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         organisation: Organisation,
         nonce: Option<String>,
@@ -683,7 +683,7 @@ impl InstanceService {
     async fn register_pending_no_integrity_check(
         &self,
         provider_info: &ProviderInfo,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
         organisation: Organisation,
@@ -719,7 +719,7 @@ impl InstanceService {
     async fn register_and_activate_with_integrity_check(
         &self,
         provider_info: &ProviderInfo,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
         organisation: Organisation,
@@ -765,7 +765,7 @@ impl InstanceService {
     async fn register_active(
         &self,
         provider_info: &ProviderInfo,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
         organisation: Organisation,
@@ -799,7 +799,7 @@ impl InstanceService {
     async fn register_without_integrity_check(
         &self,
         provider_info: &ProviderInfo,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
         organisation: Organisation,
@@ -833,7 +833,7 @@ impl InstanceService {
     async fn activate_with_integrity_check(
         &self,
         provider_info: &ProviderInfo,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         os: ManagedInstanceOs,
         organisation: Organisation,
@@ -904,7 +904,7 @@ impl InstanceService {
 
     async fn new_key(
         &self,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         organisation: Organisation,
         key_storage: &Arc<dyn KeyStorage>,
@@ -924,7 +924,7 @@ impl InstanceService {
     async fn build_attestation_proofs(
         &self,
         attestation_key: Key,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         organisation: Organisation,
         provider_info: &ProviderInfo,
@@ -993,7 +993,7 @@ impl InstanceService {
 
     async fn resolve_os_and_key_storage(
         &self,
-    ) -> Result<(ManagedInstanceOs, &str), HolderInstanceError> {
+    ) -> Result<(ManagedInstanceOs, &KeyStorageId), HolderInstanceError> {
         let os = ManagedInstanceOs::from(self.os_info_provider.get_os_name().await);
         let key_storage_type = match os {
             ManagedInstanceOs::Android | ManagedInstanceOs::Ios => KeyStorageType::SecureElement,
@@ -1036,7 +1036,7 @@ impl InstanceService {
 
     async fn generate_key_and_proof(
         &self,
-        key_storage_id: &str,
+        key_storage_id: &KeyStorageId,
         key_type: KeyAlgorithmType,
         organisation: Organisation,
         provider_info: &ProviderInfo,
@@ -1182,7 +1182,7 @@ impl InstanceService {
                     .get_capabilities()
                     .algorithms
                     .contains(&key_type)
-                    .then_some((k.to_string(), key_storage))
+                    .then_some((k.to_owned(), key_storage))
             })
             .next()
             .ok_or_else(|| {

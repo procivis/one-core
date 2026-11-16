@@ -18,8 +18,10 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{
-    CredentialFormat, DidMethodId, EcosystemId, RevocationMethodId, SignerId, TaskId,
-    TransactionDataType, TrustListSubscriberId,
+    CredentialFormat, DidMethodId, DocumentSignerProviderId, EcosystemId, IssuanceProtocolId,
+    KeyStorageId, RevocationMethodId, SignerId, TaskId, TransactionDataType, TransportId,
+    TrustListPublisherId, TrustListSubscriberId, VerificationProtocolId, VerifierProviderId,
+    WalletProviderId,
 };
 use strum::{AsRefStr, Display, EnumString};
 use time::Duration;
@@ -327,7 +329,7 @@ pub enum FormatType {
     Mdoc,
 }
 
-pub type TransportConfig = ConfigBlock<String, TransportType>;
+pub type TransportConfig = ConfigBlock<TransportId, TransportType>;
 
 #[derive(
     Debug,
@@ -359,7 +361,7 @@ pub enum TransportType {
     DcApi,
 }
 
-pub type IssuanceProtocolConfig = ConfigBlock<String, IssuanceProtocolType>;
+pub type IssuanceProtocolConfig = ConfigBlock<IssuanceProtocolId, IssuanceProtocolType>;
 
 #[derive(
     Debug,
@@ -381,7 +383,7 @@ pub enum IssuanceProtocolType {
     OpenId4VciFinal1_0,
 }
 
-pub type VerificationProtocolConfig = ConfigBlock<String, VerificationProtocolType>;
+pub type VerificationProtocolConfig = ConfigBlock<VerificationProtocolId, VerificationProtocolType>;
 
 #[derive(
     Debug,
@@ -557,7 +559,7 @@ pub enum KeyAlgorithmType {
     MlDsa,
 }
 
-pub type KeyStorageConfig = ConfigBlock<String, KeyStorageType>;
+pub type KeyStorageConfig = ConfigBlock<KeyStorageId, KeyStorageType>;
 
 #[derive(
     Debug,
@@ -742,7 +744,7 @@ pub enum TaskType {
     CredentialRegistrySync,
 }
 
-pub type TrustListPublisherConfig = ConfigBlock<String, TrustListPublisherType>;
+pub type TrustListPublisherConfig = ConfigBlock<TrustListPublisherId, TrustListPublisherType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -831,7 +833,7 @@ pub enum WalletProviderType {
     ProcivisOne,
 }
 
-pub type WalletProviderConfig = ConfigBlock<String, WalletProviderType>;
+pub type WalletProviderConfig = ConfigBlock<WalletProviderId, WalletProviderType>;
 
 #[derive(
     Debug,
@@ -926,7 +928,7 @@ pub enum VerifierProviderType {
     ProcivisOne,
 }
 
-pub type VerifierProviderConfig = ConfigBlock<String, VerifierProviderType>;
+pub type VerifierProviderConfig = ConfigBlock<VerifierProviderId, VerifierProviderType>;
 
 #[derive(
     Debug,
@@ -952,7 +954,7 @@ pub enum DocumentSignerType {
     RpCentric,
 }
 
-pub type DocumentSignerProviderConfig = ConfigBlock<String, DocumentSignerType>;
+pub type DocumentSignerProviderConfig = ConfigBlock<DocumentSignerProviderId, DocumentSignerType>;
 
 #[derive(
     Debug,
@@ -1132,16 +1134,16 @@ where
     }
 }
 
-impl ConfigBlock<String, TransportType> {
-    pub fn ble_enabled_for(&self, key: &str) -> bool {
+impl TransportConfig {
+    pub fn ble_enabled_for(&self, key: &TransportId) -> bool {
         self.transport_enabled_for(key, &TransportType::Ble)
     }
 
-    pub fn mqtt_enabled_for(&self, key: &str) -> bool {
+    pub fn mqtt_enabled_for(&self, key: &TransportId) -> bool {
         self.transport_enabled_for(key, &TransportType::Mqtt)
     }
 
-    fn transport_enabled_for(&self, key: &str, transport: &TransportType) -> bool {
+    fn transport_enabled_for(&self, key: &TransportId, transport: &TransportType) -> bool {
         self.get_fields(key)
             .ok()
             .is_some_and(|fields| fields.r#type() == transport && fields.enabled())
@@ -1150,7 +1152,7 @@ impl ConfigBlock<String, TransportType> {
     pub fn get_enabled_transport_type(
         &self,
         r#type: TransportType,
-    ) -> Result<&str, ConfigValidationError> {
+    ) -> Result<&TransportId, ConfigValidationError> {
         Ok(self
             .iter()
             .find(|(_, fields)| fields.r#type == r#type && fields.enabled())

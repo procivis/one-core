@@ -25,7 +25,7 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, EcosystemId, I18nString, IdentifierId, KeyId,
-    OrganisationId, ProofId, ProofSchemaId, TransactionDataId,
+    OrganisationId, ProofId, ProofSchemaId, TransactionDataId, TransportId, VerificationProtocolId,
 };
 use standardized_types::openid4vp::ClientIdPrefix;
 use standardized_types::openid4vp::dcql::CredentialQueryId;
@@ -104,7 +104,7 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// the `verificationProtocol` object of the configuration for supported options and
     /// reference the configuration instance.
     #[modify_schema(field = verification_protocol)]
-    pub protocol: String,
+    pub protocol: VerificationProtocolId,
     /// When a shared proof is accepted, the holder will be redirected to
     /// the resource specified here, if redirects are enabled in the system
     /// configuration. The URI must use a scheme (for example `https`, `myapp`)
@@ -130,7 +130,7 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// reference the configuration instance.
     #[into(with_fn = convert_inner)]
     #[modify_schema(field = transport)]
-    pub transport: Option<Vec<String>>,
+    pub transport: Option<Vec<TransportId>>,
     /// Optional profile to associate with this proof request.
     pub profile: Option<String>,
     /// Not for use via the API; for mobile configurations to specify device
@@ -313,9 +313,9 @@ pub(crate) struct ProofListItemResponseRestDTO {
 
     pub engagement: Option<String>,
     /// Verification protocol used.
-    pub protocol: String,
+    pub protocol: VerificationProtocolId,
     /// Transport protocol used.
-    pub transport: String,
+    pub transport: TransportId,
     pub state: ProofStateRestEnum,
     pub role: ProofRoleRestEnum,
     #[from(with_fn = convert_inner)]
@@ -368,13 +368,13 @@ pub(crate) struct ProofDetailResponseRestDTO {
     pub verifier_certificate: Option<CertificateResponseRestDTO>,
 
     #[try_from(infallible)]
-    pub protocol: String,
+    pub protocol: VerificationProtocolId,
 
     #[try_from(infallible)]
     pub engagement: Option<String>,
 
     #[try_from(infallible)]
-    pub transport: String,
+    pub transport: TransportId,
 
     #[try_from(infallible)]
     pub state: ProofStateRestEnum,

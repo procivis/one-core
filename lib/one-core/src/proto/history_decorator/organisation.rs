@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{HistoryId, OrganisationId};
+use shared_types::{HistoryId, OrganisationId, VerifierProviderId, WalletProviderId};
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{
@@ -97,7 +97,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
 
     async fn get_organisation_for_wallet_provider(
         &self,
-        wallet_provider: &str,
+        wallet_provider: &WalletProviderId,
     ) -> Result<Option<Organisation>, DataLayerError> {
         self.inner
             .get_organisation_for_wallet_provider(wallet_provider)
@@ -106,7 +106,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
 
     async fn get_organisation_for_verifier_provider(
         &self,
-        verifier_provider: &str,
+        verifier_provider: &VerifierProviderId,
     ) -> Result<Option<Organisation>, DataLayerError> {
         self.inner
             .get_organisation_for_verifier_provider(verifier_provider)

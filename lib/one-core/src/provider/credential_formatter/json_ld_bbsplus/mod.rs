@@ -560,7 +560,8 @@ impl CredentialFormatter for JsonLdBbsplus {
                 issuance_date: vcdm.issuance_date,
                 last_modified: now,
                 deleted_at: None,
-                protocol: "".to_string(),
+                // TODO ONE-9647: empty issuance protocol for credentials not received via an issuance protocol
+                protocol: "".into(),
                 redirect_uri: None,
                 state: CredentialStateEnum::Accepted,
                 profile: None,

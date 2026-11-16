@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use shared_types::IssuanceProtocolId;
 use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::{
     CredentialIssuerMetadata, CredentialRequest, CredentialResponse,
@@ -52,7 +53,7 @@ pub enum AccessToken {
 }
 
 pub enum ProtocolSelection {
-    ProtocolId(String),
+    ProtocolId(IssuanceProtocolId),
     AccessToken(String),
     TokenRequest(TokenRequest),
 }

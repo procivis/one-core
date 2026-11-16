@@ -2086,7 +2086,7 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".to_string(),
+            protocol: "OPENID4VCI_FINAL1".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             profile: None,

@@ -4,7 +4,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as};
-use shared_types::{EcosystemId, ManagedInstanceId, TrustCollectionId};
+use shared_types::{EcosystemId, ManagedInstanceId, TrustCollectionId, WalletProviderId};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vci::SecurityLevel;
 use utoipa::ToSchema;
@@ -66,7 +66,7 @@ pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct RegisterWalletUnitRequestRestDTO {
-    pub wallet_provider: String,
+    pub wallet_provider: WalletProviderId,
     pub os: ManagedInstanceOsRestEnum,
     pub public_key: Option<PublicJwk>,
     pub proof: Option<String>,
@@ -77,7 +77,7 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
 impl From<RegisterWalletUnitRequestRestDTO> for dto::RegisterWalletUnitRequestDTO {
     fn from(value: RegisterWalletUnitRequestRestDTO) -> Self {
         Self {
-            provider: value.wallet_provider,
+            provider: value.wallet_provider.to_string(),
             role: one_core::model::instance::InstanceRole::Wallet,
             os: value.os.into(),
             public_key: value.public_key,

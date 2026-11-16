@@ -277,7 +277,7 @@ mod holder_interaction_data {
             };
 
             Self {
-                protocol: value.protocol,
+                protocol: value.protocol.into(),
                 issuer_metadata: CredentialIssuerMetadata {
                     credential_issuer: value.issuer_url.clone(),
                     authorization_servers: authorization_server.map(|server| vec![server]),

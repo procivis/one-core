@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
+use shared_types::VerificationProtocolId;
 use url::Url;
 
 use super::dto::CreateProofRequestTransactionDataDTO;
@@ -50,7 +51,7 @@ pub(super) async fn throw_if_proof_not_in_session_org(
 }
 
 pub(super) async fn validate_format_and_exchange_protocol_compatibility(
-    exchange: &str,
+    exchange: &VerificationProtocolId,
     config: &CoreConfig,
     proof_schema: &ProofSchema,
     formatter_provider: &dyn CredentialFormatterProvider,
@@ -164,7 +165,7 @@ pub(super) async fn validate_did_and_format_compatibility(
 }
 
 pub(super) fn validate_mdl_exchange(
-    exchange: &str,
+    exchange: &VerificationProtocolId,
     engagement: Option<&str>,
     redirect_uri: Option<&str>,
     config: &VerificationProtocolConfig,
@@ -184,7 +185,7 @@ pub(super) fn validate_mdl_exchange(
 }
 
 pub(super) fn validate_redirect_uri(
-    exchange: &str,
+    exchange: &VerificationProtocolId,
     redirect_uri: Option<&str>,
     config: &VerificationProtocolConfig,
 ) -> Result<(), ProofServiceError> {
@@ -221,7 +222,7 @@ pub(super) fn validate_redirect_uri(
 
 pub(super) fn validate_webhook_url(
     url: Option<&String>,
-    verification_protocol: &str,
+    verification_protocol: &VerificationProtocolId,
     config: &CoreConfig,
     notification_scheduler: &dyn NotificationScheduler,
 ) -> Result<(), ProofServiceError> {
@@ -469,12 +470,16 @@ mod tests {
         let engagement = Some("engagement");
         let uri = Some("uri");
 
-        assert!(validate_mdl_exchange("ISO_MDL", engagement, None, &config).is_ok());
-        assert!(validate_mdl_exchange("ISO_MDL", engagement, uri, &config).is_err());
-        assert!(validate_mdl_exchange("ISO_MDL", None, uri, &config).is_err());
+        assert!(validate_mdl_exchange(&"ISO_MDL".into(), engagement, None, &config).is_ok());
+        assert!(validate_mdl_exchange(&"ISO_MDL".into(), engagement, uri, &config).is_err());
+        assert!(validate_mdl_exchange(&"ISO_MDL".into(), None, uri, &config).is_err());
 
-        assert!(validate_mdl_exchange("OPENID4VP_FINAL1", None, uri, &config).is_ok());
-        assert!(validate_mdl_exchange("OPENID4VP_FINAL1", engagement, uri, &config).is_err());
-        assert!(validate_mdl_exchange("OPENID4VP_FINAL1", engagement, None, &config).is_err());
+        assert!(validate_mdl_exchange(&"OPENID4VP_FINAL1".into(), None, uri, &config).is_ok());
+        assert!(
+            validate_mdl_exchange(&"OPENID4VP_FINAL1".into(), engagement, uri, &config).is_err()
+        );
+        assert!(
+            validate_mdl_exchange(&"OPENID4VP_FINAL1".into(), engagement, None, &config).is_err()
+        );
     }
 }

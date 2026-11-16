@@ -290,7 +290,7 @@ async fn test_wallet_provider_metadata_with_ecosystems() {
         .update(
             &organisation.id,
             UpdateOrganisationRequest {
-                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                wallet_provider: Some(Some("PROCIVIS_ONE".into())),
                 configuration: Some(OrganisationConfiguration {
                     selected_ecosystems: vec!["EUDI".into()],
                     ..Default::default()
@@ -399,7 +399,7 @@ async fn test_wallet_provider_metadata_ecosystems_include_inherited_trust_collec
         .update(
             &organisation.id,
             UpdateOrganisationRequest {
-                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                wallet_provider: Some(Some("PROCIVIS_ONE".into())),
                 configuration: Some(OrganisationConfiguration {
                     selected_ecosystems: vec!["EUDI".into()],
                     ..Default::default()

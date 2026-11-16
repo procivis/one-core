@@ -520,7 +520,8 @@ impl ProofService {
         let (transport, interaction_transports, multiple_transports) = match transport {
             SelectedTransportType::Single(single) => (single.clone(), vec![single], false),
             // for multiple transports we store them in interaction data and set the transport=""
-            SelectedTransportType::Multiple(multiple) => (String::new(), multiple, true),
+            // TODO ONE-9647: an empty transport is used as marker for 'multiple transports, not selected yet'
+            SelectedTransportType::Multiple(multiple) => ("".into(), multiple, true),
         };
 
         if multiple_transports || !request.transaction_data.is_empty() {
@@ -853,7 +854,7 @@ impl ProofService {
             .error_while("getting protocol")?;
         if exchange_type != VerificationProtocolType::IsoMdl {
             return Err(ProofServiceError::InvalidExchangeType {
-                value: request.protocol,
+                value: request.protocol.to_string(),
                 source: anyhow::anyhow!("propose_proof"),
             });
         }
@@ -864,7 +865,7 @@ impl ProofService {
             .error_while("getting protocol")?;
         let Some(protocol_params) = protocol_params.holder else {
             return Err(ProofServiceError::InvalidExchangeType {
-                value: request.protocol,
+                value: request.protocol.to_string(),
                 source: anyhow::anyhow!("holder params not configured"),
             });
         };

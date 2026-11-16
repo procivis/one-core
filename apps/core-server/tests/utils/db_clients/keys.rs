@@ -32,7 +32,7 @@ impl KeysDB {
                 .unwrap_or_else(|| Uuid::new_v4().as_bytes().to_vec()),
             name: unwrap_or_random(params.name),
             key_reference: params.key_reference,
-            storage_type: params.storage_type.unwrap_or_default(),
+            storage_type: params.storage_type.unwrap_or_default().into(),
             key_type: params.key_type.unwrap_or_default(),
             organisation: organisation.to_owned().into(),
         };

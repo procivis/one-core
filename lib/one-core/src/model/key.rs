@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use proc_macros::Model;
-use shared_types::{KeyId, OrganisationId};
+use shared_types::{KeyId, KeyStorageId, OrganisationId};
 use standardized_types::jwk::PrivateJwk;
 use thiserror::Error;
 use time::OffsetDateTime;
@@ -24,7 +24,7 @@ pub struct Key {
     pub public_key: Vec<u8>,
     pub name: String,
     pub key_reference: Option<Vec<u8>>,
-    pub storage_type: String,
+    pub storage_type: KeyStorageId,
     pub key_type: String,
     /// Whether this key is wrapped by an identifier the core created
     /// automatically, rather than one explicitly created by the user.

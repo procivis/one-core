@@ -45,6 +45,7 @@ use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
+use shared_types::KeyStorageId;
 use trust_collection::TrustCollectionProvider;
 use trust_entry::TrustEntryProvider;
 use trust_list_publication::TrustListPublicationProvider;
@@ -141,7 +142,7 @@ pub struct DataLayer {
 }
 
 impl DataLayer {
-    pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
+    pub fn build(db: DbConn, exportable_storages: Vec<KeyStorageId>) -> Self {
         let transaction_manager = TransactionManagerImpl::new(db.clone());
         let history_repository = Arc::new(HistoryProvider {
             db: transaction_manager.clone(),

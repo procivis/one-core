@@ -1,6 +1,8 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
+use shared_types::KeyStorageId;
+
 use super::{KeySecurityLevel, KeySecurityLevelCapabilities};
 use crate::config::core_config::KeySecurityLevelType;
 use crate::provider::disabled_provider::DisabledProvider;
@@ -19,7 +21,7 @@ impl<T: KeySecurityLevel + Display + ?Sized> KeySecurityLevel for DisabledProvid
     fn get_priority(&self) -> u64 {
         self.inner().get_priority()
     }
-    fn get_key_storages(&self) -> &[String] {
+    fn get_key_storages(&self) -> &[KeyStorageId] {
         self.inner().get_key_storages()
     }
     fn level(&self) -> KeySecurityLevelType {

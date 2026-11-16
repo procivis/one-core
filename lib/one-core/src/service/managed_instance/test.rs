@@ -7,7 +7,10 @@ use one_crypto::Signer;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use secrecy::SecretSlice;
 use serde_json::json;
-use shared_types::{HistoryId, IdentifierId, ManagedInstanceId, OrganisationId};
+use shared_types::{
+    HistoryId, IdentifierId, ManagedInstanceId, OrganisationId, VerifierProviderId,
+    WalletProviderId,
+};
 use similar_asserts::assert_eq;
 use time::Duration;
 
@@ -128,10 +131,9 @@ async fn test_register_wallet_unit() {
     let issuer_identifier_id: IdentifierId = IdentifierId::new();
 
     let procivis_one_provider = "PROCIVIS_ONE";
-    config.wallet_provider.insert(
-        procivis_one_provider.to_string(),
-        wallet_provider_config(false),
-    );
+    config
+        .wallet_provider
+        .insert(procivis_one_provider.into(), wallet_provider_config(false));
 
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
@@ -140,7 +142,7 @@ async fn test_register_wallet_unit() {
             Ok(Some(Organisation {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                wallet_provider: Some(procivis_one_provider.to_string()),
+                wallet_provider: Some(procivis_one_provider.into()),
                 wallet_provider_issuer: Some(issuer_identifier_id),
                 ..dummy_organisation(None)
             }))
@@ -165,7 +167,7 @@ async fn test_register_wallet_unit() {
     let mut wallet_provider_directory = MockWalletProviderDirectory::new();
     wallet_provider_directory
         .expect_get_provider()
-        .with(eq(procivis_one_provider))
+        .with(eq(WalletProviderId::from(procivis_one_provider)))
         .return_once(|_| {
             let mut wallet_provider = MockWalletProvider::new();
             wallet_provider
@@ -220,10 +222,9 @@ async fn test_register_wallet_unit_integrity_check() {
     let mut config = CoreConfig::default();
     let issuer_identifier_id: IdentifierId = IdentifierId::new();
     let procivis_one_provider = "PROCIVIS_ONE";
-    config.wallet_provider.insert(
-        procivis_one_provider.to_string(),
-        wallet_provider_config(true),
-    );
+    config
+        .wallet_provider
+        .insert(procivis_one_provider.into(), wallet_provider_config(true));
 
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
@@ -232,7 +233,7 @@ async fn test_register_wallet_unit_integrity_check() {
             Ok(Some(Organisation {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                wallet_provider: Some(procivis_one_provider.to_string()),
+                wallet_provider: Some(procivis_one_provider.into()),
                 wallet_provider_issuer: Some(issuer_identifier_id),
                 ..dummy_organisation(None)
             }))
@@ -251,7 +252,7 @@ async fn test_register_wallet_unit_integrity_check() {
     let mut wallet_provider_directory = MockWalletProviderDirectory::new();
     wallet_provider_directory
         .expect_get_provider()
-        .with(eq(procivis_one_provider))
+        .with(eq(WalletProviderId::from(procivis_one_provider)))
         .return_once(|_| {
             let mut wallet_provider = MockWalletProvider::new();
             wallet_provider
@@ -311,7 +312,7 @@ async fn test_register_verifier_unit() {
             Ok(Some(Organisation {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                verifier_provider: Some(verifier_provider_name.to_string()),
+                verifier_provider: Some(verifier_provider_name.into()),
                 verifier_provider_issuer: Some(issuer_identifier_id),
                 ..dummy_organisation(None)
             }))
@@ -320,7 +321,7 @@ async fn test_register_verifier_unit() {
     let mut verifier_provider_directory = MockVerifierProviderDirectory::new();
     verifier_provider_directory
         .expect_get_provider()
-        .with(eq(verifier_provider_name))
+        .with(eq(VerifierProviderId::from(verifier_provider_name)))
         .return_once(|_| {
             let mut verifier_provider = MockVerifierProvider::new();
             verifier_provider
@@ -417,7 +418,7 @@ async fn test_register_verifier_unit_provider_not_associated_with_organisation()
 fn validate_org_verifier_provider_organisation_disabled() {
     let org = Organisation {
         deactivated_at: Some(get_dummy_date()),
-        verifier_provider: Some("VERIFIER_PROVIDER".to_string()),
+        verifier_provider: Some("VERIFIER_PROVIDER".into()),
         verifier_provider_issuer: Some(IdentifierId::new()),
         ..dummy_organisation(None)
     };
@@ -439,7 +440,7 @@ fn validate_org_verifier_provider_not_configured_on_organisation() {
 #[test]
 fn validate_org_verifier_provider_mismatched_provider() {
     let org = Organisation {
-        verifier_provider: Some("OTHER_PROVIDER".to_string()),
+        verifier_provider: Some("OTHER_PROVIDER".into()),
         verifier_provider_issuer: Some(IdentifierId::new()),
         ..dummy_organisation(None)
     };
@@ -452,7 +453,7 @@ fn validate_org_verifier_provider_mismatched_provider() {
 #[test]
 fn validate_org_verifier_provider_missing_issuer() {
     let org = Organisation {
-        verifier_provider: Some("VERIFIER_PROVIDER".to_string()),
+        verifier_provider: Some("VERIFIER_PROVIDER".into()),
         verifier_provider_issuer: None,
         ..dummy_organisation(None)
     };
@@ -466,7 +467,7 @@ fn validate_org_verifier_provider_missing_issuer() {
 fn validate_org_verifier_provider_success() {
     let issuer_id: IdentifierId = IdentifierId::new();
     let org = Organisation {
-        verifier_provider: Some("VERIFIER_PROVIDER".to_string()),
+        verifier_provider: Some("VERIFIER_PROVIDER".into()),
         verifier_provider_issuer: Some(issuer_id),
         ..dummy_organisation(None)
     };

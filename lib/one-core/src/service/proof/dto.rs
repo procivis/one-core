@@ -2,7 +2,8 @@ use one_dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, EcosystemId, IdentifierId, InteractionId, KeyId,
-    OrganisationId, ProofId, ProofSchemaId, TransactionDataId, TransactionDataType,
+    OrganisationId, ProofId, ProofSchemaId, TransactionDataId, TransactionDataType, TransportId,
+    VerificationProtocolId,
 };
 use standardized_types::openid4vp::ClientIdPrefix;
 use standardized_types::openid4vp::dc_api::DigitalCredentialGetRequest;
@@ -28,12 +29,12 @@ pub struct CreateProofRequestDTO {
     pub proof_schema_id: ProofSchemaId,
     pub verifier_did_id: Option<DidId>,
     pub verifier_identifier_id: Option<IdentifierId>,
-    pub protocol: String,
+    pub protocol: VerificationProtocolId,
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
     pub verifier_certificate: Option<CertificateId>,
     pub iso_mdl_engagement: Option<String>,
-    pub transport: Option<Vec<String>>,
+    pub transport: Option<Vec<TransportId>>,
     pub profile: Option<String>,
     pub engagement: Option<String>,
     pub webhook_destination_url: Option<String>,
@@ -78,8 +79,8 @@ pub struct ProofDetailResponseDTO {
     pub completed_date: Option<OffsetDateTime>,
     pub verifier: Option<GetIdentifierListItemResponseDTO>,
     pub verifier_certificate: Option<CertificateResponseDTO>,
-    pub protocol: String,
-    pub transport: String,
+    pub protocol: VerificationProtocolId,
+    pub transport: TransportId,
     pub engagement: Option<String>,
     pub state: ProofStateEnum,
     pub role: ProofRole,
@@ -115,9 +116,9 @@ pub struct ProofListItemResponseDTO {
     pub completed_date: Option<OffsetDateTime>,
     pub retain_until_date: Option<OffsetDateTime>,
     pub verifier: Option<GetIdentifierListItemResponseDTO>,
-    pub protocol: String,
+    pub protocol: VerificationProtocolId,
     pub engagement: Option<String>,
-    pub transport: String,
+    pub transport: TransportId,
     pub state: ProofStateEnum,
     pub role: ProofRole,
     pub schema: Option<GetProofSchemaListItemDTO>,
@@ -203,7 +204,7 @@ pub struct ProposeProofResponseDTO {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct CreateProofInteractionData {
-    pub transport: Vec<String>,
+    pub transport: Vec<TransportId>,
     #[serde(flatten)]
     pub common: CommonVerifierInteractionContent,
 }
@@ -221,7 +222,7 @@ pub struct ShareProofRequestParamsDTO {
 
 #[derive(Clone, Debug)]
 pub struct ProposeProofRequestDTO {
-    pub protocol: String,
+    pub protocol: VerificationProtocolId,
     pub organisation_id: OrganisationId,
     pub engagement: Vec<String>,
     pub ui_message: Option<String>,

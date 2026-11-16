@@ -1,5 +1,7 @@
 use serde::Serialize;
-use shared_types::{BlobId, EcosystemId, IdentifierId, InteractionId, ProofId};
+use shared_types::{
+    BlobId, EcosystemId, IdentifierId, InteractionId, ProofId, TransportId, VerificationProtocolId,
+};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -21,8 +23,8 @@ pub struct Proof {
     pub id: ProofId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub protocol: String,
-    pub transport: String,
+    pub protocol: VerificationProtocolId,
+    pub transport: TransportId,
     pub redirect_uri: Option<String>,
     pub state: ProofStateEnum,
     pub role: ProofRole,
@@ -92,7 +94,7 @@ pub struct UpdateProofRequest {
     pub state: Option<ProofStateEnum>,
     pub interaction: Option<Option<InteractionId>>,
     pub redirect_uri: Option<Option<String>>,
-    pub transport: Option<String>,
+    pub transport: Option<TransportId>,
     pub requested_date: Option<Option<OffsetDateTime>>,
     pub proof_blob_id: Option<Option<BlobId>>,
     pub engagement: Option<Option<String>>,

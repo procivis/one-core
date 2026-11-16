@@ -35,7 +35,7 @@ pub(crate) fn validate_org_wallet_provider(
     let Some(org_provider) = &organisation.wallet_provider else {
         return Err(ManagedInstanceError::WalletProviderNotConfigured);
     };
-    if org_provider != wallet_provider {
+    if org_provider.as_str() != wallet_provider {
         return Err(ManagedInstanceError::WalletProviderNotConfigured);
     }
     let Some(identifier_id) = organisation.wallet_provider_issuer else {
@@ -54,7 +54,7 @@ pub(crate) fn validate_org_verifier_provider(
     let Some(org_provider) = &organisation.verifier_provider else {
         return Err(ManagedInstanceError::VerifierProviderNotConfigured);
     };
-    if org_provider != verifier_provider {
+    if org_provider.as_str() != verifier_provider {
         return Err(ManagedInstanceError::VerifierProviderNotConfigured);
     }
     let Some(identifier_id) = organisation.verifier_provider_issuer else {

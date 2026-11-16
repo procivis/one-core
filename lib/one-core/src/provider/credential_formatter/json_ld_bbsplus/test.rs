@@ -140,7 +140,7 @@ fn auth_fn() -> impl SignatureProvider {
             public_key,
             name: "test".to_string(),
             key_reference: None,
-            storage_type: "test".to_string(),
+            storage_type: "test".into(),
             key_type: "test".to_string(),
             organisation: dummy_organisation(None).into(),
         },

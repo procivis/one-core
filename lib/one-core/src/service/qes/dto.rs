@@ -1,8 +1,8 @@
-use shared_types::OrganisationId;
+use shared_types::{DocumentSignerProviderId, OrganisationId};
 
 #[derive(Clone, Debug)]
 pub struct QesAuthorizeRequestDTO {
-    pub provider: String,
+    pub provider: DocumentSignerProviderId,
     pub document: Vec<u8>,
     pub redirect_uri: Option<String>,
     pub organisation_id: Option<OrganisationId>,
@@ -16,7 +16,7 @@ pub struct QesAuthorizeResponseDTO {
 
 #[derive(Clone, Debug)]
 pub struct QesSignRequestDTO {
-    pub provider: String,
+    pub provider: DocumentSignerProviderId,
     pub code: String,
     pub code_verifier: String,
     pub document: Vec<u8>,

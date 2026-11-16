@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use dto::{AccessCertificateProvisioningResponse, VerifierProviderCapabilities};
 use error::VerifierProviderError;
 use proc_macros::provider_mock;
+use shared_types::VerifierProviderId;
 
 use crate::model::managed_instance::ManagedInstance;
 use crate::provider::Provider;
@@ -35,7 +36,7 @@ pub(crate) trait VerifierProvider: Provider + Send + Sync {
         verifier_csr: String,
     ) -> Result<AccessCertificateProvisioningResponse, VerifierProviderError>;
 
-    fn config_name(&self) -> &str;
+    fn config_name(&self) -> &VerifierProviderId;
 }
 
 impl Display for dyn VerifierProvider {

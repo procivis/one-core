@@ -83,7 +83,7 @@ async fn test_get_verifier_provider_with_ecosystems() {
         .update(
             &organisation.id,
             UpdateOrganisationRequest {
-                verifier_provider: Some(Some("PROCIVIS_ONE".to_string())),
+                verifier_provider: Some(Some("PROCIVIS_ONE".into())),
                 configuration: Some(OrganisationConfiguration {
                     selected_ecosystems: vec!["EUDI".into()],
                     ..Default::default()

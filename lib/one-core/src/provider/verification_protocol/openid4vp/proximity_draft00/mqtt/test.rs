@@ -304,7 +304,7 @@ async fn test_handle_invitation_success() {
         &interaction_repository,
         &identifier_creator,
         &setup_holder_transport(None, Some(Arc::new(mqtt_client))),
-        "MQTT".to_string(),
+        "MQTT".into(),
         Box::new(verifier),
         &MockCertificateValidator::new(),
     )
@@ -462,7 +462,7 @@ async fn test_handle_invitation_certificate_verifier() {
         &interaction_repository,
         &identifier_creator,
         &setup_holder_transport(None, Some(Arc::new(mqtt_client))),
-        "MQTT".to_string(),
+        "MQTT".into(),
         Box::new(MockTokenVerifier::new()),
         &certificate_validator,
     )

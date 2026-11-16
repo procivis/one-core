@@ -198,7 +198,11 @@ async fn initialize(
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))
                 .error_while("opening DB")?;
-            let data_repository = Arc::new(DataLayer::build(db_conn, vec!["INTERNAL".to_string()]));
+            let data_repository = Arc::new(DataLayer::build(
+                db_conn,
+                // TODO ONE-9647: hard-coded key storage name instead of the config entries of the exportable key storage types
+                vec!["INTERNAL".into()],
+            ));
 
             let session_provider = Arc::new(NoSessionProvider);
 

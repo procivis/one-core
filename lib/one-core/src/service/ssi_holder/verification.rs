@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use futures_util::FutureExt;
 use itertools::Itertools;
-use shared_types::{CredentialId, EcosystemId, InteractionId, TransactionDataId};
+use shared_types::{CredentialId, EcosystemId, InteractionId, TransactionDataId, TransportId};
 use standardized_types::openid4vp::dcql::CredentialQueryId;
 
 use super::SSIHolderService;
@@ -313,7 +313,7 @@ impl SSIHolderService {
         &self,
         data: HandleInvitationRequestDataDTO,
         organisation: Organisation,
-        transport: Option<Vec<String>>,
+        transport: Option<Vec<TransportId>>,
         user_selected_ecosystem: Option<EcosystemId>,
     ) -> Result<HandleInvitationResultDTO, HolderServiceError> {
         let invitation_request = data.into();

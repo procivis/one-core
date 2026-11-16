@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
+use shared_types::VerificationProtocolId;
 
 use super::VerificationProtocol;
 use super::decorators::CapabilityChecked;
@@ -38,21 +39,27 @@ use crate::repository::proof_repository::ProofRepository;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub(crate) trait VerificationProtocolProvider: Send + Sync {
-    fn get_protocol(&self, protocol_id: &str)
-    -> Result<Arc<dyn VerificationProtocol>, NestedError>;
+    fn get_protocol(
+        &self,
+        protocol_id: &VerificationProtocolId,
+    ) -> Result<Arc<dyn VerificationProtocol>, NestedError>;
     fn detect_protocol(
         &self,
         request: &InvitationRequest,
-    ) -> Option<(String, Arc<dyn VerificationProtocol>)>;
+    ) -> Option<(VerificationProtocolId, Arc<dyn VerificationProtocol>)>;
 }
 
 #[async_trait::async_trait]
 impl VerificationProtocolProvider
-    for ProviderDirectory<String, Fields<VerificationProtocolType>, dyn VerificationProtocol>
+    for ProviderDirectory<
+        VerificationProtocolId,
+        Fields<VerificationProtocolType>,
+        dyn VerificationProtocol,
+    >
 {
     fn get_protocol(
         &self,
-        protocol_id: &str,
+        protocol_id: &VerificationProtocolId,
     ) -> Result<Arc<dyn VerificationProtocol>, NestedError> {
         self.provider(protocol_id)
     }
@@ -60,8 +67,8 @@ impl VerificationProtocolProvider
     fn detect_protocol(
         &self,
         request: &InvitationRequest,
-    ) -> Option<(String, Arc<dyn VerificationProtocol>)> {
-        let get_order = |id: &String| {
+    ) -> Option<(VerificationProtocolId, Arc<dyn VerificationProtocol>)> {
+        let get_order = |id: &VerificationProtocolId| {
             self.config(id)
                 .ok()
                 .and_then(|entry| entry.order)
@@ -80,7 +87,7 @@ impl VerificationProtocolProvider
 
 #[expect(clippy::too_many_arguments)]
 fn initialize_provider(
-    name: &str,
+    name: &VerificationProtocolId,
     fields: &Fields<VerificationProtocolType>,
     core_config: &Arc<CoreConfig>,
     core_base_url: &Option<String>,
@@ -240,7 +247,7 @@ pub(crate) fn verification_protocol_provider_from_config(
 
     let directory = ProviderDirectory::initialize(
         config.verification_protocol.iter_mut(),
-        |name: &String, fields: &Fields<VerificationProtocolType>| {
+        |name: &VerificationProtocolId, fields: &Fields<VerificationProtocolType>| {
             let provider = initialize_provider(
                 name,
                 fields,

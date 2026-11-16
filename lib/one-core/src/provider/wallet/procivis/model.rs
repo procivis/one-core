@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::RevocationMethodId;
+use shared_types::{DocumentSignerProviderId, RevocationMethodId};
 use time::Duration;
 
 use crate::config::core_config::IdentifierType;
@@ -26,7 +26,7 @@ pub(super) struct Params {
     pub device_auth_leeway_seconds: Duration,
     pub app_version: Option<AppVersionDTO>,
     #[serde(default)]
-    pub document_signers: Vec<String>,
+    pub document_signers: Vec<DocumentSignerProviderId>,
     pub feature_flags: FeatureFlagsParams,
     pub user_authentication: Option<UserAuthenticationParams>,
     pub signer_identifier_types: Vec<IdentifierType>,

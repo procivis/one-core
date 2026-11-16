@@ -370,12 +370,19 @@ config_field_types!(
     String,
     shared_types::CredentialFormat,
     shared_types::DidMethodId,
+    shared_types::DocumentSignerProviderId,
     shared_types::EcosystemId,
+    shared_types::IssuanceProtocolId,
+    shared_types::KeyStorageId,
     shared_types::RevocationMethodId,
     shared_types::SignerId,
     shared_types::TaskId,
+    shared_types::TransportId,
     shared_types::TrustListPublisherId,
     shared_types::TrustListSubscriberId,
+    shared_types::VerificationProtocolId,
+    shared_types::VerifierProviderId,
+    shared_types::WalletProviderId,
 );
 
 /// Used by the `ModifySchema` derive to assert [`ConfigFieldType`] at compile time.

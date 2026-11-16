@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use one_crypto::utilities::{generate_alphanumeric, generate_numeric};
-use shared_types::{DidMethodId, InteractionId, KeyId, OrganisationId};
+use shared_types::{DidMethodId, InteractionId, KeyId, KeyStorageId, OrganisationId};
 use standardized_types::openid4vci::{
     KeyAttestationsRequired, ProofTypeSupported, TxCodeInputMode,
 };
@@ -230,7 +230,7 @@ fn select_did_method(
 }
 
 struct PickedKeyConfig {
-    key_storage_id: String,
+    key_storage_id: KeyStorageId,
     key_storage: Arc<dyn KeyStorage>,
     key_algorithm: KeyAlgorithmType,
 }

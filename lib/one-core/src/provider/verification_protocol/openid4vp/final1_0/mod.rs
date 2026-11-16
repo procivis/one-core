@@ -9,7 +9,10 @@ use one_crypto::jwe::Header as JweHeader;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
-use shared_types::{InteractionId, ProofId, TransactionDataId, TransactionDataType};
+use shared_types::{
+    InteractionId, ProofId, TransactionDataId, TransactionDataType, TransportId,
+    VerificationProtocolId,
+};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dc_api::{
@@ -114,7 +117,7 @@ const PROXIMITY_QUERY_PARAM_KEY: &str = "key";
 
 #[derive(Provider)]
 pub(crate) struct OpenID4VPFinal1_0 {
-    config_id: String,
+    config_id: VerificationProtocolId,
     client: Arc<dyn HttpClient>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -146,7 +149,7 @@ struct EncryptionInfo {
 impl OpenID4VPFinal1_0 {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
-        config_id: String,
+        config_id: VerificationProtocolId,
         base_url: Option<String>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -858,7 +861,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         request: InvitationRequest,
         organisation: Organisation,
-        transport: String,
+        transport: TransportId,
     ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
         if !self.holder_can_handle(&request) {
             return Err(VerificationProtocolError::Failed(
@@ -1330,7 +1333,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         .await
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &VerificationProtocolId {
         &self.config_id
     }
 }

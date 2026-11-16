@@ -8,7 +8,7 @@ use one_core::model::organisation::{
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, VerifierProviderId, WalletProviderId};
 
 use super::OrganisationProvider;
 use super::mapper::{organisation_from_model, update_request_to_active_model};
@@ -64,7 +64,7 @@ impl OrganisationRepository for OrganisationProvider {
 
     async fn get_organisation_for_wallet_provider(
         &self,
-        wallet_provider: &str,
+        wallet_provider: &WalletProviderId,
     ) -> Result<Option<Organisation>, DataLayerError> {
         let organisation: Option<organisation::Model> = organisation::Entity::find()
             .filter(organisation::Column::WalletProvider.eq(wallet_provider))
@@ -77,7 +77,7 @@ impl OrganisationRepository for OrganisationProvider {
 
     async fn get_organisation_for_verifier_provider(
         &self,
-        verifier_provider: &str,
+        verifier_provider: &VerifierProviderId,
     ) -> Result<Option<Organisation>, DataLayerError> {
         let organisation: Option<organisation::Model> = organisation::Entity::find()
             .filter(organisation::Column::VerifierProvider.eq(verifier_provider))

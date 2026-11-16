@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use shared_types::KeyStorageId;
+
 use super::KeyStorage;
 use super::azure_vault::AzureVaultKeyProvider;
 use super::decorators::CapabilityCheckedKeyStorage;
@@ -23,7 +25,10 @@ use crate::provider::provider_directory::{InitializationError, ProviderDirectory
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyProvider: Send + Sync {
-    fn get_key_storage(&self, key_provider_id: &str) -> Result<Arc<dyn KeyStorage>, NestedError>;
+    fn get_key_storage(
+        &self,
+        key_provider_id: &KeyStorageId,
+    ) -> Result<Arc<dyn KeyStorage>, NestedError>;
 
     fn get_signature_provider(
         &self,
@@ -64,8 +69,11 @@ pub trait KeyProvider: Send + Sync {
     }
 }
 
-impl KeyProvider for ProviderDirectory<String, Fields<KeyStorageType>, dyn KeyStorage> {
-    fn get_key_storage(&self, key_provider_id: &str) -> Result<Arc<dyn KeyStorage>, NestedError> {
+impl KeyProvider for ProviderDirectory<KeyStorageId, Fields<KeyStorageType>, dyn KeyStorage> {
+    fn get_key_storage(
+        &self,
+        key_provider_id: &KeyStorageId,
+    ) -> Result<Arc<dyn KeyStorage>, NestedError> {
         self.provider(key_provider_id)
     }
 }
@@ -156,7 +164,7 @@ pub(crate) fn key_provider_from_config(
     native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
 ) -> Result<Arc<dyn KeyProvider>, ConfigValidationError> {
-    let initializer = move |name: &str, field: &Fields<KeyStorageType>| {
+    let initializer = move |name: &KeyStorageId, field: &Fields<KeyStorageType>| {
         initialize_provider(
             name,
             field,
@@ -173,7 +181,7 @@ pub(crate) fn key_provider_from_config(
 }
 
 fn initialize_provider(
-    name: &str,
+    name: &KeyStorageId,
     field: &Fields<KeyStorageType>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
@@ -209,7 +217,7 @@ fn initialize_provider(
             Arc::new(RemoteSecureElementKeyProvider::new(name, native_storage))
         }
         KeyStorageType::Csc => Arc::new(CscKeyProvider::new(
-            name.to_string(),
+            name.to_owned(),
             client,
             certificate_validator,
             field.merge_fields(),

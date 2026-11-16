@@ -3,6 +3,7 @@ use std::sync::Arc;
 use proc_macros::Provider;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use shared_types::DocumentSignerProviderId;
 use standardized_types::csc::{
     ConformanceLevel, HashAlgorithm, SignatureAlgorithm, SignatureFormat, SignatureQualifier,
 };
@@ -43,20 +44,20 @@ pub(crate) struct Sign8Params {
 
 #[derive(Provider)]
 pub(crate) struct Sign8 {
-    config_name: String,
+    config_name: DocumentSignerProviderId,
     params: Sign8Params,
     csc: Arc<dyn CscClient>,
 }
 
 impl Sign8 {
     pub fn new(
-        config_name: String,
+        config_name: DocumentSignerProviderId,
         params: serde_json::Value,
         csc: Arc<dyn CscClient>,
     ) -> Result<Self, InitializationError> {
         let params: Sign8Params = serde_json::from_value(params).map_err(|source| {
             InitializationError::InvalidParams {
-                key: config_name.clone(),
+                key: config_name.to_string(),
                 source,
             }
         })?;
@@ -74,7 +75,7 @@ impl Sign8 {
         let params = &self.params;
 
         let unsupported = |detail: String| InitializationError::UnsupportedConfiguration {
-            key: self.config_name.clone(),
+            key: self.config_name.to_string(),
             detail,
         };
 
@@ -145,7 +146,7 @@ impl Sign8 {
 
 #[async_trait::async_trait]
 impl DocumentSigner for Sign8 {
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &DocumentSignerProviderId {
         &self.config_name
     }
 
@@ -324,7 +325,7 @@ mod test {
 
     fn signer_with(params: Sign8Params) -> Result<Sign8, InitializationError> {
         Sign8::new(
-            "SIGN8".to_string(),
+            "SIGN8".into(),
             serde_json::to_value(params).unwrap(),
             Arc::new(MockCscClient::new()),
         )
@@ -462,7 +463,7 @@ mod test {
             .await;
 
         let signer = Sign8::new(
-            "SIGN8".to_string(),
+            "SIGN8".into(),
             serde_json::to_value(Sign8Params {
                 csc_base_url: server.uri(),
                 oauth_url: server.uri(),
@@ -493,7 +494,7 @@ mod test {
     async fn builds_authorization_url_via_csc() {
         const PDF: &[u8] = b"%PDF-1.7 fake pdf content";
         let signer = Sign8::new(
-            "SIGN8".to_string(),
+            "SIGN8".into(),
             serde_json::to_value(test_params()).unwrap(),
             Arc::new(CscClientImpl::new(Arc::new(MockHttpClient::new()))),
         )
@@ -537,7 +538,7 @@ mod test {
             redirect_uri: Some("https://override.example/cb".to_string()),
         };
         let signer = Sign8::new(
-            "SIGN8".to_string(),
+            "SIGN8".into(),
             serde_json::to_value(test_params()).unwrap(),
             Arc::new(CscClientImpl::new(Arc::new(MockHttpClient::new()))),
         )

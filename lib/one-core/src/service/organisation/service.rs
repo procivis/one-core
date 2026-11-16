@@ -286,7 +286,8 @@ impl OrganisationService {
                 request
                     .wallet_provider
                     .as_ref()
-                    .and_then(|inner| inner.as_ref()),
+                    .and_then(|inner| inner.as_ref())
+                    .map(|p| p.as_str()),
                 self.identifier_repository.as_ref(),
                 InstanceRole::Wallet,
                 self.wallet_provider_directory.as_ref(),
@@ -298,7 +299,7 @@ impl OrganisationService {
         if let Some(Some(wallet_provider)) = &request.wallet_provider {
             validate_provider(
                 &organisation,
-                wallet_provider,
+                wallet_provider.as_str(),
                 InstanceRole::Wallet,
                 self.organisation_repository.as_ref(),
                 self.wallet_provider_directory.as_ref(),
@@ -316,7 +317,8 @@ impl OrganisationService {
                 request
                     .verifier_provider
                     .as_ref()
-                    .and_then(|inner| inner.as_ref()),
+                    .and_then(|inner| inner.as_ref())
+                    .map(|p| p.as_str()),
                 self.identifier_repository.as_ref(),
                 InstanceRole::Verifier,
                 self.wallet_provider_directory.as_ref(),
@@ -328,7 +330,7 @@ impl OrganisationService {
         if let Some(Some(verifier_provider)) = &request.verifier_provider {
             validate_provider(
                 &organisation,
-                verifier_provider,
+                verifier_provider.as_str(),
                 InstanceRole::Verifier,
                 self.organisation_repository.as_ref(),
                 self.wallet_provider_directory.as_ref(),

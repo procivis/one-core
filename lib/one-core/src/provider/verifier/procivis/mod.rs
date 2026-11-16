@@ -3,6 +3,7 @@ use std::sync::Arc;
 use model::Params;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
+use shared_types::VerifierProviderId;
 
 use super::VerifierProvider;
 use super::dto::{AccessCertificateProvisioningResponse, VerifierProviderCapabilities};
@@ -31,7 +32,7 @@ mod model;
 
 #[derive(Provider)]
 pub struct ProcivisVerifierProvider {
-    config_name: String,
+    config_name: VerifierProviderId,
     config: Arc<CoreConfig>,
     params: Params,
     organisation_repository: Arc<dyn OrganisationRepository>,
@@ -45,7 +46,7 @@ pub struct ProcivisVerifierProvider {
 impl ProcivisVerifierProvider {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
-        config_name: String,
+        config_name: VerifierProviderId,
         config: Arc<CoreConfig>,
         params: serde_json::Value,
         organisation_repository: Arc<dyn OrganisationRepository>,
@@ -94,7 +95,7 @@ impl VerifierProvider for ProcivisVerifierProvider {
             });
 
         Ok(ProviderRegistrationParams {
-            name_label: self.config_name.to_owned(),
+            name_label: self.config_name.to_string(),
             integrity_check,
             device_auth_leeway: self.params.device_auth_leeway_seconds,
             user_authentication: self.params.user_authentication.to_owned(),
@@ -198,7 +199,7 @@ impl VerifierProvider for ProcivisVerifierProvider {
                 .post(&access_certificate_configuration.provider_url)
                 .bearer_auth(access_token)
                 .json(&AccessCertificateProvisioningRequest {
-                    provider: self.config_name.clone(),
+                    provider: self.config_name.to_string(),
                     managed_instance_id: managed_instance.id,
                     verifier_provider_organisation_id: managed_instance.organisation.id(),
                 })?
@@ -213,7 +214,7 @@ impl VerifierProvider for ProcivisVerifierProvider {
         Ok(response)
     }
 
-    fn config_name(&self) -> &str {
+    fn config_name(&self) -> &VerifierProviderId {
         &self.config_name
     }
 }

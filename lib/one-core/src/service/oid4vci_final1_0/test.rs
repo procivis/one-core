@@ -209,7 +209,7 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
             "oauthAttestationLeewaySeconds": 0,
             "keyAttestationLeewaySeconds": 0,
         }),
-        "configId".to_string(),
+        "configId".into(),
         Arc::new(protocol_mocks.holder_wallet_unit_proto),
         Arc::new(protocol_mocks.holder_wallet_unit_repository),
         Arc::new(protocol_mocks.certificate_validator),
@@ -393,7 +393,7 @@ fn dummy_credential(
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
-            protocol: protocol.to_string(),
+            protocol: protocol.into(),
             redirect_uri: None,
             state,
             schema: schema.into(),
@@ -566,7 +566,7 @@ async fn test_oauth_authorization_server_metadata_contains_signed_metadata() {
                   identifier,
                   metadata,
                   custom_header: &SwissProfileHeader| {
-                protocol_id == "OPENID4VCI_FINAL1"
+                protocol_id.as_str() == "OPENID4VCI_FINAL1"
                 && credential_schema_id == &schema.id
                 && identifier.id == identifier_id
                 // the JWT must not contain the `signed_metadata` claim itself
@@ -597,7 +597,7 @@ async fn test_oauth_authorization_server_metadata_contains_signed_metadata() {
     });
 
     let result = service
-        .oauth_authorization_server("OPENID4VCI_FINAL1", &identifier_id, &schema.id)
+        .oauth_authorization_server(&"OPENID4VCI_FINAL1".into(), &identifier_id, &schema.id)
         .await
         .unwrap();
 
@@ -652,7 +652,7 @@ async fn test_oauth_authorization_server_metadata_omits_signed_metadata_without_
     });
 
     let result = service
-        .oauth_authorization_server("OPENID4VCI_FINAL1", &identifier_id, &schema.id)
+        .oauth_authorization_server(&"OPENID4VCI_FINAL1".into(), &identifier_id, &schema.id)
         .await
         .unwrap();
 
@@ -742,7 +742,7 @@ async fn test_get_issuer_metadata_jwt() {
     });
     let result = service
         .get_issuer_metadata(
-            "OPENID4VCI_FINAL1",
+            &"OPENID4VCI_FINAL1".into(),
             &identifier_id,
             &schema.id,
             OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
@@ -892,7 +892,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     });
     let result = service
         .get_issuer_metadata(
-            "OPENID4VCI_FINAL1",
+            &"OPENID4VCI_FINAL1".into(),
             &identifier_id,
             &schema.id,
             OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
@@ -1065,7 +1065,7 @@ async fn test_get_issuer_metadata_mdoc() {
     });
     let result = service
         .get_issuer_metadata(
-            "OPENID4VCI_FINAL1",
+            &"OPENID4VCI_FINAL1".into(),
             &identifier_id,
             &schema.id,
             OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
@@ -1230,7 +1230,7 @@ async fn test_get_issuer_metadata_includes_schema_translations() {
 
     let result = service
         .get_issuer_metadata(
-            "OPENID4VCI_FINAL1",
+            &"OPENID4VCI_FINAL1".into(),
             &identifier_id,
             &schema.id,
             OID4VCIFinal1_0MetadataResponseTypeEnum::Model,
@@ -1395,7 +1395,7 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
 
     let result = service
         .get_issuer_metadata(
-            "OPENID4VCI_FINAL1",
+            &"OPENID4VCI_FINAL1".into(),
             &identifier_id,
             &schema.id,
             OID4VCIFinal1_0MetadataResponseTypeEnum::Model,

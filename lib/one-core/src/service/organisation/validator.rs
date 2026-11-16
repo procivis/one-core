@@ -1,4 +1,4 @@
-use shared_types::{IdentifierId, OrganisationId};
+use shared_types::{IdentifierId, OrganisationId, VerifierProviderId, WalletProviderId};
 
 use super::dto::SetOrganisationConfigurationDTO;
 use super::error::OrganisationServiceError;
@@ -23,7 +23,7 @@ use crate::util::key_selection::KeyFilter;
 pub(super) async fn validate_provider_issuer(
     organisation: &Organisation,
     issuer_id: &IdentifierId,
-    requested_provider: Option<&String>,
+    requested_provider: Option<&str>,
     identifier_repository: &dyn IdentifierRepository,
     provider_type: InstanceRole,
     wallet_provider_directory: &dyn WalletProviderDirectory,
@@ -48,20 +48,20 @@ pub(super) async fn validate_provider_issuer(
         .error_while("selecting identifier key")?;
 
     let provider_id = requested_provider.or(match provider_type {
-        InstanceRole::Wallet => organisation.wallet_provider.as_ref(),
-        InstanceRole::Verifier => organisation.verifier_provider.as_ref(),
+        InstanceRole::Wallet => organisation.wallet_provider.as_ref().map(|p| p.as_str()),
+        InstanceRole::Verifier => organisation.verifier_provider.as_ref().map(|p| p.as_str()),
     });
     if let Some(provider_id) = provider_id {
         let signer_identifier_types = match provider_type {
             InstanceRole::Wallet => {
                 wallet_provider_directory
-                    .get_provider(provider_id)?
+                    .get_provider(&WalletProviderId::from(provider_id))?
                     .get_capabilities()
                     .signer_identifier_types
             }
             InstanceRole::Verifier => {
                 verifier_provider_directory
-                    .get_provider(provider_id)?
+                    .get_provider(&VerifierProviderId::from(provider_id))?
                     .get_capabilities()
                     .signer_identifier_types
             }
@@ -135,23 +135,25 @@ pub(super) async fn validate_provider(
 ) -> Result<(), OrganisationServiceError> {
     let (signer_identifier_types, current_provider_org) = match provider_type {
         InstanceRole::Wallet => {
-            let provider = wallet_provider_directory.get_provider(provider_id)?;
+            let provider_id = WalletProviderId::from(provider_id);
+            let provider = wallet_provider_directory.get_provider(&provider_id)?;
             provider.ensure_enabled()?;
             (
                 provider.get_capabilities().signer_identifier_types,
                 organisation_repository
-                    .get_organisation_for_wallet_provider(provider_id)
+                    .get_organisation_for_wallet_provider(&provider_id)
                     .await
                     .error_while("getting organisation")?,
             )
         }
         InstanceRole::Verifier => {
-            let provider = verifier_provider_directory.get_provider(provider_id)?;
+            let provider_id = VerifierProviderId::from(provider_id);
+            let provider = verifier_provider_directory.get_provider(&provider_id)?;
             provider.ensure_enabled()?;
             (
                 provider.get_capabilities().signer_identifier_types,
                 organisation_repository
-                    .get_organisation_for_verifier_provider(provider_id)
+                    .get_organisation_for_verifier_provider(&provider_id)
                     .await
                     .error_while("getting organisation")?,
             )

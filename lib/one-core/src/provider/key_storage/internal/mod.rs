@@ -6,7 +6,7 @@ use one_crypto::encryption::{decrypt_data, encrypt_data};
 use proc_macros::Provider;
 use secrecy::SecretSlice;
 use serde::Deserialize;
-use shared_types::KeyId;
+use shared_types::{KeyId, KeyStorageId};
 use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -27,7 +27,7 @@ mod test;
 pub struct InternalKeyProvider {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     encryption_key: SecretSlice<u8>,
-    name: String,
+    name: KeyStorageId,
 }
 
 #[derive(Deserialize)]
@@ -39,7 +39,7 @@ pub struct Params {
 
 impl InternalKeyProvider {
     pub fn new(
-        name: &str,
+        name: &KeyStorageId,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         params: serde_json::Value,
     ) -> Result<Self, InitializationError> {
@@ -51,7 +51,7 @@ impl InternalKeyProvider {
         Ok(Self {
             key_algorithm_provider,
             encryption_key: params.encryption,
-            name: name.to_string(),
+            name: name.to_owned(),
         })
     }
 }
@@ -73,7 +73,7 @@ impl KeyStorage for InternalKeyProvider {
             ],
         }
     }
-    fn config_name(&self) -> String {
+    fn config_name(&self) -> KeyStorageId {
         self.name.clone()
     }
 

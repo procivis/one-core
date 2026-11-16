@@ -11,7 +11,7 @@ use super::mapper::params_from_fields;
 use super::moderate::Moderate;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
-    ConfigBlock, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType, KeyStorageType,
+    CoreConfig, KeySecurityLevelFields, KeySecurityLevelType, KeyStorageConfig,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
@@ -58,7 +58,7 @@ pub(crate) fn key_security_level_provider_from_config(
 fn initialize_provider(
     level: &KeySecurityLevelType,
     fields: &KeySecurityLevelFields,
-    key_storage_config: &ConfigBlock<String, KeyStorageType>,
+    key_storage_config: &KeyStorageConfig,
 ) -> Result<Arc<dyn KeySecurityLevel>, InitializationError> {
     let params = params_from_fields(fields).map_err(|err| InitializationError::InvalidParams {
         key: level.to_string(),

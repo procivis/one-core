@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
-    EcosystemId, IdentifierId, InteractionId, KeyId, OrganisationId,
+    EcosystemId, IdentifierId, InteractionId, IssuanceProtocolId, KeyId, OrganisationId,
 };
 use strum::AsRefStr;
 use time::OffsetDateTime;
@@ -38,7 +38,7 @@ pub struct CredentialListItemResponseDTO {
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
     pub parent_id: Option<CredentialId>,
@@ -78,7 +78,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
     pub holder: Option<GetIdentifierListItemResponseDTO>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub profile: Option<String>,
     pub wallet_instance_attestation: Option<WalletInstanceAttestationDTO>,
     pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
@@ -259,7 +259,7 @@ pub struct CreateCredentialRequestDTO {
     pub issuer_did: Option<DidId>,
     pub issuer_key: Option<KeyId>,
     pub issuer_certificate: Option<CertificateId>,
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,
     pub profile: Option<String>,

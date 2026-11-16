@@ -67,7 +67,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         public_key: vec![],
         name: name.to_owned(),
         key_reference: None,
-        storage_type: "INTERNAL".to_string(),
+        storage_type: "INTERNAL".into(),
         key_type: "EDDSA".to_string(),
         organisation: dummy_organisation(Some(organisation_id.into())).into(),
     }
@@ -130,7 +130,7 @@ async fn test_create_key_success() {
             key_type: "EDDSA".to_string(),
             key_params: Default::default(),
             name: "NAME".to_string(),
-            storage_type: "INTERNAL".to_string(),
+            storage_type: "INTERNAL".into(),
             storage_params: Default::default(),
         })
         .await;
@@ -305,7 +305,7 @@ async fn test_create_key_session_org_mismatch() {
             key_type: "".to_string(),
             key_params: Default::default(),
             name: "".to_string(),
-            storage_type: "".to_string(),
+            storage_type: "".into(),
             storage_params: Default::default(),
         })
         .await

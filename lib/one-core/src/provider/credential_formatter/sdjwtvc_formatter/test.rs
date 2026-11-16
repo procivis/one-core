@@ -1169,7 +1169,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         public_key: key_pair.public.clone(),
         name: "issuer key".to_string(),
         key_reference: None,
-        storage_type: "INTERNAL".to_string(),
+        storage_type: "INTERNAL".into(),
         key_type: "EDDSA".to_string(),
         organisation: dummy_organisation(None).into(),
     };
@@ -1350,7 +1350,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         public_key: key_pair.public.clone(),
         name: "issuer key".to_string(),
         key_reference: None,
-        storage_type: "INTERNAL".to_string(),
+        storage_type: "INTERNAL".into(),
         key_type: "EDDSA".to_string(),
         organisation: dummy_organisation(None).into(),
     };

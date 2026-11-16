@@ -6,6 +6,7 @@ use one_core::repository::identifier_trust_information_repository::IdentifierTru
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
+use shared_types::KeyStorageId;
 
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -16,7 +17,7 @@ pub mod repository;
 
 pub(crate) struct BackupProvider {
     pub db: TransactionManagerImpl,
-    exportable_storages: Vec<String>,
+    exportable_storages: Vec<KeyStorageId>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     did_repository: Arc<dyn DidRepository>,
     key_repository: Arc<dyn KeyRepository>,

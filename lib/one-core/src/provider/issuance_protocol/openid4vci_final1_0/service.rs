@@ -4,7 +4,7 @@ use std::str::FromStr;
 use indexmap::IndexMap;
 use one_crypto::utilities;
 use secrecy::SecretString;
-use shared_types::{ClaimSchemaId, IdentifierId, InteractionId};
+use shared_types::{ClaimSchemaId, IdentifierId, InteractionId, IssuanceProtocolId};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::TokenType;
 use standardized_types::oauth2::token::{ExpiresIn, TokenRequest, TokenResponse};
@@ -84,7 +84,7 @@ pub(crate) fn build_issuer_display(
 
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn create_issuer_metadata_response(
-    protocol_id: &str,
+    protocol_id: &IssuanceProtocolId,
     identifier: &Identifier,
     PreparedMetadata {
         protocol_base_url,
@@ -675,7 +675,7 @@ pub(crate) fn get_protocol_base_url(base_url: &str, swiyu_mode: bool) -> String 
 
 pub(crate) fn create_credential_offer(
     protocol_base_url: &str,
-    protocol_id: &str,
+    protocol_id: &IssuanceProtocolId,
     pre_authorized_code: &str,
     credential_schema: &CredentialSchema,
     offered_formats: &[CredentialSchemaFormat],

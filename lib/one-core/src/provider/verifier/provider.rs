@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use shared_types::VerifierProviderId;
+
 use super::VerifierProvider;
 use super::procivis::ProcivisVerifierProvider;
 use crate::config::ConfigValidationError;
@@ -15,13 +17,19 @@ use crate::repository::trust_collection_repository::TrustCollectionRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub(crate) trait VerifierProviderDirectory: Send + Sync {
-    fn get_provider(&self, provider_id: &str) -> Result<Arc<dyn VerifierProvider>, NestedError>;
+    fn get_provider(
+        &self,
+        provider_id: &VerifierProviderId,
+    ) -> Result<Arc<dyn VerifierProvider>, NestedError>;
 }
 
 impl VerifierProviderDirectory
-    for ProviderDirectory<String, Fields<VerifierProviderType>, dyn VerifierProvider>
+    for ProviderDirectory<VerifierProviderId, Fields<VerifierProviderType>, dyn VerifierProvider>
 {
-    fn get_provider(&self, provider_id: &str) -> Result<Arc<dyn VerifierProvider>, NestedError> {
+    fn get_provider(
+        &self,
+        provider_id: &VerifierProviderId,
+    ) -> Result<Arc<dyn VerifierProvider>, NestedError> {
         self.provider(provider_id)
     }
 }
@@ -39,10 +47,10 @@ pub(crate) fn verifier_provider_directory_from_config(
 
     let directory = ProviderDirectory::initialize(
         config.verifier_provider.iter_mut(),
-        |name: &String, fields: &Fields<VerifierProviderType>| {
+        |name: &VerifierProviderId, fields: &Fields<VerifierProviderType>| {
             let provider: Arc<dyn VerifierProvider> = match fields.r#type {
                 VerifierProviderType::ProcivisOne => Arc::new(ProcivisVerifierProvider::new(
-                    name.to_string(),
+                    name.to_owned(),
                     core_config.clone(),
                     fields.merge_fields(),
                     organisation_repository.clone(),

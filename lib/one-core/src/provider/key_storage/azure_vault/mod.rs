@@ -17,7 +17,7 @@ use one_crypto::{Signer, SignerError};
 use proc_macros::Provider;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
-use shared_types::KeyId;
+use shared_types::{KeyId, KeyStorageId};
 use standardized_types::jwk::{PrivateJwk, PublicJwk};
 use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
@@ -68,7 +68,7 @@ struct AzureAccessToken {
 #[derive(Provider)]
 pub struct AzureVaultKeyProvider {
     azure_client: Arc<AzureClient>,
-    name: String,
+    name: KeyStorageId,
 }
 
 impl Display for AzureVaultKeyProvider {
@@ -86,7 +86,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         }
     }
 
-    fn config_name(&self) -> String {
+    fn config_name(&self) -> KeyStorageId {
         self.name.clone()
     }
 
@@ -200,7 +200,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
 impl AzureVaultKeyProvider {
     pub fn new(
-        name: &str,
+        name: &KeyStorageId,
         params: serde_json::Value,
         client: Arc<dyn HttpClient>,
     ) -> Result<Self, InitializationError> {
@@ -215,7 +215,7 @@ impl AzureVaultKeyProvider {
                 client,
                 params,
             }),
-            name: name.to_string(),
+            name: name.to_owned(),
         })
     }
 }

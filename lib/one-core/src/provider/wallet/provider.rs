@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use shared_types::WalletProviderId;
+
 use super::WalletProvider;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, WalletProviderType};
@@ -18,13 +20,19 @@ use crate::repository::trust_collection_repository::TrustCollectionRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub(crate) trait WalletProviderDirectory: Send + Sync {
-    fn get_provider(&self, provider_id: &str) -> Result<Arc<dyn WalletProvider>, NestedError>;
+    fn get_provider(
+        &self,
+        provider_id: &WalletProviderId,
+    ) -> Result<Arc<dyn WalletProvider>, NestedError>;
 }
 
 impl WalletProviderDirectory
-    for ProviderDirectory<String, Fields<WalletProviderType>, dyn WalletProvider>
+    for ProviderDirectory<WalletProviderId, Fields<WalletProviderType>, dyn WalletProvider>
 {
-    fn get_provider(&self, provider_id: &str) -> Result<Arc<dyn WalletProvider>, NestedError> {
+    fn get_provider(
+        &self,
+        provider_id: &WalletProviderId,
+    ) -> Result<Arc<dyn WalletProvider>, NestedError> {
         self.provider(provider_id)
     }
 }
@@ -47,10 +55,10 @@ pub(crate) fn wallet_provider_directory_from_config(
 
     let directory = ProviderDirectory::initialize(
         config.wallet_provider.iter_mut(),
-        |name: &String, fields: &Fields<WalletProviderType>| {
+        |name: &WalletProviderId, fields: &Fields<WalletProviderType>| {
             let provider: Arc<dyn WalletProvider> = match fields.r#type {
                 WalletProviderType::ProcivisOne => Arc::new(ProcivisWalletProvider::new(
-                    name.to_string(),
+                    name.to_owned(),
                     core_config.clone(),
                     fields.merge_fields(),
                     core_base_url.clone(),

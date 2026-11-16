@@ -2,7 +2,9 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::{CredentialId, DidId, EcosystemId, IdentifierId, InteractionId, KeyId};
+use shared_types::{
+    CredentialId, DidId, EcosystemId, IdentifierId, InteractionId, IssuanceProtocolId, KeyId,
+};
 use standardized_types::oauth2::authorization_request::AuthorizationRequest;
 use standardized_types::openid4vci::SigningAlgValue;
 use url::Url;
@@ -694,7 +696,7 @@ impl SSIHolderService {
         &self,
         url: Url,
         organisation: Organisation,
-        exchange: String,
+        exchange: IssuanceProtocolId,
         issuance_protocol: Arc<dyn IssuanceProtocol>,
         redirect_uri: Option<String>,
         user_selected_ecosystem: Option<EcosystemId>,

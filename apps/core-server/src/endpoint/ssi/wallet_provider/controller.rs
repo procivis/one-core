@@ -5,7 +5,7 @@ use axum_extra::extract::WithRejection;
 use headers::Authorization;
 use headers::authorization::Bearer;
 use proc_macros::endpoint;
-use shared_types::ManagedInstanceId;
+use shared_types::{ManagedInstanceId, WalletProviderId};
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -124,7 +124,10 @@ pub(crate) async fn issue_wallet_unit_attestation(
 )]
 pub(crate) async fn get_wallet_provider_metadata(
     state: State<AppState>,
-    WithRejection(Path(wallet_provider), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+    WithRejection(Path(wallet_provider), _): WithRejection<
+        Path<WalletProviderId>,
+        ErrorResponseRestDTO,
+    >,
 ) -> OkOrErrorResponse<WalletProviderMetadataResponseRestDTO> {
     let result = state
         .core

@@ -95,9 +95,9 @@ pub(crate) fn update_request_from_request(
     Ok(UpdateOrganisationRequestDTO {
         id,
         deactivate: request.deactivate,
-        wallet_provider,
+        wallet_provider: wallet_provider.map(|p| p.map(Into::into)),
         wallet_provider_issuer,
-        verifier_provider,
+        verifier_provider: verifier_provider.map(|p| p.map(Into::into)),
         verifier_provider_issuer,
         configuration: try_convert_inner(request.configuration)?,
         parent_organisation: request.parent_organisation,

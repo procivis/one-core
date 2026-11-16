@@ -100,7 +100,7 @@ async fn insert_credential_to_database(
             NotSet
         },
         consumed_at: Set(None),
-        protocol: Set("protocol".to_owned()),
+        protocol: Set("protocol".into()),
         redirect_uri: Set(None),
         role: Set(CredentialRole::Holder),
         r#type: Set(CredentialType::Single),

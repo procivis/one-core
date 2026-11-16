@@ -45,7 +45,7 @@ pub(crate) fn trust_list_publisher_provider_from_config(
         if !fields.enabled {
             continue;
         }
-        let method_id: TrustListPublisherId = key.as_str().into();
+        let method_id = key.to_owned();
         let publisher: Arc<dyn TrustListPublisher> = match fields.r#type {
             TrustListPublisherType::EtsiLote => {
                 let params: EtsiLoteParams = config.trust_list_publisher.get(key)?;
@@ -65,7 +65,7 @@ pub(crate) fn trust_list_publisher_provider_from_config(
     }
 
     for (key, value) in config.trust_list_publisher.iter_mut() {
-        let method_id: TrustListPublisherId = key.as_str().into();
+        let method_id = key.to_owned();
         if let Some(entity) = publishers.get(&method_id) {
             value.capabilities = Some(json!(entity.get_capabilities()));
         }

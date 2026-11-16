@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use serde_json::Value;
-use shared_types::KeyId;
+use shared_types::{KeyId, KeyStorageId};
 use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -34,7 +34,7 @@ impl<T: KeyStorage + Display + ?Sized> KeyStorage for DisabledProvider<T> {
         capabilities
     }
 
-    fn config_name(&self) -> String {
+    fn config_name(&self) -> KeyStorageId {
         KeyStorage::config_name(self.inner())
     }
 
@@ -101,7 +101,7 @@ impl KeyStorage for CapabilityCheckedKeyStorage {
         self.inner.get_capabilities()
     }
 
-    fn config_name(&self) -> String {
+    fn config_name(&self) -> KeyStorageId {
         self.inner.config_name()
     }
 

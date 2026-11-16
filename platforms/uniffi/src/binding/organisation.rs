@@ -198,6 +198,7 @@ pub(crate) struct VerifierInstanceFeatureFlagsBindingDTO {
 pub(crate) struct WalletProviderDetailResponseBindingDTO {
     /// Wallet Provider configuration used by this organization to provide
     /// wallets.
+    #[from(with_fn = convert_inner)]
     pub provider_name: Option<String>,
     /// Identifier used by this organization to provide wallets.
     #[from(with_fn = convert_inner)]
@@ -209,6 +210,7 @@ pub(crate) struct WalletProviderDetailResponseBindingDTO {
 #[from(VerifierProviderDetailResponseDTO)]
 pub(crate) struct VerifierProviderDetailResponseBindingDTO {
     /// Verifier Provider configuration used by this organization.
+    #[from(with_fn = convert_inner)]
     pub provider_name: Option<String>,
     /// Identifier used by this organization to authenticate to the
     /// verifier provider.

@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use proc_macros::provider_mock;
+use shared_types::KeyStorageId;
 
 use self::dto::KeySecurityLevelCapabilities;
 use crate::config::core_config::KeySecurityLevelType;
@@ -19,7 +20,7 @@ pub mod provider;
 pub trait KeySecurityLevel: Provider + Send + Sync {
     fn get_capabilities(&self) -> KeySecurityLevelCapabilities;
     fn get_priority(&self) -> u64;
-    fn get_key_storages(&self) -> &[String];
+    fn get_key_storages(&self) -> &[KeyStorageId];
 
     fn level(&self) -> KeySecurityLevelType;
 }

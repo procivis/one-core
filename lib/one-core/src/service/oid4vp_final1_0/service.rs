@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 use one_crypto::jwe::extract_jwe_header;
-use shared_types::{BlobId, EcosystemId, KeyId, ProofId};
+use shared_types::{BlobId, EcosystemId, KeyId, ProofId, VerificationProtocolId};
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::openid4vp::{
     ClientIdPrefix, ClientMetadata, DirectPostResponse, EncryptedResponse,
@@ -524,7 +524,10 @@ impl OID4VPFinal1_0Service {
 
     /// swiyu DIDs do not support a key agreement verification relationship, so the swiyu protocol
     /// deviates from the standard by using the authentication keys for key agreement.
-    fn swiyu_mode(&self, protocol_id: &str) -> Result<bool, OID4VPFinal1_0ServiceError> {
+    fn swiyu_mode(
+        &self,
+        protocol_id: &VerificationProtocolId,
+    ) -> Result<bool, OID4VPFinal1_0ServiceError> {
         let protocol_type = self
             .config
             .verification_protocol
@@ -541,7 +544,7 @@ impl OID4VPFinal1_0Service {
     /// swiyu does - is honoured by the endpoints too.
     fn supported_encryption_algorithms(
         &self,
-        protocol_id: &str,
+        protocol_id: &VerificationProtocolId,
     ) -> Result<Vec<EncryptionAlgorithm>, OID4VPFinal1_0ServiceError> {
         Ok(self
             .protocol_provider

@@ -213,7 +213,7 @@ async fn test_create_did_jwk_success() {
         public_key: b"public".into(),
         name: "name".to_owned(),
         key_reference: None,
-        storage_type: "test".to_owned(),
+        storage_type: "test".into(),
         key_type: "ECDSA".to_owned(),
         organisation: dummy_organisation(None).into(),
     }];

@@ -3,7 +3,7 @@ use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{
     BlobId, CertificateId, DidId, EcosystemId, IdentifierId, InteractionId, KeyId, ProofId,
-    ProofSchemaId,
+    ProofSchemaId, TransportId, VerificationProtocolId,
 };
 use time::OffsetDateTime;
 
@@ -15,8 +15,8 @@ pub struct Model {
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub protocol: String,
-    pub transport: String,
+    pub protocol: VerificationProtocolId,
+    pub transport: TransportId,
     pub redirect_uri: Option<String>,
     pub state: ProofRequestState,
     pub role: ProofRole,

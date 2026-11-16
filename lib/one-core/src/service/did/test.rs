@@ -81,7 +81,7 @@ async fn test_get_did_exists() {
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },

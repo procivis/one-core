@@ -131,7 +131,7 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             mdoc_mso_validity: value.mdoc_mso_validity.map(|inner| inner.into()),
-            protocol: value.protocol,
+            protocol: value.protocol.into(),
             profile: value.profile,
             trust_information: convert_inner(value.trust_information),
             remaining_batch_item_count: value.remaining_batch_item_count.map(|counts| {
@@ -175,7 +175,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
-            protocol: value.protocol,
+            protocol: value.protocol.into(),
             profile: value.profile,
             format: value.format.map(|format| format.to_string()),
             parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
@@ -194,8 +194,8 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             proof_schema: convert_inner(value.schema),
             verifier: value.verifier.map(Into::into),
-            protocol: value.protocol,
-            transport: value.transport,
+            protocol: value.protocol.into(),
+            transport: value.transport.into(),
             engagement: value.engagement,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),
@@ -334,7 +334,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 tx_code: convert_inner(tx_code),
-                protocol,
+                protocol: protocol.into(),
                 key_storage_security_levels: convert_inner_of_inner(key_storage_security_levels),
                 key_algorithms,
                 ecosystem: convert_inner(ecosystem),
@@ -349,7 +349,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
             } => Self::AuthorizationCodeFlow {
                 interaction_id: interaction_id.to_string(),
                 authorization_code_flow_url,
-                protocol,
+                protocol: protocol.into(),
                 ecosystem: convert_inner(ecosystem),
                 ecosystem_errors: convert_ecosystem_errors(&ecosystem_outcomes),
             },
@@ -362,7 +362,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
             } => Self::ProofRequest {
                 interaction_id: interaction_id.to_string(),
                 proof_id: proof_id.to_string(),
-                protocol,
+                protocol: protocol.into(),
                 ecosystem: convert_inner(ecosystem),
                 ecosystem_errors: convert_ecosystem_errors(&ecosystem_outcomes),
             },
@@ -378,7 +378,7 @@ impl TryFrom<KeyRequestBindingDTO> for KeyRequestDTO {
             key_type: request.key_type,
             key_params: json!(request.key_params),
             name: request.name,
-            storage_type: request.storage_type,
+            storage_type: request.storage_type.into(),
             storage_params: json!(request.storage_params),
         })
     }
@@ -513,12 +513,12 @@ impl TryFrom<CreateProofRequestBindingDTO> for CreateProofRequestDTO {
             proof_schema_id: into_id(value.proof_schema_id)?,
             verifier_did_id: into_id_opt(value.verifier_did_id)?,
             verifier_identifier_id: into_id_opt(value.verifier_identifier_id)?,
-            protocol: value.protocol,
+            protocol: value.protocol.into(),
             redirect_uri: value.redirect_uri,
             verifier_key: into_id_opt(value.verifier_key)?,
             verifier_certificate: into_id_opt(value.verifier_certificate)?,
             iso_mdl_engagement: value.iso_mdl_engagement,
-            transport: value.transport,
+            transport: convert_inner_of_inner(value.transport),
             profile: value.profile,
             engagement: value.engagement,
             webhook_destination_url: None,
@@ -745,9 +745,13 @@ impl TryFrom<UpdateOrganisationRequestBindingDTO> for UpdateOrganisationRequestD
         Ok(Self {
             id: into_id(&value.id)?,
             deactivate: value.deactivate,
-            wallet_provider: convert_inner(value.wallet_provider),
+            wallet_provider: value
+                .wallet_provider
+                .map(|provider| Option::<String>::from(provider).map(Into::into)),
             wallet_provider_issuer,
-            verifier_provider: convert_inner(value.verifier_provider),
+            verifier_provider: value
+                .verifier_provider
+                .map(|provider| Option::<String>::from(provider).map(Into::into)),
             verifier_provider_issuer,
             configuration: convert_inner(value.configuration),
             parent_organisation,
@@ -784,7 +788,7 @@ impl TryFrom<InitiateIssuanceRequestBindingDTO> for InitiateIssuanceRequestDTO {
     fn try_from(request: InitiateIssuanceRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             organisation_id: into_id(request.organisation_id)?,
-            protocol: request.protocol,
+            protocol: request.protocol.into(),
             issuer: request.issuer,
             client_id: request.client_id,
             redirect_uri: request.redirect_uri,
@@ -815,7 +819,7 @@ impl From<ApplicableCredential> for PresentationDefinitionV2CredentialDetailBind
             suspend_end_date: optional_time(value.credential.suspend_end_date),
             mdoc_mso_validity: convert_inner(value.credential.mdoc_mso_validity),
             holder: convert_inner(value.credential.holder),
-            protocol: value.credential.protocol,
+            protocol: value.credential.protocol.into(),
             profile: value.credential.profile,
             format: value.credential.format.map(|format| format.to_string()),
             embedded_disclosure_policy_violation: convert_inner(

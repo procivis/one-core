@@ -1,5 +1,5 @@
 use serde::Serialize;
-use shared_types::{InteractionId, ProofId};
+use shared_types::{InteractionId, ProofId, TransportId, VerificationProtocolId};
 use standardized_types::openid4vp::dcql::{
     ClaimPath, ClaimQuery, CredentialFormat, CredentialQuery, DcqlQuery, MsoMdocMeta, PathSegment,
 };
@@ -74,9 +74,9 @@ pub(super) fn interaction_with_data<T: Serialize>(
 
 pub(super) fn holder_proof_for_dc_api(
     proof_id: ProofId,
-    protocol: &str,
+    protocol: &VerificationProtocolId,
     interaction: Interaction,
-    transport: String,
+    transport: TransportId,
 ) -> Proof {
     let now = crate::clock::now_utc();
     Proof {

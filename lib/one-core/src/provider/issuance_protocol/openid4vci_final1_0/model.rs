@@ -7,7 +7,9 @@ use secrecy::SecretSlice;
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialId, CredentialSchemaFormatId, SerializedCredential};
+use shared_types::{
+    CredentialId, CredentialSchemaFormatId, IssuanceProtocolId, KeyStorageId, SerializedCredential,
+};
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use standardized_types::openid4vci::{CredentialConfiguration, CredentialIssuerMetadata};
 use time::{Duration, OffsetDateTime};
@@ -84,12 +86,12 @@ pub(crate) struct OpenID4VCIFinal1HolderParams {
     /// Holder-side DPoP key configuration.
     /// If not configured, the holder will not use DPoP.
     #[serde(default)]
-    pub dpop_key_storage: Option<String>,
+    pub dpop_key_storage: Option<KeyStorageId>,
 
     /// Holder-side key storage of the Client Instance Keys of client attestations (WIA), needed
     /// when the DPoP key cannot be used as Client Instance Key.
     #[serde(default)]
-    pub client_attestation_key_storage: Option<String>,
+    pub client_attestation_key_storage: Option<KeyStorageId>,
 
     /// Maximum number of proofs per credential request. A batch with more holder bindings is
     /// split into several credential requests. If not configured, one credential request
@@ -174,7 +176,7 @@ pub(super) fn default_5_minutes() -> Duration {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct HolderInteractionData {
     /// selected issuance protocol (config identifier)
-    pub protocol: String,
+    pub protocol: IssuanceProtocolId,
     /// Credential issuer metadata at the time of the invitation, limited to the offered
     /// credential configurations. Never modified.
     ///

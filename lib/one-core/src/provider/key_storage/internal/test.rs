@@ -46,7 +46,7 @@ async fn test_internal_generate_with_encryption() {
         .returning(move |_| Ok(arc.clone()));
 
     let provider = InternalKeyProvider::new(
-        "Internal",
+        &"Internal".into(),
         Arc::new(mock_key_algorithm_provider),
         json!({
             "encryption": "0000000000000000000000000000000000000000000000000000000000000000"
@@ -123,7 +123,7 @@ async fn test_internal_sign_with_encryption() {
         .returning(move |_| Ok(arc_key_algorithm.clone()));
 
     let provider = InternalKeyProvider::new(
-        "test",
+        &"test".into(),
         Arc::new(mock_key_algorithm_provider),
         json!({
             "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
@@ -144,7 +144,7 @@ async fn test_internal_sign_with_encryption() {
         public_key: generated_key.public_key,
         name: "".to_string(),
         key_reference: generated_key.key_reference,
-        storage_type: "".to_string(),
+        storage_type: "".into(),
         key_type: "EDDSA".to_string(),
         organisation: dummy_organisation(None).into(),
     };
@@ -179,7 +179,7 @@ async fn test_internal_import() {
         .returning(move |_| Ok(arc.clone()));
 
     let provider = InternalKeyProvider::new(
-        "test",
+        &"test".into(),
         Arc::new(mock_key_algorithm_provider),
         json!({
             "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
@@ -209,7 +209,7 @@ async fn test_internal_import_jwk_invalid_key_type() {
     let mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let provider = InternalKeyProvider::new(
-        "test",
+        &"test".into(),
         Arc::new(mock_key_algorithm_provider),
         json!({
             "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"

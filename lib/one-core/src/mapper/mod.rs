@@ -4,7 +4,10 @@ use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use shared_types::{BlobId, ClaimId, ClaimSchemaId, CredentialId, I18nString};
+use shared_types::{
+    BlobId, ClaimId, ClaimSchemaId, CredentialId, I18nString, IssuanceProtocolId,
+    VerificationProtocolId,
+};
 use time::OffsetDateTime;
 
 use crate::config::core_config::BlobStorageType;
@@ -181,7 +184,7 @@ pub(crate) fn extracted_credential_to_model(
     issuer_identifier: Identifier,
     issuer_identifier_relation: RemoteIdentifierRelation,
     holder_identifier: Option<Identifier>,
-    exchange: String,
+    verification_protocol: &VerificationProtocolId,
     issuance_date: Option<OffsetDateTime>,
     format: Option<&CredentialSchemaFormat>,
 ) -> Result<Credential, ServiceError> {
@@ -214,7 +217,8 @@ pub(crate) fn extracted_credential_to_model(
             issuance_date,
             last_modified: now,
             deleted_at: None,
-            protocol: exchange,
+            // TODO ONE-9647: on the verifier side, the verification protocol is stored as issuance protocol
+            protocol: IssuanceProtocolId::from(verification_protocol.to_string()),
             state: CredentialStateEnum::Accepted,
             profile: None,
             schema: credential_schema.into(),
@@ -617,7 +621,7 @@ mod tests {
             },
             RemoteIdentifierRelation::Did(did),
             None,
-            "ISO_MDL".to_string(),
+            &"ISO_MDL".into(),
             Some(issuance_date),
             Some(&format),
         )

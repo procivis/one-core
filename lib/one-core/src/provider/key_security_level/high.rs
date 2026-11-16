@@ -1,4 +1,5 @@
 use proc_macros::Provider;
+use shared_types::KeyStorageId;
 use standardized_types::openid4vci::SecurityLevel;
 
 use super::KeySecurityLevel;
@@ -20,7 +21,7 @@ impl KeySecurityLevel for High {
         self.params.holder.priority
     }
 
-    fn get_key_storages(&self) -> &[String] {
+    fn get_key_storages(&self) -> &[KeyStorageId] {
         self.params.holder.key_storages.as_slice()
     }
 

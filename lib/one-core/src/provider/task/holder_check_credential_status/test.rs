@@ -234,7 +234,7 @@ fn generic_credential() -> Credential {
                 public_key: vec![],
                 name: "key_name".to_string(),
                 key_reference: None,
-                storage_type: "INTERNAL".to_string(),
+                storage_type: "INTERNAL".into(),
                 key_type: "EDDSA".to_string(),
                 organisation: dummy_organisation(None).into(),
             },
@@ -305,7 +305,7 @@ fn generic_credential() -> Credential {
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_DRAFT13".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             schema: CredentialSchema {

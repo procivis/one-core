@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Serialize;
-use shared_types::{CredentialSchemaId, IdentifierId};
+use shared_types::{CredentialSchemaId, IdentifierId, IssuanceProtocolId};
 use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
 use time::OffsetDateTime;
 
@@ -41,7 +41,7 @@ pub(crate) trait IssuerMetadataFetcher<CustomHeader: Send + Sync = ()>: Send + S
     /// Spec: <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-signed-credential-issuer-me>
     async fn get_issuer_metadata_jwt(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         service: Arc<dyn IssuanceProtocol>,
@@ -54,7 +54,7 @@ pub(crate) trait IssuerMetadataFetcher<CustomHeader: Send + Sync = ()>: Send + S
     /// Spec: <https://datatracker.ietf.org/doc/html/rfc8414#section-2.1>
     async fn get_authorization_server_metadata_jwt(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         metadata: AuthorizationServerMetadata,
@@ -98,7 +98,7 @@ where
 {
     async fn get_issuer_metadata_jwt(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         issuance_protocol: Arc<dyn IssuanceProtocol>,
@@ -110,7 +110,7 @@ where
             .get(
                 key.as_str(),
                 Arc::new(CredentialIssuerMetadataResolver {
-                    protocol_id: protocol_id.to_string(),
+                    protocol_id: protocol_id.to_owned(),
                     credential_schema_id: *credential_schema_id,
                     identifier: Arc::new(identifier),
                     issuance_protocol,
@@ -127,7 +127,7 @@ where
 
     async fn get_authorization_server_metadata_jwt(
         &self,
-        protocol_id: &str,
+        protocol_id: &IssuanceProtocolId,
         credential_schema_id: &CredentialSchemaId,
         identifier: Identifier,
         metadata: AuthorizationServerMetadata,
@@ -162,7 +162,7 @@ where
 }
 
 struct CredentialIssuerMetadataResolver<CustomHeader = ()> {
-    protocol_id: String,
+    protocol_id: IssuanceProtocolId,
     credential_schema_id: CredentialSchemaId,
     identifier: Arc<Identifier>,
     issuance_protocol: Arc<dyn IssuanceProtocol>,
@@ -345,7 +345,7 @@ async fn sign_metadata<T: Serialize + Send + Sync, H: Serialize + Send + Sync>(
 }
 
 fn encode_key(
-    protocol_id: &str,
+    protocol_id: &IssuanceProtocolId,
     identifier_id: &IdentifierId,
     credential_schema_id: &CredentialSchemaId,
 ) -> String {
@@ -353,7 +353,7 @@ fn encode_key(
 }
 
 fn encode_authorization_server_key(
-    protocol_id: &str,
+    protocol_id: &IssuanceProtocolId,
     identifier_id: &IdentifierId,
     credential_schema_id: &CredentialSchemaId,
 ) -> String {

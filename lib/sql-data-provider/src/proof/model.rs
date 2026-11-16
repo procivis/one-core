@@ -1,6 +1,7 @@
 use sea_orm::FromQueryResult;
 use shared_types::{
     BlobId, DidId, EcosystemId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    TransportId, VerificationProtocolId,
 };
 use time::OffsetDateTime;
 
@@ -14,8 +15,8 @@ pub(super) struct ProofListItemModel {
     pub id: ProofId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub protocol: String,
-    pub transport: String,
+    pub protocol: VerificationProtocolId,
+    pub transport: TransportId,
     pub redirect_uri: Option<String>,
     pub state: ProofRequestState,
     pub role: ProofRole,
