@@ -51,6 +51,8 @@ pub enum CredentialServiceError {
 
     #[error("Missing claim schema: {0}")]
     MissingClaimSchema(ClaimSchemaId),
+    #[error("Missing required claims: {}", .0.join(", "))]
+    MissingRequiredClaims(Vec<String>),
     #[error("Did `{0}` not found")]
     MissingDid(DidId),
     #[error("Credential schema `{0}` not found")]
@@ -76,7 +78,7 @@ impl ErrorCodeMixin for CredentialServiceError {
             Self::InvalidType(_) => ErrorCode::BR_0442,
             Self::InvalidRole(_) => ErrorCode::BR_0197,
             Self::InvalidFormatSelection => ErrorCode::BR_0482,
-            Self::MissingClaimSchema(_) => ErrorCode::BR_0003,
+            Self::MissingClaimSchema(_) | Self::MissingRequiredClaims(_) => ErrorCode::BR_0003,
             Self::MissingDid(_) => ErrorCode::BR_0024,
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,
             Self::MissingParentClaimSchema { .. } => ErrorCode::BR_0109,

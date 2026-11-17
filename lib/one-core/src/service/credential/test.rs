@@ -2032,7 +2032,10 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             ..create_request_template.clone()
         })
         .await;
-    assert_matches!(result, Err(CredentialServiceError::MissingClaimSchema(_)));
+    assert_matches!(
+        result,
+        Err(CredentialServiceError::MissingRequiredClaims(_))
+    );
 }
 
 #[tokio::test]
@@ -2773,7 +2776,10 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
         &generic_config().core,
     )
     .await;
-    assert_matches!(result, Err(CredentialServiceError::MissingClaimSchema(_)));
+    assert_matches!(
+        result,
+        Err(CredentialServiceError::MissingRequiredClaims(missing)) if missing == ["location/y"]
+    );
 }
 
 #[tokio::test]
@@ -2869,7 +2875,10 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
         &generic_config().core,
     )
     .await;
-    assert_matches!(result, Err(CredentialServiceError::MissingClaimSchema(_)));
+    assert_matches!(
+        result,
+        Err(CredentialServiceError::MissingRequiredClaims(missing)) if missing == ["location"]
+    );
 
     validate_create_request(
         &"OPENID4VCI_FINAL1".into(),
@@ -2891,6 +2900,89 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
     )
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn test_validate_create_request_required_object_needs_one_child() {
+    let optional = |key| ClaimSchema {
+        required: false,
+        ..generate_claim_schema(key, "STRING", false)
+    };
+    let country = optional("place_of_birth/country");
+    let country_claim_id = country.id;
+    let schema = generate_credential_schema_with_claim_schemas(vec![
+        generate_claim_schema("place_of_birth", "OBJECT", false),
+        country,
+        optional("place_of_birth/locality"),
+    ]);
+
+    let result = validate_create_request(
+        &"OPENID4VCI_FINAL1".into(),
+        &mut [],
+        &schema,
+        &generic_formatter_capabilities(),
+        &generic_config().core,
+    )
+    .await;
+    assert_matches!(
+        result,
+        Err(CredentialServiceError::MissingRequiredClaims(missing)) if missing == ["place_of_birth"]
+    );
+
+    validate_create_request(
+        &"OPENID4VCI_FINAL1".into(),
+        &mut [CredentialRequestClaimDTO {
+            claim_schema_id: country_claim_id,
+            value: "CH".to_string(),
+            path: "place_of_birth/country".to_string(),
+        }],
+        &schema,
+        &generic_formatter_capabilities(),
+        &generic_config().core,
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_validate_create_request_required_child_in_every_array_element() {
+    let degrees = ClaimSchema {
+        required: false,
+        ..generate_claim_schema("degrees", "OBJECT", true)
+    };
+    let degree_type = generate_claim_schema("degrees/type", "STRING", false);
+    let degree_name = ClaimSchema {
+        required: false,
+        ..generate_claim_schema("degrees/name", "STRING", false)
+    };
+    let type_claim_id = degree_type.id;
+    let name_claim_id = degree_name.id;
+    let schema =
+        generate_credential_schema_with_claim_schemas(vec![degrees, degree_type, degree_name]);
+
+    let result = validate_create_request(
+        &"OPENID4VCI_FINAL1".into(),
+        &mut [
+            CredentialRequestClaimDTO {
+                claim_schema_id: type_claim_id,
+                value: "BSc".to_string(),
+                path: "degrees/0/type".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: name_claim_id,
+                value: "Physics".to_string(),
+                path: "degrees/1/name".to_string(),
+            },
+        ],
+        &schema,
+        &generic_formatter_capabilities(),
+        &generic_config().core,
+    )
+    .await;
+    assert_matches!(
+        result,
+        Err(CredentialServiceError::MissingRequiredClaims(missing)) if missing == ["degrees/1/type"]
+    );
 }
 
 #[tokio::test]
@@ -3769,6 +3861,8 @@ async fn test_create_credential_number_named_claims() {
         generate_claim(&schema_1, "1first", "root/0/1"),
         generate_claim(&schema_1, "1second", "root/1/1"),
         generate_claim(&schema_2array, "2first", "root/0/2-array/0"),
+        generate_claim(&schema_00, "zero", "root/1/00"),
+        generate_claim(&schema_2array, "2second", "root/1/2-array/0"),
     ];
     test_create_credential_array(claim_schemas.to_owned(), claims)
         .await

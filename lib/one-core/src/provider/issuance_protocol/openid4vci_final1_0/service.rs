@@ -27,8 +27,7 @@ use super::validator::{
     throw_if_interaction_pre_authorized_code_used, throw_if_token_request_invalid,
     throw_if_tx_code_invalid, validate_refresh_token,
 };
-use crate::config::ConfigValidationError;
-use crate::config::core_config::{DatatypeConfig, DatatypeType, FormatType};
+use crate::config::core_config::FormatType;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -142,13 +141,12 @@ pub(crate) async fn credential_configuration_supported(
     format_type: &FormatType,
     format: &CredentialSchemaFormat,
     credential_schema: &CredentialSchema,
-    datatype_config: &DatatypeConfig,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: IndexMap<String, ProofTypeSupported>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<CredentialConfiguration, OpenID4VCIError> {
     let credential_metadata_claims =
-        create_claims_dtos_from_claims(credential_schema, format, datatype_config).await?;
+        create_claims_dtos_from_claims(credential_schema, format).await?;
     let display_dtos = create_display_dtos_from_schema(credential_schema, format).await?;
 
     let credential_metadata = CredentialMetadata {
@@ -211,7 +209,6 @@ pub(crate) async fn credential_configuration_supported(
 async fn create_claims_dtos_from_claims(
     credential_schema: &CredentialSchema,
     format: &CredentialSchemaFormat,
-    datatype_config: &DatatypeConfig,
 ) -> Result<Vec<ClaimMetadata>, OpenID4VCIError> {
     let claim_schemas = credential_schema
         .claim_schemas
@@ -225,8 +222,7 @@ async fn create_claims_dtos_from_claims(
         .await
         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
 
-    let mandatory_by_claim_id = calculate_mandatory_claims(&claim_schemas, datatype_config)
-        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+    let mandatory_by_claim_id = calculate_mandatory_claims(&claim_schemas);
     let claim_mappings_by_claim_id: HashMap<_, _> = claim_mappings
         .iter()
         .map(|mapping| (mapping.claim_schema_id, mapping))
@@ -347,8 +343,7 @@ fn claim_metadata_paths(
 
 pub(super) fn calculate_mandatory_claims(
     claim_schemas: &[ClaimSchema],
-    datatype_config: &DatatypeConfig,
-) -> Result<HashMap<ClaimSchemaId, bool>, ConfigValidationError> {
+) -> HashMap<ClaimSchemaId, bool> {
     let claim_schemas_by_key: HashMap<_, _> = claim_schemas
         .iter()
         .filter(|claim| !claim.metadata)
@@ -371,47 +366,33 @@ pub(super) fn calculate_mandatory_claims(
 
     let mut mandatory_by_claim_id = HashMap::with_capacity(claim_schemas_by_key.len());
     for root_claim in root_claims {
-        is_claim_always_present(
+        mark_always_present_claims(
             root_claim,
             true,
             &children_by_parent,
-            datatype_config,
             &mut mandatory_by_claim_id,
-        )?;
+        );
     }
 
-    Ok(mandatory_by_claim_id)
+    mandatory_by_claim_id
 }
 
-fn is_claim_always_present(
+fn mark_always_present_claims(
     claim_schema: &ClaimSchema,
     ancestors_required: bool,
     children_by_parent: &HashMap<&str, Vec<&ClaimSchema>>,
-    datatype_config: &DatatypeConfig,
     mandatory_by_claim_id: &mut HashMap<ClaimSchemaId, bool>,
-) -> Result<bool, ConfigValidationError> {
-    let claim_and_ancestors_required = ancestors_required && claim_schema.required;
-    let mut has_mandatory_non_object_descendant = false;
-
-    if let Some(children) = children_by_parent.get(claim_schema.key.as_str()) {
-        for child in children {
-            has_mandatory_non_object_descendant |= is_claim_always_present(
-                child,
-                claim_and_ancestors_required,
-                children_by_parent,
-                datatype_config,
-                mandatory_by_claim_id,
-            )?;
-        }
-    }
-
-    let is_object =
-        datatype_config.get_fields(&claim_schema.data_type)?.r#type == DatatypeType::Object;
-    let mandatory =
-        claim_and_ancestors_required && (!is_object || has_mandatory_non_object_descendant);
+) {
+    let mandatory = ancestors_required && claim_schema.required;
     mandatory_by_claim_id.insert(claim_schema.id, mandatory);
 
-    Ok(mandatory)
+    for child in children_by_parent
+        .get(claim_schema.key.as_str())
+        .into_iter()
+        .flatten()
+    {
+        mark_always_present_claims(child, mandatory, children_by_parent, mandatory_by_claim_id);
+    }
 }
 
 async fn create_display_dto_from_schema(

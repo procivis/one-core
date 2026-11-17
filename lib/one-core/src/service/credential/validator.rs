@@ -8,7 +8,7 @@ use url::Url;
 use super::dto::CredentialRequestClaimDTO;
 use super::error::CredentialServiceError;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType};
+use crate::config::core_config::{CoreConfig, IdentifierType};
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
 use crate::config::validator::protocol::validate_protocol_type;
 use crate::error::ContextWithErrorCode;
@@ -20,6 +20,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::model::CommonParams;
+use crate::validator::required_claims::missing_required_claim_paths;
 
 pub(crate) fn throw_if_credential_state_eq(
     credential: &Credential,
@@ -83,31 +84,16 @@ pub(crate) async fn validate_create_request(
 
     validate_continuity(&paths, claim_schemas)?;
 
-    let claim_schemas =
-        adapt_required_state_based_on_claim_presence(claim_schemas, claims, config)?;
-
-    // check all required claims are present
-    claim_schemas
-        .iter()
-        .map(|claim_schema| {
-            let datatype = &claim_schema.data_type;
-            let config = config
-                .datatype
-                .get_fields(datatype)
-                .error_while("getting datatype config")?;
-
-            if claim_schema.required
-                && !claim_schema.metadata // Clients are not expected to submit _metadata_ claims.
-                && config.r#type != DatatypeType::Object
-            {
-                claims
-                    .iter()
-                    .find(|claim| claim.claim_schema_id == claim_schema.id)
-                    .ok_or(CredentialServiceError::MissingClaimSchema(claim_schema.id))?;
-            }
-            Ok(())
-        })
-        .collect::<Result<Vec<_>, CredentialServiceError>>()?;
+    // Clients are not expected to submit _metadata_ claims.
+    let missing = missing_required_claim_paths(
+        claim_schemas,
+        |claim_schema| claim_schema.required && !claim_schema.metadata,
+        paths.iter().copied(),
+    )
+    .error_while("checking required claims")?;
+    if !missing.is_empty() {
+        return Err(CredentialServiceError::MissingRequiredClaims(missing));
+    }
 
     Ok(())
 }
@@ -469,85 +455,26 @@ async fn try_strip_namespace_from_path(
     claim_schema: &ClaimSchema,
     credential_schema: &CredentialSchema,
 ) -> Result<(), CredentialServiceError> {
-    let formats = credential_schema.formats.as_ref().await?;
-    let format = formats.first().ok_or(CredentialServiceError::MappingError(
-        "Missing format".to_string(),
-    ))?;
-    let mappings = format.claim_mappings.as_ref().await?;
-    let mapping = mappings
-        .iter()
-        .find(|m| m.claim_schema_id == claim_schema.id)
-        .ok_or(CredentialServiceError::MappingError(
-            "Missing claim mapping".to_string(),
-        ))?;
-
-    let Some(namespace) = &mapping.namespace else {
-        return Err(CredentialServiceError::InvalidClaimPath(format!(
-            "path `{}` has too many segments for claim schema `{}`",
-            claim.path, claim_schema.key
-        )));
-    };
-
-    let namespace_prefix = format!("{namespace}{NESTED_CLAIM_MARKER}");
-    if claim.path.starts_with(&namespace_prefix) {
-        claim.path = claim.path[namespace_prefix.len()..].to_string();
-        Ok(())
-    } else {
-        Err(CredentialServiceError::InvalidClaimPath(format!(
-            "path `{}` does not start with namespace `{namespace}` of claim schema `{}`",
-            claim.path, claim_schema.key
-        )))
-    }
-}
-
-fn adapt_required_state_based_on_claim_presence(
-    claim_schemas: &[ClaimSchema],
-    claims: &[CredentialRequestClaimDTO],
-    config: &CoreConfig,
-) -> Result<Vec<ClaimSchema>, CredentialServiceError> {
-    let claims_with_names = claims
-        .iter()
-        .map(|claim| {
-            let matching_claim_schema = claim_schemas
-                .iter()
-                .find(|claim_schema| claim_schema.id == claim.claim_schema_id)
-                .ok_or(CredentialServiceError::MissingClaimSchema(
-                    claim.claim_schema_id,
-                ))?;
-            Ok((claim, matching_claim_schema.key.to_owned()))
-        })
-        .collect::<Result<Vec<(&CredentialRequestClaimDTO, String)>, CredentialServiceError>>()?;
-
-    let mut result = claim_schemas.to_vec();
-    claim_schemas.iter().try_for_each(|claim_schema| {
-        let prefix = format!("{}/", claim_schema.key);
-
-        let is_parent_schema_of_provided_claim = claims_with_names
+    for format in credential_schema.formats.as_ref().await?.iter() {
+        let mappings = format.claim_mappings.as_ref().await?;
+        let namespace = mappings
             .iter()
-            .any(|(_, claim_name)| claim_name.starts_with(&prefix));
-
-        let is_object = config
-            .datatype
-            .get_fields(&claim_schema.data_type)
-            .error_while("getting datatype config")?
-            .r#type
-            == DatatypeType::Object;
-
-        let should_make_all_child_claims_non_required =
-            !is_parent_schema_of_provided_claim && is_object && !claim_schema.required;
-
-        if should_make_all_child_claims_non_required {
-            result.iter_mut().for_each(|result_schema| {
-                if result_schema.key.starts_with(&prefix) {
-                    result_schema.required = false;
-                }
-            });
+            .find(|m| m.claim_schema_id == claim_schema.id)
+            .and_then(|m| m.namespace.as_deref());
+        if let Some(namespace) = namespace
+            && let Some(path) = claim
+                .path
+                .strip_prefix(namespace)
+                .and_then(|path| path.strip_prefix(NESTED_CLAIM_MARKER))
+        {
+            claim.path = path.to_string();
+            return Ok(());
         }
-
-        Ok::<(), CredentialServiceError>(())
-    })?;
-
-    Ok(result)
+    }
+    Err(CredentialServiceError::InvalidClaimPath(format!(
+        "path `{}` has too many segments for claim schema `{}`",
+        claim.path, claim_schema.key
+    )))
 }
 
 fn validate_format_and_exchange_protocol_compatibility(

@@ -266,7 +266,7 @@ async fn missing_ancestor_claim_schema_is_an_error() {
     assert!(
         error
             .to_string()
-            .contains("claim `address/city` is missing ancestor `address`")
+            .contains("Missing parent claim schema `address`")
     );
 
     let address = claim_schema("address", "OBJECT");
@@ -292,7 +292,7 @@ async fn missing_ancestor_claim_schema_is_an_error() {
     assert!(
         error
             .to_string()
-            .contains("claim `address/location/city` is missing ancestor `address/location`")
+            .contains("Missing parent claim schema `address/location`")
     );
 }
 

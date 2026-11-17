@@ -20,6 +20,7 @@ pub(crate) mod ecosystem;
 pub(crate) mod key_security;
 pub(crate) mod permissions;
 pub mod proof_schema;
+pub(crate) mod required_claims;
 pub(crate) mod schema;
 pub(crate) mod x509;
 

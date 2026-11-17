@@ -22,6 +22,7 @@ use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::provider::issuance_protocol::IssuanceProtocolError;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
+use crate::validator::required_claims::missing_required_claim_paths;
 
 async fn find_credential_schemas(
     repository: &dyn CredentialSchemaRepository,
@@ -252,114 +253,17 @@ pub(super) async fn missing_required_claims(
         .iter()
         .map(|mapping| mapping.claim_schema_id)
         .collect::<HashSet<_>>();
-    let mut issued_paths_by_schema_id: HashMap<ClaimSchemaId, HashSet<&str>> = HashMap::new();
-    for claim in claims.iter() {
-        issued_paths_by_schema_id
-            .entry(claim.schema.id())
-            .or_default()
-            .insert(&claim.path);
-    }
-
     let claim_schemas = schema.claim_schemas.as_ref().await?;
-    let claim_schemas_by_key = claim_schemas
-        .iter()
-        .map(|claim_schema| (claim_schema.key.as_str(), claim_schema))
-        .collect::<HashMap<_, _>>();
-    let mut missing = vec![];
-    for claim_schema in claim_schemas.iter() {
-        if (!claim_schema.required && !mandatory_claim_ids.contains(&claim_schema.id))
-            || claim_schema.metadata
-            || !format_schema_ids.contains(&claim_schema.id)
-        {
-            continue;
-        }
-        let issued_paths = issued_paths_by_schema_id.get(&claim_schema.id);
-        for expected_path in expected_required_claim_paths(
-            claim_schema,
-            &claim_schemas_by_key,
-            &issued_paths_by_schema_id,
-        )? {
-            if !issued_paths.is_some_and(|paths| paths.contains(expected_path.as_str())) {
-                missing.push(expected_path);
-            }
-        }
-    }
-    missing.sort();
-    missing.dedup();
-    Ok(missing)
-}
-
-/// Return the concrete claim paths required under present parents. A root schema yields its own
-/// key. A required child of an absent parent yields no paths; a missing required parent is checked
-/// separately. An array parent expands only the element paths already present in issued claims.
-/// A missing ancestor schema definition is an error.
-fn expected_required_claim_paths(
-    claim_schema: &ClaimSchema,
-    claim_schemas_by_key: &HashMap<&str, &ClaimSchema>,
-    issued_paths_by_schema_id: &HashMap<ClaimSchemaId, HashSet<&str>>,
-) -> Result<Vec<String>, IssuanceProtocolError> {
-    let segments = claim_schema
-        .key
-        .split(NESTED_CLAIM_MARKER)
-        .collect::<Vec<_>>();
-    let Some((leaf, ancestors)) = segments.split_last() else {
-        return Ok(vec![]);
-    };
-    let mut ancestor_schema_key = String::new();
-    let mut concrete_parent_paths = vec![String::new()];
-    for segment in ancestors {
-        if !ancestor_schema_key.is_empty() {
-            ancestor_schema_key.push(NESTED_CLAIM_MARKER);
-        }
-        ancestor_schema_key.push_str(segment);
-        let parent_schema = claim_schemas_by_key
-            .get(ancestor_schema_key.as_str())
-            .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!(
-                    "Malformed credential schema: claim `{}` is missing ancestor `{}`",
-                    claim_schema.key, ancestor_schema_key
-                ))
-            })?;
-        let Some(parent_claim_paths) = issued_paths_by_schema_id.get(&parent_schema.id) else {
-            concrete_parent_paths.clear();
-            continue;
-        };
-        let mut next_parent_paths = vec![];
-        for parent_path in concrete_parent_paths {
-            let property_path = if parent_path.is_empty() {
-                (*segment).to_string()
-            } else {
-                format!("{parent_path}{NESTED_CLAIM_MARKER}{segment}")
-            };
-            if parent_schema.array {
-                for array_element_path in parent_claim_paths {
-                    // An issued array element is a direct indexed child, such as `degrees/0`.
-                    let Some(index) = array_element_path
-                        .strip_prefix(&property_path)
-                        .and_then(|suffix| suffix.strip_prefix(NESTED_CLAIM_MARKER))
-                    else {
-                        continue;
-                    };
-                    if index.parse::<usize>().is_ok() {
-                        next_parent_paths.push((*array_element_path).to_string());
-                    }
-                }
-            } else if parent_claim_paths.contains(property_path.as_str()) {
-                next_parent_paths.push(property_path);
-            }
-        }
-        concrete_parent_paths = next_parent_paths;
-    }
-    Ok(concrete_parent_paths
-        .into_iter()
-        .map(|parent_path| {
-            if parent_path.is_empty() {
-                (*leaf).to_string()
-            } else {
-                format!("{parent_path}{NESTED_CLAIM_MARKER}{leaf}")
-            }
-        })
-        .collect())
+    Ok(missing_required_claim_paths(
+        &claim_schemas,
+        |claim_schema| {
+            (claim_schema.required || mandatory_claim_ids.contains(&claim_schema.id))
+                && !claim_schema.metadata
+                && format_schema_ids.contains(&claim_schema.id)
+        },
+        claims.iter().map(|claim| claim.path.as_str()),
+    )
+    .error_while("checking required claims")?)
 }
 
 async fn prepare_display_name_matched_format(
