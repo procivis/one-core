@@ -300,7 +300,12 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         if let Some(credential) = updated_credential {
             let holder = credential.holder()?;
-            self.process_mso_refresh(holder, response).await?;
+            self.process_mso_refresh(holder.clone(), response).await?;
+
+            let schema = holder.common.schema.as_ref().await?.to_owned();
+            let format = holder.data.format.as_ref().await?.to_owned();
+            self.refresh_schema_display(schema, &format, configuration)
+                .await;
 
             Ok(vec![credential])
         } else {
@@ -458,7 +463,8 @@ impl OpenID4VCIFinal1_0 {
             .get_blob_storage(BlobStorageType::Db)?;
         // Persist one configuration atomically, including blobs. Other configurations
         // can still succeed independently if this refresh fails.
-        self.tx_manager
+        let refreshed = self
+            .tx_manager
             .tx(async {
                 let mut result = Vec::with_capacity(batch_credentials.len());
                 for batch_credential in batch_credentials {
@@ -490,7 +496,65 @@ impl OpenID4VCIFinal1_0 {
                 Ok::<_, IssuanceProtocolError>(result)
             })
             .await
-            .error_while("persisting refreshed credentials")?
+            .error_while("persisting refreshed credentials")??;
+
+        self.refresh_schema_display(schema, &config_schema_format, configuration)
+            .await;
+        Ok(refreshed)
+    }
+
+    /// Updates the schema translations and layout from the current issuer metadata of `configuration`,
+    /// if it could be fetched
+    async fn refresh_schema_display(
+        &self,
+        mut schema: CredentialSchema,
+        format: &CredentialSchemaFormat,
+        configuration: &HolderCredentialConfiguration,
+    ) {
+        let Some(metadata) = configuration.metadata.credential_metadata.as_ref() else {
+            return;
+        };
+        let result = async {
+            let issuer_claim_metadata = map_issuer_claim_metadata(
+                &schema,
+                metadata,
+                format,
+                self.formatter_provider.as_ref(),
+            )
+            .await?;
+            let translations = apply_issuer_metadata_to_schema(
+                &mut schema,
+                Some(metadata),
+                &self.config.global_settings.default_language,
+                &issuer_claim_metadata,
+            )
+            .await?;
+            if translations.is_empty() {
+                return Ok(());
+            }
+            self.credential_schema_repository
+                .update_credential_schema(
+                    &schema.id,
+                    UpdateCredentialSchemaRequest {
+                        translations: Some(translations),
+                        layout_properties: schema
+                            .layout_properties
+                            .is_some()
+                            .then_some(schema.layout_properties.clone()),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating credential schema translations")?;
+            Ok::<_, IssuanceProtocolError>(())
+        }
+        .await;
+        if let Err(error) = result {
+            tracing::warn!(
+                "Credential schema {} translations not refreshed: {error}",
+                schema.id
+            );
+        }
     }
 
     pub(super) async fn record_batch_refresh_history(

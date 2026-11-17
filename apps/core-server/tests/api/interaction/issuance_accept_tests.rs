@@ -165,7 +165,7 @@ async fn test_issuance_accept_openid4vc() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -359,7 +359,7 @@ pub(super) async fn accept_multi_configuration_offer(
         .server_mock
         .issuer_metadata(
             first_schema.id,
-            dummy_issuer_metadata(&context, &first_schema, &params),
+            Some(dummy_issuer_metadata(&context, &first_schema, &params)),
         )
         .await;
     let interaction_data = dummy_holder_issuance_interaction_data(&context, &first_schema, params);
@@ -1037,7 +1037,7 @@ async fn test_issuance_accept_extracts_expires_at_from_issued_credential() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -1133,7 +1133,7 @@ async fn batch_issuance_interaction(
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(context, credential_schema, &params),
+            Some(dummy_issuer_metadata(context, credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -1727,7 +1727,7 @@ async fn test_issuance_accept_with_new_nested_optional_claims() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -1939,7 +1939,7 @@ async fn test_issuance_accept_schema_name_already_exists(#[values(false, true)] 
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2097,7 +2097,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2240,7 +2240,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2340,7 +2340,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2460,7 +2460,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2585,7 +2585,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2653,7 +2653,7 @@ async fn test_fail_issuance_accept_openid4vc_no_suitable_key_storage() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2757,7 +2757,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2864,7 +2864,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -2981,7 +2981,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -3194,7 +3194,7 @@ async fn accept_with_wallet_instance_attestation(
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -3417,7 +3417,7 @@ async fn test_issuance_accept_persists_issuer_display_translations_and_logo() {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =
@@ -3606,7 +3606,7 @@ async fn test_issuance_accept_refreshes_display_for_existing_issuer_identifier()
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =

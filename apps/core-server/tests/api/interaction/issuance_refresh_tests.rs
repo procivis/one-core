@@ -1,4 +1,5 @@
 use std::assert_matches;
+use std::collections::HashSet;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{Credential, CredentialFilterValue, CredentialStateEnum};
@@ -6,12 +7,13 @@ use one_core::model::did::DidType;
 use one_core::model::history::HistoryAction;
 use one_core::model::interaction::InteractionType;
 use one_core::model::list_filter::ListFilterValue;
+use one_core::model::localized_text::LocalizedTextField;
 use one_core::proto::jwt::Jwt;
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
-use shared_types::{ClaimSchemaId, CredentialId, DidValue};
+use shared_types::{ClaimSchemaId, CredentialId, DidValue, EntityId};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use uuid::Uuid;
@@ -161,6 +163,242 @@ async fn test_issuance_refresh_with_fixed_identifier_with_expiry() {
     .await;
 }
 
+#[tokio::test]
+async fn test_issuance_refresh_updates_schema_translations() {
+    check_issuance_refresh_translations(true).await;
+}
+
+#[tokio::test]
+async fn test_issuance_refresh_without_issuer_metadata_keeps_schema_translations() {
+    check_issuance_refresh_translations(false).await;
+}
+
+/// Stored translations of an entity, as `(field, lang, value)`
+async fn stored_translations(
+    context: &TestContext,
+    entity_id: impl Into<EntityId>,
+) -> HashSet<(LocalizedTextField, String, String)> {
+    context
+        .db
+        .localized_text
+        .get(entity_id)
+        .await
+        .into_iter()
+        .map(|text| (text.field, text.lang, text.value))
+        .collect()
+}
+
+async fn check_issuance_refresh_translations(metadata_available: bool) {
+    // GIVEN an accepted batch of a schema whose issuer display metadata changed since
+    let (context, organisation, ..) = TestContext::new_with_did(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did: DidValue = format!("did:key:{multibase}").parse().unwrap();
+    context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: ClaimSchemaId::new(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
+                    required: true,
+                    translations: Default::default(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let params = InteractionDataParams {
+        batch_size: Some(2),
+        cryptographic_binding_methods_supported: Some(vec!["did:key".to_string()]),
+        ..Default::default()
+    };
+    let issuer_metadata = |credential_metadata: serde_json::Value| {
+        let mut metadata = dummy_issuer_metadata(&context, &credential_schema, &params);
+        for configuration in metadata["credential_configurations_supported"]
+            .as_object_mut()
+            .unwrap()
+            .values_mut()
+        {
+            configuration["credential_metadata"] = credential_metadata.clone();
+        }
+        metadata
+    };
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            Some(issuer_metadata(json!({
+                "display": [{ "name": "test", "locale": "en" }],
+                "claims": [{
+                    "path": ["string"],
+                    "display": [{ "name": "String", "locale": "en" }],
+                }],
+            }))),
+        )
+        .await;
+    let updated_metadata = issuer_metadata(json!({
+        "display": [
+            { "name": "Renamed", "locale": "en", "description": "Updated description" },
+            { "name": "Umbenannt", "locale": "de" },
+        ],
+        "claims": [{
+            "path": ["string"],
+            "display": [
+                { "name": "Text", "locale": "en" },
+                { "name": "Zeichenkette", "locale": "de" },
+            ],
+        }],
+    }));
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &organisation,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                data: Some(dummy_holder_issuance_interaction_data(
+                    &context,
+                    &credential_schema,
+                    params,
+                )),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .token_endpoint(credential_schema.id, "123")
+        .await;
+    context
+        .server_mock
+        .ssi_credential_endpoint_dynamic(
+            credential_schema.id,
+            "123",
+            issuer_key,
+            issuer_did,
+            None,
+            2,
+        )
+        .await;
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 2)
+        .await;
+
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, None, None, None, None)
+        .await;
+    assert_eq!(resp.status(), 200);
+    // the issued credential is stored with the schema imported on accept
+    let parent = context
+        .db
+        .credentials
+        .get(&resp.json_value().await["id"].parse())
+        .await;
+    let (schema_id, claim_schema_id) = {
+        let schema = parent.common().schema.as_ref().await.unwrap();
+        let claim_schema_id = schema
+            .claim_schemas
+            .as_ref()
+            .await
+            .unwrap()
+            .iter()
+            .find(|claim_schema| claim_schema.key == "string")
+            .unwrap()
+            .id;
+        (schema.id, claim_schema_id)
+    };
+    let accepted_schema_translations = stored_translations(&context, schema_id).await;
+    let accepted_claim_translations = stored_translations(&context, claim_schema_id).await;
+    assert_eq!(
+        accepted_schema_translations,
+        HashSet::from([(LocalizedTextField::Name, "en".into(), "test".into())])
+    );
+    assert_eq!(
+        accepted_claim_translations,
+        HashSet::from([(LocalizedTextField::Name, "en".into(), "String".into())])
+    );
+
+    context
+        .server_mock
+        .issuer_metadata(
+            credential_schema.id,
+            metadata_available.then_some(updated_metadata),
+        )
+        .await;
+    let resp = context
+        .api
+        .cache
+        .delete(Some(vec!["OPENID_METADATA_HOLDER"]))
+        .await;
+    assert_eq!(resp.status(), 204);
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_refresh(interaction.id)
+        .await;
+
+    // THEN the refresh succeeds and takes the translations from the current metadata, if any
+    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.json_value().await["ids"].as_array().unwrap().len(), 2);
+    let schema_translations = stored_translations(&context, schema_id).await;
+    let claim_translations = stored_translations(&context, claim_schema_id).await;
+    if metadata_available {
+        assert_eq!(
+            schema_translations,
+            HashSet::from([
+                (
+                    LocalizedTextField::Description,
+                    "en".into(),
+                    "Updated description".into()
+                ),
+                (LocalizedTextField::Name, "de".into(), "Umbenannt".into()),
+                (LocalizedTextField::Name, "en".into(), "Renamed".into()),
+            ])
+        );
+        assert_eq!(
+            claim_translations,
+            HashSet::from([
+                (LocalizedTextField::Name, "de".into(), "Zeichenkette".into()),
+                (LocalizedTextField::Name, "en".into(), "Text".into()),
+            ])
+        );
+    } else {
+        assert_eq!(schema_translations, accepted_schema_translations);
+        assert_eq!(claim_translations, accepted_claim_translations);
+    }
+}
+
 async fn check_issuance_refresh(offer: RefreshOffer) {
     let batch_size = if offer.fixed_identifier_expiry.is_some() {
         1
@@ -234,7 +472,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         .server_mock
         .issuer_metadata(
             credential_schema.id,
-            dummy_issuer_metadata(&context, &credential_schema, &params),
+            Some(dummy_issuer_metadata(&context, &credential_schema, &params)),
         )
         .await;
     let interaction_data =

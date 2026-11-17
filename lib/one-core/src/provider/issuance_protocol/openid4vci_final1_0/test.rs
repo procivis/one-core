@@ -2502,6 +2502,7 @@ async fn test_holder_refresh_credential_preserves_error_when_deleting_unused_bin
         .expect_hard_delete()
         .once()
         .returning(|_| Err(DataLayerError::Db(anyhow::anyhow!("hard delete failed"))));
+    inputs.metadata_cache = issuer_metadata_cache(&interaction);
     let protocol = setup_protocol(inputs);
     data.state.tokens.access_token = Some(
         one_crypto::encryption::encrypt_string(&"access-token".into(), &protocol.params.encryption)

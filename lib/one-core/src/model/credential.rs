@@ -151,7 +151,7 @@ pub struct IssuerIdentity {
 }
 
 /// A credential's common fields and one of its variant-specific data groups.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CredentialView<'a, T> {
     pub common: &'a CredentialCommon,
     pub data: &'a T,

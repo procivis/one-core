@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 use std::fmt::Display;
+use std::sync::Mutex;
 
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::model::GeneratedKey;
@@ -14,12 +16,17 @@ use crate::fixtures::presentation::w3c_jwt_vc;
 
 pub struct MockServer {
     mock: wiremock::MockServer,
+    /// metadata mounted by [`Self::issuer_metadata`], by issuer
+    issuer_metadata_mocks: Mutex<HashMap<String, MockGuard>>,
 }
 
 impl MockServer {
     pub async fn new() -> Self {
         let mock = wiremock::MockServer::start().await;
-        Self { mock }
+        Self {
+            mock,
+            issuer_metadata_mocks: Default::default(),
+        }
     }
 
     pub fn uri(&self) -> String {
@@ -59,16 +66,31 @@ impl MockServer {
             .await;
     }
 
-    /// Serves the unsigned credential issuer metadata of the issuer of `schema_id`
-    pub async fn issuer_metadata(&self, schema_id: impl Display, metadata: impl Serialize) {
-        Mock::given(method(Method::GET))
+    /// Serves the unsigned credential issuer metadata of the issuer of `schema_id`, or fails the
+    /// requests if `None`. Replaces the metadata served for this issuer before.
+    pub async fn issuer_metadata(
+        &self,
+        schema_id: impl Display,
+        metadata: Option<serde_json::Value>,
+    ) {
+        let response = match metadata {
+            Some(metadata) => ResponseTemplate::new(200).set_body_json(metadata),
+            None => ResponseTemplate::new(500),
+        };
+        let guard = Mock::given(method(Method::GET))
             .and(path(format!(
                 "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{schema_id}"
             )))
             .and(header("Accept", "application/json"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(metadata))
-            .mount(&self.mock)
+            .respond_with(response)
+            .mount_as_scoped(&self.mock)
             .await;
+
+        // dropping the guard of the previous metadata unmounts it
+        self.issuer_metadata_mocks
+            .lock()
+            .unwrap()
+            .insert(schema_id.to_string(), guard);
     }
 
     pub async fn token_endpoint(&self, schema_id: impl Display, test_token: impl Serialize) {
