@@ -56,6 +56,7 @@ pub enum Permission {
     ProofSchemaCreate,
     ProofSchemaDelete,
     ProofSchemaDetail,
+    ProofSchemaEdit,
     ProofSchemaList,
     ProofSchemaShare,
     ProofShare,

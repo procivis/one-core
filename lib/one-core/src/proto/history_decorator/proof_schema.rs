@@ -4,7 +4,9 @@ use shared_types::{HistoryId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::proof_schema::{GetProofSchemaList, ProofSchema, ProofSchemaListQuery};
+use crate::model::proof_schema::{
+    GetProofSchemaList, ProofSchema, ProofSchemaListQuery, UpdateProofSchema,
+};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::HistoryRepository;
@@ -59,15 +61,33 @@ impl ProofSchemaRepository for ProofSchemaHistoryDecorator {
         deleted_at: OffsetDateTime,
     ) -> Result<(), DataLayerError> {
         let proof_schema = self.inner.get_proof_schema(id).await?;
-        let organisation_id = proof_schema.organisation.id();
 
         self.inner.delete_proof_schema(id, deleted_at).await?;
 
         self.write_history(
             *id,
             proof_schema.name,
-            organisation_id,
+            proof_schema.organisation.id(),
             HistoryAction::Deleted,
+        )
+        .await;
+
+        Ok(())
+    }
+
+    async fn update_proof_schema(
+        &self,
+        id: &ProofSchemaId,
+        request: UpdateProofSchema,
+    ) -> Result<(), DataLayerError> {
+        let proof_schema = self.inner.get_proof_schema(id).await?;
+        self.inner.update_proof_schema(id, request).await?;
+
+        self.write_history(
+            *id,
+            proof_schema.name,
+            proof_schema.organisation.id(),
+            HistoryAction::Updated,
         )
         .await;
 

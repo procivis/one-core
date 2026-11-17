@@ -10,7 +10,7 @@ use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofSchema, ProofSchemaListQuery,
-    SortableProofSchemaColumn,
+    SortableProofSchemaColumn, UpdateProofSchema,
 };
 use one_core::repository::claim_schema_repository::{
     self, ClaimSchemaRepository, MockClaimSchemaRepository,
@@ -24,14 +24,16 @@ use one_core::repository::organisation_repository::{
 };
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
-use sea_orm::{ActiveModelTrait, Set, Unchanged};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+};
 use shared_types::{
     ClaimSchemaId, CredentialSchemaFormatId, CredentialSchemaId, OrganisationId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 
 use super::ProofSchemaProvider;
-use crate::entity::proof_schema;
+use crate::entity::{proof_input_schema, proof_schema};
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -436,6 +438,210 @@ async fn test_delete_proof_schema_missing() {
 
     let result = repository
         .delete_proof_schema(&ProofSchemaId::new(), get_dummy_date())
+        .await;
+    assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
+}
+
+struct TestSetupWithInputSchemas {
+    pub repository: Box<dyn ProofSchemaRepository>,
+    pub proof_schema_id: ProofSchemaId,
+    pub credential_schema_ids: [CredentialSchemaId; 2],
+    pub organisation_id: OrganisationId,
+    pub db: sea_orm::DatabaseConnection,
+}
+
+/// Proof schema with two input schemas, each referencing a credential schema supporting only JWT
+async fn setup_with_input_schemas() -> TestSetupWithInputSchemas {
+    let TestSetup {
+        repository,
+        organisation_id,
+        db,
+    } = setup_empty(
+        get_claim_schema_repository_mock(),
+        get_organisation_repository_mock(),
+        get_credential_schema_repository_mock(),
+    )
+    .await;
+
+    let mut credential_schema_ids = [CredentialSchemaId::new(); 2];
+    for (i, credential_schema_id) in credential_schema_ids.iter_mut().enumerate() {
+        *credential_schema_id = insert_credential_schema_to_database(
+            &db,
+            None,
+            organisation_id,
+            &format!("credential schema {i}"),
+            false,
+            Some(KeyStorageSecurity::Basic.into()),
+        )
+        .await
+        .unwrap();
+
+        insert_credential_schema_with_revocation_to_database(&db, *credential_schema_id, "JWT")
+            .await
+            .unwrap();
+    }
+
+    let no_claims = vec![];
+    let proof_inputs = credential_schema_ids.map(|credential_schema_id| ProofInput {
+        credential_schema_id,
+        claims: &no_claims,
+    });
+    let proof_schema_id = insert_proof_schema_with_claims_to_database(
+        &db,
+        None,
+        proof_inputs.iter().collect(),
+        organisation_id,
+        "proof schema",
+    )
+    .await
+    .unwrap();
+
+    TestSetupWithInputSchemas {
+        repository,
+        proof_schema_id,
+        credential_schema_ids,
+        organisation_id,
+        db,
+    }
+}
+
+#[tokio::test]
+async fn test_update_proof_schema_expire_duration_and_formats() {
+    let TestSetupWithInputSchemas {
+        repository,
+        proof_schema_id,
+        credential_schema_ids,
+        organisation_id,
+        db,
+    } = setup_with_input_schemas().await;
+
+    // another proof schema using the same credential schema, must not be affected by the update
+    let no_claims = vec![];
+    let other_proof_schema_id = insert_proof_schema_with_claims_to_database(
+        &db,
+        None,
+        vec![&ProofInput {
+            credential_schema_id: credential_schema_ids[0],
+            claims: &no_claims,
+        }],
+        organisation_id,
+        "other proof schema",
+    )
+    .await
+    .unwrap();
+
+    // new format made available on the first credential schema
+    crate::entity::credential_schema_format::ActiveModel {
+        id: Set(CredentialSchemaFormatId::new()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        credential_schema_id: Set(credential_schema_ids[0]),
+        format: Set("SD_JWT".into()),
+        ecosystem_schema_id: Set("SD_JWT".to_string()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let proof_schema = repository.get_proof_schema(&proof_schema_id).await.unwrap();
+    let mut input_schemas = proof_schema
+        .input_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
+    input_schemas[0].formats = vec!["JWT".into(), "SD_JWT".into()];
+
+    repository
+        .update_proof_schema(
+            &proof_schema_id,
+            UpdateProofSchema {
+                expire_duration: Some(3600),
+                input_schemas: Some(input_schemas.into()),
+            },
+        )
+        .await
+        .unwrap();
+
+    let db_schema = get_proof_schema_with_id(&db, &proof_schema_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(db_schema.expire_duration, 3600);
+    assert!(db_schema.last_modified > get_dummy_date());
+
+    let proof_schema = repository.get_proof_schema(&proof_schema_id).await.unwrap();
+    assert_eq!(proof_schema.expire_duration, 3600);
+    let input_schemas = proof_schema.input_schemas.as_ref().await.unwrap();
+    assert_eq!(
+        input_schemas[0].formats,
+        vec!["JWT".into(), "SD_JWT".into()]
+    );
+
+    // other proof schema untouched
+    let other_db_schema = get_proof_schema_with_id(&db, &other_proof_schema_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(other_db_schema.expire_duration, 0);
+    assert_eq!(other_db_schema.last_modified, get_dummy_date());
+
+    let other_db_input_schemas = proof_input_schema::Entity::find()
+        .filter(proof_input_schema::Column::ProofSchema.eq(other_proof_schema_id))
+        .order_by_asc(proof_input_schema::Column::Order)
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(other_db_input_schemas.len(), 1);
+    assert_eq!(other_db_input_schemas[0].formats, "JWT");
+    assert_eq!(other_db_input_schemas[0].last_modified, get_dummy_date());
+}
+
+#[tokio::test]
+async fn test_update_proof_schema_expire_duration_only() {
+    let TestSetupWithInputSchemas {
+        repository,
+        proof_schema_id,
+        db,
+        ..
+    } = setup_with_input_schemas().await;
+
+    repository
+        .update_proof_schema(
+            &proof_schema_id,
+            UpdateProofSchema {
+                expire_duration: Some(100),
+                input_schemas: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    let db_schema = get_proof_schema_with_id(&db, &proof_schema_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(db_schema.expire_duration, 100);
+    assert!(db_schema.last_modified > get_dummy_date());
+}
+
+#[tokio::test]
+async fn test_update_proof_schema_missing() {
+    let TestSetup { repository, .. } = setup_empty(
+        get_claim_schema_repository_mock(),
+        get_organisation_repository_mock(),
+        get_credential_schema_repository_mock(),
+    )
+    .await;
+
+    let result = repository
+        .update_proof_schema(
+            &ProofSchemaId::new(),
+            UpdateProofSchema {
+                expire_duration: Some(100),
+                input_schemas: None,
+            },
+        )
         .await;
     assert_matches!(result, Err(DataLayerError::RecordNotUpdated(_)));
 }

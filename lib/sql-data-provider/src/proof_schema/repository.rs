@@ -3,10 +3,11 @@ use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
 use one_core::model::proof_schema::{
-    GetProofSchemaList, ProofInputSchema, ProofSchema, ProofSchemaListQuery,
+    GetProofSchemaList, ProofInputSchema, ProofSchema, ProofSchemaListQuery, UpdateProofSchema,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
+use sea_orm::sea_query::Expr;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged};
 use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
@@ -168,6 +169,71 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             ))
         })
         .await
+    }
+
+    async fn update_proof_schema(
+        &self,
+        id: &ProofSchemaId,
+        request: UpdateProofSchema,
+    ) -> Result<(), DataLayerError> {
+        let now = one_core::clock::now_utc();
+        let expire_duration = match request.expire_duration {
+            Some(duration) => Set(duration as _),
+            None => Default::default(),
+        };
+        let model = proof_schema::ActiveModel {
+            id: Unchanged(*id),
+            last_modified: Set(now),
+            expire_duration,
+            ..Default::default()
+        };
+
+        let input_schema_updates = if let Some(input_schemas) = request.input_schemas {
+            let input_schemas = input_schemas.as_ref().await?;
+
+            // only format change supported
+            input_schemas
+                .iter()
+                .map(|is| {
+                    let formats = is
+                        .formats
+                        .iter()
+                        .map(|f| f.as_ref())
+                        .collect::<Vec<_>>()
+                        .join(",");
+
+                    proof_input_schema::Entity::update_many()
+                        .col_expr(proof_input_schema::Column::LastModified, Expr::value(now))
+                        .col_expr(proof_input_schema::Column::Formats, Expr::value(formats))
+                        .filter(proof_input_schema::Column::ProofSchema.eq(id))
+                        .filter(
+                            proof_input_schema::Column::CredentialSchema
+                                .eq(is.credential_schema.id()),
+                        )
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+
+        self.db
+            .tx(async move {
+                proof_schema::Entity::update(model)
+                    .exec_without_returning(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
+
+                for input_schema_update in input_schema_updates {
+                    input_schema_update
+                        .exec(&self.db)
+                        .await
+                        .map_err(to_update_data_layer_error)?;
+                }
+
+                Ok::<_, DataLayerError>(())
+            }
+            .boxed())
+            .await?
     }
 
     async fn delete_proof_schema(

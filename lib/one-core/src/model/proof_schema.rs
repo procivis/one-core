@@ -59,3 +59,10 @@ pub enum SortableProofSchemaColumn {
 
 pub type GetProofSchemaList<Count = Option<u64>> = GetListResponse<ProofSchema, Count>;
 pub type ProofSchemaListQuery = ListQuery<SortableProofSchemaColumn, ProofSchemaFilterValue>;
+
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
+pub struct UpdateProofSchema {
+    pub expire_duration: Option<u32>,
+    pub input_schemas: Option<RelatedVec<ProofInputSchema>>,
+}

@@ -276,7 +276,8 @@ fn get_management_endpoints(config: &ServerConfig) -> OpenApiRouter<AppState> {
         ))
         .routes(routes!(
             proof_schema::controller::delete_proof_schema,
-            proof_schema::controller::get_proof_schema_detail
+            proof_schema::controller::get_proof_schema_detail,
+            proof_schema::controller::update_proof_schema
         ))
         .routes(routes!(proof_schema::controller::share_proof_schema))
         .routes(routes!(proof_schema::controller::import_proof_schema))

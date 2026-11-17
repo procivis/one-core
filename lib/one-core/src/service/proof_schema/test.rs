@@ -15,7 +15,8 @@ use super::ProofSchemaService;
 use super::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO,
     ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO,
-    ProofInputSchemaRequestDTO, ProofSchemaFilterParamsDTO,
+    ProofInputSchemaRequestDTO, ProofSchemaFilterParamsDTO, UpdateProofInputSchemaRequestDTO,
+    UpdateProofSchemaRequestDTO,
 };
 use super::error::ProofSchemaServiceError;
 use crate::config::core_config::{
@@ -59,8 +60,8 @@ use crate::service::credential_schema::dto::{
     ImportCredentialSchemaV2FormatDTO, ImportCredentialSchemaV2RequestSchemaDTO,
 };
 use crate::service::test_utilities::{
-    dummy_organisation, dummy_proof_schema, generic_config, generic_formatter_capabilities,
-    get_dummy_date,
+    dummy_claim_schema, dummy_organisation, dummy_proof_schema, generic_config,
+    generic_formatter_capabilities, get_dummy_date,
 };
 
 fn credential_schema_list(schema: Option<CredentialSchema>) -> GetCredentialSchemaList {
@@ -2655,6 +2656,121 @@ async fn test_create_proof_schema_verify_nested_no_disclosure_success() {
             .await
             .is_ok()
     );
+}
+
+#[tokio::test]
+async fn test_update_proof_schema_fail_removing_format() {
+    let proof_schema = proof_schema_for_update(&["JWT", "SD_JWT_VC"], &["JWT", "SD_JWT_VC"]).await;
+    let request = update_formats_request(&proof_schema, &["JWT"]).await;
+
+    let service = setup_service(Repositories {
+        proof_schema_repository: proof_schema_repo_expecting_get(proof_schema.clone()),
+        ..Default::default()
+    });
+
+    let result = service.update_proof_schema(proof_schema.id, request).await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0508);
+}
+
+#[tokio::test]
+async fn test_update_proof_schema_fail_format_not_in_credential_schema() {
+    let proof_schema = proof_schema_for_update(&["JWT"], &["JWT"]).await;
+    let request = update_formats_request(&proof_schema, &["JWT", "SD_JWT_VC"]).await;
+
+    let service = setup_service(Repositories {
+        proof_schema_repository: proof_schema_repo_expecting_get(proof_schema.clone()),
+        formatter_provider: formatter_provider_with_features(vec![
+            Features::SupportsCombinedPresentation,
+        ]),
+        ..Default::default()
+    });
+
+    let result = service.update_proof_schema(proof_schema.id, request).await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0510);
+}
+
+#[tokio::test]
+async fn test_update_proof_schema_fail_formats_cannot_be_combined() {
+    let proof_schema = proof_schema_for_update(&["JWT", "SD_JWT_VC"], &["JWT"]).await;
+    let request = update_formats_request(&proof_schema, &["JWT", "SD_JWT_VC"]).await;
+
+    let service = setup_service(Repositories {
+        proof_schema_repository: proof_schema_repo_expecting_get(proof_schema.clone()),
+        formatter_provider: formatter_provider_with_features(vec![]),
+        ..Default::default()
+    });
+
+    let result = service.update_proof_schema(proof_schema.id, request).await;
+    assert_matches!(
+        result,
+        Err(ProofSchemaServiceError::InvalidCredentialCombination { credential_format })
+            if credential_format == "JWT"
+    );
+}
+
+/// Proof schema with a single proof input whose credential schema offers `credential_schema_formats`
+/// and which currently requests `proof_input_formats`.
+async fn proof_schema_for_update(
+    credential_schema_formats: &[&str],
+    proof_input_formats: &[&str],
+) -> ProofSchema {
+    let claim_schema = dummy_claim_schema();
+    let mut credential_schema = credential_schema_with_claims(vec![claim_schema.clone()]).await;
+    let format_template = credential_schema.single_format().await;
+    credential_schema.formats = credential_schema_formats
+        .iter()
+        .map(|format| CredentialSchemaFormat {
+            id: CredentialSchemaFormatId::new(),
+            format: (*format).into(),
+            ..format_template.clone()
+        })
+        .collect::<Vec<_>>()
+        .into();
+
+    let mut proof_schema = generic_proof_schema();
+    proof_schema.input_schemas = vec![ProofInputSchema {
+        formats: proof_input_formats.iter().map(|f| (*f).into()).collect(),
+        claim_schemas: vec![ProofInputClaimSchema {
+            schema: claim_schema,
+            required: true,
+            order: 0,
+        }]
+        .into(),
+        credential_schema: credential_schema.into(),
+    }]
+    .into();
+    proof_schema
+}
+
+/// Update request changing the formats of the (single) proof input of `proof_schema`.
+async fn update_formats_request(
+    proof_schema: &ProofSchema,
+    formats: &[&str],
+) -> UpdateProofSchemaRequestDTO {
+    let input_schemas = proof_schema.input_schemas.as_ref().await.unwrap();
+    UpdateProofSchemaRequestDTO {
+        expire_duration: None,
+        proof_input_schemas: Some(vec![UpdateProofInputSchemaRequestDTO {
+            credential_schema_id: input_schemas[0].credential_schema.id(),
+            formats: formats.iter().map(|f| (*f).into()).collect(),
+        }]),
+    }
+}
+
+fn formatter_provider_with_features(features: Vec<Features>) -> MockCredentialFormatterProvider {
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| {
+            let mut capabilities = generic_formatter_capabilities();
+            capabilities.features = features.clone();
+            let mut formatter = MockCredentialFormatter::default();
+            formatter
+                .expect_get_capabilities()
+                .returning(move || capabilities.clone());
+            Ok(Arc::new(formatter))
+        });
+    formatter_provider
 }
 
 #[tokio::test]

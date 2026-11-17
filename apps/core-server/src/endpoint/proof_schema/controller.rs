@@ -9,6 +9,7 @@ use shared_types::{Permission, ProofSchemaId};
 use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
     ImportProofSchemaRequestRestDTO, ProofSchemaShareResponseRestDTO,
+    UpdateProofSchemaRequestRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -135,6 +136,36 @@ pub(crate) async fn delete_proof_schema(
         .delete_proof_schema(&id)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "deleting proof schema")
+}
+
+#[endpoint(
+    permissions = [Permission::ProofSchemaEdit],
+    patch,
+    path = "/api/proof-schema/v1/{id}",
+    request_body = UpdateProofSchemaRequestRestDTO,
+    params(
+        ("id" = ProofSchemaId, Path, description = "Proof schema id")
+    ),
+    tag = "proof_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Update a proof schema"
+)]
+pub(crate) async fn update_proof_schema(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<UpdateProofSchemaRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .proof_schema_service
+        .update_proof_schema(id, request.into())
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "updating proof schema")
 }
 
 #[endpoint(

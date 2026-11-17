@@ -6,14 +6,16 @@ use one_core::service::proof_schema::dto::{
     GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
     ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO,
     ProofInputSchemaRequestDTO, ProofInputSchemaResponseDTO, ProofSchemaFilterParamsDTO,
-    ProofSchemaShareResponseDTO,
+    ProofSchemaShareResponseDTO, UpdateProofInputSchemaRequestDTO, UpdateProofSchemaRequestDTO,
 };
 use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialFormat, EcosystemId, OrganisationId, ProofSchemaId};
+use shared_types::{
+    CredentialFormat, CredentialSchemaId, EcosystemId, OrganisationId, ProofSchemaId,
+};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -352,6 +354,34 @@ pub(crate) struct ExportProofInputSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
     pub credential_schema: CredentialSchemaV2ResponseRestDTO,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(UpdateProofSchemaRequestDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct UpdateProofSchemaRequestRestDTO {
+    /// Defines the length of storage of received proofs, in seconds. After
+    /// the defined duration, the received proof and its data are deleted
+    /// from the system. If 0, the proofs received when using this proof
+    /// schema will not be deleted.
+    pub expire_duration: Option<u32>,
+    /// Set of all claims to request.
+    #[into(with_fn = convert_inner_of_inner)]
+    pub proof_input_schemas: Option<Vec<UpdateProofInputSchemaRequestRestDTO>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
+#[into(UpdateProofInputSchemaRequestDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct UpdateProofInputSchemaRequestRestDTO {
+    pub credential_schema_id: CredentialSchemaId,
+    /// Formatter provider names selected for this input.
+    #[into(with_fn = convert_inner)]
+    #[modify_schema(field = format)]
+    #[schema(min_items = 1)]
+    pub formats: Vec<String>,
 }
 
 #[cfg(test)]

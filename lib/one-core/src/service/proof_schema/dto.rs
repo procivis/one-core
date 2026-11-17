@@ -180,3 +180,15 @@ pub struct ImportProofSchemaClaimSchemaDTO {
 pub struct ImportProofSchemaResponseDTO {
     pub id: ProofSchemaId,
 }
+
+#[derive(Clone, Debug)]
+pub struct UpdateProofSchemaRequestDTO {
+    pub expire_duration: Option<u32>,
+    pub proof_input_schemas: Option<Vec<UpdateProofInputSchemaRequestDTO>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct UpdateProofInputSchemaRequestDTO {
+    pub credential_schema_id: CredentialSchemaId,
+    pub formats: Vec<CredentialFormat>,
+}
