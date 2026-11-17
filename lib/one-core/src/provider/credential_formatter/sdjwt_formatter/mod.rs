@@ -116,6 +116,7 @@ impl CredentialFormatter for SDJWTFormatter {
             valid_until: vcdm.valid_until.or(vcdm.expiration_date),
             holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
+            holder_did_as_subject: true,
             token_type: "SD_JWT".to_string(),
             issuer_certificate: credential_data.issuer_certificate,
         };

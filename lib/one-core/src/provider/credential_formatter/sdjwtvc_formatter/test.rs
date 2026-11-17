@@ -208,7 +208,8 @@ async fn test_format_credential() {
     );
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
-    assert_eq!(payload.subject, Some(String::from("did:example:123")));
+    // the DID holder is bound via `cnf` only, `sub` is not set
+    assert_eq!(payload.subject, None);
 
     let vc = payload.custom;
 
@@ -363,7 +364,8 @@ async fn test_format_credential_swiyu() {
     );
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
-    assert_eq!(payload.subject, Some(String::from("did:example:123")));
+    // the DID holder is bound via `cnf` only, `sub` is not set
+    assert_eq!(payload.subject, None);
 
     let vc = payload.custom;
 
@@ -1292,13 +1294,6 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
             value: json!(result.issuance_date.unwrap().unix_timestamp()).try_into().unwrap(),
 
         },
-        "sub".into() => CredentialClaim {
-            selectively_disclosable: false,
-            metadata: true,
-            value: CredentialClaimValue::String(
-                "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX".to_owned(),
-            ),
-        },
         "exp".into()=> CredentialClaim {
             selectively_disclosable: false,
             metadata: true,
@@ -1486,13 +1481,6 @@ async fn test_format_extract_round_trip_sd_array_elements() {
             metadata: true,
             value: json!(result.issuance_date.unwrap().unix_timestamp()).try_into().unwrap(),
 
-        },
-        "sub".into() => CredentialClaim {
-            selectively_disclosable: false,
-            metadata: true,
-            value: CredentialClaimValue::String(
-                "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX".to_owned(),
-            ),
         },
         "exp".into()=> CredentialClaim {
             selectively_disclosable: false,

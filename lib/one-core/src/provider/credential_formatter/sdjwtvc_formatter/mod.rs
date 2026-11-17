@@ -263,6 +263,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
             valid_until,
             holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
+            // `sub` is a regular claim in SD-JWT VC (see `split_claims`), the holder binding
+            // is done via `cnf` only
+            holder_did_as_subject: false,
             token_type,
             issuer_certificate: credential_data.issuer_certificate,
         };

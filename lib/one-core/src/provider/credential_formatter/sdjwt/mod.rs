@@ -118,17 +118,18 @@ pub(crate) async fn format_credential<T: Serialize>(
         None => None,
     };
 
-    let subject =
-        match inputs
-            .holder_identifier
-            .as_ref()
-            .and_then(|identifier| match &identifier.data {
-                IdentifierData::Did(did) => Some(did),
-                _ => None,
-            }) {
-            Some(did) => Some(did.as_ref().await?.did.to_string()),
-            None => None,
-        };
+    let holder_did = inputs
+        .holder_identifier
+        .as_ref()
+        .filter(|_| inputs.holder_did_as_subject)
+        .and_then(|identifier| match &identifier.data {
+            IdentifierData::Did(did) => Some(did),
+            _ => None,
+        });
+    let subject = match holder_did {
+        Some(did) => Some(did.as_ref().await?.did.to_string()),
+        None => None,
+    };
 
     let payload = JWTPayload {
         issued_at: Some(crate::clock::now_utc()),

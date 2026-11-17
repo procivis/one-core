@@ -152,6 +152,9 @@ pub struct SdJwtFormattingInputs {
     pub valid_until: Option<OffsetDateTime>,
     pub holder_identifier: Option<Identifier>,
     pub holder_key_id: Option<String>,
+    /// Whether a DID holder identifier is put into the `sub` claim.
+    /// The holder binding itself is always done via the `cnf` claim.
+    pub holder_did_as_subject: bool,
     pub token_type: String,
     pub issuer_certificate: Option<Certificate>,
 }
