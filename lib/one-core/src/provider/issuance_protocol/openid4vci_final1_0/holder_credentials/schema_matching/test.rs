@@ -768,7 +768,7 @@ async fn display_name_match_reuses_shared_metadata_claim_across_formats() {
     );
 }
 
-/// A JWT schema (plain `sub`/`iat`) and an SD-JWT VC with selectively disclosed `sub`/`iat`
+/// A JWT schema (plain `jti`/`iat`) and an SD-JWT VC with selectively disclosed `jti`/`iat`
 /// combine into a single schema: disclosed registered claims are metadata claims, too.
 #[tokio::test]
 async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_formats() {
@@ -779,7 +779,7 @@ async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_
         claim_schema
     };
 
-    let parsed_sub = metadata_claim_schema("sub", "STRING");
+    let parsed_jti = metadata_claim_schema("jti", "STRING");
     let parsed_iat = metadata_claim_schema("iat", "NUMBER");
     let parsed_name = claim_schema_with_name("name", "STRING", "Name").await;
     let parsed_format_id = Uuid::new_v4().into();
@@ -787,9 +787,9 @@ async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_
         Uuid::new_v4().into(),
         parsed_format_id,
         "SD_JWT_VC",
-        vec![parsed_sub.clone(), parsed_iat.clone(), parsed_name.clone()],
+        vec![parsed_jti.clone(), parsed_iat.clone(), parsed_name.clone()],
         vec![
-            mapping(parsed_format_id, parsed_sub.id, "sub", None),
+            mapping(parsed_format_id, parsed_jti.id, "jti", None),
             mapping(parsed_format_id, parsed_iat.id, "iat", None),
             mapping(parsed_format_id, parsed_name.id, "name", None),
         ],
@@ -805,14 +805,14 @@ async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_
     let mut parsed_credential = credential(
         parsed_schema.clone(),
         vec![
-            disclosed_claim("sub", &parsed_sub),
+            disclosed_claim("jti", &parsed_jti),
             disclosed_claim("iat", &parsed_iat),
             disclosed_claim("name", &parsed_name),
         ],
     )
     .await;
 
-    let stored_sub = metadata_claim_schema("sub", "STRING");
+    let stored_jti = metadata_claim_schema("jti", "STRING");
     let stored_iat = metadata_claim_schema("iat", "NUMBER");
     let stored_name = claim_schema_with_name("name", "STRING", "Name").await;
     let stored_format_id = Uuid::new_v4().into();
@@ -821,9 +821,9 @@ async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_
         stored_schema_id,
         stored_format_id,
         "JWT",
-        vec![stored_sub.clone(), stored_iat.clone(), stored_name.clone()],
+        vec![stored_jti.clone(), stored_iat.clone(), stored_name.clone()],
         vec![
-            mapping(stored_format_id, stored_sub.id, "sub", None),
+            mapping(stored_format_id, stored_jti.id, "jti", None),
             mapping(stored_format_id, stored_iat.id, "iat", None),
             mapping(
                 stored_format_id,
@@ -869,8 +869,8 @@ async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_
         new_mappings,
         vec![
             ("iat".to_string(), stored_iat.id),
+            ("jti".to_string(), stored_jti.id),
             ("name".to_string(), stored_name.id),
-            ("sub".to_string(), stored_sub.id),
         ]
     );
 
@@ -893,7 +893,7 @@ async fn display_name_match_combines_plain_and_disclosed_metadata_claims_across_
     let holder = parsed_credential.holder().unwrap();
     let claims = holder.data.claims.as_ref().await.unwrap();
     for (path, stored_claim_schema_id) in [
-        ("sub", stored_sub.id),
+        ("jti", stored_jti.id),
         ("iat", stored_iat.id),
         ("name", stored_name.id),
     ] {

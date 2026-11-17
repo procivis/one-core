@@ -2439,27 +2439,82 @@ async fn assert_no_duplicate_claims(parsed: &ParsedCredential) {
     assert_eq!(claim_schema_keys.len(), claim_schemas.len());
 }
 
+/// Asserts that the claim at `path` exists once, with the given selective disclosability and
+/// metadata flag.
+async fn assert_single_claim(
+    parsed: &ParsedCredential,
+    path: &str,
+    value: &str,
+    selectively_disclosable: bool,
+    metadata: bool,
+) {
+    let claims = parsed.claims.as_ref().await.unwrap();
+    let matching: Vec<_> = claims.iter().filter(|claim| claim.path == path).collect();
+    let_assert!([claim] = matching.as_slice());
+    assert_eq!(claim.value.as_deref(), Some(value));
+    assert_eq!(claim.selectively_disclosable, selectively_disclosable);
+    assert_eq!(claim.schema.as_ref().await.unwrap().metadata, metadata);
+}
+
 /// Asserts that the claim at `path` exists once, as a selectively disclosable metadata claim.
 async fn assert_single_disclosed_metadata_claim(
     parsed: &ParsedCredential,
     path: &str,
     value: &str,
 ) {
-    let claims = parsed.claims.as_ref().await.unwrap();
-    let matching: Vec<_> = claims.iter().filter(|claim| claim.path == path).collect();
-    let_assert!([claim] = matching.as_slice());
-    assert_eq!(claim.value.as_deref(), Some(value));
-    assert!(claim.selectively_disclosable);
-    assert!(claim.schema.as_ref().await.unwrap().metadata);
+    assert_single_claim(parsed, path, value, true, true).await;
 }
 
+/// `sub` is never a metadata claim in SD-JWT VC, also when selectively disclosed.
 #[tokio::test]
 async fn test_parse_credential_selectively_disclosed_sub() {
     let parsed = parse_test_credential(SD_SUB_CREDENTIAL).await.unwrap();
 
     assert_no_duplicate_claims(&parsed).await;
-    assert_single_disclosed_metadata_claim(&parsed, "sub", "urn:oid:1.2.246.562.24.00000000100")
-        .await;
+    assert_single_claim(
+        &parsed,
+        "sub",
+        "urn:oid:1.2.246.562.24.00000000100",
+        true,
+        false,
+    )
+    .await;
+}
+
+/// `sub` is never a metadata claim in SD-JWT VC, also when it is a plain claim.
+#[tokio::test]
+async fn test_parse_credential_plain_sub() {
+    let mut payload = base_payload();
+    payload["sub"] = json!("urn:oid:1.2.246.562.24.00000000100");
+    let token = sd_jwt_vc_with_disclosures(payload, &[]);
+
+    let parsed = parse_test_credential(&token).await.unwrap();
+
+    assert_no_duplicate_claims(&parsed).await;
+    assert_single_claim(
+        &parsed,
+        "sub",
+        "urn:oid:1.2.246.562.24.00000000100",
+        false,
+        false,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_extract_credentials_plain_sub() {
+    let mut payload = base_payload();
+    payload["sub"] = json!("urn:oid:1.2.246.562.24.00000000100");
+    let token = sd_jwt_vc_with_disclosures(payload, &[]);
+
+    let credential = parse_credential_test_formatter()
+        .extract_credentials_unverified(&token.into(), None)
+        .await
+        .unwrap();
+
+    let sub = credential.claims.get("sub").unwrap();
+    assert!(!sub.selectively_disclosable);
+    assert!(!sub.metadata);
 }
 
 #[tokio::test]
@@ -2475,7 +2530,7 @@ async fn test_extract_credentials_selectively_disclosed_sub() {
         CredentialClaimValue::String("urn:oid:1.2.246.562.24.00000000100".to_string())
     );
     assert!(sub.selectively_disclosable);
-    assert!(sub.metadata);
+    assert!(!sub.metadata);
 }
 
 #[rstest]
@@ -2619,14 +2674,15 @@ async fn test_parse_credential_claim_schemas_independent_of_disclosure() {
             .find(|claim| claim.path == *key)
             .unwrap();
         assert!(!claim.selectively_disclosable);
-        assert!(claim.schema.as_ref().await.unwrap().metadata);
+        // `sub` is never a metadata claim in SD-JWT VC
+        assert_eq!(claim.schema.as_ref().await.unwrap().metadata, *key != "sub");
     }
     for (key, value) in &registered_claims {
         let value = value
             .as_str()
             .map(ToString::to_string)
             .unwrap_or(value.to_string());
-        assert_single_disclosed_metadata_claim(&disclosed, key, &value).await;
+        assert_single_claim(&disclosed, key, &value, true, *key != "sub").await;
     }
 }
 

@@ -104,6 +104,29 @@ fn default_sd_array_elements() -> bool {
     true
 }
 
+type Claims = HashMap<String, CredentialClaim>;
+
+/// The `sub` claim is never treated as a metadata claim in SD-JWT VC, regardless of whether
+/// it is a plain claim or selectively disclosed.
+const SUBJECT_CLAIM: &str = "sub";
+
+/// Splits the claims of the SD-JWT VC into public claims and metadata claims (in that order).
+///
+/// A plain `sub` is a registered JWT claim and therefore reported as metadata claim by the
+/// generic JWT handling. In SD-JWT VC, `sub` carries subject data and is therefore moved to the
+/// public claims.
+fn split_claims(jwt: &Jwt<SdJwtVc>) -> Result<(Claims, Claims), FormatterError> {
+    let mut metadata_claims = jwt
+        .get_metadata_claims()
+        .error_while("getting metadata claims")?;
+    let mut public_claims = jwt.payload.custom.public_claims.clone();
+    if let Some((key, mut subject)) = metadata_claims.remove_entry(SUBJECT_CLAIM) {
+        subject.set_metadata(false);
+        public_claims.insert(key, subject);
+    }
+    Ok((public_claims, metadata_claims))
+}
+
 #[async_trait]
 impl CredentialFormatter for SDJWTVCFormatter {
     async fn parse_credential(
@@ -141,17 +164,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let credential_id = CredentialId::new();
         let vct = parsed_credential.payload.custom.vc_type.clone();
 
-        // Get metadata claims first (includes vct and standard JWT claims)
-        let metadata_claims = parsed_credential
-            .get_metadata_claims()
-            .error_while("getting metadata claims")?;
+        // Split into public and metadata claims (vct and registered JWT claims, except `sub`)
+        let (public_claims, metadata_claims) = split_claims(&parsed_credential)?;
 
         // Parse claims from public_claims
-        let (mut claims, mut claim_schemas) = parse_claims(
-            parsed_credential.payload.custom.public_claims,
-            self.data_type_provider.as_ref(),
-        )
-        .await?;
+        let (mut claims, mut claim_schemas) =
+            parse_claims(public_claims, self.data_type_provider.as_ref()).await?;
 
         // Add parsed metadata claims
         let (metadata_claims, metadata_claim_schemas) =
@@ -496,7 +514,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
             });
         }
 
-        [jwt_metadata_claims(), sd_jwt_vc_claims].concat()
+        jwt_metadata_claims()
+            .into_iter()
+            // `sub` is a regular claim in SD-JWT VC, see [`split_claims`]
+            .filter(|claim| claim.key != SUBJECT_CLAIM)
+            .chain(sd_jwt_vc_claims)
+            .collect()
     }
 
     fn user_claims_path(&self) -> Vec<String> {
@@ -588,15 +611,12 @@ impl SDJWTVCFormatter {
             }
         }
 
-        let metadata_claims = jwt
-            .get_metadata_claims()
-            .error_while("getting metadata claims")?;
+        let (mut claims, metadata_claims) = split_claims(&jwt)?;
         let subject = jwt
             .payload
             .proof_of_possession_key
             .map(|holder_key| IdentifierDetails::Key(holder_key.jwk.jwk().clone()));
 
-        let mut claims = jwt.payload.custom.public_claims;
         claims.extend(metadata_claims);
         Ok(DetailCredential {
             issuance_date: jwt.payload.issued_at,

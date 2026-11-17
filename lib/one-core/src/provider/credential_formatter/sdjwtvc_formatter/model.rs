@@ -76,7 +76,10 @@ const NON_DISCLOSABLE_CLAIMS: [&str; 7] =
     ["iss", "nbf", "exp", "cnf", "vct", "vct#integrity", "status"];
 
 /// Registered JWT claims that may be selectively disclosed, but are still metadata claims.
-const DISCLOSABLE_METADATA_CLAIMS: [&str; 4] = ["sub", "iat", "aud", "jti"];
+///
+/// `sub` is deliberately not included: in SD-JWT VC it is never a metadata claim (see
+/// `split_claims` in the formatter), so a disclosed `sub` stays a regular claim.
+const DISCLOSABLE_METADATA_CLAIMS: [&str; 3] = ["iat", "aud", "jti"];
 
 impl SettableClaims for SdJwtVc {
     fn set_claims(&mut self, claims: CredentialClaim) -> Result<(), FormatterError> {

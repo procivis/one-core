@@ -1735,7 +1735,7 @@ async fn test_get_presentation_definition_2_selectively_disclosable_metadata_cla
                 schema_id: Some("https://example.org/sd-metadata".to_string()),
                 claim_schemas: Some(vec![
                     claim_schema("name", false, false),
-                    claim_schema("sub", true, false),
+                    claim_schema("jti", true, false),
                     claim_schema("aud", true, true),
                     claim_schema("iss", true, false),
                 ]),
@@ -1745,7 +1745,14 @@ async fn test_get_presentation_definition_2_selectively_disclosable_metadata_cla
         .await;
     let claims = vec![
         claim_data("name", "name", Some("Max"), true, &schema).await,
-        claim_data("sub", "sub", Some("urn:subject"), true, &schema).await,
+        claim_data(
+            "jti",
+            "jti",
+            Some("urn:uuid:5b1d4a3e-6c0b-4b8e-9f0e-2a1f3d4c5b6a"),
+            true,
+            &schema,
+        )
+        .await,
         // disclosed as a whole, the elements are not selectively disclosable
         claim_data("aud", "aud", None, true, &schema).await,
         claim_data("aud/0", "aud", Some("verifier-a"), false, &schema).await,
@@ -1763,7 +1770,7 @@ async fn test_get_presentation_definition_2_selectively_disclosable_metadata_cla
 
     let mut claim_queries = vec![ClaimQuery::builder().path(vec!["name".to_string()]).build()];
     if let Some(required) = required {
-        for path in ["sub", "aud"] {
+        for path in ["jti", "aud"] {
             claim_queries.push(
                 ClaimQuery::builder()
                     .path(vec![path.to_string()])
@@ -1812,18 +1819,21 @@ async fn test_get_presentation_definition_2_selectively_disclosable_metadata_cla
     // plain metadata claims are always presented, so they are not listed
     assert!(!claim_paths.contains(&"iss"));
     assert!(claim_paths.contains(&"name"));
-    let sub = claims.iter().find(|claim| claim["path"] == "sub");
+    let jti = claims.iter().find(|claim| claim["path"] == "jti");
     let aud = claims.iter().find(|claim| claim["path"] == "aud");
     let Some(expected) = expected else {
-        assert!(sub.is_none());
+        assert!(jti.is_none());
         assert!(aud.is_none());
         return;
     };
-    let sub = sub.unwrap();
-    assert_eq!(sub["value"], "urn:subject");
-    assert_eq!(sub["schema"]["key"], "sub");
-    assert_eq!(sub["required"], expected["required"]);
-    assert_eq!(sub["userSelection"], expected["userSelection"]);
+    let jti = jti.unwrap();
+    assert_eq!(
+        jti["value"],
+        "urn:uuid:5b1d4a3e-6c0b-4b8e-9f0e-2a1f3d4c5b6a"
+    );
+    assert_eq!(jti["schema"]["key"], "jti");
+    assert_eq!(jti["required"], expected["required"]);
+    assert_eq!(jti["userSelection"], expected["userSelection"]);
     let aud = aud.unwrap();
     assert_eq!(aud["schema"]["key"], "aud");
     assert_eq!(aud["required"], expected["required"]);
