@@ -86,7 +86,7 @@ impl TryFrom<InitiateIssuanceRequestRestDTO> for InitiateIssuanceRequestDTO {
             authorization_details: convert_inner_of_inner(value.authorization_details),
             issuer_state: None,
             authorization_server: None,
-            ecosystem: convert_inner(value.ecosystem),
+            ecosystem: value.ecosystem,
         })
     }
 }

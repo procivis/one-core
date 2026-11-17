@@ -88,7 +88,7 @@ pub(crate) struct SetOrganisationConfigurationRestDTO {
     // replaces the current selection, `null` is equivalent to omitting the field
     #[schema(nullable = true)]
     #[modify_schema(field = ecosystem)]
-    pub selected_ecosystems: Option<Vec<String>>,
+    pub selected_ecosystems: Option<Vec<EcosystemId>>,
     /// When true, the verifier will only validate presentations of
     /// credentials issued by trusted issuers.
     #[deprecated = "use enforceEcosystemAsVerifier instead"]

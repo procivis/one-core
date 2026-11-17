@@ -4,8 +4,9 @@ use one_core::config::core_config::CoreConfig;
 use proc_macros::modify_schema_autodetect;
 use url::Url;
 use utoipa::openapi::extensions::Extensions;
+use utoipa::openapi::schema::{ArrayItems, Type};
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
-use utoipa::openapi::{Contact, ExternalDocs, Object, Server, Tag};
+use utoipa::openapi::{Contact, ExternalDocs, Object, RefOr, Schema, Server, Tag};
 use utoipa::{Modify, OpenApi};
 
 pub(crate) mod permissions;
@@ -341,5 +342,137 @@ struct CoreConfigModifier {
 impl CoreConfigModifier {
     fn new(core_config: Arc<CoreConfig>) -> Self {
         Self { core_config }
+    }
+}
+
+/// Rust types allowed for fields annotated with `#[modify_schema(field = ...)]`: config
+/// identifiers, optionally wrapped in `Option` and/or `Vec`.
+///
+/// The `ModifySchema` derive asserts this bound on the field type, so that unsupported types
+/// fail to compile instead of silently losing the allowed values in the OpenAPI docs.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not supported by `#[modify_schema(field = ...)]`",
+    note = "use `String` or a config identifier from `shared_types`, optionally wrapped in `Option`/`Vec`",
+    note = "new config identifiers must be registered in `crate::openapi`"
+)]
+pub(crate) trait ConfigFieldType {}
+
+impl<T: ConfigFieldType> ConfigFieldType for Option<T> {}
+impl<T: ConfigFieldType> ConfigFieldType for Vec<T> {}
+
+macro_rules! config_field_types {
+    ($($ty:ty),* $(,)?) => {
+        $(impl ConfigFieldType for $ty {})*
+    };
+}
+
+config_field_types!(
+    String,
+    shared_types::CredentialFormat,
+    shared_types::DidMethodId,
+    shared_types::EcosystemId,
+    shared_types::RevocationMethodId,
+    shared_types::SignerId,
+    shared_types::TaskId,
+    shared_types::TrustListPublisherId,
+    shared_types::TrustListSubscriberId,
+);
+
+/// Used by the `ModifySchema` derive to assert [`ConfigFieldType`] at compile time.
+pub(crate) fn assert_config_field_type<T: ConfigFieldType>() {}
+
+/// Returns the schema of a `#[modify_schema(field = ...)]` property, or of its array items,
+/// as an inline object that can carry the allowed values of the referenced core config entry.
+///
+/// Config identifier newtypes are rendered as `$ref` to a shared component. The allowed values
+/// are specific to the property, so the reference is replaced by an inline string schema
+/// (config identifiers are always strings), keeping the description.
+///
+/// Returns `None` and logs a warning on any other shape. [`ConfigFieldType`] rules out most of
+/// these at compile time, but schema overrides such as `#[schema(value_type = ...)]` can
+/// still produce one.
+pub(crate) fn config_field_schema<'a>(
+    schema: &'a mut RefOr<Schema>,
+    location: &str,
+) -> Option<&'a mut Object> {
+    if let RefOr::Ref(reference) = schema {
+        let mut object = Object::with_type(Type::String);
+        if !reference.description.is_empty() {
+            object.description = Some(std::mem::take(&mut reference.description));
+        }
+        *schema = RefOr::T(Schema::Object(object));
+    }
+
+    match schema {
+        RefOr::T(Schema::Object(object)) => Some(object),
+        RefOr::T(Schema::Array(array)) => match &mut array.items {
+            ArrayItems::RefOrSchema(items) => config_field_schema(items, location),
+            ArrayItems::False => {
+                tracing::warn!(
+                    "{location}: array without items is not supported by #[modify_schema(field = ...)], allowed values not documented"
+                );
+                None
+            }
+        },
+        other => {
+            tracing::warn!(
+                "{location}: unsupported schema for #[modify_schema(field = ...)], allowed values not documented: {}",
+                serde_json::to_string(other).unwrap_or_default()
+            );
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+    use utoipa::openapi::schema::{Array, OneOf, Ref};
+
+    use super::*;
+
+    #[test]
+    fn test_config_field_schema_inline_object() {
+        let mut schema = RefOr::T(Schema::Object(Object::with_type(Type::String)));
+        config_field_schema(&mut schema, "Test.field")
+            .unwrap()
+            .description = Some("changed".into());
+
+        let mut expected = Object::with_type(Type::String);
+        expected.description = Some("changed".into());
+        assert_eq!(schema, RefOr::T(Schema::Object(expected)));
+    }
+
+    #[test]
+    fn test_config_field_schema_ref_is_inlined_keeping_description() {
+        let mut reference = Ref::from_schema_name("IssuanceProtocolId");
+        reference.description = "Protocol".into();
+        let mut schema = RefOr::Ref(reference);
+        let object = config_field_schema(&mut schema, "Test.field").unwrap();
+        assert_eq!(object.description.as_deref(), Some("Protocol"));
+
+        let mut expected = Object::with_type(Type::String);
+        expected.description = Some("Protocol".into());
+        assert_eq!(schema, RefOr::T(Schema::Object(expected)));
+    }
+
+    #[test]
+    fn test_config_field_schema_array_of_refs() {
+        let mut schema = RefOr::T(Schema::Array(Array::new(Ref::from_schema_name(
+            "TransportId",
+        ))));
+        config_field_schema(&mut schema, "Test.field")
+            .unwrap()
+            .description = Some("items".into());
+
+        let mut expected = Object::with_type(Type::String);
+        expected.description = Some("items".into());
+        assert_eq!(schema, RefOr::T(Schema::Array(Array::new(expected))));
+    }
+
+    #[test]
+    fn test_config_field_schema_unsupported_shape() {
+        let mut schema = RefOr::T(Schema::OneOf(OneOf::new()));
+        assert!(config_field_schema(&mut schema, "Test.field").is_none());
     }
 }

@@ -1,5 +1,6 @@
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
+use shared_types::TaskId;
 use utoipa::ToSchema;
 
 #[options_not_nullable]
@@ -9,7 +10,7 @@ pub(crate) struct TaskRequestRestDTO {
     /// Name of the task to run, as defined in the `task` configuration
     /// object.
     #[modify_schema(field = task)]
-    pub name: String,
+    pub name: TaskId,
     /// Task-specific parameters. Most tasks require no parameters.
     #[schema(value_type = Option<Object>)]
     pub params: Option<serde_json::Value>,

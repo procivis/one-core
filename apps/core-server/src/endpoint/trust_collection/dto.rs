@@ -46,11 +46,11 @@ pub struct CreateTrustCollectionRestDTO {
     #[try_into(infallible)]
     // TODO (ONE-9981): temporarily auto-fill EUDI if missing in the request
     #[serde(default = "eudi_ecosystem")]
-    pub ecosystem: String,
+    pub ecosystem: EcosystemId,
 }
 
-fn eudi_ecosystem() -> String {
-    EUDI_ECOSYSTEM.to_string()
+fn eudi_ecosystem() -> EcosystemId {
+    EUDI_ECOSYSTEM.into()
 }
 
 pub(crate) type GetTrustCollectionListResponseRestDTO =
@@ -183,7 +183,7 @@ pub struct CreateTrustListSubscriptionRequestRestDTO {
     /// The configured `trustListSubscriber` instance the trust list
     /// conforms to.
     #[modify_schema(field = trust_list_subscriber)]
-    pub r#type: String,
+    pub r#type: TrustListSubscriberId,
 }
 
 pub(crate) type GetTrustListSubscriptionListResponseRestDTO =

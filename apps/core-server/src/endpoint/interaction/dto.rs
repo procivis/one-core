@@ -8,7 +8,7 @@ use one_core::service::ssi_holder::dto::{
     IssuanceAcceptResponseDTO, PresentationSubmitV2CredentialRequestDTO,
     PresentationSubmitV2RequestDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
@@ -49,8 +49,8 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
     #[modify_schema(field = ecosystem)]
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub ecosystem: Option<String>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -266,8 +266,8 @@ pub(crate) struct ProposeProofRequestRestDTO {
     #[try_into(infallible)]
     pub ui_message: Option<String>,
     #[modify_schema(field = ecosystem)]
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub ecosystem: Option<String>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -302,7 +302,7 @@ pub(crate) struct InitiateIssuanceRequestRestDTO {
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailRestDTO>>,
 
     #[modify_schema(field = ecosystem)]
-    pub ecosystem: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

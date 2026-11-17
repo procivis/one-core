@@ -32,8 +32,8 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialSchemaId, DidMethodId, DidValue, EcosystemId, I18nString,
-    IdentifierId, KeyId, OrganisationId, ProofSchemaId, TrustCollectionId, TrustListSubscriberId,
-    TrustListSubscriptionId,
+    IdentifierId, KeyId, OrganisationId, ProofSchemaId, SignerId, TrustCollectionId,
+    TrustListSubscriberId, TrustListSubscriptionId,
 };
 use standardized_types::etsi_119_602::TrustedEntityInformation;
 use standardized_types::jwk::PublicJwk;
@@ -203,7 +203,7 @@ pub(crate) struct CreateIdentifierDidRequestRestDTO {
     /// Specify the DID method. Check the `did` object of your configuration
     /// for supported options.
     #[modify_schema(field = did)]
-    pub method: String,
+    pub method: DidMethodId,
     pub keys: CreateDidRequestKeysRestDTO,
     pub params: Option<serde_json::Value>,
 }
@@ -254,7 +254,7 @@ pub(crate) struct CreateCertificateContentRestDTO {
     /// Signer instance to use for certificate signing. Must reference
     /// an `X509_CERTIFICATE` instance in the `signer` configuration.
     #[modify_schema(field = signer)]
-    pub signer: String,
+    pub signer: SignerId,
     /// Start of the certificate validity period (RFC 3339). Defaults
     /// to time of issuance.
     #[serde(default, with = "time::serde::rfc3339::option")]
@@ -322,7 +322,7 @@ pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
     /// For mdoc CAs, ensure the referenced instance is configured with
     /// `pathLenConstraint: 0` and `keyIdDerivation: "sha-1"`.
     #[modify_schema(field = signer)]
-    pub signer: String,
+    pub signer: SignerId,
     /// Start of the CA validity period (RFC 3339). Defaults to time of
     /// issuance.
     #[serde(default, with = "time::serde::rfc3339::option")]

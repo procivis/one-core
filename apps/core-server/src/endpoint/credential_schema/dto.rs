@@ -382,13 +382,13 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     /// for supported options and reference the configuration instance.
     #[modify_schema(field = format)]
     #[try_into(infallible)]
-    pub format: String,
+    pub format: CredentialFormat,
     /// Choose a revocation method for credentials issued using this
     /// credential schema. Check the `revocation` object of the configuration
     /// for supported options and reference the configuration instance.
     #[modify_schema(field = revocation)]
-    #[try_into(with_fn = convert_inner, infallible)]
-    pub revocation_method: Option<String>,
+    #[try_into(infallible)]
+    pub revocation_method: Option<RevocationMethodId>,
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
@@ -442,8 +442,8 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
     #[modify_schema(field = ecosystem)]
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub ecosystem: Option<String>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
@@ -759,7 +759,7 @@ pub(crate) struct ImportCredentialSchemaLayoutPropertiesRestDTO {
 pub(crate) struct CredentialSchemaFormatRequestRestDTO {
     /// Credential format identifier from the system configuration.
     #[modify_schema(field = format)]
-    pub format: String,
+    pub format: CredentialFormat,
     /// Optional schema identifier for this format (e.g. DocType for mdoc, vct for SD-JWT VC).
     #[serde(default)]
     #[into(with_fn = convert_inner)]
@@ -933,8 +933,8 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[try_into(infallible)]
     pub expiration: Option<Duration>,
     #[modify_schema(field = ecosystem)]
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub ecosystem: Option<String>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]

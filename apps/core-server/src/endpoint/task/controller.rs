@@ -33,7 +33,7 @@ pub(crate) async fn post_task(
     let result = state
         .core
         .task_service
-        .run(&request.name.into(), request.params)
+        .run(&request.name, request.params)
         .await;
     OkOrErrorResponse::from_result(
         result.map(|result| TaskResponseRestDTO { result }),

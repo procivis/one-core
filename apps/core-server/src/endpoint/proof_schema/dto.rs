@@ -13,7 +13,7 @@ use one_dto_mapper::{
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{EcosystemId, OrganisationId, ProofSchemaId};
+use shared_types::{CredentialFormat, EcosystemId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -51,8 +51,8 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
     #[schema(min_items = 1)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
     #[modify_schema(field = ecosystem)]
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub ecosystem: Option<String>,
+    #[try_into(infallible)]
+    pub ecosystem: Option<EcosystemId>,
 }
 
 #[options_not_nullable]
@@ -62,10 +62,9 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
 pub(crate) struct ProofInputSchemaRequestRestDTO {
     /// Formatter provider names selected for this input. If omitted, all
     /// formats of the credential schema are selected.
-    #[into(with_fn = convert_inner_of_inner)]
     #[modify_schema(field = format)]
     #[schema(min_items = 1)]
-    pub formats: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
     pub credential_schema_id: Uuid,
@@ -135,10 +134,10 @@ pub(crate) struct ImportProofSchemaRestDTO {
 pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
     /// Formatter provider names selected for this input. Defaulting
     /// to all formats of the resolved credential schema if omitted.
-    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    #[try_into(infallible)]
     #[modify_schema(field = format)]
     #[schema(min_items = 1)]
-    pub formats: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub credential_schema: ImportCredentialSchemaV2RequestSchemaRestDTO,

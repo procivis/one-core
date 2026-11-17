@@ -100,7 +100,12 @@ pub fn require_permissions(args: TokenStream, input: TokenStream) -> TokenStream
 ///     - Writes back the returned `allowed_values` values.
 ///   - For every field carrying `#[modify_schema(field = ...)]`, generated code:
 ///     - Reads provided field from `core_config` and transforms it to valid format,
-///     - Writes back the returned `allowed_values` values.
+///     - Asserts at compile time that the field type implements
+///       `crate::openapi::ConfigFieldType` (config identifiers, optionally in `Option`/`Vec`),
+///     - Resolves the property (or its array items) via `crate::openapi::config_field_schema`,
+///       which inlines a `$ref` (e.g. to a config identifier newtype) as a string schema and
+///       logs a warning and skips the field on any other unsupported shape,
+///     - Writes the enabled config entries into the description and `examples`.
 /// - For enums with the attribute at the type level:
 ///   - Generated code performs the same update at the type’s schema object level.
 ///

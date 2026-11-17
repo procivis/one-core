@@ -1,7 +1,8 @@
 use darling::{Error, FromAttributes};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
 use syn::{Field, Fields, ItemEnum, ItemStruct};
 
 #[derive(FromAttributes)]
@@ -26,11 +27,12 @@ pub(super) fn core_config_dependant_schema(input: TokenStream) -> TokenStream {
 }
 
 fn on_struct(input: ItemStruct) -> TokenStream {
+    let struct_name = input.ident.to_string();
     let fields: Vec<proc_macro2::TokenStream> = match input.fields {
         Fields::Named(named_fields) => named_fields
             .named
             .into_iter()
-            .filter_map(on_struct_field)
+            .filter_map(|field| on_struct_field(&struct_name, field))
             .collect(),
         Fields::Unnamed(_) | Fields::Unit => {
             // We do nothing on unit or unnamed fields
@@ -53,7 +55,7 @@ fn on_struct(input: ItemStruct) -> TokenStream {
     }
 }
 
-fn on_struct_field(named_field: Field) -> Option<proc_macro2::TokenStream> {
+fn on_struct_field(struct_name: &str, named_field: Field) -> Option<proc_macro2::TokenStream> {
     let deprecated = named_field
         .attrs
         .iter()
@@ -65,6 +67,7 @@ fn on_struct_field(named_field: Field) -> Option<proc_macro2::TokenStream> {
         }
     };
     let field_ident = named_field.ident?;
+    let field_ty = named_field.ty;
 
     let deprecated = deprecated.then(|| {
         let field_name = to_camel_case(&field_ident.to_string());
@@ -90,15 +93,16 @@ fn on_struct_field(named_field: Field) -> Option<proc_macro2::TokenStream> {
     let configured = if let Some(allowed_values_fn) = attributes.allowed_values_fn {
         on_struct_fields_allowed_values_fn(field_ident, allowed_values_fn)
     } else if let Some(field) = attributes.field {
-        on_struct_fields_field(field_ident, field)
+        on_struct_fields_field(struct_name, field_ident, &field_ty, field)
     } else {
         None
     };
 
     if deprecated.is_some() || configured.is_some() {
+        // `configured` must run first: `deprecated` wraps the property in a `oneOf`
         Some(quote! {
-            #deprecated
             #configured
+            #deprecated
         })
     } else {
         None
@@ -123,40 +127,38 @@ fn on_struct_fields_allowed_values_fn(
 }
 
 fn on_struct_fields_field(
+    struct_name: &str,
     field_ident: proc_macro2::Ident,
+    field_ty: &syn::Type,
     field: syn::ExprPath,
 ) -> Option<proc_macro2::TokenStream> {
     let field_ident = field_ident.to_string();
     let ident_str = field_ident.strip_prefix("r#").unwrap_or(&field_ident);
     let ident_camel_case = to_camel_case(ident_str);
+    let location = format!("{struct_name}.{ident_camel_case}");
+    // compile-time check that the field type is supported, reported on the field type
+    let type_check = quote_spanned! {field_ty.span()=>
+        crate::openapi::assert_config_field_type::<#field_ty>();
+    };
     Some(quote! {
+        #type_check
+        if let std::option::Option::Some(schema) = object.properties.get_mut(#ident_camel_case)
+            && let std::option::Option::Some(field_obj) = crate::openapi::config_field_schema(schema, #location)
         {
-            let modify_obj = |field_obj: &mut utoipa::openapi::Object| {
-                let values: Vec<String> = core_config
-                    .#field
-                    .iter_enabled()
-                    .map(|(k, _)| std::string::ToString::to_string(k))
-                    .collect();
-                if !values.is_empty() {
-                    let formatted: Vec<String> = values.iter().map(|value| format!("`{value}`")).collect();
-                    let description = format!("Possible values: {}", formatted.join(", "));
-                    field_obj.description = Some(match &field_obj.description {
-                        Some(current) => format!("{current}  \n{description}"),
-                        None => description,
-                    });
-                }
-                field_obj.examples = values.into_iter().map(utoipa::r#gen::serde_json::Value::String).collect();
-            };
-
-            if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_camel_case) {
-                modify_obj(field_obj);
-            } else if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Array(field_obj))) = object.properties.get_mut(#ident_camel_case) {
-                if let utoipa::openapi::schema::ArrayItems::RefOrSchema(s) = &mut field_obj.items {
-                    if let utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj)) = s.as_mut() {
-                        modify_obj(field_obj);
-                    }
-                }
+            let values: Vec<String> = core_config
+                .#field
+                .iter_enabled()
+                .map(|(k, _)| std::string::ToString::to_string(k))
+                .collect();
+            if !values.is_empty() {
+                let formatted: Vec<String> = values.iter().map(|value| format!("`{value}`")).collect();
+                let description = format!("Possible values: {}", formatted.join(", "));
+                field_obj.description = Some(match &field_obj.description {
+                    Some(current) => format!("{current}  \n{description}"),
+                    None => description,
+                });
             }
+            field_obj.examples = values.into_iter().map(utoipa::r#gen::serde_json::Value::String).collect();
         }
     })
 }

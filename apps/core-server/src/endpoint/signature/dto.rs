@@ -30,7 +30,7 @@ pub(crate) struct CreateSignatureRequestRestDTO {
     /// Name of a configured `signer` instance. Determines the structure
     /// of `data`.
     #[modify_schema(field = signer)]
-    pub signer: String,
+    pub signer: SignerId,
     /// Signer-specific request data. See
     /// [Signatures](https://docs.procivis.ch/signatures) for the structure
     /// each signer expects.

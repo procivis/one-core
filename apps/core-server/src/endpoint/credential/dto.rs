@@ -573,12 +573,10 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// Optional subscriber information associated with this credential.
     pub subscriber_information: Option<String>,
     #[modify_schema(field = ecosystem)]
-    #[into(with_fn = convert_inner)]
-    pub ecosystem: Option<String>,
+    pub ecosystem: Option<EcosystemId>,
     /// Optional selection of formats to be issued.
     #[modify_schema(field = format)]
-    #[into(with_fn = convert_inner_of_inner)]
-    pub formats: Option<Vec<String>>,
+    pub formats: Option<Vec<CredentialFormat>>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
