@@ -38,7 +38,6 @@ use super::mdoc::mdoc_presentation_context;
 use super::model::{
     CommonVerifierInteractionContent, HolderTxData, JwePayload, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, TransportSpecificData, ValidatedHolderTxData,
-    VpSubmissionData,
 };
 use super::validator::{
     validate_did_request_token, validate_x509_hash_request_token, validate_x509_san_dns_token,
@@ -245,7 +244,7 @@ impl OpenID4VPFinal1_0 {
         &self,
         credential_presentations: Vec<FormattedCredentialPresentation>,
         interaction_data: &OpenID4VPHolderInteractionData,
-    ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
+    ) -> Result<(VpTokenResponse, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
 
         // As per https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-8.3.1
@@ -377,10 +376,7 @@ impl OpenID4VPFinal1_0 {
                 tokens.push(credential_presentation.presentation);
             }
         }
-        Ok((
-            VpSubmissionData::Dcql(VpTokenResponse { vp_token }),
-            encryption_info,
-        ))
+        Ok((VpTokenResponse { vp_token }, encryption_info))
     }
 
     async fn handle_url_invitation(
@@ -625,6 +621,7 @@ impl OpenID4VPFinal1_0 {
             dcql_query: authorization_request.dcql_query.clone(),
             encryption_key,
             client_id_scheme: Some(client_id_scheme),
+            dc_api_origin: None,
             response_uri: Some(response_uri),
             common: CommonVerifierInteractionContent { transaction_data },
         };
@@ -692,7 +689,7 @@ impl OpenID4VPFinal1_0 {
 
         let request = SignedAuthorizationRequestPayload {
             client_id: client_id.clone(),
-            expected_origins: vec![origin],
+            expected_origins: vec![origin.clone()],
             common: UnsignedAuthorizationRequest {
                 response_type: Some("vp_token".to_string()),
                 response_mode,
@@ -713,6 +710,7 @@ impl OpenID4VPFinal1_0 {
             dcql_query,
             encryption_key,
             client_id_scheme: Some(client_id_scheme),
+            dc_api_origin: Some(origin),
             response_uri: None,
             common: CommonVerifierInteractionContent { transaction_data },
         };
@@ -1401,7 +1399,7 @@ fn format_presentation_context(
 
 async fn encrypted_params(
     interaction_data: &OpenID4VPHolderInteractionData,
-    submission_data: VpSubmissionData,
+    submission_data: VpTokenResponse,
     holder_nonce: &str,
     verifier_key: PublicJwk,
     encryption_algorithms: Vec<EncryptionAlgorithm>,

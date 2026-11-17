@@ -29,9 +29,9 @@ pub(crate) struct OpenID4VPDirectPostRequestRestDTO {
 #[serde(untagged)]
 pub(crate) enum VpSubmissionDataRestDTO {
     /// DCQL submission with vp_token map structure
-    Dcql(DcqlSubmissionRestDTO),
+    Unencrypted(DcqlSubmissionRestDTO),
     /// Response submission with response field (JWE encrypted payload)
-    EncryptedResponse(ResponseSubmissionRestDTO),
+    Encrypted(ResponseSubmissionRestDTO),
 }
 
 #[serde_as]

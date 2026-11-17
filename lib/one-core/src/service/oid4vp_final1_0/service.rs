@@ -20,10 +20,12 @@ use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
+use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::relation::OptionalRelatedExt;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::provider::ecosystem::model::ProtocolArtifact;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::mapper::gather_registration_certificates;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
@@ -40,6 +42,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, SubmissionRequestData, VpSubmissionData,
 };
 use crate::repository::error::DataLayerError;
+use crate::repository::key_repository::KeyRepository;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::jwe::decrypt_jwe;
 use crate::util::openid4vp::persist_accepted_proof;
@@ -263,7 +266,7 @@ impl OID4VPFinal1_0Service {
         .error_while("checking config")?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
-        let interaction_id = unpacked_request.state;
+        let interaction_id = unpacked_request.interaction_id;
 
         let proof = self
             .proof_repository
@@ -335,7 +338,7 @@ impl OID4VPFinal1_0Service {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
 
-        let blob_value = serde_json::to_string(&unpacked_request.submission_data)
+        let blob_value = serde_json::to_string(&unpacked_request.submission)
             .map_err(OID4VPFinal1_0ServiceError::from)
             .error_while("serializing proof blob data")?;
 
@@ -475,74 +478,32 @@ impl OID4VPFinal1_0Service {
     ) -> Result<SubmissionRequestData, OID4VPFinal1_0ServiceError> {
         match request {
             OpenID4VPDirectPostRequestDTO {
-                submission_data: VpSubmissionData::Dcql(_),
-                state: Some(state),
+                submission_data: VpSubmissionData::Unencrypted(submission),
+                state: Some(interaction_id),
             } => Ok(SubmissionRequestData {
-                submission_data: request.submission_data,
-                state,
+                submission,
+                interaction_id,
                 mdoc_generated_nonce: None,
                 encryption_key: None,
             }),
             OpenID4VPDirectPostRequestDTO {
-                submission_data:
-                    VpSubmissionData::EncryptedResponse(EncryptedResponse { response: jwe }),
+                submission_data: VpSubmissionData::Encrypted(response),
                 ..
             } => {
-                let jwe_header = extract_jwe_header(&jwe).map_err(|err| {
-                    OID4VPFinal1_0ServiceError::ValidationError(format!(
-                        "Failed parsing JWE header: {err}"
-                    ))
-                })?;
-                let key_id = jwe_header.key_id.as_ref().ok_or(
-                    OID4VPFinal1_0ServiceError::ValidationError("Missing JWE key_id".to_string()),
-                )?;
-                let key_id = KeyId::from_str(key_id).map_err(|err| {
-                    OID4VPFinal1_0ServiceError::ValidationError(format!(
-                        "JWE key_id value invalid format: {err}"
-                    ))
-                })?;
-
-                // KeyId can't be verified here since we don't know related proof yet.
-                let key =
-                    self.key_repository
-                        .get_key(&key_id)
-                        .await
-                        .map_err(|error| match error {
-                            DataLayerError::EntityNotFound { .. } => {
-                                OID4VPFinal1_0ServiceError::ValidationError(
-                                    "Invalid JWE key_id".to_string(),
-                                )
-                            }
-                            error => error.error_while("getting key").into(),
-                        })?;
-
-                let payload =
-                    decrypt_jwe(&jwe, &key, &*self.key_provider)
-                        .await
-                        .map_err(|err| {
-                            OID4VPFinal1_0ServiceError::ValidationError(format!(
-                                "Failed decrypting JWE payload: {err:#}"
-                            ))
-                        })?;
-
-                let payload = JwePayload::try_from_json(&payload).map_err(|err| {
-                    OID4VPFinal1_0ServiceError::ValidationError(format!(
-                        "Failed deserializing JWE payload: {err:#}"
-                    ))
-                })?;
-
-                let mdoc_generated_nonce = match jwe_header.partyuinfo_data {
-                    None => None,
-                    Some(data) => Some(String::from_utf8(data).map_err(|err| {
-                        OID4VPFinal1_0ServiceError::ValidationError(format!(
-                            "Failed deserializing mdocGeneratedNonce: {err}"
-                        ))
-                    })?),
-                };
+                let DecryptedResponse {
+                    payload,
+                    encryption_key,
+                    mdoc_generated_nonce,
+                } = decrypt_response(
+                    response,
+                    self.key_provider.as_ref(),
+                    self.key_repository.as_ref(),
+                )
+                .await?;
 
                 Ok(SubmissionRequestData {
-                    submission_data: payload.submission_data,
-                    state: payload
+                    submission: payload.submission_data,
+                    interaction_id: payload
                         .state
                         .ok_or(OID4VPFinal1_0ServiceError::ValidationError(
                             "missing state parameter".to_string(),
@@ -554,7 +515,7 @@ impl OID4VPFinal1_0Service {
                             ))
                         })?,
                     mdoc_generated_nonce,
-                    encryption_key: Some(key_id),
+                    encryption_key: Some(encryption_key.id),
                 })
             }
             _ => Err(OpenID4VCError::InvalidRequest.into()),
@@ -589,4 +550,72 @@ impl OID4VPFinal1_0Service {
             .get_capabilities()
             .supported_encryption_algorithms)
     }
+}
+
+pub(crate) struct DecryptedResponse {
+    pub payload: JwePayload,
+    pub encryption_key: Key,
+    pub mdoc_generated_nonce: Option<String>,
+}
+
+pub(crate) async fn decrypt_response(
+    response: EncryptedResponse,
+    key_provider: &dyn KeyProvider,
+    key_repository: &dyn KeyRepository,
+) -> Result<DecryptedResponse, OID4VPFinal1_0ServiceError> {
+    let jwe = response.response;
+    let jwe_header = extract_jwe_header(&jwe).map_err(|err| {
+        OID4VPFinal1_0ServiceError::ValidationError(format!("Failed parsing JWE header: {err}"))
+    })?;
+    let key_id = jwe_header
+        .key_id
+        .as_ref()
+        .ok_or(OID4VPFinal1_0ServiceError::ValidationError(
+            "Missing JWE key_id".to_string(),
+        ))?;
+    let key_id = KeyId::from_str(key_id).map_err(|err| {
+        OID4VPFinal1_0ServiceError::ValidationError(format!(
+            "JWE key_id value invalid format: {err}"
+        ))
+    })?;
+
+    // KeyId can't be verified here since we don't know related proof yet.
+    let encryption_key = key_repository
+        .get_key(&key_id)
+        .await
+        .map_err(|error| match error {
+            DataLayerError::EntityNotFound { .. } => {
+                OID4VPFinal1_0ServiceError::ValidationError("Invalid JWE key_id".to_string())
+            }
+            error => error.error_while("getting key").into(),
+        })?;
+
+    let payload = decrypt_jwe(&jwe, &encryption_key, key_provider)
+        .await
+        .map_err(|err| {
+            OID4VPFinal1_0ServiceError::ValidationError(format!(
+                "Failed decrypting JWE payload: {err:#}"
+            ))
+        })?;
+
+    let payload = JwePayload::try_from_json(&payload).map_err(|err| {
+        OID4VPFinal1_0ServiceError::ValidationError(format!(
+            "Failed deserializing JWE payload: {err:#}"
+        ))
+    })?;
+
+    let mdoc_generated_nonce = match jwe_header.partyuinfo_data {
+        None => None,
+        Some(data) => Some(String::from_utf8(data).map_err(|err| {
+            OID4VPFinal1_0ServiceError::ValidationError(format!(
+                "Failed deserializing mdocGeneratedNonce: {err}"
+            ))
+        })?),
+    };
+
+    Ok(DecryptedResponse {
+        payload,
+        encryption_key,
+        mdoc_generated_nonce,
+    })
 }

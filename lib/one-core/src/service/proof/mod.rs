@@ -34,6 +34,7 @@ pub mod dto;
 pub mod error;
 mod iso_mdl;
 mod mapper;
+mod openid4vp;
 mod proximity_callback;
 pub mod service;
 

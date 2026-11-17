@@ -27,8 +27,8 @@ pub(crate) struct JwePayload {
     pub aud: Option<Url>,
     #[serde(default, with = "unix_timestamp_option")]
     pub exp: Option<OffsetDateTime>,
-    #[serde(flatten)]
-    pub submission_data: VpSubmissionData,
+    #[serde(flatten, deserialize_with = "deserialize_lenient_vp_token_response")]
+    pub submission_data: VpTokenResponse,
     pub state: Option<String>,
 }
 
@@ -47,16 +47,12 @@ impl JwePayload {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DcqlSubmissionEudi {
-    pub vp_token: HashMap<String, String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum VpSubmissionData {
-    Dcql(#[serde(deserialize_with = "deserialize_lenient_vp_token_response")] VpTokenResponse),
-    DcqlEudi(DcqlSubmissionEudi),
-    EncryptedResponse(EncryptedResponse),
+    Unencrypted(
+        #[serde(deserialize_with = "deserialize_lenient_vp_token_response")] VpTokenResponse,
+    ),
+    Encrypted(EncryptedResponse),
 }
 
 /// Accepts `vp_token` both as a JSON object and as a JSON-encoded string.
@@ -101,6 +97,8 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     /// with client_id_scheme prefix (for Final 1.0)
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdPrefix>,
+    /// present only during DC-API transport
+    pub dc_api_origin: Option<String>,
     pub response_uri: Option<String>,
     pub encryption_key: Option<PublicJwk>,
     #[serde(flatten)]
@@ -132,8 +130,8 @@ pub(crate) struct TransactionDataRequest {
 
 #[derive(Debug, Clone)]
 pub(crate) struct SubmissionRequestData {
-    pub submission_data: VpSubmissionData,
-    pub state: InteractionId,
+    pub submission: VpTokenResponse,
+    pub interaction_id: InteractionId,
     pub mdoc_generated_nonce: Option<String>,
     pub encryption_key: Option<KeyId>,
 }
@@ -306,10 +304,7 @@ mod test {
 
         let payload = JwePayload::try_from_json(payload.as_bytes()).unwrap();
 
-        let VpSubmissionData::Dcql(VpTokenResponse { vp_token }) = payload.submission_data else {
-            panic!("expected a DCQL submission");
-        };
-        assert_eq!(expected_dcql_submission(), vp_token);
+        assert_eq!(expected_dcql_submission(), payload.submission_data.vp_token);
         assert_eq!(Some("the-state".to_string()), payload.state);
     }
 
@@ -320,10 +315,7 @@ mod test {
 
         let payload = JwePayload::try_from_json(payload.as_bytes()).unwrap();
 
-        let VpSubmissionData::Dcql(VpTokenResponse { vp_token }) = payload.submission_data else {
-            panic!("expected a DCQL submission");
-        };
-        assert_eq!(expected_dcql_submission(), vp_token);
+        assert_eq!(expected_dcql_submission(), payload.submission_data.vp_token);
     }
 
     #[test]
@@ -331,9 +323,9 @@ mod test {
         let payload = JwePayload {
             aud: Some("https://verifier.example/response".parse().unwrap()),
             exp: Some(OffsetDateTime::from_unix_timestamp(1757000000).unwrap()),
-            submission_data: VpSubmissionData::Dcql(VpTokenResponse {
+            submission_data: VpTokenResponse {
                 vp_token: expected_dcql_submission(),
-            }),
+            },
             state: Some("the-state".to_string()),
         };
 
@@ -347,10 +339,9 @@ mod test {
         assert_eq!(payload.aud, deserialized.aud);
         assert_eq!(payload.exp, deserialized.exp);
         assert_eq!(payload.state, deserialized.state);
-        let VpSubmissionData::Dcql(VpTokenResponse { vp_token }) = deserialized.submission_data
-        else {
-            panic!("expected a DCQL submission");
-        };
-        assert_eq!(expected_dcql_submission(), vp_token);
+        assert_eq!(
+            expected_dcql_submission(),
+            deserialized.submission_data.vp_token
+        );
     }
 }

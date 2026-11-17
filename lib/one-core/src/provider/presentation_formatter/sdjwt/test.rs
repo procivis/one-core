@@ -384,6 +384,7 @@ async fn test_extract_presentation() {
                 client_id: None,
                 response_uri: None,
                 verifier_key: None,
+                dc_api_origin: None,
             },
         )
         .await

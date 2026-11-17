@@ -94,6 +94,7 @@ pub(super) async fn validate_proof(
                 issuance_date: None,
                 expiration_date: None,
                 client_id: None,
+                dc_api_origin: None,
                 response_uri: None,
                 verifier_key: None,
             },

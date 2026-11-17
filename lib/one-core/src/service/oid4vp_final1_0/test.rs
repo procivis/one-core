@@ -132,6 +132,7 @@ async fn test_submit_proof_validator_failure_only_updates_active_proofs(
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdPrefix::RedirectUri),
         response_uri: None,
+        dc_api_origin: None,
         common: Default::default(),
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
@@ -260,7 +261,7 @@ async fn test_submit_proof_validator_failure_only_updates_active_proofs(
 
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
-            submission_data: VpSubmissionData::Dcql(VpTokenResponse {
+            submission_data: VpSubmissionData::Unencrypted(VpTokenResponse {
                 vp_token: hashmap! { "credential_id".to_string() => vec!["vp_token".to_string()] },
             }),
             state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
@@ -293,6 +294,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdPrefix::RedirectUri),
         response_uri: None,
+        dc_api_origin: None,
         common: Default::default(),
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
@@ -500,7 +502,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
 
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
-            submission_data: VpSubmissionData::Dcql(VpTokenResponse {
+            submission_data: VpSubmissionData::Unencrypted(VpTokenResponse {
                 vp_token: hashmap! { "credential_id".to_string() => vec!["vp_token".to_string()] },
             }),
             state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
@@ -600,6 +602,7 @@ async fn test_get_client_metadata_success() {
                         client_id: "client_id".to_string(),
                         client_id_scheme: Some(ClientIdPrefix::RedirectUri),
                         response_uri: None,
+                        dc_api_origin: None,
                         common: Default::default(),
                     })
                     .unwrap(),

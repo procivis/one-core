@@ -328,6 +328,7 @@ async fn test_parse_presentation_multi_tokens() {
                 response_uri: None,
                 mdoc_session_transcript: None,
                 verifier_key: None,
+                dc_api_origin: None,
             },
         )
         .await

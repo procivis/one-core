@@ -72,5 +72,7 @@ pub struct ExtractPresentationCtx {
     pub mdoc_session_transcript: Option<Vec<u8>>,
     pub client_id: Option<String>,
     pub response_uri: Option<String>,
+    /// only for DC-API transport
+    pub dc_api_origin: Option<String>,
     pub verifier_key: Option<PublicJwk>,
 }

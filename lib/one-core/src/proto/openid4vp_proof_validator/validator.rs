@@ -45,7 +45,6 @@ use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::extract_presentation_ctx_from_interaction_content;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, SubmissionRequestData, TransactionDataRequest,
-    VpSubmissionData,
 };
 use crate::validator::proof_schema::resolve_proof_input_schema_formats;
 use crate::validator::{
@@ -118,14 +117,7 @@ impl OpenId4VpProofValidatorProto {
         interaction_data: OpenID4VPVerifierInteractionContent,
         protocol_type: VerificationProtocolType,
     ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
-        let VpSubmissionData::Dcql(VpTokenResponse { vp_token }) = submission.submission_data
-        else {
-            return Err(OpenID4VCError::ValidationError(
-                "Missing DCQL VP token".to_string(),
-            ));
-        };
-
-        let dcql_query = interaction_data.dcql_query.to_owned();
+        let VpTokenResponse { vp_token } = submission.submission;
 
         let proof_schema = proof
             .schema
@@ -143,14 +135,14 @@ impl OpenId4VpProofValidatorProto {
             .await
             .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
 
-        validate_dcql_submission(&dcql_query, &vp_token)?;
+        validate_dcql_submission(&interaction_data.dcql_query, &vp_token)?;
 
         let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
         let mut transaction_data_evidence = HashMap::new();
 
         // Iterate over each credential query, validate the associated presentation(s),
         // and extract the credential(s).
-        for credential_query in &dcql_query.credentials {
+        for credential_query in &interaction_data.dcql_query.credentials {
             let dcql_credential_format = &credential_query.format;
             let query_id = credential_query.id.to_string();
 
@@ -164,22 +156,12 @@ impl OpenId4VpProofValidatorProto {
                 ExtractPresentationCtx {
                     format_nonce: submission.mdoc_generated_nonce.clone(),
                     ..extract_presentation_ctx_from_interaction_content(
-                        interaction_data.clone(),
+                        &interaction_data,
                         protocol_type,
                     )
                 }
             } else {
-                ExtractPresentationCtx {
-                    verification_protocol_type: protocol_type,
-                    nonce: Some(interaction_data.nonce.clone()),
-                    format_nonce: None,
-                    issuance_date: None,
-                    expiration_date: None,
-                    client_id: Some(interaction_data.client_id.clone()),
-                    response_uri: None,
-                    mdoc_session_transcript: None,
-                    verifier_key: None,
-                }
+                extract_presentation_ctx_from_interaction_content(&interaction_data, protocol_type)
             };
 
             let (proved_claims, presented_transaction_data) = self

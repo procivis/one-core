@@ -2,6 +2,7 @@ use ciborium::cbor;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::history::HistoryAction;
 use one_core::model::proof::{Proof, ProofStateEnum};
+use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::dc_api::{DigitalCredential, IsoMdocResponse};
 
@@ -12,8 +13,8 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::db_clients::proofs::TestingProofParams;
 
-/// Creates an ISO_MDL proof over DC_API and shares it, leaving it in the `PENDING` state
-async fn prepare_pending_dc_api_proof() -> (TestContext, Proof) {
+/// Creates an MDOC proof using the given `protocol` over DC_API and shares it, leaving it in the `PENDING` state
+async fn prepare_pending_dc_api_proof(protocol: &str) -> (TestContext, Proof) {
     let (context, organisation, identifier, certificate, key) =
         TestContext::new_with_certificate_identifier(None).await;
 
@@ -64,7 +65,7 @@ async fn prepare_pending_dc_api_proof() -> (TestContext, Proof) {
         .proofs
         .create(
             ProofStateEnum::Created,
-            "ISO_MDL",
+            protocol,
             TestingProofParams {
                 verifier_identifier: Some(identifier),
                 verifier_certificate: Some(certificate),
@@ -95,7 +96,7 @@ async fn prepare_pending_dc_api_proof() -> (TestContext, Proof) {
     (context, proof)
 }
 
-fn dummy_dc_api_response() -> String {
+fn dummy_iso_mdl_dc_api_response() -> String {
     let encrypted_response = cbor!([
         "dcapi",
         {
@@ -115,16 +116,57 @@ fn dummy_dc_api_response() -> String {
     serde_json::to_string(&response).unwrap()
 }
 
+/// Builds an OpenID4VP DC-API response containing an invalid mdoc presentation for the
+/// (single) DCQL credential query stored in the proof interaction
+async fn dummy_openid4vp_dc_api_response(proof: &Proof) -> String {
+    let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
+    let interaction_data: Value =
+        serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
+    let query_id = interaction_data["dcql_query"]["credentials"][0]["id"]
+        .as_str()
+        .unwrap();
+
+    let invalid_device_response = Base64UrlSafeNoPadding::encode_to_string([1, 2, 3]).unwrap();
+    let response = DigitalCredential::OpenID4VpV1Signed(json!({
+        "vp_token": {
+            query_id: [invalid_device_response]
+        }
+    }));
+
+    serde_json::to_string(&response).unwrap()
+}
+
 #[tokio::test]
 async fn test_submit_dc_api_response_invalid_device_response_sets_proof_to_error() {
     // GIVEN
-    let (context, proof) = prepare_pending_dc_api_proof().await;
+    let (context, proof) = prepare_pending_dc_api_proof("ISO_MDL").await;
 
     // WHEN
     let resp = context
         .api
         .proofs
-        .submit_dc_api_response(proof.id, &dummy_dc_api_response())
+        .submit_dc_api_response(proof.id, &dummy_iso_mdl_dc_api_response())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0528", resp.error_code().await);
+
+    let proof = context.db.proofs.get(&proof.id).await;
+    assert_eq!(proof.state, ProofStateEnum::Error);
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Errored, 1).await;
+}
+
+#[tokio::test]
+async fn test_submit_dc_api_response_openid4vp_haip_invalid_presentation_sets_proof_to_error() {
+    // GIVEN
+    let (context, proof) = prepare_pending_dc_api_proof("OPENID4VP_FINAL1_HAIP").await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .submit_dc_api_response(proof.id, &dummy_openid4vp_dc_api_response(&proof).await)
         .await;
 
     // THEN

@@ -6,13 +6,14 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use shared_types::{ClaimSchemaId, CredentialId, TransactionDataId};
+use standardized_types::openid4vp::VpTokenResponse;
 use time::{Duration, OffsetDateTime};
 
 use super::VerificationProtocolError;
 use super::error::OpenID4VCError;
 use super::model::{
     OpenID4VCVerifierAttestationPayload, OpenID4VPVerifierInteractionContent, ProvedCredential,
-    ValidatedHolderTxData, VpSubmissionData,
+    ValidatedHolderTxData,
 };
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
@@ -54,19 +55,20 @@ where
 }
 
 pub(crate) fn extract_presentation_ctx_from_interaction_content(
-    content: OpenID4VPVerifierInteractionContent,
+    content: &OpenID4VPVerifierInteractionContent,
     verification_protocol_type: VerificationProtocolType,
 ) -> ExtractPresentationCtx {
     ExtractPresentationCtx {
-        nonce: Some(content.nonce),
-        client_id: Some(content.client_id),
-        response_uri: content.response_uri,
+        nonce: Some(content.nonce.to_owned()),
+        client_id: Some(content.client_id.to_owned()),
+        response_uri: content.response_uri.clone(),
         verification_protocol_type,
         format_nonce: None,
         issuance_date: None,
         expiration_date: None,
         mdoc_session_transcript: None,
-        verifier_key: content.encryption_key,
+        verifier_key: content.encryption_key.clone(),
+        dc_api_origin: content.dc_api_origin.clone(),
     }
 }
 
@@ -141,7 +143,7 @@ pub(crate) async fn format_to_type(
 }
 
 pub(crate) fn unencrypted_params(
-    submission_data: &VpSubmissionData,
+    submission_data: &VpTokenResponse,
     state: Option<String>,
 ) -> Result<HashMap<String, String>, VerificationProtocolError> {
     let mut result = serde_json::to_value(submission_data)?;

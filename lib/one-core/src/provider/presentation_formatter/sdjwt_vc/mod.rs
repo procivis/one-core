@@ -206,18 +206,24 @@ impl SdjwtVCPresentationFormatter {
                 "Missing proof of key possession".to_string(),
             ),
         )?;
-        let holder_binding_ctx = match (&context.nonce, &context.client_id) {
-            (Some(nonce), Some(client_id)) => Some(HolderBindingCtx {
-                nonce: nonce.clone(),
-                audience: client_id.clone(),
-                transaction_data: None,
-            }),
-            _ => None,
-        };
+        let holder_binding_context =
+            match (&context.nonce, &context.dc_api_origin, &context.client_id) {
+                (Some(nonce), Some(dc_api_origin), _) => Some(HolderBindingCtx {
+                    nonce: nonce.clone(),
+                    audience: format!("origin:{dc_api_origin}"),
+                    transaction_data: None,
+                }),
+                (Some(nonce), None, Some(client_id)) => Some(HolderBindingCtx {
+                    nonce: nonce.clone(),
+                    audience: client_id.clone(),
+                    transaction_data: None,
+                }),
+                _ => None,
+            };
         let hash_alg = jwt.payload.custom.hash_alg.as_deref().unwrap_or("sha-256");
         let hasher = get_hasher(hash_alg.try_into()?)?;
         let params = SdJwtHolderBindingParams {
-            holder_binding_context: holder_binding_ctx,
+            holder_binding_context,
             leeway: self.get_leeway(),
         };
         let proof_of_key_possession = Jwt::<SdJwtVc>::verify_holder_binding(

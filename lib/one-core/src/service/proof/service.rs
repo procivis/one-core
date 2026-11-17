@@ -1163,13 +1163,31 @@ impl ProofService {
             )));
         }
 
-        let DigitalCredential::OrgIsoMdoc(response) = response else {
-            return Err(ProofServiceError::Other(
-                "Invalid response type".to_string(),
-            ));
+        let protocol_type = self
+            .config
+            .verification_protocol
+            .get_type(&proof.protocol)
+            .error_while("getting verification protocol type")?;
+        match (protocol_type, response) {
+            (
+                VerificationProtocolType::OpenId4VpFinal1_0,
+                DigitalCredential::OpenID4VpV1Signed(response),
+            ) => {
+                let submission = serde_json::from_value(response)
+                    .map_err(|e| ProofServiceError::InvalidSubmission(e.to_string()))?;
+                self.handle_openid4vp_dc_api_response(proof, submission)
+                    .await?;
+            }
+            (VerificationProtocolType::IsoMdl, DigitalCredential::OrgIsoMdoc(response)) => {
+                self.handle_iso_dc_api_response(&proof, response).await?;
+            }
+            _ => {
+                return Err(ProofServiceError::Other(format!(
+                    "Invalid response for protocol: {}",
+                    proof.protocol
+                )));
+            }
         };
-
-        self.handle_iso_dc_api_response(&proof, response).await?;
 
         tracing::info!("DC-API submission complete for proof {proof_id}");
         Ok(())

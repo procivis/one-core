@@ -77,6 +77,7 @@ async fn test_extract_presentation() {
                 response_uri: None,
                 mdoc_session_transcript: None,
                 verifier_key: None,
+                dc_api_origin: None,
             },
         )
         .await;

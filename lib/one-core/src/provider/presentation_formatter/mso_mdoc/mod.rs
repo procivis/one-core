@@ -43,6 +43,7 @@ use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
     FormattedPresentation, PresentedTransactionData,
 };
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_dc_api::OID4VPDcApiHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 
@@ -347,12 +348,20 @@ impl MsoMdocPresentationFormatter {
 
         let handover = match &context.verification_protocol_type {
             VerificationProtocolType::OpenId4VpFinal1_0 => {
-                Handover::OID4VPFinal1_0(OID4VPFinal1_0Handover::compute(
-                    &client_id,
-                    response_uri,
-                    &nonce,
-                    context.verifier_key.as_ref(),
-                )?)
+                if let Some(dc_api_origin) = &context.dc_api_origin {
+                    Handover::OID4VPDcApi(OID4VPDcApiHandover::compute(
+                        dc_api_origin,
+                        &nonce,
+                        context.verifier_key.as_ref(),
+                    )?)
+                } else {
+                    Handover::OID4VPFinal1_0(OID4VPFinal1_0Handover::compute(
+                        &client_id,
+                        response_uri,
+                        &nonce,
+                        context.verifier_key.as_ref(),
+                    )?)
+                }
             }
             // proximity V2 (using dcql)
             VerificationProtocolType::OpenId4VpProximityDraft00
