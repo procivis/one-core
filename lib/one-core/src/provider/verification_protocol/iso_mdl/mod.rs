@@ -611,7 +611,7 @@ impl VerificationProtocol for IsoMdl {
             ..
         }) = params
         else {
-            return Err(VerificationProtocolError::Failed(
+            return Err(VerificationProtocolError::InvalidRequest(
                 "Missing origin".to_string(),
             ));
         };

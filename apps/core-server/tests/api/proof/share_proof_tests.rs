@@ -1082,3 +1082,74 @@ async fn test_share_proof_openid4vp_dc_api() {
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }
+
+#[tokio::test]
+async fn test_share_proof_openid4vp_dc_api_fail_missing_origin() {
+    // GIVEN
+    let (context, organisation, identifier, certificate, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                format: Some("SD_JWT_VC".into()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+            }],
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            ProofStateEnum::Created,
+            "OPENID4VP_FINAL1",
+            TestingProofParams {
+                verifier_identifier: Some(identifier),
+                verifier_certificate: Some(certificate),
+                verifier_key: Some(key),
+                proof_schema: Some(proof_schema),
+                transport: Some("DC_API".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.share(proof.id, Default::default()).await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0085")
+}

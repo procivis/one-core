@@ -667,7 +667,7 @@ impl OpenID4VPFinal1_0 {
             ..
         }) = params
         else {
-            return Err(VerificationProtocolError::Failed(
+            return Err(VerificationProtocolError::InvalidRequest(
                 "Missing origin".to_string(),
             ));
         };
@@ -1155,7 +1155,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                             ..
                         }) = &params
                         else {
-                            return Err(VerificationProtocolError::Failed(
+                            return Err(VerificationProtocolError::InvalidRequest(
                                 "Missing origin".to_string(),
                             ));
                         };
