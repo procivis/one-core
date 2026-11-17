@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
 use shared_types::{
     CredentialFormat, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId,
-    CredentialSchemaId, OrganisationId,
+    CredentialSchemaId, I18nString, OrganisationId,
 };
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::openid4vp::dcql;
@@ -21,7 +21,13 @@ use super::dto::{
     CredentialSchemaFilterValue, CredentialSchemaFormatResponseDTO,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    CredentialSchemaTranslationsDTO, CredentialSchemaV2FilterParamsDTO,
+    CredentialSchemaTransactionCodeRequestDTO, CredentialSchemaTranslationsDTO,
+    CredentialSchemaV2FilterParamsDTO, DisclosurePolicyCreateRequest,
+    UpdateCredentialSchemaBackgroundPropertiesRequestDTO,
+    UpdateCredentialSchemaCodePropertiesRequestDTO,
+    UpdateCredentialSchemaLayoutPropertiesRequestDTO,
+    UpdateCredentialSchemaLogoPropertiesRequestDTO,
+    UpdateCredentialSchemaTransactionCodeRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
@@ -32,7 +38,8 @@ use crate::mapper::credential_schema_claim::{
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer, translations_to_i18n};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaExactColumn, CredentialSchemaListQuery,
+    BackgroundProperties, CodeProperties, CredentialSchema, CredentialSchemaExactColumn,
+    CredentialSchemaListQuery, LayoutProperties, LogoProperties, TransactionCode,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -48,6 +55,7 @@ use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::service::common_dto::BoundedB64Image;
 use crate::service::error::ServiceError;
 
 pub(super) fn map_v1_mdoc_create_claims_to_v2(
@@ -503,24 +511,10 @@ pub(super) fn from_create_v2_request_with_id(
     default_language: &str,
     core_base_url: Option<&String>,
 ) -> Result<CredentialSchema, CredentialSchemaServiceError> {
-    let embedded_disclosure_policy = match request.embedded_disclosure_policy {
-        None => None,
-        Some(request) => {
-            let core_base_url = core_base_url.ok_or(CredentialSchemaServiceError::MappingError(
-                "missing core_base_url".to_string(),
-            ))?;
-            let policy = DisclosurePolicy {
-                id: format!("{core_base_url}/ssi/disclosure-policy/v1/{id}"),
-                policy: request.policy,
-                description: request.description,
-                url: request.url,
-            };
-            Some(
-                serde_json::to_string(&policy)
-                    .map_err(|e| CredentialSchemaServiceError::MappingError(e.to_string()))?,
-            )
-        }
-    };
+    let embedded_disclosure_policy = request
+        .embedded_disclosure_policy
+        .map(|policy| embedded_disclosure_policy_json(id, policy, core_base_url))
+        .transpose()?;
 
     Ok(CredentialSchema {
         id,
@@ -552,37 +546,178 @@ pub(super) fn from_create_v2_request_with_id(
     })
 }
 
+pub(super) fn embedded_disclosure_policy_json(
+    id: CredentialSchemaId,
+    request: DisclosurePolicyCreateRequest,
+    core_base_url: Option<&String>,
+) -> Result<String, CredentialSchemaServiceError> {
+    let core_base_url = core_base_url.ok_or(CredentialSchemaServiceError::MappingError(
+        "missing core_base_url".to_string(),
+    ))?;
+    let policy = DisclosurePolicy {
+        id: format!("{core_base_url}/ssi/disclosure-policy/v1/{id}"),
+        policy: request.policy,
+        description: request.description,
+        url: request.url,
+    };
+    serde_json::to_string(&policy)
+        .map_err(|e| CredentialSchemaServiceError::MappingError(e.to_string()))
+}
+
+pub(super) fn merge_layout_properties(
+    stored: Option<LayoutProperties>,
+    update: UpdateCredentialSchemaLayoutPropertiesRequestDTO,
+) -> Result<CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaServiceError> {
+    let stored = stored.unwrap_or_default();
+    Ok(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: merge_nested(
+            stored.background,
+            update.background,
+            merge_background_properties,
+        )?,
+        logo: merge_nested(stored.logo, update.logo, merge_logo_properties)?,
+        primary_attribute: update.primary_attribute.unwrap_or(stored.primary_attribute),
+        secondary_attribute: update
+            .secondary_attribute
+            .unwrap_or(stored.secondary_attribute),
+        picture_attribute: update.picture_attribute.unwrap_or(stored.picture_attribute),
+        code: merge_nested(stored.code, update.code, merge_code_properties)?,
+    })
+}
+
+fn merge_nested<Stored, Update: Default, Merged>(
+    stored: Option<Stored>,
+    update: Option<Option<Update>>,
+    merge: impl FnOnce(Option<Stored>, Update) -> Result<Merged, CredentialSchemaServiceError>,
+) -> Result<Option<Merged>, CredentialSchemaServiceError> {
+    match update {
+        None => stored
+            .map(|stored| merge(Some(stored), Update::default()))
+            .transpose(),
+        Some(None) => Ok(None),
+        Some(Some(update)) => merge(stored, update).map(Some),
+    }
+}
+
+fn merge_background_properties(
+    stored: Option<BackgroundProperties>,
+    update: UpdateCredentialSchemaBackgroundPropertiesRequestDTO,
+) -> Result<CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaServiceError> {
+    let stored = stored.unwrap_or_default();
+    Ok(CredentialSchemaBackgroundPropertiesRequestDTO {
+        color: update.color.unwrap_or(stored.color),
+        image: update.image.unwrap_or(stored.image.map(BoundedB64Image)),
+    })
+}
+
+fn merge_logo_properties(
+    stored: Option<LogoProperties>,
+    update: UpdateCredentialSchemaLogoPropertiesRequestDTO,
+) -> Result<CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaServiceError> {
+    let stored = stored.unwrap_or_default();
+    Ok(CredentialSchemaLogoPropertiesRequestDTO {
+        font_color: update.font_color.unwrap_or(stored.font_color),
+        background_color: update.background_color.unwrap_or(stored.background_color),
+        image: update.image.unwrap_or(stored.image.map(BoundedB64Image)),
+    })
+}
+
+fn merge_code_properties(
+    stored: Option<CodeProperties>,
+    update: UpdateCredentialSchemaCodePropertiesRequestDTO,
+) -> Result<CredentialSchemaCodePropertiesDTO, CredentialSchemaServiceError> {
+    let (attribute, r#type) = stored
+        .map(|stored| (stored.attribute, stored.r#type.into()))
+        .unzip();
+    Ok(CredentialSchemaCodePropertiesDTO {
+        attribute: update.attribute.or(attribute).ok_or(
+            CredentialSchemaServiceError::MissingField("layoutProperties.code.attribute"),
+        )?,
+        r#type: update
+            .r#type
+            .or(r#type)
+            .ok_or(CredentialSchemaServiceError::MissingField(
+                "layoutProperties.code.type",
+            ))?,
+    })
+}
+
+pub(super) fn merge_transaction_code(
+    stored: Option<TransactionCode>,
+    update: UpdateCredentialSchemaTransactionCodeRequestDTO,
+) -> Result<CredentialSchemaTransactionCodeRequestDTO, CredentialSchemaServiceError> {
+    let (r#type, length, description) = match stored {
+        Some(stored) => (Some(stored.r#type), Some(stored.length), stored.description),
+        None => (None, None, None),
+    };
+    let length = match update.length {
+        Some(length) => length,
+        None => length
+            .ok_or(CredentialSchemaServiceError::MissingField(
+                "transactionCode.length",
+            ))?
+            .try_into()
+            .error_while("parsing transaction code length")?,
+    };
+    Ok(CredentialSchemaTransactionCodeRequestDTO {
+        r#type: update
+            .r#type
+            .or(r#type)
+            .ok_or(CredentialSchemaServiceError::MissingField(
+                "transactionCode.type",
+            ))?,
+        length,
+        description: update.description.unwrap_or(description),
+    })
+}
+
 pub(crate) fn schema_translations_from_dto(
     id: CredentialSchemaId,
     translations: CredentialSchemaTranslationsDTO,
     now: time::OffsetDateTime,
 ) -> Vec<LocalizedText> {
-    let mut result = Vec::new();
-    for (lang, value) in translations.name {
-        result.push(LocalizedText {
+    schema_translations(id, Some(translations.name), translations.description, now)
+}
+
+pub(super) fn schema_translations(
+    id: CredentialSchemaId,
+    name: Option<I18nString>,
+    description: Option<I18nString>,
+    now: time::OffsetDateTime,
+) -> Vec<LocalizedText> {
+    let mut result = vec![];
+    if let Some(name) = name {
+        result.extend(localized_texts(id, LocalizedTextField::Name, name, now));
+    }
+    if let Some(description) = description {
+        result.extend(localized_texts(
+            id,
+            LocalizedTextField::Description,
+            description,
+            now,
+        ));
+    }
+    result
+}
+
+fn localized_texts(
+    id: CredentialSchemaId,
+    field: LocalizedTextField,
+    texts: I18nString,
+    now: time::OffsetDateTime,
+) -> Vec<LocalizedText> {
+    texts
+        .into_iter()
+        .map(|(lang, value)| LocalizedText {
             entity_id: id.into(),
-            field: LocalizedTextField::Name,
+            field: field.clone(),
             created_date: now,
             last_modified: now,
             lang,
             value,
             entity_type: LocalizedTextEntityType::CredentialSchema,
-        });
-    }
-    if let Some(description) = translations.description {
-        for (lang, value) in description {
-            result.push(LocalizedText {
-                entity_id: id.into(),
-                field: LocalizedTextField::Description,
-                created_date: now,
-                last_modified: now,
-                lang,
-                value,
-                entity_type: LocalizedTextEntityType::CredentialSchema,
-            });
-        }
-    }
-    result
+        })
+        .collect()
 }
 
 fn default_name_translation(

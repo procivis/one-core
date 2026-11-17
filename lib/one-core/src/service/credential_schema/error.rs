@@ -62,6 +62,12 @@ pub enum CredentialSchemaServiceError {
     BatchSizeTooLarge(u32),
     #[error("Expiration must be greater than 0")]
     InvalidExpiration,
+    #[error("Credential schema is not a batch schema")]
+    NotBatchSchema,
+    #[error("Missing claim schema: `{0}`")]
+    MissingClaimSchema(ClaimSchemaId),
+    #[error("Missing field `{0}`")]
+    MissingField(&'static str),
     #[error("Wallet attestation lifetime must be greater than 0")]
     InvalidWalletAttestationLifetime,
     #[error(
@@ -122,6 +128,9 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::BatchSizeTooSmall => ErrorCode::BR_0434,
             Self::BatchSizeTooLarge(_) => ErrorCode::BR_0523,
             Self::InvalidExpiration => ErrorCode::BR_0474,
+            Self::NotBatchSchema => ErrorCode::BR_0529,
+            Self::MissingClaimSchema(_) => ErrorCode::BR_0010,
+            Self::MissingField(_) => ErrorCode::BR_0084,
             Self::InvalidWalletAttestationLifetime => ErrorCode::BR_0504,
             Self::MonitorCredentialLifetimeWithoutRevocation => ErrorCode::BR_0524,
             Self::MappingFormatNotPartOfFormats(..) => ErrorCode::BR_0437,

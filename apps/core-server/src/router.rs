@@ -248,7 +248,8 @@ fn get_management_endpoints(config: &ServerConfig) -> OpenApiRouter<AppState> {
         .routes(routes!(proof::controller::share_proof))
         .routes(routes!(
             credential_schema::controller::delete_credential_schema,
-            credential_schema::controller::get_credential_schema
+            credential_schema::controller::get_credential_schema,
+            credential_schema::controller::patch_credential_schema
         ))
         .routes(routes!(
             credential_schema::controller::get_credential_schema_list,

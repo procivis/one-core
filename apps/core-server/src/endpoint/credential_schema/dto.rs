@@ -12,10 +12,16 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaV2FilterParamsDTO, CredentialSchemaWalletAttestationDTO,
     DisclosurePolicyCreateRequest, ImportCredentialSchemaV2FormatDTO,
     ImportCredentialSchemaV2RequestDTO, ImportCredentialSchemaV2RequestSchemaDTO,
+    UpdateCredentialClaimSchemaRequestDTO, UpdateCredentialSchemaBackgroundPropertiesRequestDTO,
+    UpdateCredentialSchemaCodePropertiesRequestDTO,
+    UpdateCredentialSchemaLayoutPropertiesRequestDTO,
+    UpdateCredentialSchemaLogoPropertiesRequestDTO, UpdateCredentialSchemaRequestDTO,
+    UpdateCredentialSchemaTransactionCodeRequestDTO, UpdateCredentialSchemaTranslationsDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{
     From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
+    try_convert_inner_of_inner,
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
@@ -929,6 +935,164 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[modify_schema(field = ecosystem)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub ecosystem: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = UpdateCredentialSchemaRequestDTO, Error = ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialSchemaRequestRestDTO {
+    /// Minimum batch size for issuance. Must be at least 2. Only allowed for
+    /// batch credential schemas.
+    #[try_into(infallible)]
+    pub batch_size: Option<i32>,
+    /// Only existing claim schemas, referenced by `id`, may be updated.
+    /// Adding or removing claim schemas is not supported.
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub claims: Option<Vec<PatchCredentialClaimSchemaRequestRestDTO>>,
+    /// Administrative lifetime, in seconds, applied to credentials issued
+    /// from this schema. Must be greater than 0. Sending `null` removes it.
+    #[schema(nullable = true, minimum = 1)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = expiration_from_seconds, infallible)]
+    pub expiration: Option<Option<i64>>,
+    /// Disclosure policy embedded in the credential schema. A provided policy
+    /// replaces the stored one. `null` can be used to remove all policies.
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub embedded_disclosure_policy: Option<Option<DisclosurePolicyCreateRequestRestDTO>>,
+    /// New credential formats may be added. Existing formats cannot be changed or removed.
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub formats: Option<Vec<CredentialSchemaFormatRequestRestDTO>>,
+    /// Credential appearance design. Inner fields that are omitted keep their
+    /// stored value; inner fields set to `null` are removed. Sending `null`
+    /// removes the design.
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub layout_properties: Option<Option<PatchCredentialSchemaLayoutPropertiesRestDTO>>,
+    /// Transaction code configuration. Inner fields that are omitted keep
+    /// their stored value. Sending `null` disables the transaction code.
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub transaction_code: Option<Option<PatchCredentialSchemaTransactionCodeRestDTO>>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub translations: Option<PatchCredentialSchemaTranslationsRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = UpdateCredentialSchemaLayoutPropertiesRequestDTO, Error = ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialSchemaLayoutPropertiesRestDTO {
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub background: Option<Option<PatchCredentialSchemaBackgroundPropertiesRestDTO>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub logo: Option<Option<PatchCredentialSchemaLogoPropertiesRestDTO>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(infallible)]
+    pub primary_attribute: Option<Option<String>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(infallible)]
+    pub secondary_attribute: Option<Option<String>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(infallible)]
+    pub picture_attribute: Option<Option<String>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub code: Option<Option<PatchCredentialSchemaCodePropertiesRestDTO>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = UpdateCredentialSchemaBackgroundPropertiesRequestDTO, Error = ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialSchemaBackgroundPropertiesRestDTO {
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(infallible)]
+    pub color: Option<Option<String>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub image: Option<Option<String>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = UpdateCredentialSchemaLogoPropertiesRequestDTO, Error = ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialSchemaLogoPropertiesRestDTO {
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(infallible)]
+    pub font_color: Option<Option<String>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(infallible)]
+    pub background_color: Option<Option<String>>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub image: Option<Option<String>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(UpdateCredentialSchemaCodePropertiesRequestDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialSchemaCodePropertiesRestDTO {
+    pub attribute: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub r#type: Option<CredentialSchemaCodeTypeRestEnum>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = UpdateCredentialSchemaTransactionCodeRequestDTO, Error = ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialSchemaTransactionCodeRestDTO {
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub r#type: Option<TransactionCodeTypeRestEnum>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub length: Option<u32>,
+    #[schema(nullable = true)]
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    #[try_into(infallible)]
+    pub description: Option<Option<String>>,
+}
+
+fn expiration_from_seconds(seconds: Option<Option<i64>>) -> Option<Option<Duration>> {
+    seconds.map(|seconds| seconds.map(Duration::seconds))
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(UpdateCredentialClaimSchemaRequestDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialClaimSchemaRequestRestDTO {
+    pub id: ClaimSchemaId,
+    #[into(with_fn = convert_inner)]
+    pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(UpdateCredentialSchemaTranslationsDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct PatchCredentialSchemaTranslationsRestDTO {
+    pub name: Option<I18nString>,
+    pub description: Option<I18nString>,
 }
 
 #[options_not_nullable]

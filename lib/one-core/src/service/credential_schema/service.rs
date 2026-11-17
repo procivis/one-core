@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialFormat, CredentialSchemaId, HistoryId, OrganisationId};
+use time::OffsetDateTime;
 
 use super::CredentialSchemaService;
 use super::dto::{
@@ -13,12 +14,14 @@ use super::dto::{
     CredentialSchemaV2FilterParamsDTO, CredentialSchemaWalletAttestationDTO,
     GetCredentialSchemaListResponseDTO, GetCredentialSchemaListV2ResponseDTO,
     ImportCredentialSchemaRequestDTO, ImportCredentialSchemaV2RequestDTO,
+    UpdateCredentialSchemaRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::{
     add_metadata_claims_and_mappings, build_format_with_claim_mappings,
-    from_create_v2_request_with_id, map_v1_mdoc_create_claims_to_v2,
-    schema_to_detail_v1_response_dto, schema_to_detail_v2_response_dto,
+    embedded_disclosure_policy_json, from_create_v2_request_with_id,
+    map_v1_mdoc_create_claims_to_v2, merge_layout_properties, merge_transaction_code,
+    schema_to_detail_v1_response_dto, schema_to_detail_v2_response_dto, schema_translations,
     to_credential_schema_list_response, to_credential_schema_list_v2_response,
     unnest_claim_schemas,
 };
@@ -29,11 +32,22 @@ use super::validator::{
 use crate::config::core_config::FormatType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::{
-    backfill_default_translations, from_request_claim_schema,
+    backfill_default_translations, claim_name_translations_from_dto, from_request_claim_schema,
 };
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
-use crate::model::credential_schema::SortableCredentialSchemaColumn;
+use crate::model::credential::{
+    CredentialFilterValue, CredentialListQuery, CredentialStateEnum, UpdateCredentialRequest,
+};
+use crate::model::credential_schema::{
+    CredentialSchema, SortableCredentialSchemaColumn, UpdateCredentialSchemaRequest,
+};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
+use crate::model::list_filter::ListFilterCondition;
 use crate::model::organisation::Organisation;
+use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
+use crate::proto::session_provider::SessionExt;
 use crate::provider::ProviderExt;
 use crate::provider::revocation::model::Operation;
 use crate::repository::error::DataLayerError;
@@ -396,6 +410,281 @@ impl CredentialSchemaService {
             credential_schema.name,
             credential_schema.id
         );
+        Ok(())
+    }
+
+    pub async fn update_credential_schema(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+        request: UpdateCredentialSchemaRequestDTO,
+    ) -> Result<(), CredentialSchemaServiceError> {
+        let schema = self
+            .credential_schema_repository
+            .get_credential_schema(credential_schema_id)
+            .await
+            .error_while("getting credential schema")?;
+
+        throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
+            .error_while("checking session")?;
+
+        if schema.deleted_at.is_some() {
+            return Err(CredentialSchemaServiceError::NotFound(
+                *credential_schema_id,
+            ));
+        }
+
+        let existing_formats = schema.formats.as_ref().await?;
+        let claim_schemas = schema.claim_schemas.as_ref().await?;
+        super::validator::validate_update_request(
+            &request,
+            &schema,
+            &existing_formats,
+            &claim_schemas,
+            &self.config,
+            &*self.formatter_provider,
+        )?;
+
+        let layout_properties = match request.layout_properties {
+            None => None,
+            Some(None) => Some(None),
+            Some(Some(update)) => {
+                let layout_properties =
+                    merge_layout_properties(schema.layout_properties.clone(), update)?;
+                super::validator::validate_layout_properties(&layout_properties, &claim_schemas)?;
+                Some(Some(layout_properties.into()))
+            }
+        };
+        let transaction_code = match request.transaction_code {
+            None => None,
+            Some(None) => Some(None),
+            Some(Some(update)) => {
+                let transaction_code =
+                    merge_transaction_code(schema.transaction_code.clone(), update)?;
+                super::validator::validate_transaction_code_description(&transaction_code)?;
+                Some(Some(transaction_code.into()))
+            }
+        };
+
+        let now = crate::clock::now_utc();
+        let mut updated_claim_schemas = vec![];
+        for claim in request.claims.unwrap_or_default() {
+            let Some(translations) = claim.translations else {
+                continue;
+            };
+            let claim_schema = claim_schemas
+                .iter()
+                .find(|claim_schema| claim_schema.id == claim.id)
+                .ok_or(CredentialSchemaServiceError::MissingClaimSchema(claim.id))?;
+            updated_claim_schemas.push(ClaimSchema {
+                last_modified: now,
+                translations: claim_name_translations_from_dto(claim.id, &translations, now).into(),
+                ..claim_schema.clone()
+            });
+        }
+
+        let (formats, metadata_claim_schemas) = self
+            .added_formats(
+                &schema,
+                &claim_schemas,
+                request.formats.unwrap_or_default(),
+                now,
+            )
+            .await?;
+        updated_claim_schemas.extend(metadata_claim_schemas);
+
+        let translations = request
+            .translations
+            .map(|translations| {
+                schema_translations(schema.id, translations.name, translations.description, now)
+            })
+            .unwrap_or_default();
+
+        let embedded_disclosure_policy = match request.embedded_disclosure_policy {
+            None => None,
+            Some(None) => Some(None),
+            Some(Some(policy)) => Some(Some(embedded_disclosure_policy_json(
+                schema.id,
+                policy,
+                self.core_base_url.as_ref(),
+            )?)),
+        };
+
+        self.credential_schema_repository
+            .update_credential_schema(
+                &schema.id,
+                UpdateCredentialSchemaRequest {
+                    claim_schemas: (!updated_claim_schemas.is_empty())
+                        .then_some(updated_claim_schemas),
+                    claim_mappings: None,
+                    formats: (!formats.is_empty()).then_some(formats),
+                    layout_properties,
+                    translations: (!translations.is_empty()).then_some(translations),
+                    batch_size: request.batch_size,
+                    expiration: request.expiration,
+                    transaction_code,
+                    embedded_disclosure_policy,
+                },
+            )
+            .await
+            .map_err(|error| match error {
+                DataLayerError::RecordNotUpdated(_) => {
+                    CredentialSchemaServiceError::NotFound(*credential_schema_id)
+                }
+                error => error.error_while("updating credential schema").into(),
+            })?;
+
+        self.expire_pending_credentials(schema.id).await?;
+
+        let history = self
+            .history_repository
+            .create_history(History {
+                id: HistoryId::new(),
+                created_date: now,
+                action: HistoryAction::Updated,
+                name: schema.name.clone(),
+                source: HistorySource::Core,
+                target: None,
+                entity_id: Some(schema.id.into()),
+                entity_type: HistoryEntityType::CredentialSchema,
+                metadata: None,
+                metadata_blob_id: None,
+                organisation_id: Some(schema.organisation.id()),
+                user: self.session_provider.session().user(),
+            })
+            .await;
+        if let Err(err) = history {
+            tracing::warn!("failed to insert credential schema history event: {err:?}");
+        }
+
+        tracing::info!(
+            "Updated credential schema `{}` ({})",
+            schema.name,
+            schema.id
+        );
+        Ok(())
+    }
+
+    async fn added_formats(
+        &self,
+        schema: &CredentialSchema,
+        claim_schemas: &[ClaimSchema],
+        new_formats: Vec<CredentialSchemaFormatRequestDTO>,
+        now: OffsetDateTime,
+    ) -> Result<(Vec<CredentialSchemaFormat>, Vec<ClaimSchema>), CredentialSchemaServiceError> {
+        if new_formats.is_empty() {
+            return Ok((vec![], vec![]));
+        }
+        let core_base_url = self.core_base_url.as_ref().ok_or_else(|| {
+            CredentialSchemaServiceError::MappingError("Missing core base_url".to_string())
+        })?;
+
+        let ecosystem_schema_ids = new_formats
+            .iter()
+            .flat_map(|format| format.ecosystem_schema_id.clone())
+            .collect::<Vec<_>>();
+        if !ecosystem_schema_ids.is_empty()
+            && matches!(
+                super::validator::credential_schema_already_exists(
+                    &*self.credential_schema_repository,
+                    &schema.name,
+                    ecosystem_schema_ids,
+                    schema.organisation.id(),
+                )
+                .await?,
+                UniquenessCheckResult::SchemaIdConflict
+            )
+        {
+            return Err(CredentialSchemaServiceError::AlreadyExists);
+        }
+
+        let mut key_to_claim_schemas_and_mappings = claim_schemas
+            .iter()
+            .map(|claim_schema| (claim_schema.key.clone(), (claim_schema.clone(), vec![])))
+            .collect::<IndexMap<_, _>>();
+        let mut formats = Vec::with_capacity(new_formats.len());
+        for format in &new_formats {
+            let formatter = self
+                .formatter_provider
+                .get_credential_formatter(&format.format)?;
+            let schema_id = formatter
+                .credential_schema_id(
+                    schema.id,
+                    schema.organisation.id(),
+                    format.ecosystem_schema_id.as_deref(),
+                    core_base_url,
+                    &format.format,
+                )
+                .error_while("creating schemaId")?;
+            let format_type = self
+                .config
+                .format
+                .get_type(&format.format)
+                .error_while("getting format type")?;
+            let namespace = (format_type == FormatType::Mdoc).then(|| schema_id.clone());
+            for (claim_schema, mappings) in key_to_claim_schemas_and_mappings.values_mut() {
+                if !claim_schema.metadata {
+                    mappings.push(CredentialClaimSchemaMappingDTO {
+                        format: format.format.clone(),
+                        technical_key: claim_schema.key.clone(),
+                        namespace: namespace.clone(),
+                    });
+                }
+            }
+            add_metadata_claims_and_mappings(
+                &format.format,
+                formatter.as_ref(),
+                now,
+                &mut key_to_claim_schemas_and_mappings,
+            );
+            formats.push(build_format_with_claim_mappings(
+                schema.id,
+                format.format.clone(),
+                schema_id,
+                now,
+                &key_to_claim_schemas_and_mappings,
+            )?);
+        }
+
+        let metadata_claim_schemas = key_to_claim_schemas_and_mappings
+            .into_values()
+            .map(|(claim_schema, _)| claim_schema)
+            .filter(|claim_schema| !claim_schemas.iter().any(|c| c.id == claim_schema.id))
+            .collect();
+        Ok((formats, metadata_claim_schemas))
+    }
+
+    async fn expire_pending_credentials(
+        &self,
+        credential_schema_id: CredentialSchemaId,
+    ) -> Result<(), CredentialSchemaServiceError> {
+        let pending = self
+            .credential_repository
+            .get_credential_list(CredentialListQuery {
+                include_count: false,
+                pagination: None,
+                sorting: None,
+                filtering: Some(
+                    ListFilterCondition::from(CredentialFilterValue::CredentialSchemaIds(vec![
+                        credential_schema_id,
+                    ])) & CredentialFilterValue::States(vec![CredentialStateEnum::Pending]),
+                ),
+                include: None,
+            })
+            .await
+            .error_while("getting pending credentials")?;
+
+        for credential in pending.values {
+            self.credential_repository
+                .update_credential(
+                    credential.common().id,
+                    UpdateCredentialRequest {
+                        state: Some(CredentialStateEnum::InteractionExpired),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("expiring pending credential")?;
+        }
         Ok(())
     }
 

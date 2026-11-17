@@ -20,6 +20,7 @@ use crate::dto::response::{
 };
 use crate::endpoint::credential_schema::dto::{
     CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaV2RequestRestDTO,
+    PatchCredentialSchemaRequestRestDTO,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -48,6 +49,48 @@ pub(crate) async fn delete_credential_schema(
         .delete_credential_schema(&id)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "deleting credential schema")
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialSchemaEdit],
+    patch,
+    path = "/api/credential-schema/v1/{id}",
+    request_body = PatchCredentialSchemaRequestRestDTO,
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Schema id")
+    ),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Update credential schema",
+    description = indoc::formatdoc! {"
+        Updates a credential schema. Only the fields provided in the request body
+        are updated; all other fields remain unchanged.
+
+        Credentials of this schema in state `PENDING` move to `INTERACTION_EXPIRED`.
+    "},
+)]
+pub(crate) async fn patch_credential_schema(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PatchCredentialSchemaRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = async {
+        state
+            .core
+            .credential_schema_service
+            .update_credential_schema(
+                &id,
+                request.try_into().error_while("converting request dto")?,
+            )
+            .await
+    }
+    .await;
+    EmptyOrErrorResponse::from_result(result, state, "updating credential schema")
 }
 
 #[endpoint(

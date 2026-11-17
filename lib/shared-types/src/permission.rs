@@ -19,6 +19,7 @@ pub enum Permission {
     CredentialSchemaCreate,
     CredentialSchemaDelete,
     CredentialSchemaDetail,
+    CredentialSchemaEdit,
     CredentialSchemaList,
     CredentialSchemaShare,
     CredentialShare,

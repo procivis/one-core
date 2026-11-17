@@ -7,7 +7,7 @@ use standardized_types::etsi_119_472::disclosure_policy::PolicyType;
 use super::dto::{
     CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaFormatRequestDTO, CredentialSchemaLayoutPropertiesRequestDTO,
-    CredentialSchemaTransactionCodeRequestDTO,
+    CredentialSchemaTransactionCodeRequestDTO, UpdateCredentialSchemaRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::create_unique_name_check_request;
@@ -16,7 +16,9 @@ use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::model::credential_schema::KeyStorageSecurity;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -76,28 +78,8 @@ pub(crate) fn validate_create_v2_request(
     if request.claims.is_empty() {
         return Err(CredentialSchemaServiceError::MissingClaimSchemas);
     }
-    if let Some(batch_size) = request.batch_size {
-        if batch_size < 2 {
-            return Err(CredentialSchemaServiceError::BatchSizeTooSmall);
-        }
-        let max_batch_size = config.global_settings.credential_schema.max_batch_size;
-        if i32::try_from(max_batch_size).is_ok_and(|max| batch_size > max) {
-            return Err(CredentialSchemaServiceError::BatchSizeTooLarge(
-                max_batch_size,
-            ));
-        }
-    }
-
-    if let Some(expiration) = request.expiration
-        && (expiration <= time::Duration::ZERO
-            || expiration
-                > config
-                    .global_settings
-                    .credential_schema
-                    .max_expiration_seconds)
-    {
-        return Err(CredentialSchemaServiceError::InvalidExpiration);
-    }
+    validate_batch_size(request.batch_size, config)?;
+    validate_expiration(request.expiration, config)?;
 
     let monitor_credential_lifetime = if let Some(wallet_attestation) = &request.wallet_attestation
     {
@@ -156,6 +138,167 @@ pub(crate) fn validate_create_v2_request(
         common_capabilities.ok_or(CredentialSchemaServiceError::MissingFormats)?;
     validate_common_datatype_capabilities(&request.claims, &common_capabilities.datatypes)?;
     validate_common_identifier_capabilities(&common_capabilities)?;
+    Ok(())
+}
+
+fn validate_batch_size(
+    batch_size: Option<i32>,
+    config: &CoreConfig,
+) -> Result<(), CredentialSchemaServiceError> {
+    if let Some(batch_size) = batch_size {
+        if batch_size < 2 {
+            return Err(CredentialSchemaServiceError::BatchSizeTooSmall);
+        }
+        let max_batch_size = config.global_settings.credential_schema.max_batch_size;
+        if i32::try_from(max_batch_size).is_ok_and(|max| batch_size > max) {
+            return Err(CredentialSchemaServiceError::BatchSizeTooLarge(
+                max_batch_size,
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_expiration(
+    expiration: Option<time::Duration>,
+    config: &CoreConfig,
+) -> Result<(), CredentialSchemaServiceError> {
+    if let Some(expiration) = expiration
+        && (expiration <= time::Duration::ZERO
+            || expiration
+                > config
+                    .global_settings
+                    .credential_schema
+                    .max_expiration_seconds)
+    {
+        return Err(CredentialSchemaServiceError::InvalidExpiration);
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_update_request(
+    request: &UpdateCredentialSchemaRequestDTO,
+    schema: &CredentialSchema,
+    existing_formats: &[CredentialSchemaFormat],
+    claim_schemas: &[ClaimSchema],
+    config: &CoreConfig,
+    formatter_provider: &dyn CredentialFormatterProvider,
+) -> Result<(), CredentialSchemaServiceError> {
+    if request.batch_size.is_some() && schema.batch_size.is_none() {
+        return Err(CredentialSchemaServiceError::NotBatchSchema);
+    }
+    validate_batch_size(request.batch_size, config)?;
+    validate_expiration(request.expiration.flatten(), config)?;
+    if let Some(Some(policy)) = &request.embedded_disclosure_policy {
+        validate_disclosure_policy(&policy.policy)?;
+    }
+
+    let new_formats = request.formats.as_deref().unwrap_or_default();
+    validate_unique_formats(new_formats)?;
+    for format in new_formats {
+        validate_format(&format.format, &config.format).error_while("validating format")?;
+        if existing_formats.iter().any(|f| f.format == format.format) {
+            return Err(CredentialSchemaServiceError::DuplicateFormats);
+        }
+        if let Some(ecosystem_schema_id) = &format.ecosystem_schema_id
+            && existing_formats
+                .iter()
+                .any(|f| f.ecosystem_schema_id == *ecosystem_schema_id)
+        {
+            return Err(CredentialSchemaServiceError::DuplicateEcosystemSchemaIds);
+        }
+    }
+
+    let claims = claim_schemas
+        .iter()
+        .filter(|claim| !claim.metadata)
+        .collect::<Vec<_>>();
+    let has_layout_properties = match &request.layout_properties {
+        Some(layout_properties) => layout_properties.is_some(),
+        None => schema.layout_properties.is_some(),
+    };
+    let has_transaction_code = match &request.transaction_code {
+        Some(transaction_code) => transaction_code.is_some(),
+        None => schema.transaction_code.is_some(),
+    };
+
+    let formats = existing_formats
+        .iter()
+        .map(|format| (&format.format, false))
+        .chain(new_formats.iter().map(|format| (&format.format, true)));
+    let mut common_capabilities: Option<FormatterCapabilities> = None;
+    for (format, is_new) in formats {
+        let formatter = formatter_provider.get_credential_formatter(format)?;
+        let capabilities = formatter.get_capabilities();
+        if has_layout_properties
+            && !capabilities
+                .features
+                .contains(&Features::SupportsCredentialDesign)
+        {
+            return Err(CredentialSchemaServiceError::LayoutPropertiesNotSupported);
+        }
+        if has_transaction_code && !capabilities.features.contains(&Features::SupportsTxCode) {
+            return Err(CredentialSchemaServiceError::TransactionCodeNotSupported);
+        }
+        if is_new {
+            validate_claim_schemas_for_format(&claims, &capabilities)?;
+        }
+        match common_capabilities.as_mut() {
+            Some(common_capabilities) => common_capabilities.combine_constraints(&capabilities),
+            None => common_capabilities = Some(capabilities),
+        }
+    }
+    if let Some(common_capabilities) = common_capabilities
+        && !new_formats.is_empty()
+    {
+        validate_common_identifier_capabilities(&common_capabilities)?;
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_layout_properties(
+    layout_properties: &CredentialSchemaLayoutPropertiesRequestDTO,
+    claim_schemas: &[ClaimSchema],
+) -> Result<(), CredentialSchemaServiceError> {
+    check_background_properties(Some(layout_properties))?;
+    check_logo_properties(Some(layout_properties))?;
+    let claim_paths = claim_schemas
+        .iter()
+        .filter(|claim_schema| !claim_schema.metadata)
+        .map(|claim_schema| claim_schema.key.clone())
+        .collect::<Vec<_>>();
+    check_layout_attributes_exist(Some(layout_properties), &claim_paths)
+}
+
+fn validate_claim_schemas_for_format(
+    claim_schemas: &[&ClaimSchema],
+    capabilities: &FormatterCapabilities,
+) -> Result<(), CredentialSchemaServiceError> {
+    for claim_schema in claim_schemas {
+        if claim_schema.array {
+            validate_datatype_formatter_capabilities(
+                &claim_schema.key,
+                "ARRAY",
+                &capabilities.datatypes,
+            )?;
+        }
+        validate_datatype_formatter_capabilities(
+            &claim_schema.key,
+            &claim_schema.data_type,
+            &capabilities.datatypes,
+        )?;
+
+        let (is_root, name) = match claim_schema.key.rsplit_once(NESTED_CLAIM_MARKER) {
+            Some((_, name)) => (false, name),
+            None => (true, claim_schema.key.as_str()),
+        };
+        let is_forbidden = |keys: &[String]| keys.iter().any(|key| key == name);
+        if is_forbidden(&capabilities.forbidden_claim_technical_keys)
+            || (is_root && is_forbidden(&capabilities.forbidden_root_claim_technical_keys))
+        {
+            return Err(CredentialSchemaServiceError::ForbiddenClaimName);
+        }
+    }
     Ok(())
 }
 
@@ -294,14 +437,20 @@ fn validate_transaction_code(
         {
             return Err(CredentialSchemaServiceError::TransactionCodeNotSupported);
         }
-
-        if let Some(description) = &transaction_code.description
-            && (description.is_empty() || description.len() > 300)
-        {
-            return Err(CredentialSchemaServiceError::InvalidTransactionCodeDescriptionLength);
-        }
+        validate_transaction_code_description(transaction_code)?;
     }
 
+    Ok(())
+}
+
+pub(crate) fn validate_transaction_code_description(
+    transaction_code: &CredentialSchemaTransactionCodeRequestDTO,
+) -> Result<(), CredentialSchemaServiceError> {
+    if let Some(description) = &transaction_code.description
+        && (description.is_empty() || description.len() > 300)
+    {
+        return Err(CredentialSchemaServiceError::InvalidTransactionCodeDescriptionLength);
+    }
     Ok(())
 }
 
@@ -411,6 +560,13 @@ pub(crate) fn check_claims_presence_in_layout_properties(
     layout_properties: Option<&CredentialSchemaLayoutPropertiesRequestDTO>,
     claims: &[CredentialClaimSchemaRequestDTO],
 ) -> Result<(), CredentialSchemaServiceError> {
+    check_layout_attributes_exist(layout_properties, &get_all_claim_paths(claims))
+}
+
+fn check_layout_attributes_exist(
+    layout_properties: Option<&CredentialSchemaLayoutPropertiesRequestDTO>,
+    claim_paths: &[String],
+) -> Result<(), CredentialSchemaServiceError> {
     let primary_attribute = layout_properties.and_then(|p| p.primary_attribute.as_ref());
     let secondary_attribute = layout_properties.and_then(|p| p.secondary_attribute.as_ref());
     let picture_attribute = layout_properties.and_then(|p| p.picture_attribute.as_ref());
@@ -426,12 +582,10 @@ pub(crate) fn check_claims_presence_in_layout_properties(
         return Ok(());
     }
 
-    let claim_paths = get_all_claim_paths(claims);
-
-    handle_attribute_claim_validation(primary_attribute, &claim_paths, "Primary")?;
-    handle_attribute_claim_validation(secondary_attribute, &claim_paths, "Secondary")?;
-    handle_attribute_claim_validation(picture_attribute, &claim_paths, "Picture")?;
-    handle_attribute_claim_validation(code_attribute, &claim_paths, "Code attribute")?;
+    handle_attribute_claim_validation(primary_attribute, claim_paths, "Primary")?;
+    handle_attribute_claim_validation(secondary_attribute, claim_paths, "Secondary")?;
+    handle_attribute_claim_validation(picture_attribute, claim_paths, "Picture")?;
+    handle_attribute_claim_validation(code_attribute, claim_paths, "Code attribute")?;
 
     Ok(())
 }

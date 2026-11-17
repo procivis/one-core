@@ -553,13 +553,13 @@ async fn test_update_credential_schema_success() {
         .update_credential_schema(
             &credential_schema.id,
             UpdateCredentialSchemaRequest {
-                layout_properties: Some(LayoutProperties {
+                layout_properties: Some(Some(LayoutProperties {
                     background: Some(BackgroundProperties {
                         color: Some("color".to_string()),
                         image: None,
                     }),
                     ..Default::default()
-                }),
+                })),
                 ..Default::default()
             },
         )
@@ -834,7 +834,7 @@ async fn test_update_credential_schema_rejects_claim_from_another_schema() {
             &other_schema_id,
             UpdateCredentialSchemaRequest {
                 claim_schemas: Some(vec![new_claim, foreign_claim]),
-                layout_properties: Some(LayoutProperties::default()),
+                layout_properties: Some(Some(LayoutProperties::default())),
                 ..Default::default()
             },
         )

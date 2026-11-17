@@ -1178,6 +1178,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid proof submission")]
     BR_0528,
+
+    #[strum(message = "Credential schema is not a batch schema")]
+    BR_0529,
 }
 
 /// Extra detail some errors carry into the response body, next to their error code.

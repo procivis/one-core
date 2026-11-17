@@ -18,6 +18,7 @@ use super::dto::{
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
     CredentialSchemaTransactionCodeRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
     ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
+    UpdateCredentialSchemaRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::{renest_claim_schemas, unnest_claim_schemas};
@@ -46,8 +47,10 @@ use crate::provider::credential_formatter::model::{Features, FormatterCapabiliti
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::ecosystem::directory::MockEcosystemDirectory;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::{DataLayerError, EntityKind};
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::{
@@ -81,6 +84,8 @@ fn setup_service(
     CredentialSchemaService::new(
         Some("http://127.0.0.1:4321".to_string()),
         credential_schema_repository,
+        Arc::new(MockCredentialRepository::default()),
+        Arc::new(MockHistoryRepository::default()),
         Arc::new(organisation_repository),
         formatter_provider,
         revocation_method_provider,
@@ -326,6 +331,35 @@ async fn test_delete_credential_schema() {
 
     let result = service.delete_credential_schema(&schema_id).await;
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_update_credential_schema_not_batch_schema() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let credential_schema = generic_credential_schema();
+    let schema_id = credential_schema.id;
+    repository
+        .expect_get_credential_schema()
+        .returning(move |_| Ok(credential_schema.clone()));
+
+    let service = setup_service(
+        repository,
+        MockOrganisationRepository::default(),
+        MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
+        generic_config().core,
+    );
+
+    let result = service
+        .update_credential_schema(
+            &schema_id,
+            UpdateCredentialSchemaRequestDTO {
+                batch_size: Some(3),
+                ..Default::default()
+            },
+        )
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0529);
 }
 
 #[tokio::test]
@@ -3014,6 +3048,8 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
 async fn test_create_credential_schema_fail_session_org_mismatch() {
     let service = CredentialSchemaService {
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::default()),
+        credential_repository: Arc::new(MockCredentialRepository::default()),
+        history_repository: Arc::new(MockHistoryRepository::default()),
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::default()),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),
@@ -3165,6 +3201,8 @@ async fn test_create_credential_schema_fail_tx_code_description_too_long() {
 async fn test_list_credential_schema_fail_session_org_mismatch() {
     let service = CredentialSchemaService {
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::default()),
+        credential_repository: Arc::new(MockCredentialRepository::default()),
+        history_repository: Arc::new(MockHistoryRepository::default()),
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::default()),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),
@@ -3214,6 +3252,8 @@ async fn test_credential_schema_ops_session_org_mismatch() {
         .returning(|_| Ok(generic_credential_schema()));
     let service = CredentialSchemaService {
         credential_schema_repository: Arc::new(schema_repository),
+        credential_repository: Arc::new(MockCredentialRepository::default()),
+        history_repository: Arc::new(MockHistoryRepository::default()),
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::default()),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),

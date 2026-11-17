@@ -180,15 +180,37 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let translations = request.translations.unwrap_or_default();
         let layout_properties = match request.layout_properties {
             None => Unchanged(Default::default()),
-            Some(layout_properties) => Set(Some(layout_properties.into())),
+            Some(layout_properties) => Set(layout_properties.map(Into::into)),
         };
 
-        let update_model = credential_schema::ActiveModel {
+        let mut update_model = credential_schema::ActiveModel {
             id: Unchanged(*id),
             last_modified: Set(one_core::clock::now_utc()),
             layout_properties,
             ..Default::default()
         };
+        if let Some(batch_size) = request.batch_size {
+            update_model.batch_size = Set(Some(batch_size));
+        }
+        if let Some(expiration) = request.expiration {
+            update_model.expiration = Set(expiration.map(|d| d.whole_seconds() as i32));
+        }
+        if let Some(transaction_code) = request.transaction_code {
+            let (r#type, length, description) = match transaction_code {
+                Some(code) => (
+                    Some(code.r#type.into()),
+                    Some(code.length as i32),
+                    code.description,
+                ),
+                None => (None, None, None),
+            };
+            update_model.transaction_code_type = Set(r#type);
+            update_model.transaction_code_length = Set(length);
+            update_model.transaction_code_description = Set(description);
+        }
+        if let Some(policy) = request.embedded_disclosure_policy {
+            update_model.embedded_disclosure_policy = Set(policy);
+        }
 
         self.db
             .tx(async {

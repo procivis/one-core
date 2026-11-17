@@ -224,6 +224,10 @@ pub struct UpdateCredentialSchemaRequest {
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
     pub formats: Option<Vec<CredentialSchemaFormat>>,
-    pub layout_properties: Option<LayoutProperties>,
+    pub layout_properties: Option<Option<LayoutProperties>>,
     pub translations: Option<Vec<LocalizedText>>,
+    pub batch_size: Option<i32>,
+    pub expiration: Option<Option<Duration>>,
+    pub transaction_code: Option<Option<TransactionCode>>,
+    pub embedded_disclosure_policy: Option<Option<String>>,
 }

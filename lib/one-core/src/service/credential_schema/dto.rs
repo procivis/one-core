@@ -317,6 +317,66 @@ pub struct CreateCredentialSchemaV2RequestDTO {
     pub ecosystem: Option<EcosystemId>,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct UpdateCredentialSchemaRequestDTO {
+    pub batch_size: Option<i32>,
+    pub claims: Option<Vec<UpdateCredentialClaimSchemaRequestDTO>>,
+    pub expiration: Option<Option<Duration>>,
+    pub embedded_disclosure_policy: Option<Option<DisclosurePolicyCreateRequest>>,
+    pub formats: Option<Vec<CredentialSchemaFormatRequestDTO>>,
+    pub layout_properties: Option<Option<UpdateCredentialSchemaLayoutPropertiesRequestDTO>>,
+    pub transaction_code: Option<Option<UpdateCredentialSchemaTransactionCodeRequestDTO>>,
+    pub translations: Option<UpdateCredentialSchemaTranslationsDTO>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateCredentialSchemaLayoutPropertiesRequestDTO {
+    pub background: Option<Option<UpdateCredentialSchemaBackgroundPropertiesRequestDTO>>,
+    pub logo: Option<Option<UpdateCredentialSchemaLogoPropertiesRequestDTO>>,
+    pub primary_attribute: Option<Option<String>>,
+    pub secondary_attribute: Option<Option<String>>,
+    pub picture_attribute: Option<Option<String>>,
+    pub code: Option<Option<UpdateCredentialSchemaCodePropertiesRequestDTO>>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateCredentialSchemaBackgroundPropertiesRequestDTO {
+    pub color: Option<Option<String>>,
+    pub image: Option<Option<CredentialBackgroundImage>>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateCredentialSchemaLogoPropertiesRequestDTO {
+    pub font_color: Option<Option<String>>,
+    pub background_color: Option<Option<String>>,
+    pub image: Option<Option<CredentialSchemaLogo>>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateCredentialSchemaCodePropertiesRequestDTO {
+    pub attribute: Option<String>,
+    pub r#type: Option<CredentialSchemaCodeTypeEnum>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateCredentialSchemaTransactionCodeRequestDTO {
+    pub r#type: Option<TransactionCodeType>,
+    pub length: Option<TransactionCodeLength>,
+    pub description: Option<Option<String>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct UpdateCredentialClaimSchemaRequestDTO {
+    pub id: ClaimSchemaId,
+    pub translations: Option<CredentialClaimSchemaTranslationsDTO>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateCredentialSchemaTranslationsDTO {
+    pub name: Option<I18nString>,
+    pub description: Option<I18nString>,
+}
+
 #[derive(Clone, Debug)]
 pub struct DisclosurePolicyCreateRequest {
     pub policy: standardized_types::etsi_119_472::disclosure_policy::PolicyType,

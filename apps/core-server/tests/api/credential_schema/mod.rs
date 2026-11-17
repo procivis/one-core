@@ -8,3 +8,4 @@ mod import_credential_schema_v2_tests;
 mod list_credential_schema_tests;
 mod list_credential_schema_v2_tests;
 mod share_credential_schema_tests;
+mod update_credential_schema_tests;
