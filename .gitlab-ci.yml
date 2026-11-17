@@ -586,6 +586,22 @@ sdk:react-native:
     forward:
       pipeline_variables: true
 
+sdk:ios:
+  stage: sdk_artifact
+  needs:
+    - job: sdk:upload_artifacts
+      artifacts: true
+  variables:
+    NEW_VERSION: "1.$CI_PIPELINE_ID.0"
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+    CI_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME
+  trigger:
+    project: procivis/one/one-core-ios
+    branch: main
+    strategy: depend
+    forward:
+      pipeline_variables: true
+
 sdk:generate_binding_files:
   stage: sdk_build
   needs: []
