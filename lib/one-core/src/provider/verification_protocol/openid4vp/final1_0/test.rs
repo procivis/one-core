@@ -199,7 +199,7 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_FINAL1".into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state: ProofStateEnum::Created,
         role: ProofRole::Verifier,
@@ -327,7 +327,7 @@ fn test_holder_proof(interaction_data: OpenID4VPHolderInteractionData) -> Proof 
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_FINAL1".into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state: ProofStateEnum::Requested,
         role: ProofRole::Holder,
@@ -1509,7 +1509,7 @@ async fn test_holder_handle_invitation_and_reject_dc_api_unsigned_request() {
         .unwrap();
 
     let proof = invitation.proof;
-    assert_eq!("DC_API", proof.transport.as_str());
+    assert_eq!(Some("DC_API"), proof.transport.as_ref().map(|t| t.as_str()));
     assert_eq!(ProofRole::Holder, proof.role);
     assert_eq!(ProofStateEnum::Requested, proof.state);
 

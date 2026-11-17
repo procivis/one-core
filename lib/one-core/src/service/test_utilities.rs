@@ -495,7 +495,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: protocol.into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state: ProofStateEnum::Created,
         role: ProofRole::Verifier,

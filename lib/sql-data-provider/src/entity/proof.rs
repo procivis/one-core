@@ -16,7 +16,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub protocol: VerificationProtocolId,
-    pub transport: TransportId,
+    pub transport: Option<TransportId>,
     pub redirect_uri: Option<String>,
     pub state: ProofRequestState,
     pub role: ProofRole,

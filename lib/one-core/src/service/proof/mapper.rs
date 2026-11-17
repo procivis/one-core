@@ -726,7 +726,7 @@ pub(super) fn proof_from_create_request(
     request: CreateProofRequestDTO,
     now: OffsetDateTime,
     schema: ProofSchema,
-    transport: TransportId,
+    transport: Option<TransportId>,
     verifier_identifier: Identifier,
     verifier_key: Key,
     verifier_certificate: Option<Certificate>,

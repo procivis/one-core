@@ -82,3 +82,4 @@ pub mod m20261030_120000_add_identifier_list_indexes;
 pub mod m20261030_120401_revocation_list_params;
 pub mod m20261102_130000_key_public_key_hash;
 pub mod m20261102_140000_holder_interaction_data_v2;
+pub mod m20261117_120000_proof_transport_nullable;

@@ -410,8 +410,10 @@ pub struct ProofListItemBindingDTO {
     pub verifier: Option<String>,
     /// Protocol used for verification.
     pub protocol: String,
-    /// Channel used for this request.
-    pub transport: String,
+    /// Channel used for this request. Not set until a transport is
+    /// selected, if multiple transports were offered.
+    #[from(with_fn = convert_inner)]
+    pub transport: Option<String>,
     /// Engagement method used for this request.
     pub engagement: Option<String>,
     /// State representation of this request.
@@ -454,8 +456,9 @@ pub struct ProofResponseBindingDTO {
     pub protocol: String,
     /// Engagement method used for this request.
     pub engagement: Option<String>,
-    /// Channel used for this request.
-    pub transport: String,
+    /// Channel used for this request. Not set until a transport is
+    /// selected, if multiple transports were offered.
+    pub transport: Option<String>,
     /// The wallet is redirected to this resource once a shared proof
     /// is accepted.
     pub redirect_uri: Option<String>,

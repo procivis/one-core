@@ -103,7 +103,7 @@ impl ProofsDB {
             created_date: params.created_date.unwrap_or(get_dummy_date()),
             last_modified: params.last_modified.unwrap_or(get_dummy_date()),
             protocol: protocol.into(),
-            transport: params.transport.map(Into::into).unwrap_or("HTTP".into()),
+            transport: Some(params.transport.map(Into::into).unwrap_or("HTTP".into())),
             redirect_uri: params.redirect_uri,
             state,
             role: params.role.unwrap_or(computed_role),

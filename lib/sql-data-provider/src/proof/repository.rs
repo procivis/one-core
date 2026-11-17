@@ -210,7 +210,7 @@ impl ProofRepository for ProofProvider {
 
         let transport = match proof.transport {
             None => NotSet,
-            Some(transport) => Set(transport),
+            Some(transport) => Set(Some(transport)),
         };
 
         let requested_date = match proof.requested_date {

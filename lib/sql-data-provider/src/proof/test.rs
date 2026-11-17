@@ -352,7 +352,7 @@ async fn test_create_proof_success() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         protocol: "test".into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state: ProofStateEnum::Created,
         role: ProofRole::Verifier,

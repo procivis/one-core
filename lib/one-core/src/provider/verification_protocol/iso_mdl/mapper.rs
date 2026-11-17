@@ -85,7 +85,7 @@ pub(super) fn holder_proof_for_dc_api(
         last_modified: now,
         protocol: protocol.to_owned(),
         redirect_uri: None,
-        transport,
+        transport: Some(transport),
         state: ProofStateEnum::Requested,
         role: ProofRole::Holder,
         requested_date: Some(now),

@@ -124,7 +124,7 @@ impl ProofService {
             proof_blob_id: None,
             engagement: None,
             schema: Some(schema.into()),
-            transport: transport.to_owned(),
+            transport: Some(transport.to_owned()),
             claims: Default::default(),
             verifier_identifier: verifier.as_ref().map(|v| v.identifier.to_owned().into()),
             verifier_key: verifier.as_ref().map(|v| v.key.to_owned().into()),

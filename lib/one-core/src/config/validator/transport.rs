@@ -80,7 +80,10 @@ pub(crate) fn validate_and_select_transport_type(
                 requested_combination.insert(fields.r#type);
             }
 
-            if requested_combination != allowed_combination {
+            // exactly one transport per allowed type: no duplicates, no additional transports
+            if requested_combination != allowed_combination
+                || multiple_transports.len() != allowed_combination.len()
+            {
                 return Err(ValidationError::TransportsCombinationNotAllowed);
             }
 
@@ -229,6 +232,30 @@ mod test {
 
         let selected = validate_and_select_transport_type(
             &Some(vec!["MQTT".into(), "BLE".into(), "HTTP".into()]),
+            &config.transport,
+            &capabilities,
+        );
+
+        assert_matches!(
+            selected,
+            Err(ValidationError::TransportsCombinationNotAllowed)
+        );
+    }
+
+    #[test]
+    fn test_fails_when_transport_is_requested_twice() {
+        let config = config(&["BLE", "MQTT"]);
+        let capabilities = VerificationProtocolCapabilities {
+            supported_encryption_algorithms: vec![],
+            features: vec![],
+            supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
+            did_methods: vec![],
+            verifier_identifier_types: vec![],
+            supported_presentation_definition: vec![],
+        };
+
+        let selected = validate_and_select_transport_type(
+            &Some(vec!["MQTT".into(), "BLE".into(), "MQTT".into()]),
             &config.transport,
             &capabilities,
         );

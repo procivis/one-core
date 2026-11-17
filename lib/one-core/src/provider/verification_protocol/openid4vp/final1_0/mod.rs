@@ -1110,10 +1110,13 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
+        let transport = proof.transport.as_ref().ok_or_else(|| {
+            VerificationProtocolError::Failed("Transport not selected".to_string())
+        })?;
         let transport_type = self
             .config
             .transport
-            .get_type(&proof.transport)
+            .get_type(transport)
             .error_while("parsing transport")?;
 
         let verifier_identifier = proof.verifier_identifier.as_required_ref().await?;
@@ -1145,7 +1148,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 if transport_type != TransportType::Http {
                     return Err(VerificationProtocolError::Failed(format!(
                         "Unsupported transport: {} combined with client_id_scheme: {client_id_scheme}",
-                        proof.transport
+                        transport
                     )));
                 }
 
@@ -1176,7 +1179,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                     _ => {
                         return Err(VerificationProtocolError::Failed(format!(
                             "Unsupported transport: {}",
-                            proof.transport
+                            transport
                         )));
                     }
                 };
@@ -1305,7 +1308,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             _ => {
                 return Err(VerificationProtocolError::Failed(format!(
                     "Unsupported transport: {}",
-                    proof.transport
+                    transport
                 )));
             }
         };

@@ -195,7 +195,7 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             proof_schema: convert_inner(value.schema),
             verifier: value.verifier.map(Into::into),
             protocol: value.protocol.into(),
-            transport: value.transport.into(),
+            transport: convert_inner(value.transport),
             engagement: value.engagement,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),

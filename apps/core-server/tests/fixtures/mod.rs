@@ -901,7 +901,7 @@ pub async fn create_proof(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         protocol: exchange.into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state,
         role,

@@ -114,7 +114,7 @@ impl BatchSetup {
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             protocol: Set("OPENID4VP_FINAL1".into()),
-            transport: Set("HTTP".into()),
+            transport: Set(Some("HTTP".into())),
             state: Set(proof::ProofRequestState::Accepted),
             role: Set(proof::ProofRole::Holder),
             ..Default::default()

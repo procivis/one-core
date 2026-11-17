@@ -518,11 +518,16 @@ impl ProofService {
 
         let mut maybe_interaction = None;
         let (transport, interaction_transports, multiple_transports) = match transport {
-            SelectedTransportType::Single(single) => (single.clone(), vec![single], false),
-            // for multiple transports we store them in interaction data and set the transport=""
-            // TODO ONE-9647: an empty transport is used as marker for 'multiple transports, not selected yet'
-            SelectedTransportType::Multiple(multiple) => ("".into(), multiple, true),
+            SelectedTransportType::Single(single) => (Some(single.clone()), vec![single], false),
+            // for multiple transports we store them in interaction data and leave the transport
+            // unset until one is selected
+            SelectedTransportType::Multiple(multiple) => (None, multiple, true),
         };
+        let transport_log = interaction_transports
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
 
         if multiple_transports || !request.transaction_data.is_empty() {
             let mut transaction_data: Vec<TransactionDataRequest> =
@@ -631,7 +636,7 @@ impl ProofService {
 
         let success_log_detail = format!(
             "using proof schema `{}` ({}): protocol `{}`, transport `{}`",
-            proof_schema.name, proof_schema.id, request.protocol, transport
+            proof_schema.name, proof_schema.id, request.protocol, transport_log
         );
 
         let ecosystem = request.ecosystem.clone();
@@ -1014,7 +1019,7 @@ impl ProofService {
                 completed_date: None,
                 profile: None,
                 schema: None,
-                transport: transport.to_owned(),
+                transport: Some(transport.to_owned()),
                 claims: Default::default(),
                 verifier_identifier: None,
                 verifier_key: None,
@@ -1152,15 +1157,18 @@ impl ProofService {
         )
         .error_while("checking proof state")?;
 
+        let transport = proof
+            .transport
+            .as_ref()
+            .ok_or_else(|| ProofServiceError::Other("Transport not selected".to_string()))?;
         let transport_type = self
             .config
             .transport
-            .get_type(&proof.transport)
+            .get_type(transport)
             .error_while("getting transport type")?;
         if transport_type != TransportType::DcApi {
             return Err(ProofServiceError::Other(format!(
-                "Invalid transport: {}",
-                proof.transport
+                "Invalid transport: {transport}"
             )));
         }
 

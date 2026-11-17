@@ -260,7 +260,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_FINAL1".into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state,
         role: ProofRole::Verifier,
@@ -383,7 +383,7 @@ async fn test_get_proof_exists() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_FINAL1".into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         state: ProofStateEnum::Created,
         redirect_uri: None,
         requested_date: None,
@@ -806,7 +806,7 @@ async fn test_get_proof_list_success() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         protocol: "OPENID4VP_FINAL1".into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state: ProofStateEnum::Created,
         role: ProofRole::Verifier,
@@ -2946,7 +2946,7 @@ async fn test_delete_proof_ok_for_allowed_state(
 
     let mut proof = construct_proof_with_state(&proof_id, state);
     proof.protocol = "OPENID4VP_FINAL1".into();
-    proof.transport = "HTTP".into();
+    proof.transport = Some("HTTP".into());
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3018,7 +3018,7 @@ async fn test_delete_proof_ok_for_requested_state() {
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Requested);
     proof.protocol = "OPENID4VP_FINAL1".into();
-    proof.transport = "HTTP".into();
+    proof.transport = Some("HTTP".into());
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3093,7 +3093,7 @@ async fn test_delete_proof_fails_for_invalid_state(
 
     let mut proof = construct_proof_with_state(&proof_id, state);
     proof.protocol = "OPENID4VP_FINAL1".into();
-    proof.transport = "HTTP".into();
+    proof.transport = Some("HTTP".into());
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3145,7 +3145,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
 
     let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
     proof.protocol = "OPENID4VP_FINAL1".into();
-    proof.transport = "BLE".into();
+    proof.transport = Some("BLE".into());
     proof.interaction = Some(
         Interaction {
             dpop_key: None,
@@ -3476,4 +3476,33 @@ fn mock_formatter_provider() -> MockCredentialFormatterProvider {
             Ok(Arc::new(formatter))
         });
     credential_formatter_provider
+}
+
+#[tokio::test]
+async fn test_submit_dc_api_response_fails_without_selected_transport() {
+    let mut proof = crate::service::test_utilities::dummy_proof();
+    proof.state = ProofStateEnum::Pending;
+    proof.transport = None;
+    let proof_id = proof.id;
+
+    let mut proof_repository = MockProofRepository::default();
+    proof_repository
+        .expect_get_proof()
+        .returning(move |_, _| Ok(proof.clone()));
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        ..Default::default()
+    });
+
+    let result = service
+        .submit_dc_api_response(
+            proof_id,
+            standardized_types::openid4vp::dc_api::DigitalCredential::OpenID4VpV1Unsigned(
+                serde_json::json!({}),
+            ),
+        )
+        .await;
+
+    assert_matches!(result, Err(ProofServiceError::Other(message)) if message == "Transport not selected");
 }

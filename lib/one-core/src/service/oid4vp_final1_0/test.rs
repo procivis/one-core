@@ -544,7 +544,7 @@ async fn test_get_client_metadata_success() {
         protocol: VerificationProtocolType::OpenId4VpFinal1_0
             .to_string()
             .into(),
-        transport: "HTTP".into(),
+        transport: Some("HTTP".into()),
         redirect_uri: None,
         state: ProofStateEnum::Pending,
         role: ProofRole::Verifier,

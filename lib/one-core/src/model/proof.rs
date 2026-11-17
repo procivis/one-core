@@ -24,7 +24,8 @@ pub struct Proof {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub protocol: VerificationProtocolId,
-    pub transport: TransportId,
+    /// `None` until a transport is selected (multiple transports offered)
+    pub transport: Option<TransportId>,
     pub redirect_uri: Option<String>,
     pub state: ProofStateEnum,
     pub role: ProofRole,

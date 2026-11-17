@@ -59,7 +59,7 @@ async fn test_db_schema_proof() {
     proof
         .column("transport")
         .r#type(ColumnType::String(None))
-        .nullable(false)
+        .nullable(true)
         .default(None);
     proof
         .column("interaction_id")

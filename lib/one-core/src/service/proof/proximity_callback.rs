@@ -48,7 +48,7 @@ impl ProofService {
             let transport_type = self
                 .config
                 .transport
-                .get_type(&proof.transport)
+                .get_type(proof.transport.as_ref().context("transport not selected")?)
                 .context("getting transport type")?;
             if transport_type == TransportType::Ble {
                 let interaction_data =

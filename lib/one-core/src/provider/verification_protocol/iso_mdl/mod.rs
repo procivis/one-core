@@ -246,6 +246,16 @@ impl IsoMdl {
         })
     }
 
+    fn selected_transport_type(
+        &self,
+        transport: Option<&TransportId>,
+    ) -> Result<TransportType, VerificationProtocolError> {
+        let transport = transport.ok_or_else(|| {
+            VerificationProtocolError::Failed("Transport not selected".to_string())
+        })?;
+        self.get_transport_type(transport)
+    }
+
     fn get_transport_type(
         &self,
         transport: &TransportId,
@@ -348,7 +358,7 @@ impl VerificationProtocol for IsoMdl {
     }
 
     async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        let transport_type = self.get_transport_type(&proof.transport)?;
+        let transport_type = self.selected_transport_type(proof.transport.as_ref())?;
         match transport_type {
             TransportType::Ble => {
                 let ble = self.ble.as_ref().ok_or(VerificationProtocolError::Failed(
@@ -426,7 +436,7 @@ impl VerificationProtocol for IsoMdl {
             },
         }
 
-        let transport_type = self.get_transport_type(&proof.transport)?;
+        let transport_type = self.selected_transport_type(proof.transport.as_ref())?;
         let (session_transcript_bytes, transport_context) = match transport_type {
             TransportType::Ble => {
                 let ble = self.ble.as_ref().ok_or_else(|| {
@@ -555,7 +565,7 @@ impl VerificationProtocol for IsoMdl {
     }
 
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        let transport_type = self.get_transport_type(&proof.transport)?;
+        let transport_type = self.selected_transport_type(proof.transport.as_ref())?;
         if transport_type != TransportType::Ble {
             return Ok(());
         }
@@ -602,7 +612,7 @@ impl VerificationProtocol for IsoMdl {
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
-        if TransportType::DcApi != self.get_transport_type(&proof.transport)? {
+        if TransportType::DcApi != self.selected_transport_type(proof.transport.as_ref())? {
             return Err(VerificationProtocolError::Failed(
                 "Invalid transport".to_string(),
             ));
@@ -756,7 +766,7 @@ impl VerificationProtocol for IsoMdl {
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let interaction = proof.interaction.as_required_ref().await?;
 
-        let transport_type = self.get_transport_type(&proof.transport)?;
+        let transport_type = self.selected_transport_type(proof.transport.as_ref())?;
         let device_request_bytes = match transport_type {
             TransportType::Ble => {
                 let interaction_data: MdocBleHolderInteractionData =

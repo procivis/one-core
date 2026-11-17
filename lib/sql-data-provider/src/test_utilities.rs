@@ -324,7 +324,7 @@ pub async fn insert_proof_request_to_database(
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         protocol: Set("OPENID4VP_FINAL1".into()),
-        transport: Set("HTTP".into()),
+        transport: Set(Some("HTTP".into())),
         redirect_uri: Set(None),
         state: Set(ProofRequestState::Created),
         role: Set(role),

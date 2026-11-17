@@ -314,8 +314,9 @@ pub(crate) struct ProofListItemResponseRestDTO {
     pub engagement: Option<String>,
     /// Verification protocol used.
     pub protocol: VerificationProtocolId,
-    /// Transport protocol used.
-    pub transport: TransportId,
+    /// Transport protocol used. Not set until a transport is selected, if
+    /// multiple transports were offered.
+    pub transport: Option<TransportId>,
     pub state: ProofStateRestEnum,
     pub role: ProofRoleRestEnum,
     #[from(with_fn = convert_inner)]
@@ -373,8 +374,10 @@ pub(crate) struct ProofDetailResponseRestDTO {
     #[try_from(infallible)]
     pub engagement: Option<String>,
 
+    /// Transport protocol used. Not set until a transport is selected, if
+    /// multiple transports were offered.
     #[try_from(infallible)]
-    pub transport: TransportId,
+    pub transport: Option<TransportId>,
 
     #[try_from(infallible)]
     pub state: ProofStateRestEnum,

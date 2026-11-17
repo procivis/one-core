@@ -65,7 +65,7 @@ pub(super) fn proof_from_handle_invitation(
         last_modified: now,
         protocol: protocol.to_owned(),
         redirect_uri: None,
-        transport,
+        transport: Some(transport),
         state: ProofStateEnum::Requested,
         role: ProofRole::Holder,
         requested_date: Some(now),

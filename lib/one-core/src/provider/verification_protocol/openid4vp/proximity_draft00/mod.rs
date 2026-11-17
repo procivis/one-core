@@ -265,8 +265,11 @@ impl OpenID4VPProximityDraft00 {
 
     fn transport_type(
         &self,
-        transport: &TransportId,
+        transport: Option<&TransportId>,
     ) -> Result<TransportType, VerificationProtocolError> {
+        let transport = transport.ok_or_else(|| {
+            VerificationProtocolError::Failed("Transport not selected".to_string())
+        })?;
         Ok(self
             .config
             .transport
@@ -368,7 +371,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
 
     async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        let transport = self.transport_type(&proof.transport)?;
+        let transport = self.transport_type(proof.transport.as_ref())?;
 
         let interaction_data = interaction_data_from_proof(proof).await?;
         match transport {
@@ -395,7 +398,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<(), VerificationProtocolError> {
-        let transport = self.transport_type(&proof.transport)?;
+        let transport = self.transport_type(proof.transport.as_ref())?;
 
         let interaction_data = interaction_data_from_proof(proof).await?;
 
@@ -660,7 +663,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         proof: &Proof,
         submitted_credential_ids: &[CredentialId],
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-        let transport = self.transport_type(&proof.transport)?;
+        let transport = self.transport_type(proof.transport.as_ref())?;
 
         let interaction = proof.interaction.as_required_ref().await?;
         let interaction_data = deserialize_interaction_data(interaction.data.as_ref())?;
@@ -712,8 +715,10 @@ async fn get_transports(
     proof: &Proof,
     config: &TransportConfig,
 ) -> Result<Vec<(TransportId, TransportType)>, VerificationProtocolError> {
-    // TODO ONE-9647: an empty transport is used as marker for 'multiple transports, not selected yet'
-    let transport = if proof.transport.as_str().is_empty() {
+    let transport = if let Some(transport) = &proof.transport {
+        vec![transport.clone()]
+    } else {
+        // multiple transports offered, none selected yet
         let interaction = proof.interaction.as_required_ref().await?;
         let interaction_data =
             interaction
@@ -726,8 +731,6 @@ async fn get_transports(
         let data: CreateProofInteractionData = serde_json::from_slice(interaction_data)?;
 
         data.transport
-    } else {
-        vec![proof.transport.clone()]
     };
 
     transport
@@ -1005,4 +1008,99 @@ fn format_presentation_context(
         }
     };
     Ok(ctx)
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::config::core_config::Fields;
+    use crate::model::interaction::{Interaction, InteractionType};
+    use crate::service::test_utilities::{dummy_organisation, dummy_proof};
+
+    /// config entry names deliberately differ from the transport type names
+    fn transport_config() -> TransportConfig {
+        let mut config = TransportConfig::default();
+        for (name, r#type) in [
+            ("BLE_ENTRY", TransportType::Ble),
+            ("MQTT_ENTRY", TransportType::Mqtt),
+        ] {
+            config.insert(
+                name.into(),
+                Fields {
+                    r#type,
+                    display: "".into(),
+                    order: None,
+                    priority: None,
+                    enabled: true,
+                    capabilities: None,
+                    params: None,
+                },
+            );
+        }
+        config
+    }
+
+    fn interaction(data: Option<Vec<u8>>) -> Interaction {
+        Interaction {
+            dpop_key: None,
+            client_attestation_key: None,
+            id: InteractionId::new(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            data,
+            organisation: dummy_organisation(None).into(),
+            interaction_type: InteractionType::Verification,
+            expires_at: None,
+            ecosystem: None,
+            ecosystem_data: Default::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_transports_selected_transport() {
+        let mut proof = dummy_proof();
+        proof.transport = Some("MQTT_ENTRY".into());
+
+        let transports = get_transports(&proof, &transport_config()).await.unwrap();
+
+        assert_eq!(
+            transports,
+            vec![(TransportId::from("MQTT_ENTRY"), TransportType::Mqtt)]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_transports_not_selected_reads_interaction_data() {
+        let data = serde_json::to_vec(&CreateProofInteractionData {
+            transport: vec!["BLE_ENTRY".into(), "MQTT_ENTRY".into()],
+            common: Default::default(),
+        })
+        .unwrap();
+        let mut proof = dummy_proof();
+        proof.transport = None;
+        proof.interaction = Some(interaction(Some(data)).into());
+
+        let transports = get_transports(&proof, &transport_config()).await.unwrap();
+
+        assert_eq!(
+            transports,
+            vec![
+                (TransportId::from("BLE_ENTRY"), TransportType::Ble),
+                (TransportId::from("MQTT_ENTRY"), TransportType::Mqtt),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_transports_not_selected_without_interaction_data_fails() {
+        let mut proof = dummy_proof();
+        proof.transport = None;
+        proof.interaction = Some(interaction(None).into());
+
+        let result = get_transports(&proof, &transport_config()).await;
+
+        assert!(result.is_err());
+    }
 }
