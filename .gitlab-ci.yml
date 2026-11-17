@@ -519,6 +519,7 @@ sdk:upload_artifacts:
       ANDROID_RELEASE_SHA1=$(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE | cut -d " " -f1)
       IOS_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$IOS_UPLOAD_PATH
       IOS_SHA1=$(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
+      IOS_SHA256=$(sha256sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
       IOS_CORE_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$IOS_CORE_UPLOAD_PATH
       IOS_CORE_SHA1=$(sha1sum -b ios/ProcivisOneCore.xcframework.zip | cut -d " " -f1)
       IOS_CORE_SHA256=$(sha256sum -b ios/ProcivisOneCore.xcframework.zip | cut -d " " -f1)
@@ -538,6 +539,7 @@ sdk:upload_artifacts:
         -------------------------
         iOS: ${IOS_LINK}
         SHA-1: ${IOS_SHA1}
+        SHA-256: ${IOS_SHA256}
         -------------------------
         iOS Core: ${IOS_CORE_LINK}
         SHA-1: ${IOS_CORE_SHA1}
@@ -555,6 +557,7 @@ sdk:upload_artifacts:
       echo "ANDROID_RELEASE_SHA1=${ANDROID_RELEASE_SHA1}" >> sdk_env_variables.env
       echo "IOS_LINK=${IOS_LINK}" >> sdk_env_variables.env
       echo "IOS_SHA1=${IOS_SHA1}" >> sdk_env_variables.env
+      echo "IOS_SHA256=${IOS_SHA256}" >> sdk_env_variables.env
       echo "IOS_CORE_LINK=${IOS_CORE_LINK}" >> sdk_env_variables.env
       echo "IOS_CORE_SHA1=${IOS_CORE_SHA1}" >> sdk_env_variables.env
       echo "IOS_CORE_SHA256=${IOS_CORE_SHA256}" >> sdk_env_variables.env
