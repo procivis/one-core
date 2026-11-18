@@ -745,3 +745,42 @@ async fn create_dummy_credential(
 
     credential.common().id
 }
+
+#[tokio::test]
+async fn test_lock_revocation_lists_returns_lists_ordered_by_id() {
+    let setup = setup_with_list().await;
+    let other_list_id = insert_revocation_list(
+        &setup.db,
+        RevocationListPurpose::Suspension.into(),
+        RevocationListFormat::Jwt,
+        setup.identifier.id,
+        "BITSTRINGSTATUSLIST".into(),
+        None,
+    )
+    .await
+    .unwrap();
+
+    let mut expected = vec![setup.list_id, other_list_id];
+    expected.sort();
+
+    let result = setup
+        .provider
+        .lock_revocation_lists(&[other_list_id, setup.list_id])
+        .await
+        .unwrap();
+    assert_eq!(
+        result.iter().map(|list| list.id).collect::<Vec<_>>(),
+        expected
+    );
+}
+
+#[tokio::test]
+async fn test_lock_revocation_lists_fails_for_missing_list() {
+    let setup = setup_with_list().await;
+
+    let result = setup
+        .provider
+        .lock_revocation_lists(&[setup.list_id, RevocationListId::new()])
+        .await;
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
+}

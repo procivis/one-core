@@ -68,6 +68,10 @@ impl RevocationListsDB {
         revocation_list
     }
 
+    pub async fn get(&self, id: RevocationListId) -> RevocationList {
+        self.repository.get_revocation_list(&id).await.unwrap()
+    }
+
     pub async fn get_latest_list_by_issuer(
         &self,
         issuer_identifier_id: IdentifierId,

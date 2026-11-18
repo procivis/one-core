@@ -25,6 +25,17 @@ pub trait RevocationListRepository: Send + Sync {
         id: &RevocationListId,
     ) -> Result<RevocationList, DataLayerError>;
 
+    /// Locks the rows of the given lists until the end of the transaction and returns them as
+    /// stored, ordered by id.
+    ///
+    /// Take this lock before changing entries and re-rendering a list, so that concurrent
+    /// changes to the same list are serialized and none of them is lost. The rows are locked in
+    /// id order, so callers locking overlapping sets of lists cannot deadlock.
+    async fn lock_revocation_lists(
+        &self,
+        ids: &[RevocationListId],
+    ) -> Result<Vec<RevocationList>, DataLayerError>;
+
     async fn get_revocation_list_by_entry_id(
         &self,
         entry_id: RevocationListEntryId,

@@ -2,13 +2,14 @@ use std::ops::Add;
 use std::sync::{Arc, Mutex};
 
 use assert2::let_assert;
+use mockall::Sequence;
 use mockall::predicate::{always, eq};
 use rstest::rstest;
 use serde_json::json;
 use shared_types::{CertificateId, RevocationListEntryId, RevocationListId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use standardized_types::x509::CertificateSerial;
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 
 use super::CRLRevocation;
 use crate::model::certificate::{Certificate, CertificateState};
@@ -166,24 +167,31 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
             }),
         )
         .returning(|_, _| Ok(()));
+    let list = RevocationList {
+        id: list_id,
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        formatted_list: empty_crl(),
+        format: StatusListCredentialFormat::X509Crl,
+        r#type: "CRL".into(),
+        purpose: RevocationListPurpose::Revocation,
+        issuer_identifier: dummy_identifier().into(),
+        issuer_certificate: Some(certificate.into()),
+        sequence_number: 0,
+        params: None,
+    };
     revocation_list_repository
         .expect_get_revocation_list_by_entry_id()
         .with(eq(signature_id))
-        .return_once(move |_| {
-            Ok(RevocationList {
-                id: list_id,
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                formatted_list: empty_crl(),
-                format: StatusListCredentialFormat::X509Crl,
-                r#type: "CRL".into(),
-                purpose: RevocationListPurpose::Revocation,
-                issuer_identifier: dummy_identifier().into(),
-                issuer_certificate: Some(certificate.into()),
-                sequence_number: 0,
-                params: None,
-            })
+        .return_once({
+            let list = list.clone();
+            move |_| Ok(list)
         });
+    revocation_list_repository
+        .expect_lock_revocation_lists()
+        .once()
+        .withf(move |ids| ids == [list_id])
+        .return_once(move |_| Ok(vec![list]));
 
     let serial = CertificateSerial::new_random();
     let revocation_time = crate::clock::now_utc().replace_millisecond(0).unwrap();
@@ -338,32 +346,31 @@ async fn test_get_updated_list_with_update() {
     let list_id = RevocationListId::new();
 
     let old_list = empty_crl();
+    let one_hour_ago = crate::clock::now_utc() - Duration::hours(1);
+    let stale_list = dummy_crl_list(list_id, &certificate, one_hour_ago, old_list.clone());
+
+    let mut seq = Sequence::new();
     let mut revocation_list_repository = MockRevocationListRepository::new();
     revocation_list_repository
         .expect_get_revocation_list()
+        .once()
+        .in_sequence(&mut seq)
         .with(eq(list_id))
         .return_once({
-            let formatted_list = old_list.clone();
-            move |_| {
-                let one_hour_ago = crate::clock::now_utc() - Duration::hours(1);
-                Ok(RevocationList {
-                    id: list_id,
-                    created_date: one_hour_ago,
-                    last_modified: one_hour_ago,
-                    formatted_list,
-                    format: StatusListCredentialFormat::X509Crl,
-                    r#type: "CRL".into(),
-                    purpose: RevocationListPurpose::Revocation,
-                    issuer_identifier: dummy_identifier().into(),
-                    issuer_certificate: Some(certificate.into()),
-                    sequence_number: 0,
-                    params: None,
-                })
-            }
+            let list = stale_list.clone();
+            move |_| Ok(list)
         });
+    revocation_list_repository
+        .expect_lock_revocation_lists()
+        .once()
+        .in_sequence(&mut seq)
+        .withf(move |ids| ids == [list_id])
+        .return_once(move |_| Ok(vec![stale_list]));
 
     revocation_list_repository
         .expect_get_entries()
+        .once()
+        .in_sequence(&mut seq)
         .return_once(|_| {
             Ok(RevocationListEntryList {
                 values: vec![],
@@ -375,6 +382,7 @@ async fn test_get_updated_list_with_update() {
     revocation_list_repository
         .expect_update_formatted_list()
         .once()
+        .in_sequence(&mut seq)
         .with(eq(list_id), always(), eq(None))
         .return_once(|_, _, _| Ok(()));
 
@@ -410,6 +418,73 @@ async fn test_get_updated_list_with_update() {
     let list = revocation_method.get_updated_list(list_id).await.unwrap();
 
     assert_ne!(list, old_list);
+}
+
+#[tokio::test]
+async fn test_get_updated_list_refreshed_concurrently() {
+    let certificate = dummy_ca_certificate(&dummy_identifier());
+
+    let list_id = RevocationListId::new();
+
+    let one_hour_ago = crate::clock::now_utc() - Duration::hours(1);
+    let stale_list = dummy_crl_list(list_id, &certificate, one_hour_ago, empty_crl());
+    // re-rendered by a concurrent change while waiting for the lock
+    let refreshed_crl = vec![0x01, 0x02, 0x03];
+    let refreshed_list = dummy_crl_list(
+        list_id,
+        &certificate,
+        crate::clock::now_utc(),
+        refreshed_crl.clone(),
+    );
+
+    let mut revocation_list_repository = MockRevocationListRepository::new();
+    revocation_list_repository
+        .expect_get_revocation_list()
+        .once()
+        .with(eq(list_id))
+        .return_once(move |_| Ok(stale_list));
+    revocation_list_repository
+        .expect_lock_revocation_lists()
+        .once()
+        .withf(move |ids| ids == [list_id])
+        .return_once(move |_| Ok(vec![refreshed_list]));
+    // no get_entries / update_formatted_list expected: the list must not be re-rendered again
+
+    let refresh_interval = Duration::seconds(10);
+    let revocation_method = CRLRevocation::new(
+        "CRL".into(),
+        Some("http://base.url".to_string()),
+        Arc::new(revocation_list_repository),
+        Arc::new(NoTransactionManager),
+        Arc::new(MockKeyProvider::new()),
+        json!({ "refreshIntervalSeconds": refresh_interval.whole_seconds() }),
+    )
+    .unwrap();
+
+    let list = revocation_method.get_updated_list(list_id).await.unwrap();
+
+    assert_eq!(list, refreshed_crl);
+}
+
+fn dummy_crl_list(
+    list_id: RevocationListId,
+    certificate: &Certificate,
+    last_modified: OffsetDateTime,
+    formatted_list: Vec<u8>,
+) -> RevocationList {
+    RevocationList {
+        id: list_id,
+        created_date: last_modified,
+        last_modified,
+        formatted_list,
+        format: StatusListCredentialFormat::X509Crl,
+        r#type: "CRL".into(),
+        purpose: RevocationListPurpose::Revocation,
+        issuer_identifier: dummy_identifier().into(),
+        issuer_certificate: Some(certificate.to_owned().into()),
+        sequence_number: 0,
+        params: None,
+    }
 }
 
 fn dummy_ca_certificate(issuer: &Identifier) -> Certificate {

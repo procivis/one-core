@@ -457,3 +457,130 @@ async fn test_revoke_multi_format_batch_parent_with_rejected_format() {
     let rejected_item = context.db.credentials.get(&rejected_item.common().id).await;
     assert_eq!(CredentialStateEnum::Rejected, rejected_item.common().state);
 }
+
+/// Concurrent revocations on the same list must all end up in the published list: each one
+/// re-renders the whole list, so without serialization the last write can drop the others.
+#[tokio::test]
+async fn test_concurrent_revocations_on_same_list_are_all_published() {
+    const CREDENTIAL_COUNT: usize = 10;
+
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did: Some(
+                    DidValue::from_str("did:key:zDnaetpgFTTteRE2RWG8DtbNX6WNWxxgFs627d7z2JVjboM2L")
+                        .unwrap(),
+                ),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let list = context
+        .db
+        .revocation_lists
+        .create(identifier.clone(), None)
+        .await;
+
+    let mut credential_ids = vec![];
+    for index in 0..CREDENTIAL_COUNT {
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams::default(),
+            )
+            .await;
+        context
+            .db
+            .revocation_lists
+            .create_credential_entry(list.id, credential.common().id, index)
+            .await;
+        credential_ids.push(credential.common().id);
+    }
+
+    // WHEN
+    let responses = futures::future::join_all(
+        credential_ids
+            .iter()
+            .map(|credential_id| context.api.credentials.revoke(credential_id)),
+    )
+    .await;
+
+    // THEN
+    for response in responses {
+        assert_eq!(response.status(), 204);
+    }
+    let published = context.db.revocation_lists.get(list.id).await;
+    let revoked = revoked_bitstring_indices(&published.formatted_list);
+    assert_eq!(revoked, (0..CREDENTIAL_COUNT).collect::<Vec<_>>());
+}
+
+/// Decodes the `encodedList` of a JWT bitstring status list credential into the set indices.
+fn revoked_bitstring_indices(formatted_list: &[u8]) -> Vec<usize> {
+    use std::io::Read;
+
+    use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+
+    let jwt = std::str::from_utf8(formatted_list).unwrap();
+    let payload = jwt.split('.').nth(1).unwrap();
+    let payload: serde_json::Value =
+        serde_json::from_slice(&Base64UrlSafeNoPadding::decode_to_vec(payload, None).unwrap())
+            .unwrap();
+    let encoded_list = serde_json_path::JsonPath::parse("$..encodedList")
+        .unwrap()
+        .query(&payload)
+        .exactly_one()
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .strip_prefix('u')
+        .unwrap()
+        .to_owned();
+
+    let compressed = Base64UrlSafeNoPadding::decode_to_vec(encoded_list, None).unwrap();
+    let mut bytes = vec![];
+    flate2::read::GzDecoder::new(compressed.as_slice())
+        .read_to_end(&mut bytes)
+        .unwrap();
+
+    (0..bytes.len() * 8)
+        .filter(|index| bytes[index / 8] & (0x80 >> (index % 8)) != 0)
+        .collect()
+}

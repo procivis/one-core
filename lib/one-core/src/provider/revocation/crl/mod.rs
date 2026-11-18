@@ -251,11 +251,35 @@ impl RevocationMethod for CRLRevocation {
             .await
             .error_while("getting revocation list")?;
 
-        if list.last_modified + self.params.refresh_interval_seconds > crate::clock::now_utc() {
+        if !self.needs_refresh(&list) {
             return Ok(list.formatted_list);
         }
 
-        self.update_list(list).await
+        self.transaction_manager
+            .tx(async move {
+                // Lock the list so that the refresh is serialized with concurrent revocations:
+                // otherwise it could overwrite one (dropping it until the next refresh) and reuse
+                // its CRL number.
+                let list = self
+                    .revocation_list_repository
+                    .lock_revocation_lists(&[list_id])
+                    .await
+                    .error_while("locking revocation list")?
+                    .pop()
+                    .ok_or(RevocationError::MappingError(
+                        "No revocation list found".to_string(),
+                    ))?;
+
+                // A concurrent change may have re-rendered the list while we waited for the lock.
+                if !self.needs_refresh(&list) {
+                    return Ok(list.formatted_list);
+                }
+
+                self.update_list(list).await
+            }
+            .boxed())
+            .await
+            .error_while("refreshing revocation list")?
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
@@ -270,6 +294,10 @@ impl RevocationMethod for CRLRevocation {
 }
 
 impl CRLRevocation {
+    fn needs_refresh(&self, list: &RevocationList) -> bool {
+        list.last_modified + self.params.refresh_interval_seconds <= crate::clock::now_utc()
+    }
+
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn start_new_list(
         &self,

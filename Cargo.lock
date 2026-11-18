@@ -1441,6 +1441,7 @@ dependencies = [
  "ciborium",
  "clap",
  "ct-codecs",
+ "flate2",
  "futures",
  "headers",
  "hex",

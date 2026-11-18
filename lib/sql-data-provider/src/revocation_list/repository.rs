@@ -4,6 +4,7 @@ use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
+use one_core::model::common::LockType;
 use one_core::model::relation::Related;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntryList, RevocationListEntryListQuery,
@@ -13,8 +14,8 @@ use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::sea_query::{CaseStatement, Expr};
 use sea_orm::{
-    ActiveEnum, ColumnTrait, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveEnum, ColumnTrait, EntityTrait, ExprTrait, NotSet, QueryFilter, QueryOrder, QuerySelect,
+    Set, Unchanged,
 };
 use shared_types::{
     CertificateId, CredentialId, IdentifierId, RevocationListEntryId, RevocationListId,
@@ -27,7 +28,7 @@ use crate::common::list_query_with_custom_model;
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
 use crate::entity::{managed_instance_attestation, revocation_list, revocation_list_entry};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
+use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 
 impl RevocationListProvider {
     fn entity_model_to_repository_model(
@@ -98,6 +99,34 @@ impl RevocationListRepository for RevocationListProvider {
             })?;
 
         Ok(self.entity_model_to_repository_model(revocation_list))
+    }
+
+    async fn lock_revocation_lists(
+        &self,
+        ids: &[RevocationListId],
+    ) -> Result<Vec<RevocationList>, DataLayerError> {
+        let lists = revocation_list::Entity::find()
+            .filter(revocation_list::Column::Id.is_in(ids.iter().copied()))
+            .order_by_asc(revocation_list::Column::Id)
+            .lock(map_lock_type(LockType::Update))
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        if let Some(missing) = ids
+            .iter()
+            .find(|id| !lists.iter().any(|list| list.id == **id))
+        {
+            return Err(DataLayerError::EntityNotFound {
+                kind: EntityKind::RevocationList,
+                id: (*missing).into(),
+            });
+        }
+
+        Ok(lists
+            .into_iter()
+            .map(|list| self.entity_model_to_repository_model(list))
+            .collect())
     }
 
     async fn get_revocation_list_by_entry_id(
