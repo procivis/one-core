@@ -11,9 +11,8 @@ use super::model::{
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
-use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
-};
+use crate::model::managed_instance_attestation::ManagedInstanceAttestation;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::provider::Provider;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::disabled_provider::DisabledProvider;
@@ -39,12 +38,12 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
         self.disabled_error()
     }
 
-    async fn mark_credential_as(
+    async fn set_entries_state(
         &self,
-        credential: &Credential,
+        entries: Vec<UpdateRevocationListEntryId>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        self.inner().mark_credential_as(credential, new_state).await
+        self.inner().set_entries_state(entries, new_state).await
     }
 
     async fn check_credential_revocation_status(
@@ -65,16 +64,6 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
         self.disabled_error()
     }
 
-    async fn update_attestation_entries(
-        &self,
-        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
-        new_state: RevocationState,
-    ) -> Result<(), RevocationError> {
-        self.inner()
-            .update_attestation_entries(keys, new_state)
-            .await
-    }
-
     async fn add_signature<'a>(
         &self,
         _signature_type: SignerId,
@@ -82,13 +71,6 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
         _certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         self.disabled_error()
-    }
-
-    async fn revoke_signature(
-        &self,
-        signature_id: RevocationListEntryId,
-    ) -> Result<(), RevocationError> {
-        self.inner().revoke_signature(signature_id).await
     }
 
     async fn get_updated_list(
@@ -150,13 +132,13 @@ impl RevocationMethod for CapabilityChecked {
         self.0.reserve_credential_entries(credential).await
     }
 
-    async fn mark_credential_as(
+    async fn set_entries_state(
         &self,
-        credential: &Credential,
+        entries: Vec<UpdateRevocationListEntryId>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         self.check_revocation_state_eligibility(&new_state)?;
-        self.0.mark_credential_as(credential, new_state).await
+        self.0.set_entries_state(entries, new_state).await
     }
 
     async fn check_credential_revocation_status(
@@ -177,15 +159,6 @@ impl RevocationMethod for CapabilityChecked {
         self.0.add_issued_attestation(attestation).await
     }
 
-    async fn update_attestation_entries(
-        &self,
-        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
-        new_state: RevocationState,
-    ) -> Result<(), RevocationError> {
-        self.check_revocation_state_eligibility(&new_state)?;
-        self.0.update_attestation_entries(keys, new_state).await
-    }
-
     async fn add_signature<'a>(
         &self,
         signature_type: SignerId,
@@ -195,14 +168,6 @@ impl RevocationMethod for CapabilityChecked {
         self.0
             .add_signature(signature_type, issuer, certificate)
             .await
-    }
-
-    async fn revoke_signature(
-        &self,
-        signature_id: RevocationListEntryId,
-    ) -> Result<(), RevocationError> {
-        self.check_revocation_state_eligibility(&RevocationState::Revoked)?;
-        self.0.revoke_signature(signature_id).await
     }
 
     async fn get_updated_list(

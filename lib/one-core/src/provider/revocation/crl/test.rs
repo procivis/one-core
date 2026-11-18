@@ -26,6 +26,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::RevocationMethod;
+use crate::provider::revocation::model::RevocationState;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_key, dummy_organisation};
 
@@ -254,7 +255,10 @@ async fn test_revoke_signature(#[values(false, true)] deleted: bool) {
     let before_revocation = crate::clock::now_utc().replace_millisecond(0).unwrap();
 
     revocation_method
-        .revoke_signature(signature_id)
+        .set_entries_state(
+            vec![UpdateRevocationListEntryId::Id(signature_id)],
+            RevocationState::Revoked,
+        )
         .await
         .unwrap();
 

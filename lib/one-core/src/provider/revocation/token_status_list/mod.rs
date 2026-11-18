@@ -1,7 +1,6 @@
 //! Token Status List implementation.
 //! https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use coset::iana::{CwtClaimName, EnumI64};
@@ -26,6 +25,7 @@ use super::model::{
     RevocationState,
 };
 use super::status_list::{StatusListSizeParams, add_entry_to_status_list};
+use super::utils::update_entries_state;
 use crate::config::core_config::{FormatType, RevocationType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
@@ -35,14 +35,11 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
-};
-use crate::model::relation::Related;
+use crate::model::managed_instance_attestation::ManagedInstanceAttestation;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilterValue,
     RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
-    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    UpdateRevocationListEntryId,
 };
 use crate::model::wallet_attestation::AttestationType;
 use crate::proto::certificate_validator::{
@@ -242,51 +239,34 @@ impl RevocationMethod for TokenStatusList {
         })
     }
 
-    async fn mark_credential_as(
+    async fn set_entries_state(
         &self,
-        credential: &Credential,
+        entries: Vec<UpdateRevocationListEntryId>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        let issuer = credential.issuer()?.data;
-        let issuer_identifier = issuer.identifier.as_ref().await?;
+        self.transaction_manager
+            .tx(async move {
+                let lists =
+                    update_entries_state(&*self.revocation_list_repository, entries, new_state)
+                        .await?;
 
-        let issuer_certificate = if matches!(issuer_identifier.data, IdentifierData::Certificate(_))
-        {
-            let certificate = issuer
-                .certificate
-                .as_ref()
-                .ok_or(RevocationError::MappingError(
-                    "issuer certificate is None".to_string(),
-                ))?;
-            Some(certificate.as_ref().await?.to_owned())
-        } else {
-            None
-        };
-
-        let lists = self
-            .revocation_list_repository
-            .get_revocation_lists_by_entity(RevocationListEntityId::Credential(Some(
-                credential.common().id,
-            )))
+                for list in lists {
+                    let issuer_certificate = match list.issuer_certificate.as_ref() {
+                        None => None,
+                        Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
+                    };
+                    self.publish_list(
+                        &list,
+                        list.issuer_identifier.as_ref().await?.as_ref(),
+                        issuer_certificate.as_ref(),
+                    )
+                    .await?;
+                }
+                Ok::<_, RevocationError>(())
+            }
+            .boxed())
             .await
-            .error_while("getting revocation list")?;
-
-        self.revocation_list_repository
-            .update_entry(
-                UpdateRevocationListEntryId::Credential(credential.common().id),
-                UpdateRevocationListEntryRequest {
-                    state: Some(new_state.into()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("updating revocation list entry")?;
-
-        for list in lists {
-            self.publish_list(&list, &issuer_identifier, issuer_certificate.as_ref())
-                .await?;
-        }
-        Ok(())
+            .error_while("updating revocation list entries")?
     }
 
     async fn check_credential_revocation_status(
@@ -385,58 +365,6 @@ impl RevocationMethod for TokenStatusList {
         Ok(result.1)
     }
 
-    async fn update_attestation_entries(
-        &self,
-        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
-        new_state: RevocationState,
-    ) -> Result<(), RevocationError> {
-        let mut revocation_lists: HashMap<RevocationListId, (Related<RevocationList>, Vec<usize>)> =
-            HashMap::new();
-        for key in keys {
-            revocation_lists
-                .entry(key.revocation_list.id())
-                .or_insert((key.revocation_list, vec![]))
-                .1
-                .push(key.revocation_list_index);
-        }
-
-        self.transaction_manager
-            .tx(async move {
-                for (list, indexes) in revocation_lists.into_values() {
-                    let list = list.as_ref().await?;
-                    for index in indexes {
-                        self.revocation_list_repository
-                            .update_entry(
-                                UpdateRevocationListEntryId::Index(list.id, index),
-                                UpdateRevocationListEntryRequest {
-                                    state: Some(new_state.into()),
-                                    ..Default::default()
-                                },
-                            )
-                            .await
-                            .error_while("updating revocation list entry")?;
-                    }
-
-                    let issuer_certificate = match list.issuer_certificate.as_ref() {
-                        None => None,
-                        Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
-                    };
-                    self.publish_list(
-                        &list,
-                        list.issuer_identifier.as_ref().await?.as_ref(),
-                        issuer_certificate.as_ref(),
-                    )
-                    .await?;
-                }
-                Ok::<_, RevocationError>(())
-            }
-            .boxed())
-            .await
-            .error_while("updating attestations")??;
-
-        Ok(())
-    }
-
     async fn add_signature<'a>(
         &self,
         signature_type: SignerId,
@@ -452,45 +380,6 @@ impl RevocationMethod for TokenStatusList {
             .await?;
 
         Ok(result)
-    }
-
-    async fn revoke_signature(
-        &self,
-        signature_id: RevocationListEntryId,
-    ) -> Result<(), RevocationError> {
-        self.transaction_manager
-            .tx(async move {
-                self.revocation_list_repository
-                    .update_entry(
-                        UpdateRevocationListEntryId::Id(signature_id),
-                        UpdateRevocationListEntryRequest {
-                            state: Some(RevocationListEntryState::Revoked),
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .error_while("updating revocation list entry")?;
-
-                let current_list = self
-                    .revocation_list_repository
-                    .get_revocation_list_by_entry_id(signature_id)
-                    .await
-                    .error_while("getting revocation list")?;
-
-                let issuer_certificate = match current_list.issuer_certificate.as_ref() {
-                    None => None,
-                    Some(certificate) => Some(certificate.as_ref().await?.to_owned()),
-                };
-                self.publish_list(
-                    &current_list,
-                    current_list.issuer_identifier.as_ref().await?.as_ref(),
-                    issuer_certificate.as_ref(),
-                )
-                .await
-            }
-            .boxed())
-            .await
-            .error_while("revoking signature")?
     }
 
     async fn get_updated_list(

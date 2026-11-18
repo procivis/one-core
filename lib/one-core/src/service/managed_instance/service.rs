@@ -35,8 +35,8 @@ use crate::model::managed_instance::{
     ManagedInstance, ManagedInstanceListQuery, ManagedInstanceOs, SortableManagedInstanceColumn,
     UpdateManagedInstanceRequest,
 };
-use crate::model::managed_instance_attestation::ManagedInstanceAttestationRevocationInfo;
 use crate::model::organisation::Organisation;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::session_provider::SessionExt;
@@ -953,7 +953,7 @@ impl ManagedInstanceService {
                         // revoke all revocable (and non-expired) attestations
                         let mut attestation_to_revoke_per_revocation_method: HashMap<
                             RevocationMethodId,
-                            Vec<ManagedInstanceAttestationRevocationInfo>,
+                            Vec<UpdateRevocationListEntryId>,
                         > = HashMap::new();
                         let now = crate::clock::now_utc();
                         for attestation_to_revoke in managed_instance
@@ -964,18 +964,16 @@ impl ManagedInstanceService {
                             .filter(|attestation| attestation.expiration_date > now)
                             .filter_map(|attestation| attestation.revocation.as_ref())
                         {
-                            let attestation = attestation_to_revoke.as_ref().await?.to_owned();
-                            let revocation_method = attestation
-                                .revocation_list
-                                .as_ref()
-                                .await?
-                                .r#type
-                                .to_owned();
+                            let attestation = attestation_to_revoke.as_ref().await?;
+                            let revocation_list = attestation.revocation_list.as_ref().await?;
 
                             attestation_to_revoke_per_revocation_method
-                                .entry(revocation_method)
+                                .entry(revocation_list.r#type.to_owned())
                                 .or_default()
-                                .push(attestation);
+                                .push(UpdateRevocationListEntryId::Index(
+                                    revocation_list.id,
+                                    attestation.revocation_list_index,
+                                ));
                         }
 
                         for (revocation_method_id, attestation_entries) in
@@ -986,10 +984,7 @@ impl ManagedInstanceService {
                                 .get_revocation_method(&revocation_method_id)?;
 
                             revocation_method
-                                .update_attestation_entries(
-                                    attestation_entries,
-                                    RevocationState::Revoked,
-                                )
+                                .set_entries_state(attestation_entries, RevocationState::Revoked)
                                 .await
                                 .error_while("revoking attestations")?;
                         }
@@ -1043,7 +1038,10 @@ impl ManagedInstanceService {
             };
 
             revocation_method
-                .revoke_signature(*signature_id)
+                .set_entries_state(
+                    vec![UpdateRevocationListEntryId::Id(*signature_id)],
+                    RevocationState::Revoked,
+                )
                 .await
                 .error_while("revoking access certificate signature")?;
         }

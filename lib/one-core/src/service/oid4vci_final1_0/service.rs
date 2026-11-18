@@ -69,6 +69,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::relation::Related;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::proto::credential_validity_manager::is_batch_parent_expired;
 use crate::proto::dpop_handler::{
     DpopHandlerError, DpopParams, ExpectedProofValues, ProofValidationOutput,
@@ -2348,7 +2349,12 @@ impl OID4VCIFinal1_0Service {
                 .contains(&Operation::Revoke)
         {
             revocation_method
-                .mark_credential_as(&credential, RevocationState::Revoked)
+                .set_entries_state(
+                    vec![UpdateRevocationListEntryId::Credential(
+                        credential.common().id,
+                    )],
+                    RevocationState::Revoked,
+                )
                 .await
                 .error_while("marking credential status")?;
         }

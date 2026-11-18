@@ -11,8 +11,11 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListEntryFilterValue};
+use crate::model::revocation_list::{
+    RevocationListEntityInfo, RevocationListEntryFilterValue, UpdateRevocationListEntryId,
+};
 use crate::proto::session_provider::SessionExt;
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::signer::dto::{CreateSignatureResponseDTO, Issuer};
 use crate::repository::error::DataLayerError;
 use crate::service::signature::dto::{CreateSignatureRequestDTO, SignatureStatusInfo};
@@ -105,7 +108,10 @@ impl SignatureService {
             .error_while("validating organisation")?;
 
         revocation_method
-            .revoke_signature(id.into())
+            .set_entries_state(
+                vec![UpdateRevocationListEntryId::Id(id.into())],
+                RevocationState::Revoked,
+            )
             .await
             .error_while("revoking signature")?;
 

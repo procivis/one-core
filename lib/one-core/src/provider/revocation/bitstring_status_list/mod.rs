@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use futures::FutureExt;
 use proc_macros::Provider;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
@@ -21,7 +22,7 @@ use super::model::{
     RevocationState,
 };
 use super::status_list::{StatusListSizeParams, add_entry_to_status_list};
-use super::utils::status_purpose_to_revocation_state;
+use super::utils::{status_purpose_to_revocation_state, update_entries_state};
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
@@ -30,13 +31,11 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierData};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
-};
+use crate::model::managed_instance_attestation::ManagedInstanceAttestation;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryFilterValue,
     RevocationListEntryState, RevocationListPurpose, StatusListCredentialFormat,
-    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    UpdateRevocationListEntryId,
 };
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -181,13 +180,19 @@ impl RevocationMethod for BitstringStatusList {
         })
     }
 
-    async fn mark_credential_as(
+    async fn set_entries_state(
         &self,
-        credential: &Credential,
+        entries: Vec<UpdateRevocationListEntryId>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        let issuer = credential.issuer()?.data;
-        let issuer_identifier = issuer.identifier.as_ref().await?;
+        if let Some(entry) = entries
+            .iter()
+            .find(|entry| !matches!(entry, UpdateRevocationListEntryId::Credential(_)))
+        {
+            return Err(RevocationError::OperationNotSupported(format!(
+                "Entry lookup not supported: {entry:?}"
+            )));
+        }
 
         let purpose = if new_state == RevocationState::Revoked {
             RevocationListPurpose::Revocation
@@ -195,32 +200,24 @@ impl RevocationMethod for BitstringStatusList {
             RevocationListPurpose::Suspension
         };
 
-        let lists = self
-            .revocation_list_repository
-            .get_revocation_lists_by_entity(RevocationListEntityId::Credential(Some(
-                credential.common().id,
-            )))
-            .await
-            .error_while("getting revocation list")?;
+        self.transaction_manager
+            .tx(async move {
+                let lists =
+                    update_entries_state(&*self.revocation_list_repository, entries, new_state)
+                        .await?;
 
-        self.revocation_list_repository
-            .update_entry(
-                UpdateRevocationListEntryId::Credential(credential.common().id),
-                UpdateRevocationListEntryRequest {
-                    state: Some(new_state.into()),
-                    ..Default::default()
-                },
-            )
+                for list in lists.iter().filter(|list| {
+                    list.purpose == purpose
+                        || list.purpose == RevocationListPurpose::RevocationAndSuspension
+                }) {
+                    let issuer_identifier = list.issuer_identifier.as_ref().await?;
+                    self.publish_list(list, &issuer_identifier, purpose).await?;
+                }
+                Ok::<_, RevocationError>(())
+            }
+            .boxed())
             .await
-            .error_while("updating revocation list entry")?;
-
-        for list in lists.iter().filter(|list| {
-            list.purpose == purpose
-                || list.purpose == RevocationListPurpose::RevocationAndSuspension
-        }) {
-            self.publish_list(list, &issuer_identifier, purpose).await?;
-        }
-        Ok(())
+            .error_while("updating revocation list entries")?
     }
 
     async fn check_credential_revocation_status(
@@ -250,31 +247,12 @@ impl RevocationMethod for BitstringStatusList {
         ))
     }
 
-    async fn update_attestation_entries(
-        &self,
-        _keys: Vec<ManagedInstanceAttestationRevocationInfo>,
-        _new_state: RevocationState,
-    ) -> Result<(), RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "Attestations not supported".to_string(),
-        ))
-    }
-
     async fn add_signature<'a>(
         &self,
         _signature_type: SignerId,
         _issuer: &'a Identifier,
         _certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "Signatures not supported".to_string(),
-        ))
-    }
-
-    async fn revoke_signature(
-        &self,
-        _signature_id: RevocationListEntryId,
-    ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
         ))

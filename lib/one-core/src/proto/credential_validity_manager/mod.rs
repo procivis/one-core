@@ -19,6 +19,7 @@ use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::relation::Related;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
@@ -358,7 +359,10 @@ impl CredentialValidityManagerImpl {
             .get_revocation_method(revocation_method_id)?;
 
         revocation_method
-            .mark_credential_as(credential, revocation_state.to_owned())
+            .set_entries_state(
+                vec![UpdateRevocationListEntryId::Credential(issuer.common.id)],
+                revocation_state.to_owned(),
+            )
             .await
             .error_while("marking credential status")?;
 

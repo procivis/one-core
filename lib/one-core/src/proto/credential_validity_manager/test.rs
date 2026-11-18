@@ -27,6 +27,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierData, IdentifierState};
 use crate::model::key::Key;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
 use crate::proto::credential_validity_manager::{
     CredentialValidityManager, CredentialValidityManagerImpl, Error, validate_transition,
@@ -1242,7 +1243,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once(|_, _| Ok(()));
@@ -1306,7 +1307,7 @@ async fn test_revoke_credential_success_with_suspended_credential(
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once(|_, _| Ok(()));
@@ -1432,7 +1433,7 @@ async fn test_suspend_credential_success(
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(
             always(),
@@ -1522,7 +1523,7 @@ async fn test_reactivate_credential_success(
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(always(), eq(RevocationState::Valid))
         .return_once(|_, _| Ok(()));
@@ -1703,13 +1704,16 @@ async fn test_revoke_credential_batch_parent() {
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once({
             let child_credential_id = child_credential.common().id;
-            move |credential, _| {
-                assert_eq!(credential.common().id, child_credential_id);
+            move |entries, _| {
+                assert_eq!(
+                    entries,
+                    vec![UpdateRevocationListEntryId::Credential(child_credential_id)]
+                );
                 Ok(())
             }
         });
@@ -1838,13 +1842,16 @@ async fn test_revoke_credential_batch_item() {
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(always(), eq(RevocationState::Revoked))
         .return_once({
             let child_credential_id = child_credential.common().id;
-            move |credential, _| {
-                assert_eq!(credential.common().id, child_credential_id);
+            move |entries, _| {
+                assert_eq!(
+                    entries,
+                    vec![UpdateRevocationListEntryId::Credential(child_credential_id)]
+                );
                 Ok(())
             }
         });
@@ -1952,13 +1959,16 @@ async fn reactivate_batch_item_leaves_parent_untouched(parent_state: CredentialS
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(always(), eq(RevocationState::Valid))
         .return_once({
             let child_credential_id = child_credential.common().id;
-            move |credential, _| {
-                assert_eq!(credential.common().id, child_credential_id);
+            move |entries, _| {
+                assert_eq!(
+                    entries,
+                    vec![UpdateRevocationListEntryId::Credential(child_credential_id)]
+                );
                 Ok(())
             }
         });
@@ -2122,7 +2132,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         LazyLock::new(|| "WITH_SUSPENSION".into());
     let mut revocation_method_with_suspension = MockRevocationMethod::default();
     revocation_method_with_suspension
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(
             always(),
@@ -2132,8 +2142,11 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         )
         .return_once({
             let credential_id = sdjwtvc_credential.common().id;
-            move |credential, _| {
-                assert_eq!(credential.common().id, credential_id);
+            move |entries, _| {
+                assert_eq!(
+                    entries,
+                    vec![UpdateRevocationListEntryId::Credential(credential_id)]
+                );
                 Ok(())
             }
         });
@@ -2143,7 +2156,7 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         LazyLock::new(|| "WITHOUT_SUSPENSION".into());
     let mut revocation_method_without_suspension = MockRevocationMethod::default();
     revocation_method_without_suspension
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .once()
         .with(
             always(),
@@ -2153,8 +2166,11 @@ async fn test_suspend_multiformat_credential_one_format_unsupported() {
         )
         .return_once({
             let credential_id = mdoc_credential.common().id;
-            move |credential, _| {
-                assert_eq!(credential.common().id, credential_id);
+            move |entries, _| {
+                assert_eq!(
+                    entries,
+                    vec![UpdateRevocationListEntryId::Credential(credential_id)]
+                );
                 Err(RevocationError::OperationNotSupported("test".to_string()))
             }
         });
@@ -2309,7 +2325,7 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
         LazyLock::new(|| "WITHOUT_SUSPENSION".into());
     let mut revocation_method_without_suspension = MockRevocationMethod::default();
     revocation_method_without_suspension
-        .expect_mark_credential_as()
+        .expect_set_entries_state()
         .times(2)
         .with(
             always(),
@@ -2831,9 +2847,13 @@ fn any_formatter_provider() -> MockCredentialFormatterProvider {
 fn recording_revocation_method_provider(marked: MarkedStates) -> MockRevocationMethodProvider {
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
-        .expect_mark_credential_as()
-        .returning(move |credential, state| {
-            marked.push((credential.common().id, state));
+        .expect_set_entries_state()
+        .returning(move |entries, state| {
+            let [UpdateRevocationListEntryId::Credential(credential_id)] = entries.as_slice()
+            else {
+                panic!("unexpected entries: {entries:?}");
+            };
+            marked.push((*credential_id, state));
             Ok(())
         });
 

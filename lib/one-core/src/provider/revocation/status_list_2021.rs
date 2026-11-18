@@ -10,9 +10,8 @@ use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
-use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
-};
+use crate::model::managed_instance_attestation::ManagedInstanceAttestation;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
@@ -65,9 +64,9 @@ impl RevocationMethod for StatusList2021 {
         ))
     }
 
-    async fn mark_credential_as(
+    async fn set_entries_state(
         &self,
-        _credential: &Credential,
+        _entries: Vec<UpdateRevocationListEntryId>,
         _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
@@ -108,31 +107,12 @@ impl RevocationMethod for StatusList2021 {
         ))
     }
 
-    async fn update_attestation_entries(
-        &self,
-        _keys: Vec<ManagedInstanceAttestationRevocationInfo>,
-        _new_state: RevocationState,
-    ) -> Result<(), RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "Attestations not supported".to_string(),
-        ))
-    }
-
     async fn add_signature<'a>(
         &self,
         _signature_type: SignerId,
         _issuer: &'a Identifier,
         _certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "Signatures not supported".to_string(),
-        ))
-    }
-
-    async fn revoke_signature(
-        &self,
-        _signature_id: RevocationListEntryId,
-    ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
         ))

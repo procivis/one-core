@@ -10,9 +10,8 @@ use self::model::{
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
-use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
-};
+use crate::model::managed_instance_attestation::ManagedInstanceAttestation;
+use crate::model::revocation_list::UpdateRevocationListEntryId;
 use crate::provider::Provider;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 
@@ -44,12 +43,14 @@ pub trait RevocationMethod: Provider + Send + Sync {
         credential: &Credential,
     ) -> Result<ReservedEntries, RevocationError>;
 
-    /// Change a credential's status to valid, revoked, or suspended.
+    /// Issuer: set the state of existing list entries (valid, revoked or suspended) and
+    /// republish every affected list.
     ///
-    /// For list-based revocation methods, use `additional_data` to specify the ID of the associated list.
-    async fn mark_credential_as(
+    /// Entries can be addressed by credential, by entry id or by list index. The lists are
+    /// re-rendered with the issuer identifier and certificate stored on the list.
+    async fn set_entries_state(
         &self,
-        credential: &Credential,
+        entries: Vec<UpdateRevocationListEntryId>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError>;
 
@@ -69,13 +70,6 @@ pub trait RevocationMethod: Provider + Send + Sync {
         attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
 
-    /// Issuer: update precomputed revocation credential with latest changes considering input attestations
-    async fn update_attestation_entries(
-        &self,
-        keys: Vec<ManagedInstanceAttestationRevocationInfo>,
-        new_state: RevocationState,
-    ) -> Result<(), RevocationError>;
-
     // Signature functionality
 
     /// Issuer: create a status list entry before generating signature
@@ -85,12 +79,6 @@ pub trait RevocationMethod: Provider + Send + Sync {
         issuer: &'a Identifier,
         certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError>;
-
-    /// Issuer: mark previously-issued signature as revoked
-    async fn revoke_signature(
-        &self,
-        signature_id: RevocationListEntryId,
-    ) -> Result<(), RevocationError>;
 
     /// Issuer: get an up-to-date revocation list
     async fn get_updated_list(&self, list_id: RevocationListId)

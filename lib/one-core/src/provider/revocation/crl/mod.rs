@@ -20,13 +20,11 @@ use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::managed_instance_attestation::{
-    ManagedInstanceAttestation, ManagedInstanceAttestationRevocationInfo,
-};
+use crate::model::managed_instance_attestation::ManagedInstanceAttestation;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo,
     RevocationListEntryFilterValue, RevocationListEntryState, RevocationListPurpose,
-    StatusListCredentialFormat, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    StatusListCredentialFormat, UpdateRevocationListEntryId,
 };
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::transaction_manager::TransactionManager;
@@ -36,6 +34,7 @@ use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{RevocationMethodCapabilities, RevocationState};
+use crate::provider::revocation::utils::update_entries_state;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 
 #[cfg(test)]
@@ -100,16 +99,6 @@ impl RevocationMethod for CRLRevocation {
         ))
     }
 
-    async fn mark_credential_as(
-        &self,
-        _credential: &Credential,
-        _new_state: RevocationState,
-    ) -> Result<(), RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "CRL: credential revocation not supported".to_string(),
-        ))
-    }
-
     async fn check_credential_revocation_status(
         &self,
         _credential_status: &CredentialStatus,
@@ -125,16 +114,6 @@ impl RevocationMethod for CRLRevocation {
         &self,
         _attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "CRL: attestation revocation not supported".to_string(),
-        ))
-    }
-
-    async fn update_attestation_entries(
-        &self,
-        _keys: Vec<ManagedInstanceAttestationRevocationInfo>,
-        _new_state: RevocationState,
-    ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "CRL: attestation revocation not supported".to_string(),
         ))
@@ -232,30 +211,34 @@ impl RevocationMethod for CRLRevocation {
         ))
     }
 
-    async fn revoke_signature(
+    async fn set_entries_state(
         &self,
-        signature_id: RevocationListEntryId,
+        entries: Vec<UpdateRevocationListEntryId>,
+        new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        self.revocation_list_repository
-            .update_entry(
-                UpdateRevocationListEntryId::Id(signature_id),
-                UpdateRevocationListEntryRequest {
-                    state: Some(RevocationListEntryState::Revoked),
-                    ..Default::default()
-                },
-            )
+        if let Some(entry) = entries
+            .iter()
+            .find(|entry| !matches!(entry, UpdateRevocationListEntryId::Id(_)))
+        {
+            return Err(RevocationError::OperationNotSupported(format!(
+                "CRL: entry lookup not supported: {entry:?}"
+            )));
+        }
+
+        self.transaction_manager
+            .tx(async move {
+                let lists =
+                    update_entries_state(&*self.revocation_list_repository, entries, new_state)
+                        .await?;
+
+                for list in lists {
+                    self.update_list(list).await?;
+                }
+                Ok::<_, RevocationError>(())
+            }
+            .boxed())
             .await
-            .error_while("updating revocation list entry")?;
-
-        let list = self
-            .revocation_list_repository
-            .get_revocation_list_by_entry_id(signature_id)
-            .await
-            .error_while("getting revocation list entry")?;
-
-        self.update_list(list).await?;
-
-        Ok(())
+            .error_while("updating revocation list entries")?
     }
 
     async fn get_updated_list(
