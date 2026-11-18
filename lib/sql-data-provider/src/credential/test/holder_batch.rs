@@ -24,7 +24,10 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
     let mut common = template.common().clone();
     common.id = CredentialId::new();
     common.state = CredentialStateEnum::Accepted;
-    let parent = Credential::HolderBatchParent { common };
+    let parent = Credential::HolderBatchParent {
+        common,
+        protocol: "OPENID4VCI_FINAL1".into(),
+    };
     let parent_id = parent.common().id;
     let claim = Claim {
         id: ClaimId::new(),
@@ -52,6 +55,7 @@ async fn holder_batch_round_trip_keeps_parent_and_item_data_separate(#[case] bou
         parent: parent.clone().into(),
         consumed_at: Some(get_dummy_date()),
         credential: HolderCredentialData {
+            protocol: "OPENID4VCI_FINAL1".into(),
             issuer: IssuerIdentity {
                 identifier: setup.identifier.clone().into(),
                 certificate: None,
@@ -197,7 +201,10 @@ async fn invalid_holder_batch_item_rows_return_mapping_errors(
     let mut common = template.common().clone();
     common.id = CredentialId::new();
     let parent_id = repository
-        .create_credential(Credential::HolderBatchParent { common })
+        .create_credential(Credential::HolderBatchParent {
+            common,
+            protocol: "OPENID4VCI_FINAL1".into(),
+        })
         .await
         .unwrap();
     let mut row = credential::Entity::find_by_id(setup.credential_id)

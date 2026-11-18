@@ -400,6 +400,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         claim_mappings: vec![claim_schema_mapping].into(),
     };
     CredentialBuilder {
+        protocol: "OPENID4VCI_FINAL1".into(),
         consumed_at: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
@@ -435,7 +436,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             schema: CredentialSchema {
@@ -520,7 +520,7 @@ async fn test_generate_offer() {
     let credential_schema = credential.common().schema.as_ref().await.unwrap();
     let offer = create_credential_offer(
         &protocol_base_url,
-        &credential.common().protocol,
+        credential.issuance_protocol().unwrap(),
         &interaction_id.to_string(),
         &credential_schema,
         &credential_schema.formats.as_ref().await.unwrap(),
@@ -531,7 +531,7 @@ async fn test_generate_offer() {
     assert_eq!(
         json!(&offer),
         json!({
-            "credential_issuer": format!("BASE_URL/ssi/openid4vci/final-1.0/{}/{issuer_identifier_id}/c322aa7f-9803-410d-b891-939b279fb965", credential.common().protocol),
+            "credential_issuer": format!("BASE_URL/ssi/openid4vci/final-1.0/{}/{issuer_identifier_id}/c322aa7f-9803-410d-b891-939b279fb965", credential.issuance_protocol().unwrap()),
             "credential_configuration_ids" : [
                 credential.common().schema.as_ref().await.unwrap().single_format().await.ecosystem_schema_id,
             ],

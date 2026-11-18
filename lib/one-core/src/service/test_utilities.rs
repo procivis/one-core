@@ -304,6 +304,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         claim_mappings: Default::default(),
     };
     CredentialBuilder {
+        protocol: exchange.to_string(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -312,7 +313,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
-            protocol: exchange.into(),
             redirect_uri: None,
             state: CredentialStateEnum::Pending,
             profile: None,
@@ -840,6 +840,8 @@ pub fn holder_single_credential(credential: Credential) -> Credential {
 #[derive(Clone, Debug)]
 pub struct CredentialBuilder {
     pub common: CredentialCommon,
+    /// issuance or verification protocol, typed according to `role` on build
+    pub protocol: String,
     pub claims: crate::model::relation::RelatedVec<Claim>,
     pub consumed_at: Option<OffsetDateTime>,
     pub role: CredentialRole,
@@ -894,6 +896,7 @@ impl From<Credential> for CredentialBuilder {
         let holder = value.holder().ok().map(|view| view.data);
         let binding = holder.and_then(|holder| holder.binding.as_ref());
         Self {
+            protocol: value.protocol().to_string(),
             common: value.common().clone(),
             claims: match &value {
                 Credential::IssuerSingle { claims, .. }
@@ -981,6 +984,7 @@ impl CredentialBuilder {
         if self.role == CredentialRole::Holder && self.r#type == CredentialType::BatchParent {
             return Credential::HolderBatchParent {
                 common: self.common,
+                protocol: self.protocol.into(),
             };
         }
         let issuer = IssuerIdentity {
@@ -994,6 +998,7 @@ impl CredentialBuilder {
                 common: self.common,
                 wallet_instance_attestation_blob_id: self.wallet_instance_attestation_blob_id,
                 issuer: IssuerData {
+                    protocol: self.protocol.into(),
                     identifier: issuer.identifier,
                     certificate: issuer.certificate,
                     signing_key: self.key.unwrap_or_else(|| dummy_key().into()),
@@ -1024,6 +1029,7 @@ impl CredentialBuilder {
             return Credential::Verifier {
                 common: self.common,
                 verifier_data: VerifierCredentialData {
+                    protocol: self.protocol.into(),
                     issuer,
                     format,
                     claims: self.claims,
@@ -1034,7 +1040,11 @@ impl CredentialBuilder {
         let parent = self.parent.unwrap_or_else(|| {
             let mut common = self.common.clone();
             common.id = CredentialId::new();
-            Credential::HolderBatchParent { common }.into()
+            Credential::HolderBatchParent {
+                common,
+                protocol: self.protocol.clone().into(),
+            }
+            .into()
         });
         if self.role == CredentialRole::Holder {
             let binding = match (self.holder_identifier, self.key) {
@@ -1045,6 +1055,7 @@ impl CredentialBuilder {
                 }),
             };
             let credential = HolderCredentialData {
+                protocol: self.protocol.into(),
                 issuer,
                 format,
                 claims: self.claims,
@@ -1067,6 +1078,7 @@ impl CredentialBuilder {
             }
         } else {
             let issuer = IssuerData {
+                protocol: self.protocol.into(),
                 identifier: issuer.identifier,
                 certificate: issuer.certificate,
                 signing_key: self.key.unwrap_or_else(|| dummy_key().into()),

@@ -849,6 +849,7 @@ async fn test_get_presentation_definition_v2(
     ];
 
     let credential = CredentialBuilder {
+        protocol: "ISO_MDL".into(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -856,7 +857,6 @@ async fn test_get_presentation_definition_v2(
             created_date: crate::clock::now_utc(),
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
-            protocol: "ISO_MDL".into(),
             schema: credential_schema.into(),
             deleted_at: None,
             redirect_uri: None,

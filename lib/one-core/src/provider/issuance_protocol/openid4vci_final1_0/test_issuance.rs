@@ -656,6 +656,7 @@ async fn dummy_credential() -> Credential {
         .into(),
     };
     CredentialBuilder {
+        protocol: "protocol".into(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -664,7 +665,6 @@ async fn dummy_credential() -> Credential {
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
-            protocol: "protocol".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Pending,
             schema: backfill_default_translations(

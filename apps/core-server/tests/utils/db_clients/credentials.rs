@@ -175,6 +175,7 @@ impl CredentialsDB {
             .cloned();
 
         let credential = CredentialBuilder {
+            protocol: protocol.into(),
             common: CredentialCommon {
                 expires_at: params.expires_at,
                 ecosystem: params.ecosystem,
@@ -183,7 +184,6 @@ impl CredentialsDB {
                 last_modified: get_dummy_date(),
                 issuance_date,
                 deleted_at: params.deleted_at,
-                protocol: protocol.into(),
                 redirect_uri: None,
                 state,
                 schema: credential_schema.to_owned().into(),
@@ -277,6 +277,7 @@ impl CredentialsDB {
         if holder_data.is_some() {
             credential = Credential::HolderBatchParent {
                 common: credential.common().clone(),
+                protocol: credential.issuance_protocol().unwrap().clone(),
             };
         }
         let id = self

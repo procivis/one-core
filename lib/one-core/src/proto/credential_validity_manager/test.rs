@@ -2450,6 +2450,7 @@ fn generic_credential() -> Credential {
         claim_mappings: Default::default(),
     };
     CredentialBuilder {
+        protocol: "OPENID4VCI_DRAFT13".into(),
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
@@ -2499,7 +2500,6 @@ fn generic_credential() -> Credential {
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_DRAFT13".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             schema: CredentialSchema {

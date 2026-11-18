@@ -69,7 +69,10 @@ async fn test_create_credential_success() {
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
     let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
     assert_eq!(2, claims.as_ref().await.unwrap().len());
-    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol.as_str());
+    assert_eq!(
+        "OPENID4VCI_FINAL1",
+        credential.issuance_protocol().unwrap().as_str()
+    );
     assert_eq!(credential.common().profile, None);
 }
 
@@ -426,7 +429,10 @@ async fn test_create_credential_success_with_nested_claims() {
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
     let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
     assert_eq!(5, claims.as_ref().await.unwrap().len());
-    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol.as_str());
+    assert_eq!(
+        "OPENID4VCI_FINAL1",
+        credential.issuance_protocol().unwrap().as_str()
+    );
 }
 
 #[tokio::test]
@@ -1003,7 +1009,10 @@ async fn test_create_credential_with_big_picture_success() {
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
     let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
     assert_eq!(1, claims.as_ref().await.unwrap().len());
-    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol.as_str());
+    assert_eq!(
+        "OPENID4VCI_FINAL1",
+        credential.issuance_protocol().unwrap().as_str()
+    );
 }
 
 #[tokio::test]
@@ -1444,7 +1453,10 @@ async fn test_create_credential_success_with_profile() {
     assert_eq!(CredentialStateEnum::Created, credential.common().state);
     let_assert!(Credential::IssuerSingle { claims, .. } = &credential);
     assert_eq!(2, claims.as_ref().await.unwrap().len());
-    assert_eq!("OPENID4VCI_FINAL1", credential.common().protocol.as_str());
+    assert_eq!(
+        "OPENID4VCI_FINAL1",
+        credential.issuance_protocol().unwrap().as_str()
+    );
 
     // Verify the profile is correctly stored
     assert_eq!(credential.common().profile.as_ref().unwrap(), test_profile);

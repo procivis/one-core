@@ -33,6 +33,7 @@ use crate::service::test_utilities::{
 fn rejects_holder_batch_parent() {
     let mut credential = crate::model::credential::Credential::HolderBatchParent {
         common: dummy_credential().common().clone(),
+        protocol: "OPENID4VCI_FINAL1".into(),
     };
 
     let error = credential.holder_mut().unwrap_err();

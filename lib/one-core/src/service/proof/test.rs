@@ -549,9 +549,9 @@ async fn proof_detail_with_claims(
     let root_schema = claim_schemas[0].clone();
     let mut credential = credential_with_claims("JWT", claim_schemas, claims.clone()).await;
     credential.common_mut().state = CredentialStateEnum::Accepted;
-    credential.common_mut().protocol = "".into();
     credential = CredentialBuilder {
         role: CredentialRole::Holder,
+        protocol: String::new(),
         key: None,
         ..credential.into()
     }

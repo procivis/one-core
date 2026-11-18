@@ -131,7 +131,7 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             mdoc_mso_validity: value.mdoc_mso_validity.map(|inner| inner.into()),
-            protocol: value.protocol.into(),
+            protocol: value.protocol.to_string(),
             profile: value.profile,
             trust_information: convert_inner(value.trust_information),
             remaining_batch_item_count: value.remaining_batch_item_count.map(|counts| {
@@ -175,7 +175,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
-            protocol: value.protocol.into(),
+            protocol: value.protocol.to_string(),
             profile: value.profile,
             format: value.format.map(|format| format.to_string()),
             parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
@@ -819,7 +819,7 @@ impl From<ApplicableCredential> for PresentationDefinitionV2CredentialDetailBind
             suspend_end_date: optional_time(value.credential.suspend_end_date),
             mdoc_mso_validity: convert_inner(value.credential.mdoc_mso_validity),
             holder: convert_inner(value.credential.holder),
-            protocol: value.credential.protocol.into(),
+            protocol: value.credential.protocol.to_string(),
             profile: value.credential.profile,
             format: value.credential.format.map(|format| format.to_string()),
             embedded_disclosure_policy_violation: convert_inner(

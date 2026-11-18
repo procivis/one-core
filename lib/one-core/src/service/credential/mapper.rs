@@ -115,6 +115,7 @@ pub(crate) async fn credential_detail_response_from_model(
     .await?;
 
     let suspend_end_date = value.common().state.suspend_end_date();
+    let protocol = value.protocol();
     let CredentialDetailMetadata {
         common,
         parent_id,
@@ -143,7 +144,7 @@ pub(crate) async fn credential_detail_response_from_model(
         suspend_end_date,
         mdoc_mso_validity,
         holder,
-        protocol: common.protocol,
+        protocol,
         issuer_certificate,
         profile: common.profile,
         wallet_instance_attestation: attestation
@@ -773,6 +774,7 @@ pub(super) async fn to_credential_list_response(
     let suspend_end_date = credential.common().state.suspend_end_date();
     let role = credential.role();
     let credential_type = credential.r#type();
+    let protocol = credential.protocol();
     let (common, parent_id, webhook_url, consumed_at) = match credential {
         Credential::IssuerSingle {
             common,
@@ -819,7 +821,7 @@ pub(super) async fn to_credential_list_response(
         role: role.into(),
         r#type: credential_type.into(),
         suspend_end_date,
-        protocol: common.protocol,
+        protocol,
         profile: common.profile,
         webhook_destination_url: webhook_url,
         parent_id,
@@ -881,7 +883,6 @@ pub(super) fn from_create_request(
         state: CredentialStateEnum::Created,
         last_modified: now,
         deleted_at: None,
-        protocol: request.protocol,
         schema: schema.into(),
         interaction: None,
         redirect_uri: request.redirect_uri,
@@ -893,6 +894,7 @@ pub(super) fn from_create_request(
             common,
             wallet_instance_attestation_blob_id: None,
             issuer: IssuerData {
+                protocol: request.protocol.clone(),
                 identifier: issuer_identifier.into(),
                 certificate: issuer_certificate.map(Into::into),
                 signing_key: key.into(),
@@ -914,6 +916,7 @@ pub(super) fn from_create_request(
         common,
         wallet_instance_attestation_blob_id: None,
         issuer: IssuerData {
+            protocol: request.protocol.clone(),
             identifier: issuer_identifier.into(),
             certificate: issuer_certificate.map(Into::into),
             signing_key: key.into(),
@@ -1542,7 +1545,7 @@ pub(crate) async fn credential_detail_response_from_backup(
         suspend_end_date: common.state.suspend_end_date(),
         mdoc_mso_validity,
         holder: None,
-        protocol: common.protocol,
+        protocol: value.protocol,
         issuer_certificate: None,
         profile: common.profile,
         wallet_instance_attestation: None,

@@ -52,6 +52,7 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
             ..template.common().clone()
         },
         verifier_data: VerifierCredentialData {
+            protocol: "OPENID4VP_FINAL1".into(),
             issuer: IssuerIdentity {
                 identifier: setup.identifier.clone().into(),
                 certificate: None,
@@ -69,6 +70,7 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
         .unwrap();
     assert_eq!(row.role, credential::CredentialRole::Verifier);
     assert_eq!(row.r#type, credential::CredentialType::Single);
+    assert_eq!(row.protocol, "OPENID4VP_FINAL1");
     assert_eq!(row.issuer_identifier_id, Some(setup.identifier.id));
     assert_eq!(row.format, Some(format.id));
     assert!(row.key_id.is_none());
@@ -83,6 +85,8 @@ async fn verifier_single_round_trip_preserves_relations_and_legacy_missing_holde
     assert_eq!(verifier_data.format.as_ref().await.unwrap().id, format.id);
     assert_eq!(verifier_data.claims.as_ref().await.unwrap()[0].id, claim.id);
     assert!(verifier_data.holder_identifier.is_none());
+    // the shared column is loaded as verification protocol for verifier credentials
+    assert_eq!(verifier_data.protocol.as_str(), "OPENID4VP_FINAL1");
 
     let listed = repository
         .get_credential_list(CredentialListQuery {

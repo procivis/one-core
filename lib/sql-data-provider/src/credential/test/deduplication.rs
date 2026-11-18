@@ -47,6 +47,7 @@ impl BatchSetup {
                 id: CredentialId::new(),
                 ..template.common().clone()
             },
+            protocol: template.issuance_protocol().unwrap().clone(),
         };
         repositories
             .get_credential_repository()

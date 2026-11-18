@@ -66,6 +66,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
     };
     UnexportableEntities {
         credentials: vec![crate::model::backup::UnexportableCredential {
+            protocol: crate::model::credential::CredentialProtocol::Issuance("foo".into()),
             common: CredentialCommon {
                 expires_at: None,
                 ecosystem: None,
@@ -74,7 +75,6 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                 issuance_date: None,
                 last_modified: crate::clock::now_utc(),
                 deleted_at: None,
-                protocol: "foo".into(),
                 redirect_uri: None,
                 state: CredentialStateEnum::Created,
                 profile: None,
@@ -334,4 +334,58 @@ async fn test_backup_flow() {
 
     assert_eq!(metadata.db_version, "10");
     assert_eq!(std::io::read_to_string(db).unwrap(), "content");
+}
+
+#[tokio::test]
+async fn test_unexportable_credential_protocol_persisted_as_string_and_typed_by_role() {
+    use crate::model::credential::CredentialProtocol;
+    use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
+
+    for (role, protocol) in [
+        (
+            CredentialRole::Holder,
+            CredentialProtocol::Issuance("OPENID4VCI_FINAL1".into()),
+        ),
+        (
+            CredentialRole::Verifier,
+            CredentialProtocol::Verification("OPENID4VP_FINAL1".into()),
+        ),
+    ] {
+        let mut repositories = Repositories::default();
+        let mut entities = dummy_unexportable_entities().await;
+        entities.credentials[0].role = role;
+        entities.credentials[0].protocol = protocol.clone();
+        repositories
+            .backup_repository
+            .expect_fetch_unexportable()
+            .once()
+            .return_once(move |_| Ok(entities));
+        repositories
+            .formatter_provider
+            .expect_get_credential_formatter()
+            .return_once(|_| {
+                let mut formatter = MockCredentialFormatter::new();
+                formatter.expect_revocation_method_id().return_const(None);
+                Ok(Arc::new(formatter))
+            });
+
+        let dto = setup_service(repositories).backup_info().await.unwrap();
+
+        // persisted in history metadata as plain string
+        let mut json = serde_json::to_value(&dto).unwrap();
+        assert_eq!(
+            json["credentials"][0]["protocol"],
+            serde_json::json!(protocol.to_string())
+        );
+
+        // `None` dates are skipped when serializing but required when deserializing (separate,
+        // pre-existing issue), set them explicitly to isolate the protocol handling
+        for field in ["issuanceDate", "revocationDate", "expiresAt"] {
+            json["credentials"][0][field] = serde_json::Value::Null;
+        }
+
+        // typed according to the role when read back
+        let read: UnexportableEntitiesResponseDTO = serde_json::from_value(json).unwrap();
+        assert_eq!(read.credentials[0].protocol, protocol);
+    }
 }

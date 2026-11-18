@@ -2,7 +2,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 
 use super::claim::Claim;
-use super::credential::{CredentialCommon, CredentialRole, CredentialType};
+use super::credential::{CredentialCommon, CredentialProtocol, CredentialRole, CredentialType};
 use super::credential_schema_format::CredentialSchemaFormat;
 use super::did::Did;
 use super::identifier::Identifier;
@@ -35,6 +35,7 @@ pub struct Metadata {
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UnexportableCredential {
     pub common: CredentialCommon,
+    pub protocol: CredentialProtocol,
     pub claims: Vec<Claim>,
     pub role: CredentialRole,
     pub r#type: CredentialType,

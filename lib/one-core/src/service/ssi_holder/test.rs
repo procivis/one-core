@@ -1948,6 +1948,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         .into(),
     };
     CredentialBuilder {
+        protocol: "OPENID4VCI_FINAL1".into(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -1956,7 +1957,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Pending,
             profile: None,

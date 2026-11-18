@@ -343,6 +343,7 @@ pub(super) fn credential_from_model(
     format: impl AsyncModelLoader<CredentialSchemaFormat> + 'static,
     repositories: CredentialRepositories<'_>,
 ) -> Result<Credential, DataLayerError> {
+    let protocol = credential.protocol;
     let common = CredentialCommon {
         id: credential.id,
         created_date: credential.created_date,
@@ -350,7 +351,6 @@ pub(super) fn credential_from_model(
         expires_at: credential.expires_at,
         last_modified: credential.last_modified,
         deleted_at: credential.deleted_at,
-        protocol: credential.protocol,
         redirect_uri: credential.redirect_uri,
         state: credential.state.to_model(credential.suspend_end_date),
         profile: credential.profile,
@@ -369,6 +369,7 @@ pub(super) fn credential_from_model(
         return Ok(Credential::Verifier {
             common,
             verifier_data: VerifierCredentialData {
+                protocol: protocol.into(),
                 issuer: IssuerIdentity {
                     identifier: Related::new(
                         credential.issuer_identifier_id.ok_or_else(|| {
@@ -395,6 +396,7 @@ pub(super) fn credential_from_model(
     }
     if credential.role == credential::CredentialRole::Issuer {
         let issuer = IssuerData {
+            protocol: protocol.into(),
             identifier: Related::new(
                 credential.issuer_identifier_id.ok_or_else(|| {
                     DataLayerError::MappingError(anyhow!("Missing issuer_identifier_id"))
@@ -459,7 +461,10 @@ pub(super) fn credential_from_model(
         });
     }
     if credential.r#type == credential::CredentialType::BatchParent {
-        return Ok(Credential::HolderBatchParent { common });
+        return Ok(Credential::HolderBatchParent {
+            common,
+            protocol: protocol.into(),
+        });
     }
     let binding = match (credential.holder_identifier_id, credential.key_id) {
         (Some(identifier), Some(key)) => Some(HolderBinding {
@@ -474,6 +479,7 @@ pub(super) fn credential_from_model(
         }
     };
     let data = HolderCredentialData {
+        protocol: protocol.into(),
         issuer: IssuerIdentity {
             identifier: Related::new(
                 credential.issuer_identifier_id.ok_or_else(|| {
@@ -530,7 +536,7 @@ pub(super) fn request_to_active_model(
         issuance_date: Set(common.issuance_date),
         expires_at: Set(common.expires_at),
         deleted_at: Set(common.deleted_at),
-        protocol: Set(common.protocol.clone()),
+        protocol: Set(request.protocol().to_string()),
         redirect_uri: Set(common.redirect_uri.clone()),
         interaction_id: Set(common
             .interaction

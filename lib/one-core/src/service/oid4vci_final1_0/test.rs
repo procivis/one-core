@@ -385,6 +385,7 @@ fn dummy_credential(
     r#type: CredentialType,
 ) -> Credential {
     let credential = CredentialBuilder {
+        protocol: protocol.into(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -393,7 +394,6 @@ fn dummy_credential(
             issuance_date: None,
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
-            protocol: protocol.into(),
             redirect_uri: None,
             state,
             schema: schema.into(),

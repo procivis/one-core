@@ -2,7 +2,7 @@ use proc_macros::Model;
 use shared_types::{
     BlobId, CertificateId, CredentialFormat, CredentialId, CredentialSchemaFormatId,
     CredentialSchemaId, EcosystemId, IdentifierId, InteractionId, IssuanceProtocolId, KeyId,
-    OrganisationId,
+    OrganisationId, VerificationProtocolId,
 };
 use strum::{Display, EnumString, IntoStaticStr};
 use time::OffsetDateTime;
@@ -63,6 +63,8 @@ pub enum Credential {
     HolderBatchParent {
         #[model(nested)]
         common: CredentialCommon,
+        /// issuance protocol the batch was received with
+        protocol: IssuanceProtocolId,
     },
     HolderBatchItem {
         #[model(nested)]
@@ -88,7 +90,6 @@ pub struct CredentialCommon {
     pub deleted_at: Option<OffsetDateTime>,
     pub issuance_date: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
-    pub protocol: IssuanceProtocolId,
     pub interaction: Option<Related<Interaction>>,
     pub redirect_uri: Option<String>,
     pub profile: Option<String>,
@@ -100,6 +101,8 @@ pub struct CredentialCommon {
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct IssuerData {
+    /// issuance protocol the credential is issued with
+    pub protocol: IssuanceProtocolId,
     pub identifier: Related<Identifier>,
     pub certificate: Option<Related<Certificate>>,
     pub signing_key: Related<Key>,
@@ -117,6 +120,8 @@ pub struct IssuerCredentialData {
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct HolderCredentialData {
+    /// issuance protocol the credential was received with
+    pub protocol: IssuanceProtocolId,
     pub issuer: IssuerIdentity,
     pub format: Related<CredentialSchemaFormat>,
     pub claims: RelatedVec<Claim>,
@@ -136,6 +141,8 @@ pub struct HolderBinding {
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct VerifierCredentialData {
+    /// verification protocol the credential was presented with
+    pub protocol: VerificationProtocolId,
     pub issuer: IssuerIdentity,
     pub format: Related<CredentialSchemaFormat>,
     pub claims: RelatedVec<Claim>,
@@ -148,6 +155,38 @@ pub struct VerifierCredentialData {
 pub struct IssuerIdentity {
     pub identifier: Related<Identifier>,
     pub certificate: Option<Related<Certificate>>,
+}
+
+/// Protocol a credential was exchanged with, depending on its role
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CredentialProtocol {
+    /// issuer and holder credentials
+    Issuance(IssuanceProtocolId),
+    /// verifier credentials
+    Verification(VerificationProtocolId),
+}
+
+impl std::fmt::Display for CredentialProtocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Issuance(protocol) => protocol.fmt(f),
+            Self::Verification(protocol) => protocol.fmt(f),
+        }
+    }
+}
+
+/// Serialized as the plain protocol id. Deserialization needs the credential role to pick the
+/// variant, see `CredentialDetailResponseDTO::with_typed_protocol`.
+impl serde::Serialize for CredentialProtocol {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl From<CredentialProtocol> for String {
+    fn from(value: CredentialProtocol) -> Self {
+        value.to_string()
+    }
 }
 
 /// A credential's common fields and one of its variant-specific data groups.
@@ -343,6 +382,41 @@ impl Credential {
             | Self::HolderBatchParent { common, .. }
             | Self::HolderBatchItem { common, .. }
             | Self::Verifier { common, .. } => common,
+        }
+    }
+
+    /// Protocol the credential was exchanged with: the issuance protocol for issuer and holder
+    /// credentials, the verification protocol for verifier credentials.
+    pub fn protocol(&self) -> CredentialProtocol {
+        match self {
+            Self::IssuerSingle { issuer, .. }
+            | Self::IssuerBatchParent { issuer, .. }
+            | Self::IssuerBatchItem { issuer, .. } => {
+                CredentialProtocol::Issuance(issuer.protocol.clone())
+            }
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                CredentialProtocol::Issuance(credential.protocol.clone())
+            }
+            Self::HolderBatchParent { protocol, .. } => {
+                CredentialProtocol::Issuance(protocol.clone())
+            }
+            Self::Verifier { verifier_data, .. } => {
+                CredentialProtocol::Verification(verifier_data.protocol.clone())
+            }
+        }
+    }
+
+    /// Issuance protocol of issuer and holder credentials
+    pub fn issuance_protocol(&self) -> Result<&IssuanceProtocolId, NestedError> {
+        match self {
+            Self::IssuerSingle { issuer, .. }
+            | Self::IssuerBatchParent { issuer, .. }
+            | Self::IssuerBatchItem { issuer, .. } => Ok(&issuer.protocol),
+            Self::HolderSingle { credential, .. } | Self::HolderBatchItem { credential, .. } => {
+                Ok(&credential.protocol)
+            }
+            Self::HolderBatchParent { protocol, .. } => Ok(protocol),
+            Self::Verifier { .. } => Err(self.unexpected_variant("an issuer or holder credential")),
         }
     }
 

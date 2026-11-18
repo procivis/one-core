@@ -5,8 +5,7 @@ use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::{
-    BlobId, ClaimId, ClaimSchemaId, CredentialId, I18nString, IssuanceProtocolId,
-    VerificationProtocolId,
+    BlobId, ClaimId, ClaimSchemaId, CredentialId, I18nString, VerificationProtocolId,
 };
 use time::OffsetDateTime;
 
@@ -217,8 +216,6 @@ pub(crate) fn extracted_credential_to_model(
             issuance_date,
             last_modified: now,
             deleted_at: None,
-            // TODO ONE-9647: on the verifier side, the verification protocol is stored as issuance protocol
-            protocol: IssuanceProtocolId::from(verification_protocol.to_string()),
             state: CredentialStateEnum::Accepted,
             profile: None,
             schema: credential_schema.into(),
@@ -226,6 +223,7 @@ pub(crate) fn extracted_credential_to_model(
             interaction: None,
         },
         verifier_data: VerifierCredentialData {
+            protocol: verification_protocol.to_owned(),
             issuer: IssuerIdentity {
                 identifier: issuer_identifier.into(),
                 certificate: issuer_certificate,

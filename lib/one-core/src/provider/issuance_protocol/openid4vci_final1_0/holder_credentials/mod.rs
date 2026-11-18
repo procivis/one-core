@@ -720,13 +720,13 @@ impl OpenID4VCIFinal1_0 {
 
         credential.common.redirect_uri = redirect_uri.cloned();
         credential.common.state = CredentialStateEnum::Accepted;
-        credential.common.protocol = self.config_id.to_owned();
         credential.common.interaction = Some(interaction.to_owned().into());
         let binding =
             take_matching_holder_binding(credential.holder_identifier, holder_bindings).await?;
         Ok(Credential::HolderSingle {
             common: credential.common,
             credential: HolderCredentialData {
+                protocol: self.config_id.to_owned(),
                 issuer: IssuerIdentity {
                     identifier: issuer_identifier.into(),
                     certificate: issuer_certificate.map(Into::into),

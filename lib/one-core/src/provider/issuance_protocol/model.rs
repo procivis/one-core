@@ -114,6 +114,7 @@ impl CredentialWithBlob {
     pub fn batch_parent(&self, refreshable: bool) -> Result<Self, IssuanceProtocolError> {
         Ok(Self {
             credential: Credential::HolderBatchParent {
+                protocol: self.credential.issuance_protocol()?.clone(),
                 common: {
                     let mut common = self.credential.common().clone();
                     common.id = CredentialId::new();

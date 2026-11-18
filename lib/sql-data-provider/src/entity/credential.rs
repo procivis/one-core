@@ -30,7 +30,8 @@ pub struct Model {
     pub deleted_at: Option<OffsetDateTime>,
     pub consumed_at: Option<OffsetDateTime>,
 
-    pub protocol: IssuanceProtocolId,
+    /// issuance protocol (issuer/holder credentials) or verification protocol (verifier credentials)
+    pub protocol: String,
     pub redirect_uri: Option<String>,
 
     pub role: CredentialRole,

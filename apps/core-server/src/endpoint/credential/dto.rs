@@ -1,5 +1,6 @@
 use one_core::model::credential::{
-    CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
+    CredentialListIncludeEntityTypeEnum, CredentialProtocol, ExactCredentialFilterColumn,
+    SortableCredentialColumn,
 };
 use one_core::service::credential::dto::{
     ChangeCredentialStateDTO, CreateCredentialRequestDTO, CredentialFilterParamsDTO,
@@ -72,7 +73,10 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
-    pub protocol: IssuanceProtocolId,
+    /// Issuance protocol (issuer and holder credentials) or verification protocol
+    /// (verifier credentials) the credential was exchanged with.
+    #[schema(value_type = String)]
+    pub protocol: CredentialProtocol,
     /// Profile associated with this credential
     #[from(with_fn = convert_inner)]
     pub profile: Option<String>,
@@ -191,8 +195,10 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
     /// Credential holder metadata.
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
-    /// Issuance protocol used to issue this credential.
-    pub protocol: IssuanceProtocolId,
+    /// Issuance protocol (issuer and holder credentials) or verification protocol
+    /// (verifier credentials) the credential was exchanged with.
+    #[schema(value_type = String)]
+    pub protocol: CredentialProtocol,
     /// Country profile associated with this credential.
     pub profile: Option<String>,
 

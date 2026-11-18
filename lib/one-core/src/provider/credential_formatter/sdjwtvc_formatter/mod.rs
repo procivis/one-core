@@ -225,8 +225,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 issuance_date: parsed_credential.payload.issued_at,
                 last_modified: now,
                 deleted_at: None,
-                // TODO ONE-9647: empty issuance protocol for credentials not received via an issuance protocol
-                protocol: "".into(),
                 redirect_uri: None,
                 state: CredentialStateEnum::Accepted,
                 profile: None,

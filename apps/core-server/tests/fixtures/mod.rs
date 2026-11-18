@@ -820,6 +820,7 @@ pub async fn create_credential(
         .cloned();
 
     let credential = CredentialBuilder {
+        protocol: protocol.into(),
         common: CredentialCommon {
             expires_at: params.expires_at,
             ecosystem: params.ecosystem,
@@ -828,7 +829,6 @@ pub async fn create_credential(
             last_modified: get_dummy_date(),
             issuance_date: None,
             deleted_at: params.deleted_at,
-            protocol: protocol.into(),
             redirect_uri: None,
             state,
             schema: credential_schema.to_owned().into(),

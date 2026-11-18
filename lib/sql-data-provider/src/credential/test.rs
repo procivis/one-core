@@ -517,7 +517,6 @@ async fn test_create_credential_success() {
                 issuance_date: None,
                 last_modified: get_dummy_date(),
                 deleted_at: None,
-                protocol: "exchange".into(),
                 redirect_uri: None,
                 state: CredentialStateEnum::Created,
                 schema: credential_schema.into(),
@@ -525,6 +524,7 @@ async fn test_create_credential_success() {
                 profile: None,
             },
             credential: HolderCredentialData {
+                protocol: "exchange".into(),
                 claims: claims.into(),
                 issuer: IssuerIdentity {
                     identifier: identifier.into(),
@@ -574,7 +574,6 @@ async fn test_create_credential_empty_claims() {
                 issuance_date: None,
                 last_modified: get_dummy_date(),
                 deleted_at: None,
-                protocol: "exchange".into(),
                 redirect_uri: None,
                 state: CredentialStateEnum::Created,
                 schema: credential_schema.into(),
@@ -582,6 +581,7 @@ async fn test_create_credential_empty_claims() {
                 profile: None,
             },
             credential: HolderCredentialData {
+                protocol: "exchange".into(),
                 claims: Default::default(),
                 issuer: IssuerIdentity {
                     identifier: identifier.into(),
@@ -642,7 +642,6 @@ async fn test_create_credential_already_exists() {
                 issuance_date: None,
                 last_modified: get_dummy_date(),
                 deleted_at: None,
-                protocol: "exchange".into(),
                 redirect_uri: None,
                 state: CredentialStateEnum::Created,
                 schema: credential_schema.into(),
@@ -650,6 +649,7 @@ async fn test_create_credential_already_exists() {
                 profile: None,
             },
             credential: HolderCredentialData {
+                protocol: "exchange".into(),
                 claims: claims.into(),
                 issuer: IssuerIdentity {
                     identifier: identifier.into(),

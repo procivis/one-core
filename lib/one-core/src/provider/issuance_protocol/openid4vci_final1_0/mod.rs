@@ -2934,7 +2934,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let mut query = if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
                 protocol_base_url,
-                &issuer.common.protocol,
+                &issuer.data.protocol,
                 &interaction_id.to_string(),
                 &credential_schema,
                 &offered_formats,

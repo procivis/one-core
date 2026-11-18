@@ -5,9 +5,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use shared_types::{
-    ClaimSchemaId, CredentialId, IssuanceProtocolId, TransactionDataId, VerificationProtocolId,
-};
+use shared_types::{ClaimSchemaId, CredentialId, TransactionDataId, VerificationProtocolId};
 use standardized_types::openid4vp::VpTokenResponse;
 use time::{Duration, OffsetDateTime};
 
@@ -112,6 +110,7 @@ pub(crate) fn extracted_credential_to_model(
     }
 
     Ok(ProvedCredential {
+        protocol: verification_protocol.to_owned(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -120,8 +119,6 @@ pub(crate) fn extracted_credential_to_model(
             issuance_date,
             last_modified: now,
             deleted_at: None,
-            // TODO ONE-9647: on the verifier side, the verification protocol is stored as issuance protocol
-            protocol: IssuanceProtocolId::from(verification_protocol.to_string()),
             state: CredentialStateEnum::Accepted,
             profile: profile.clone(),
             schema: credential_schema.into(),

@@ -366,7 +366,7 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.common().protocol,
+            credential.issuance_protocol()?,
         )
         .error_while("validating protocol type")?;
 
@@ -393,7 +393,7 @@ impl OID4VCIFinal1_0Service {
 
         let issuance_protocol = self
             .protocol_provider
-            .get_protocol(&credential.common().protocol)?;
+            .get_protocol(credential.issuance_protocol()?)?;
         let protocol_base_url = issuance_protocol.protocol_base_url().ok_or(
             OID4VCIFinal1_0ServiceError::MappingError("Missing base_url".to_owned()),
         )?;
@@ -402,7 +402,7 @@ impl OID4VCIFinal1_0Service {
 
         Ok(create_credential_offer(
             &protocol_base_url,
-            &credential.common().protocol,
+            credential.issuance_protocol()?,
             &interaction.id.to_string(),
             &credential_schema,
             &formats,
@@ -460,7 +460,7 @@ impl OID4VCIFinal1_0Service {
                 interaction_data.dpop_jkt.as_deref(),
                 access_token,
                 dpop_proof,
-                &credential.common().protocol,
+                credential.issuance_protocol()?,
                 &format!("{credential_schema_id}/credential"),
             )
             .await?;
@@ -470,14 +470,14 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.common().protocol,
+            credential.issuance_protocol()?,
         )
         .error_while("validating protocol type")?;
 
         let params: OpenID4VCIFinal1Params = self
             .config
             .issuance_protocol
-            .get(&credential.common().protocol)
+            .get(credential.issuance_protocol()?)
             .error_while("getting protocol params")?;
 
         // decrypting needs the issuer identity, so it can only happen once the access token
@@ -497,7 +497,7 @@ impl OID4VCIFinal1_0Service {
 
         let issuance_protocol = self
             .protocol_provider
-            .get_protocol(&credential.common().protocol)?;
+            .get_protocol(credential.issuance_protocol()?)?;
         validate_response_encryption(
             request.credential_response_encryption.as_ref(),
             &params,
@@ -951,7 +951,7 @@ impl OID4VCIFinal1_0Service {
     ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
         let issuance_protocol = self
             .protocol_provider
-            .get_protocol(&credential.common().protocol)?;
+            .get_protocol(credential.issuance_protocol()?)?;
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&format.format)?;
@@ -1408,7 +1408,7 @@ impl OID4VCIFinal1_0Service {
                 interaction_data.dpop_jkt.as_deref(),
                 access_token,
                 dpop_proof,
-                &credential.common().protocol,
+                credential.issuance_protocol()?,
                 &format!("{credential_schema_id}/notification"),
             )
             .await?;
@@ -1487,14 +1487,14 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.common().protocol,
+            credential.issuance_protocol()?,
         )
         .error_while("validating protocol type")?;
 
         let params: OpenID4VCIFinal1Params = self
             .config
             .issuance_protocol
-            .get(&credential.common().protocol)
+            .get(credential.issuance_protocol()?)
             .error_while("getting protocol params")?;
 
         let issuer_identifier_id = if params.swiyu_mode {
@@ -1521,15 +1521,15 @@ impl OID4VCIFinal1_0Service {
 
         let pre_authorization_expires_in = get_issuance_param_pre_authorization_expires_in(
             &self.config,
-            &credential.common().protocol,
+            credential.issuance_protocol()?,
         )
         .error_while("getting issuance params")?;
         let access_token_expires_in =
-            get_issuance_param_token_expires_in(&self.config, &credential.common().protocol)
+            get_issuance_param_token_expires_in(&self.config, credential.issuance_protocol()?)
                 .error_while("getting issuance params")?;
         let refresh_token_expires_in = get_issuance_param_refresh_token_expires_in(
             &self.config,
-            &credential.common().protocol,
+            credential.issuance_protocol()?,
         )
         .error_while("getting issuance params")?;
 
@@ -1549,7 +1549,7 @@ impl OID4VCIFinal1_0Service {
                     client_attestation.as_ref(),
                     dpop_proof,
                     &params,
-                    &credential.common().protocol,
+                    credential.issuance_protocol()?,
                     credential_schema_id,
                 )
                 .await?;
@@ -2013,11 +2013,11 @@ impl OID4VCIFinal1_0Service {
         let expected_audience = {
             let issuance_protocol = self
                 .protocol_provider
-                .get_protocol(&credential.common().protocol)?;
+                .get_protocol(credential.issuance_protocol()?)?;
             let base_url = issuance_protocol.protocol_base_url().ok_or(
                 OID4VCIFinal1_0ServiceError::MappingError("missing protocol_base_url".to_string()),
             )?;
-            let protocol_id = &credential.common().protocol;
+            let protocol_id = credential.issuance_protocol()?;
             let credential_schema_id = credential_schema.id;
             if let Some(issuer_identifier_id) = issuer_identifier_id {
                 format!("{base_url}/{protocol_id}/{issuer_identifier_id}/{credential_schema_id}")
@@ -2168,7 +2168,7 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(
             IssuanceProtocolType::OpenId4VciFinal1_0,
             &self.config,
-            &credential.common().protocol,
+            credential.issuance_protocol()?,
         )
         .error_while("validating protocol type")?;
 
@@ -2506,7 +2506,7 @@ impl OID4VCIFinal1_0Service {
             })
             .ok()
             .and_then(|mut v| v.pop())?;
-        Some(credential.common().protocol.clone())
+        credential.issuance_protocol().ok().cloned()
     }
 }
 

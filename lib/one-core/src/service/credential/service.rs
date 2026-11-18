@@ -665,7 +665,7 @@ impl CredentialService {
             ));
         }
 
-        let credential_exchange = &credential.common().protocol;
+        let credential_exchange = credential.issuance_protocol()?;
         let exchange = self.protocol_provider.get_protocol(credential_exchange)?;
 
         let ShareResponse {

@@ -44,6 +44,7 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
     let request = Credential::HolderSingle {
         common,
         credential: HolderCredentialData {
+            protocol: "OPENID4VCI_FINAL1".into(),
             issuer: IssuerIdentity {
                 identifier: setup.identifier.clone().into(),
                 certificate: None,
@@ -70,6 +71,7 @@ async fn holder_single_round_trip_preserves_data_and_relations(#[case] bound: bo
         .unwrap();
     assert_eq!(row.role, credential::CredentialRole::Holder);
     assert_eq!(row.r#type, credential::CredentialType::Single);
+    assert_eq!(row.protocol, "OPENID4VCI_FINAL1");
     assert_eq!(row.issuer_identifier_id, Some(setup.identifier.id));
     assert_eq!(row.format, Some(format.id()));
     assert_eq!(

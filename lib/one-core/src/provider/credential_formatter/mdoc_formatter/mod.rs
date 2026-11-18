@@ -710,8 +710,6 @@ impl CredentialFormatter for MdocFormatter {
                 last_modified: crate::clock::now_utc(),
                 issuance_date: Some(mso.validity_info.signed.into()),
                 deleted_at: None,
-                // TODO ONE-9647: empty issuance protocol for credentials not received via an issuance protocol
-                protocol: "".into(),
                 redirect_uri: None,
                 state: CredentialStateEnum::Accepted,
                 profile: None,

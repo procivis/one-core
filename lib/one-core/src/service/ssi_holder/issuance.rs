@@ -611,7 +611,7 @@ impl SSIHolderService {
 
                 let protocol = self
                     .issuance_protocol_provider
-                    .get_protocol(&credential.common().protocol)?;
+                    .get_protocol(credential.issuance_protocol()?)?;
 
                 if !protocol
                     .get_capabilities()

@@ -28,7 +28,7 @@ impl CredentialValidityManagerImpl {
 
         let new_state = match self
             .issuance_protocol_provider
-            .get_protocol(&common.protocol)
+            .get_protocol(&credential.data.protocol)
         {
             Err(err) => {
                 // The credential was issued via a protocol that is no longer configured/supported
@@ -36,7 +36,7 @@ impl CredentialValidityManagerImpl {
                 tracing::warn!(
                     %err,
                     credential_id = %common.id,
-                    protocol = %common.protocol,
+                    protocol = %credential.data.protocol,
                     "Skipping mdoc refresh: issuance protocol not available"
                 );
                 if credential_expired(&detail_credential) {

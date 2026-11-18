@@ -12,7 +12,7 @@ use time::OffsetDateTime;
 
 use crate::model::blob::Blob;
 use crate::model::common::GetListResponse;
-use crate::model::credential::ExactCredentialFilterColumn;
+use crate::model::credential::{CredentialProtocol, ExactCredentialFilterColumn};
 use crate::model::ecosystem::EcosystemOutcomes;
 use crate::model::history::TrustResolutionResult;
 use crate::proto::credential_validity_manager::dto::ChangeCredentialState;
@@ -38,7 +38,7 @@ pub struct CredentialListItemResponseDTO {
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
     pub role: CredentialRole,
     pub suspend_end_date: Option<OffsetDateTime>,
-    pub protocol: IssuanceProtocolId,
+    pub protocol: CredentialProtocol,
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
     pub parent_id: Option<CredentialId>,
@@ -49,7 +49,7 @@ pub struct CredentialListItemResponseDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialDetailResponseDTO<T> {
+pub struct CredentialDetailResponseDTO<T, P = CredentialProtocol> {
     pub id: CredentialId,
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
@@ -78,7 +78,10 @@ pub struct CredentialDetailResponseDTO<T> {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
     pub holder: Option<GetIdentifierListItemResponseDTO>,
-    pub protocol: IssuanceProtocolId,
+    /// Issuance protocol (issuer/holder credentials) or verification protocol (verifier
+    /// credentials). `P` is only `String` while deserializing persisted history metadata,
+    /// see [`CredentialDetailResponseDTO::with_typed_protocol`].
+    pub protocol: P,
     pub profile: Option<String>,
     pub wallet_instance_attestation: Option<WalletInstanceAttestationDTO>,
     pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
@@ -89,6 +92,56 @@ pub struct CredentialDetailResponseDTO<T> {
     pub ecosystem: Option<EcosystemId>,
     #[serde(skip)]
     pub offered_formats: Option<Vec<OfferedFormatDTO>>,
+}
+
+impl<T> CredentialDetailResponseDTO<T, String> {
+    /// Types the protocol according to the credential role.
+    ///
+    /// Needed when reading the DTO back from persisted history metadata, where the protocol is
+    /// stored as plain string next to the role.
+    // TODO: decouple the persisted history metadata from this service DTO by giving it a
+    // dedicated persisted model; then this DTO no longer needs to be deserializable.
+    pub(crate) fn with_typed_protocol(self) -> CredentialDetailResponseDTO<T> {
+        let protocol = match self.role {
+            CredentialRole::Verifier => CredentialProtocol::Verification(self.protocol.into()),
+            CredentialRole::Holder | CredentialRole::Issuer => {
+                CredentialProtocol::Issuance(self.protocol.into())
+            }
+        };
+        CredentialDetailResponseDTO {
+            id: self.id,
+            created_date: self.created_date,
+            issuance_date: self.issuance_date,
+            revocation_date: self.revocation_date,
+            expires_at: self.expires_at,
+            consumed_at: self.consumed_at,
+            state: self.state,
+            r#type: self.r#type,
+            remaining_batch_item_count: self.remaining_batch_item_count,
+            format: self.format,
+            last_modified: self.last_modified,
+            schema: self.schema,
+            issuer: self.issuer,
+            issuer_certificate: self.issuer_certificate,
+            claims: self.claims,
+            redirect_uri: self.redirect_uri,
+            role: self.role,
+            interaction_id: self.interaction_id,
+            suspend_end_date: self.suspend_end_date,
+            mdoc_mso_validity: self.mdoc_mso_validity,
+            holder: self.holder,
+            profile: self.profile,
+            wallet_instance_attestation: self.wallet_instance_attestation,
+            wallet_unit_attestation: self.wallet_unit_attestation,
+            webhook_destination_url: self.webhook_destination_url,
+            trust_information: self.trust_information,
+            parent_id: self.parent_id,
+            subscriber_information: self.subscriber_information,
+            ecosystem: self.ecosystem,
+            offered_formats: self.offered_formats,
+            protocol,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

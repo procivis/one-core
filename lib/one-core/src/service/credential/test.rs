@@ -185,6 +185,7 @@ async fn generic_credential() -> Credential {
         claim_mappings: Default::default(),
     };
     CredentialBuilder {
+        protocol: "OPENID4VCI_FINAL1".into(),
         consumed_at: None,
         role: CredentialRole::Holder,
         r#type: CredentialType::Single,
@@ -234,7 +235,6 @@ async fn generic_credential() -> Credential {
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             schema: (backfill_default_translations(
@@ -287,6 +287,7 @@ async fn generic_credential_list_entity() -> Credential {
         claim_mappings: Default::default(),
     };
     CredentialBuilder {
+        protocol: "OPENID4VCI_FINAL1".into(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -295,7 +296,6 @@ async fn generic_credential_list_entity() -> Credential {
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             schema: (backfill_default_translations(

@@ -130,7 +130,7 @@ impl Task for CredentialRegistrySync {
                                 .await?,
                         );
                     }
-                    Credential::HolderBatchParent { common } => {
+                    Credential::HolderBatchParent { common, .. } => {
                         credential_registrations
                             .extend(self.convert_batch_parent(common, &params.language).await?);
                     }

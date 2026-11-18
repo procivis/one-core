@@ -32,29 +32,30 @@ impl CredentialNotificationDecorator {
             .await
             .error_while("sending notification")?;
 
-        let (common, webhook_url) = match &stored {
+        let common = stored.common();
+        let (issuer, webhook_url) = match &stored {
             Credential::IssuerSingle {
-                common,
+                issuer,
                 webhook_url: Some(webhook_url),
                 ..
             }
             | Credential::IssuerBatchParent {
-                common,
+                issuer,
                 webhook_url: Some(webhook_url),
                 ..
-            } => (common, webhook_url),
+            } => (issuer, webhook_url),
             _ => return Ok(()),
         };
 
         let params: CommonParams = self
             .config
             .issuance_protocol
-            .get(&common.protocol)
+            .get(&issuer.protocol)
             .error_while("parsing config")?;
 
         let Some(task_id) = params.webhook_task else {
             return Err(ValidationError::NotificationsNotAllowed {
-                protocol: common.protocol.to_string(),
+                protocol: issuer.protocol.to_string(),
             }
             .error_while("getting webhook task")
             .into());

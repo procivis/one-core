@@ -4,7 +4,9 @@ use anyhow::Context;
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{InteractionId, KeyId, TransactionDataId, TransactionDataType};
+use shared_types::{
+    InteractionId, KeyId, TransactionDataId, TransactionDataType, VerificationProtocolId,
+};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::dcql::{CredentialQueryId, DcqlQuery};
 use standardized_types::openid4vp::{
@@ -140,6 +142,7 @@ pub(crate) struct SubmissionRequestData {
 #[derive(Clone, Debug)]
 pub(crate) struct ProvedCredential {
     pub common: CredentialCommon,
+    pub protocol: VerificationProtocolId,
     pub claims: RelatedVec<Claim>,
     pub format: Related<CredentialSchemaFormat>,
     pub issuer_details: IdentifierDetails,

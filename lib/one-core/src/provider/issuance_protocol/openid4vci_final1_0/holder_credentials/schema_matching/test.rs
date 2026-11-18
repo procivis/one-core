@@ -2078,6 +2078,7 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
         formats.first().unwrap().clone()
     };
     CredentialBuilder {
+        protocol: "OPENID4VCI_FINAL1".into(),
         common: CredentialCommon {
             expires_at: None,
             ecosystem: None,
@@ -2086,7 +2087,6 @@ async fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Cred
             issuance_date: None,
             last_modified: now,
             deleted_at: None,
-            protocol: "OPENID4VCI_FINAL1".into(),
             redirect_uri: None,
             state: CredentialStateEnum::Created,
             profile: None,

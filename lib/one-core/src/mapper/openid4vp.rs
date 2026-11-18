@@ -18,6 +18,7 @@ pub(crate) async fn credential_from_proved(
 ) -> Result<Credential, ServiceError> {
     let ProvedCredential {
         common,
+        protocol,
         claims,
         format,
         issuer_details,
@@ -64,7 +65,6 @@ pub(crate) async fn credential_from_proved(
             issuance_date: common.issuance_date,
             last_modified: common.last_modified,
             deleted_at: common.deleted_at,
-            protocol: common.protocol,
             redirect_uri: common.redirect_uri,
             state: common.state,
             schema: from_provider_schema(
@@ -76,6 +76,7 @@ pub(crate) async fn credential_from_proved(
             profile: common.profile,
         },
         verifier_data: VerifierCredentialData {
+            protocol,
             issuer: IssuerIdentity {
                 identifier: issuer_identifier.into(),
                 certificate: issuer_certificate,

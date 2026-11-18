@@ -439,6 +439,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
                 ValidatedProofResult {
                     proved_credentials: vec![ProvedCredential {
                         common,
+                        protocol: "OPENID4VP_FINAL1".into(),
                         claims,
                         format: credential.format,
                         issuer_details: IdentifierDetails::Certificate(CertificateDetails {

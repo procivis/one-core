@@ -448,7 +448,7 @@ async fn issuer_url_for_credential(
 
     Ok(format!(
         "{core_base_url}/ssi/openid4vci/{}/{issuer_identifier_id}/{}",
-        credential.common().protocol,
+        credential.issuance_protocol()?,
         credential.common().schema.id()
     )
     .parse()?)

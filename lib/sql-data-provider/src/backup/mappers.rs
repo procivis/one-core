@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use one_core::model::backup::UnexportableCredential;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::CredentialCommon;
+use one_core::model::credential::{CredentialCommon, CredentialProtocol};
 use one_core::model::credential_schema::{CredentialSchema, TransactionCode, WalletAttestation};
 use one_core::model::relation::{BatchModelLoader, Related};
 use one_core::repository::error::DataLayerError;
@@ -66,7 +66,14 @@ pub(super) fn credential_from_unexportable_model(
 
     let formats = credential_schema_formats(value.credential_schema_id, db.clone());
 
+    let protocol = if value.role == crate::entity::credential::CredentialRole::Verifier {
+        CredentialProtocol::Verification(value.protocol.into())
+    } else {
+        CredentialProtocol::Issuance(value.protocol.into())
+    };
+
     Ok(UnexportableCredential {
+        protocol,
         common: CredentialCommon {
             ecosystem: None,
             id: value.id,
@@ -75,7 +82,6 @@ pub(super) fn credential_from_unexportable_model(
             expires_at: value.expires_at,
             last_modified: value.last_modified,
             deleted_at: value.deleted_at,
-            protocol: value.protocol,
             redirect_uri: value.redirect_uri,
             state: value.state.to_model(value.suspend_end_date),
             profile: value.profile,
