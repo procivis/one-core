@@ -17,8 +17,8 @@ use self::resolver::StatusListCachingLoader;
 use super::RevocationMethod;
 use super::error::RevocationError;
 use super::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
-    RevocationMethodCapabilities, RevocationState,
+    CredentialRevocationInfo, Operation, ReservedEntries, RevocationMethodCapabilities,
+    RevocationState,
 };
 use super::status_list::{StatusListSizeParams, add_entry_to_status_list};
 use super::utils::status_purpose_to_revocation_state;
@@ -227,7 +227,6 @@ impl RevocationMethod for BitstringStatusList {
         &self,
         credential_status: &CredentialStatus,
         _issuer_details: &IdentifierDetails,
-        _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
         let CredentialStatus::W3C(status) = credential_status else {
@@ -245,15 +244,6 @@ impl RevocationMethod for BitstringStatusList {
     async fn add_issued_attestation(
         &self,
         _attestation: &ManagedInstanceAttestation,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "Attestations not supported".to_string(),
-        ))
-    }
-
-    async fn get_attestation_revocation_info(
-        &self,
-        _key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),

@@ -243,7 +243,7 @@ async fn test_check_revocation_updates_state(
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(move |_, _, _, _| Ok(detected_state));
+        .returning(move |_, _, _| Ok(detected_state));
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -348,7 +348,7 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
+        .returning(|_, _, _| Ok(RevocationState::Revoked));
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -654,7 +654,7 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
     // the item itself is still perfectly valid from a revocation-status point of view
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(RevocationState::Valid));
+        .returning(|_, _, _| Ok(RevocationState::Valid));
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -834,7 +834,7 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(RevocationState::Valid));
+        .returning(|_, _, _| Ok(RevocationState::Valid));
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -1002,7 +1002,7 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
+        .returning(|_, _, _| Ok(RevocationState::Revoked));
 
     let formatter = Arc::new(formatter);
     formatter_provider

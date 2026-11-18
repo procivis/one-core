@@ -490,7 +490,7 @@ impl WRPValidatorImpl {
             serde_json::from_value(serde_json::to_value(status.status_list.to_owned())?)?;
         let status = CredentialStatus::TokenStatusList(status.into());
 
-        let (revocation_provider, _) = self
+        let revocation_provider = self
             .revocation_method_provider
             .get_revocation_method_by_status(&status)
             .ok_or_else(|| {
@@ -508,7 +508,6 @@ impl WRPValidatorImpl {
                     subject_common_name,
                     x5_references: Default::default(),
                 }),
-                None,
                 false,
             )
             .await

@@ -12,7 +12,7 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::did::KeyRole;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofClaim, ProofStateEnum, UpdateProofRequest};
-use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::relation::{OptionalRelatedExt, Related};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
@@ -27,9 +27,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::revocation::model::{
-    CredentialDataByRole, RevocationState, VerifierCredentialData,
-};
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -122,7 +120,6 @@ pub(super) async fn validate_proof(
 
     let mut remaining_requested_claims_with_mapping = HashMap::new();
     let mut expected_doctypes = HashMap::new();
-    let mut proof_inputs = HashMap::new();
     for input_schema in &input_schemas {
         let input_claims = input_schema.claim_schemas.as_ref().await?;
         let credential_schema = input_schema.credential_schema.as_ref().await?;
@@ -146,7 +143,6 @@ pub(super) async fn validate_proof(
         }
         remaining_requested_claims_with_mapping.insert(credential_schema.id, claims_with_mapping);
         expected_doctypes.insert(credential_schema.id, format.ecosystem_schema_id.clone());
-        proof_inputs.insert(credential_schema.id, input_schema);
     }
 
     let credential_formatter =
@@ -185,18 +181,7 @@ pub(super) async fn validate_proof(
             ));
         }
 
-        let proof_input =
-            proof_inputs
-                .get(&credential_schema_id)
-                .ok_or(ServiceError::MappingError(format!(
-                    "proof input not found for credential schema {credential_schema_id}"
-                )))?;
-        validate_credential_status(
-            &received_credential,
-            proof_input,
-            revocation_method_provider,
-        )
-        .await?;
+        validate_credential_status(&received_credential, revocation_method_provider).await?;
 
         let mut claims = vec![];
         for (requested_proof_claim, mapping) in requested_proof_claims {
@@ -231,14 +216,13 @@ pub(super) async fn validate_proof(
 /// Rejects a revoked or suspended credential, and one whose status cannot be checked
 async fn validate_credential_status(
     credential: &DetailCredential,
-    proof_input: &ProofInputSchema,
     revocation_method_provider: &dyn RevocationMethodProvider,
 ) -> Result<(), ServiceError> {
     let Some(credential_status) = &credential.status else {
         return Ok(());
     };
 
-    let (revocation_method, _) = revocation_method_provider
+    let revocation_method = revocation_method_provider
         .get_revocation_method_by_status(credential_status)
         .ok_or_else(|| {
             MissingProviderError::RevocationMethodByCredentialStatusType(format!(
@@ -247,17 +231,7 @@ async fn validate_credential_status(
         })?;
 
     let state = revocation_method
-        .check_credential_revocation_status(
-            credential_status,
-            &credential.issuer,
-            Some(CredentialDataByRole::Verifier(Box::new(
-                VerifierCredentialData {
-                    credential: credential.to_owned(),
-                    proof_input: proof_input.to_owned(),
-                },
-            ))),
-            false,
-        )
+        .check_credential_revocation_status(credential_status, &credential.issuer, false)
         .await
         .error_while("checking credential status")?;
 

@@ -6,8 +6,7 @@ use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, 
 use super::RevocationMethod;
 use super::error::RevocationError;
 use super::model::{
-    CredentialDataByRole, CredentialRevocationInfo, ReservedEntries, RevocationMethodCapabilities,
-    RevocationState,
+    CredentialRevocationInfo, ReservedEntries, RevocationMethodCapabilities, RevocationState,
 };
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -52,16 +51,10 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
         &self,
         credential_status: &CredentialStatus,
         issuer_details: &IdentifierDetails,
-        additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
         self.inner()
-            .check_credential_revocation_status(
-                credential_status,
-                issuer_details,
-                additional_credential_data,
-                force_refresh,
-            )
+            .check_credential_revocation_status(credential_status, issuer_details, force_refresh)
             .await
     }
 
@@ -70,13 +63,6 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
         _attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.disabled_error()
-    }
-
-    async fn get_attestation_revocation_info(
-        &self,
-        key_info: &ManagedInstanceAttestationRevocationInfo,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
-        self.inner().get_attestation_revocation_info(key_info).await
     }
 
     async fn update_attestation_entries(
@@ -177,16 +163,10 @@ impl RevocationMethod for CapabilityChecked {
         &self,
         credential_status: &CredentialStatus,
         issuer_details: &IdentifierDetails,
-        additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
         self.0
-            .check_credential_revocation_status(
-                credential_status,
-                issuer_details,
-                additional_credential_data,
-                force_refresh,
-            )
+            .check_credential_revocation_status(credential_status, issuer_details, force_refresh)
             .await
     }
 
@@ -195,13 +175,6 @@ impl RevocationMethod for CapabilityChecked {
         attestation: &ManagedInstanceAttestation,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         self.0.add_issued_attestation(attestation).await
-    }
-
-    async fn get_attestation_revocation_info(
-        &self,
-        key_info: &ManagedInstanceAttestationRevocationInfo,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
-        self.0.get_attestation_revocation_info(key_info).await
     }
 
     async fn update_attestation_entries(

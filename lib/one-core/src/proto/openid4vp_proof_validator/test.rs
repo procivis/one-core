@@ -258,7 +258,7 @@ fn setup_mocks(
             .revocation_method_provider
             .expect_get_revocation_method_by_status()
             .once()
-            .return_once(|_| Some((Arc::new(revocation_method), "mock".into())));
+            .return_once(|_| Some(Arc::new(revocation_method)));
     }
 
     mocks
@@ -296,7 +296,7 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
         let mut rm = MockRevocationMethod::new();
         rm.expect_check_credential_revocation_status()
             .once()
-            .return_once(|_, _, _, _| check);
+            .return_once(|_, _, _| check);
         rm
     });
 

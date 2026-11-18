@@ -6,23 +6,8 @@ use standardized_types::x509::CertificateSerial;
 use strum::Display;
 use time::OffsetDateTime;
 
-use crate::model::credential::Credential;
-use crate::model::proof_schema::ProofInputSchema;
 use crate::model::revocation_list::RevocationListEntryState;
-use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
-
-#[derive(Clone)]
-pub enum CredentialDataByRole {
-    // issuer variant is missing because issuers should simply check the credential state
-    Holder(Box<Credential>),
-    Verifier(Box<VerifierCredentialData>),
-}
-
-#[derive(Debug, Clone)]
-pub struct VerifierCredentialData {
-    pub credential: DetailCredential,
-    pub proof_input: ProofInputSchema,
-}
+use crate::provider::credential_formatter::model::CredentialStatus;
 
 pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,

@@ -303,7 +303,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         };
 
         let status = status.into();
-        let (revocation_provider, _) = self
+        let revocation_provider = self
             .revocation_method_provider
             .get_revocation_method_by_status(&status)
             .ok_or_else(|| {
@@ -312,7 +312,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             .error_while("getting revocation provider")?;
 
         let revocation_status = revocation_provider
-            .check_credential_revocation_status(&status, &issuer_identifier, None, false)
+            .check_credential_revocation_status(&status, &issuer_identifier, false)
             .await
             .error_while("checking credential status")?;
 

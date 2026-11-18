@@ -35,9 +35,7 @@ use crate::provider::presentation_formatter::model::{
     ExtractPresentationCtx, ExtractedPresentation, PresentedTransactionData,
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::revocation::model::{
-    CredentialDataByRole, RevocationState, VerifierCredentialData,
-};
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transaction_data::TransactionDataAuthorization;
 use crate::provider::transaction_data::provider::TransactionDataProvider;
@@ -430,7 +428,7 @@ impl OpenId4VpProofValidatorProto {
         validate_credential_validity(&credential, formatter.get_leeway())?;
 
         if let Some(credential_status) = &credential.status {
-            let (revocation_method, _) = self
+            let revocation_method = self
                 .revocation_method_provider
                 .get_revocation_method_by_status(credential_status)
                 .ok_or_else(|| {
@@ -440,17 +438,7 @@ impl OpenId4VpProofValidatorProto {
                 })?;
 
             match revocation_method
-                .check_credential_revocation_status(
-                    credential_status,
-                    &credential.issuer,
-                    Some(CredentialDataByRole::Verifier(Box::new(
-                        VerifierCredentialData {
-                            credential: credential.to_owned(),
-                            proof_input: proof_schema_input.to_owned(),
-                        },
-                    ))),
-                    false,
-                )
+                .check_credential_revocation_status(credential_status, &credential.issuer, false)
                 .await
                 .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?
             {

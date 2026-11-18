@@ -38,7 +38,7 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
 };
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -128,15 +128,12 @@ async fn validate_proof_with_credential_status(
     revocation_method
         .expect_check_credential_revocation_status()
         .once()
-        .withf(|_, _, credential_data, _| {
-            matches!(credential_data, Some(CredentialDataByRole::Verifier(_)))
-        })
-        .return_once(move |_, _, _, _| Ok(state));
+        .return_once(move |_, _, _| Ok(state));
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method_by_status()
         .once()
-        .return_once(|_| Some((Arc::new(revocation_method), "TOKENSTATUSLIST".into())));
+        .return_once(|_| Some(Arc::new(revocation_method)));
 
     validate_proof(
         &proof_schema,

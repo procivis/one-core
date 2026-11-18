@@ -85,7 +85,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
+        .returning(|_, _, _| Ok(RevocationState::Revoked));
 
     let formatter = Arc::new(formatter);
     formatter_provider

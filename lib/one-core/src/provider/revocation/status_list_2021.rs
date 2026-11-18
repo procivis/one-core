@@ -28,8 +28,8 @@ use crate::provider::revocation::bitstring_status_list::util::{
 };
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
-    RevocationMethodCapabilities, RevocationState,
+    CredentialRevocationInfo, Operation, ReservedEntries, RevocationMethodCapabilities,
+    RevocationState,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 
@@ -79,7 +79,6 @@ impl RevocationMethod for StatusList2021 {
         &self,
         credential_status: &CredentialStatus,
         issuer_details: &IdentifierDetails,
-        _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
         let IdentifierDetails::Did(issuer_did) = issuer_details else {
@@ -103,15 +102,6 @@ impl RevocationMethod for StatusList2021 {
     async fn add_issued_attestation(
         &self,
         _attestation: &ManagedInstanceAttestation,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "Attestations not supported".to_string(),
-        ))
-    }
-
-    async fn get_attestation_revocation_info(
-        &self,
-        _key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),

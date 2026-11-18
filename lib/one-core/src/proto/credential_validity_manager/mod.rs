@@ -33,7 +33,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderIntera
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::mapper::revocation_state_from_credential_state;
-use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::error::EntityNotFoundError;
@@ -588,16 +588,9 @@ impl CredentialValidityManagerImpl {
 
         let issuer_identifier = holder.data.issuer.identifier.as_ref().await?;
         let issuer = issuer_details(&issuer_identifier).await?;
-        let credential_data_by_role =
-            Some(CredentialDataByRole::Holder(Box::new(credential.clone())));
 
         let detected_state = match revocation_method
-            .check_credential_revocation_status(
-                &credential_status,
-                &issuer,
-                credential_data_by_role.to_owned(),
-                force_refresh,
-            )
+            .check_credential_revocation_status(&credential_status, &issuer, force_refresh)
             .await
         {
             Err(error) => {

@@ -42,7 +42,7 @@ pub trait RevocationMethodProvider: Send + Sync {
     fn get_revocation_method_by_status(
         &self,
         credential_status: &CredentialStatus,
-    ) -> Option<(Arc<dyn RevocationMethod>, RevocationMethodId)>;
+    ) -> Option<Arc<dyn RevocationMethod>>;
 }
 
 impl RevocationMethodProvider
@@ -58,12 +58,10 @@ impl RevocationMethodProvider
     fn get_revocation_method_by_status(
         &self,
         credential_status: &CredentialStatus,
-    ) -> Option<(Arc<dyn RevocationMethod>, RevocationMethodId)> {
-        let result = self
-            .iter()
-            .find(|(_id, method)| method.can_check_status(credential_status))?;
-
-        Some((result.1.to_owned(), result.0.to_owned()))
+    ) -> Option<Arc<dyn RevocationMethod>> {
+        self.iter()
+            .find(|(_id, method)| method.can_check_status(credential_status))
+            .map(|(_id, method)| method.to_owned())
     }
 }
 

@@ -22,8 +22,8 @@ use self::resolver::StatusListCachingLoader;
 use super::RevocationMethod;
 use super::error::RevocationError;
 use super::model::{
-    CredentialDataByRole, CredentialRevocationInfo, Operation, ReservedEntries,
-    RevocationMethodCapabilities, RevocationState,
+    CredentialRevocationInfo, Operation, ReservedEntries, RevocationMethodCapabilities,
+    RevocationState,
 };
 use super::status_list::{StatusListSizeParams, add_entry_to_status_list};
 use crate::config::core_config::{FormatType, RevocationType};
@@ -293,7 +293,6 @@ impl RevocationMethod for TokenStatusList {
         &self,
         credential_status: &CredentialStatus,
         issuer_details: &IdentifierDetails,
-        _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
         let CredentialStatus::TokenStatusList(status) = credential_status else {
@@ -384,19 +383,6 @@ impl RevocationMethod for TokenStatusList {
             .create_entry(entity_id, &issuer_identifier, issuer_certificate.as_ref())
             .await?;
         Ok(result.1)
-    }
-
-    async fn get_attestation_revocation_info(
-        &self,
-        key_info: &ManagedInstanceAttestationRevocationInfo,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
-        Ok(CredentialRevocationInfo {
-            credential_status: self.create_credential_status(
-                &key_info.revocation_list.id(),
-                key_info.revocation_list_index,
-            )?,
-            serial: None,
-        })
     }
 
     async fn update_attestation_entries(

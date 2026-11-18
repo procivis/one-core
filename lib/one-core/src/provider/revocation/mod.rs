@@ -5,8 +5,7 @@ use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, 
 
 use self::error::RevocationError;
 use self::model::{
-    CredentialDataByRole, CredentialRevocationInfo, ReservedEntries, RevocationMethodCapabilities,
-    RevocationState,
+    CredentialRevocationInfo, ReservedEntries, RevocationMethodCapabilities, RevocationState,
 };
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -59,7 +58,6 @@ pub trait RevocationMethod: Provider + Send + Sync {
         &self,
         credential_status: &CredentialStatus,
         issuer_details: &IdentifierDetails,
-        additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<RevocationState, RevocationError>;
 
@@ -69,12 +67,6 @@ pub trait RevocationMethod: Provider + Send + Sync {
     async fn add_issued_attestation(
         &self,
         attestation: &ManagedInstanceAttestation,
-    ) -> Result<CredentialRevocationInfo, RevocationError>;
-
-    /// Issuer: construct status block to be included in a re-issued attestion JWT
-    async fn get_attestation_revocation_info(
-        &self,
-        key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
 
     /// Issuer: update precomputed revocation credential with latest changes considering input attestations

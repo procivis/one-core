@@ -35,9 +35,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
-use crate::provider::revocation::model::{
-    CredentialDataByRole, RevocationMethodCapabilities, RevocationState,
-};
+use crate::provider::revocation::model::{RevocationMethodCapabilities, RevocationState};
 use crate::repository::revocation_list_repository::RevocationListRepository;
 
 #[cfg(test)]
@@ -116,7 +114,6 @@ impl RevocationMethod for CRLRevocation {
         &self,
         _credential_status: &CredentialStatus,
         _issuer_details: &IdentifierDetails,
-        _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
     ) -> Result<RevocationState, RevocationError> {
         Err(RevocationError::OperationNotSupported(
@@ -127,15 +124,6 @@ impl RevocationMethod for CRLRevocation {
     async fn add_issued_attestation(
         &self,
         _attestation: &ManagedInstanceAttestation,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "CRL: attestation revocation not supported".to_string(),
-        ))
-    }
-
-    async fn get_attestation_revocation_info(
-        &self,
-        _key_info: &ManagedInstanceAttestationRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "CRL: attestation revocation not supported".to_string(),
