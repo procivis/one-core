@@ -2324,11 +2324,15 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
     static REVOCATION_METHOD_WITHOUT_SUSPENSION: LazyLock<RevocationMethodId> =
         LazyLock::new(|| "WITHOUT_SUSPENSION".into());
     let mut revocation_method_without_suspension = MockRevocationMethod::default();
+    // both formats use the same revocation method: a single call for both items
     revocation_method_without_suspension
         .expect_set_entries_state()
-        .times(2)
+        .once()
         .with(
-            always(),
+            eq(vec![
+                UpdateRevocationListEntryId::Credential(sdjwtvc_credential.common().id),
+                UpdateRevocationListEntryId::Credential(mdoc_credential.common().id),
+            ]),
             eq(RevocationState::Suspended {
                 suspend_end_date: None,
             }),
@@ -2340,7 +2344,7 @@ async fn test_suspend_multiformat_credential_all_formats_unsupported() {
     revocation_method_provider
         .expect_get_revocation_method()
         .with(eq((*REVOCATION_METHOD_WITHOUT_SUSPENSION).clone()))
-        .times(2)
+        .once()
         .returning(move |_| Ok(revocation_method_without_suspension.clone()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
@@ -2849,11 +2853,12 @@ fn recording_revocation_method_provider(marked: MarkedStates) -> MockRevocationM
     revocation_method
         .expect_set_entries_state()
         .returning(move |entries, state| {
-            let [UpdateRevocationListEntryId::Credential(credential_id)] = entries.as_slice()
-            else {
-                panic!("unexpected entries: {entries:?}");
-            };
-            marked.push((*credential_id, state));
+            for entry in entries {
+                let UpdateRevocationListEntryId::Credential(credential_id) = entry else {
+                    panic!("unexpected entry: {entry:?}");
+                };
+                marked.push((credential_id, state));
+            }
             Ok(())
         });
 
@@ -3332,4 +3337,123 @@ async fn test_check_validity_mdoc_refresh_skipped_for_unknown_protocol(
     assert_eq!(result.credential_id, credential.common().id);
     assert!(result.success);
     assert_eq!(result.status, expected_state);
+}
+
+#[tokio::test]
+async fn test_revoke_batch_parent_calls_each_revocation_method_once_in_method_order() {
+    // Each call locks the lists it touches until the transaction ends, so the items are
+    // published with one call per revocation method, in method order: concurrent bulk
+    // revocations then lock the lists in the same order and cannot deadlock.
+    static METHOD_A: LazyLock<RevocationMethodId> = LazyLock::new(|| "A".into());
+    static METHOD_B: LazyLock<RevocationMethodId> = LazyLock::new(|| "B".into());
+
+    let (parent, items) = issuer_batch(
+        CredentialStateEnum::Accepted,
+        &[CredentialStateEnum::Accepted; 3],
+    );
+    let schema_id = parent.common().schema.id();
+    let with_format = |item: &Credential, format: &str| {
+        CredentialBuilder {
+            format: Some(
+                CredentialSchemaFormat {
+                    id: CredentialSchemaFormatId::new(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    credential_schema_id: schema_id,
+                    format: format.into(),
+                    ecosystem_schema_id: format.to_owned(),
+                    claim_mappings: Default::default(),
+                }
+                .into(),
+            ),
+            ..item.clone().into()
+        }
+        .build()
+    };
+    let items = vec![
+        with_format(&items[0], "FORMAT_B"),
+        with_format(&items[1], "FORMAT_A"),
+        with_format(&items[2], "FORMAT_B"),
+    ];
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|format| {
+            let method: &'static RevocationMethodId = match format.to_string().as_str() {
+                "FORMAT_A" => &METHOD_A,
+                "FORMAT_B" => &METHOD_B,
+                other => panic!("unexpected format: {other}"),
+            };
+            let mut formatter = MockCredentialFormatter::default();
+            formatter
+                .expect_revocation_method_id()
+                .returning(move || Some(method));
+            Ok(Arc::new(formatter))
+        });
+
+    let calls = Recorder::<(RevocationMethodId, Vec<UpdateRevocationListEntryId>)>::default();
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .returning({
+            let calls = calls.clone();
+            move |method_id| {
+                let mut revocation_method = MockRevocationMethod::default();
+                revocation_method
+                    .expect_set_entries_state()
+                    .once()
+                    .returning({
+                        let calls = calls.clone();
+                        let method_id = method_id.to_owned();
+                        move |entries, _| {
+                            calls.push((method_id.clone(), entries));
+                            Ok(())
+                        }
+                    });
+                Ok(Arc::new(revocation_method))
+            }
+        });
+
+    let updates = StateUpdates::default();
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository: batch_repository(&parent, &items, updates.clone()),
+        formatter_provider,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    validity_manager
+        .change_credential_state(&parent.common().id, ChangeCredentialState::Revoked)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        vec![
+            (
+                METHOD_A.clone(),
+                vec![UpdateRevocationListEntryId::Credential(
+                    items[1].common().id
+                )]
+            ),
+            (
+                METHOD_B.clone(),
+                vec![
+                    UpdateRevocationListEntryId::Credential(items[0].common().id),
+                    UpdateRevocationListEntryId::Credential(items[2].common().id),
+                ]
+            ),
+        ],
+        calls.take()
+    );
+    assert_eq!(
+        vec![
+            (items[1].common().id, CredentialStateEnum::Revoked),
+            (items[0].common().id, CredentialStateEnum::Revoked),
+            (items[2].common().id, CredentialStateEnum::Revoked),
+            (parent.common().id, CredentialStateEnum::Revoked),
+        ],
+        updates.take()
+    );
 }

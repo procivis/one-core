@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use futures::FutureExt;
@@ -252,32 +253,54 @@ impl CredentialValidityManagerImpl {
                     .tx(async {
                         let mut all_items_not_supported = true;
                         let mut items_error = None;
+                        // Items that do not support the state are skipped (the error is kept in
+                        // case no item supports it), any other error fails the whole batch
+                        let mut skip_unsupported = |err: Error, item_ids: &[CredentialId]| {
+                            if !is_unsupported_revocation_state(&err) {
+                                tracing::info!(%err, "Updating batch items ({item_ids:?}) state failed");
+                                return Err(err);
+                            }
+                            tracing::debug!(%err, "Batch items ({item_ids:?}) do not support revocation state {revocation_state}");
+                            items_error = Some(err);
+                            Ok(())
+                        };
+
+                        // One revocation method call per method, in method order: each call locks
+                        // its lists (in id order) until the transaction ends, so concurrent bulk
+                        // changes lock lists in the same global order and cannot deadlock.
+                        let mut items_per_revocation_method: BTreeMap<
+                            RevocationMethodId,
+                            Vec<CredentialId>,
+                        > = BTreeMap::new();
                         for batch_item in &batch_items_to_update {
                             match self
-                                .change_revocation_state(
+                                .revocation_method_id(
                                     batch_item,
                                     &credential_schema,
+                                    &revocation_state,
+                                )
+                                .await
+                            {
+                                Ok(revocation_method_id) => items_per_revocation_method
+                                    .entry(revocation_method_id)
+                                    .or_default()
+                                    .push(batch_item.common().id),
+                                Err(err) => skip_unsupported(err, &[batch_item.common().id])?,
+                            }
+                        }
+
+                        for (revocation_method_id, batch_item_ids) in items_per_revocation_method {
+                            match self
+                                .publish_revocation_state(
+                                    &revocation_method_id,
+                                    &batch_item_ids,
                                     revocation_state,
                                 )
                                 .await
                             {
-                                Ok(_) => {
-                                    all_items_not_supported = false;
-                                }
-                                Err(err)
-                                    if matches!(
-                                        err.error_code(),
-                                        ErrorCode::BR_0162 | ErrorCode::BR_0098
-                                    ) =>
-                                {
-                                    tracing::debug!(%err, "Batch item ({}) does not support revocation state {revocation_state}", batch_item.common().id);
-                                    items_error = Some(err);
-                                }
-                                Err(err) => {
-                                    tracing::info!(%err, "Updating batch_item ({}) state failed", batch_item.common().id);
-                                    return Err(err);
-                                }
-                            };
+                                Ok(_) => all_items_not_supported = false,
+                                Err(err) => skip_unsupported(err, &batch_item_ids)?,
+                            }
                         }
 
                         if all_items_not_supported && let Some(items_error) = items_error {
@@ -343,6 +366,24 @@ impl CredentialValidityManagerImpl {
         credential_schema: &CredentialSchema,
         revocation_state: RevocationState,
     ) -> Result<(), Error> {
+        let revocation_method_id = self
+            .revocation_method_id(credential, credential_schema, &revocation_state)
+            .await?;
+        self.publish_revocation_state(
+            &revocation_method_id,
+            &[credential.issuer_credential()?.common.id],
+            revocation_state,
+        )
+        .await
+    }
+
+    /// The revocation method of an issued credential, if it supports `revocation_state`
+    async fn revocation_method_id(
+        &self,
+        credential: &Credential,
+        credential_schema: &CredentialSchema,
+        revocation_state: &RevocationState,
+    ) -> Result<RevocationMethodId, Error> {
         let issuer = credential.issuer_credential()?;
         let format = issuer.data.format.as_ref().await?;
         let formatter = self
@@ -352,22 +393,38 @@ impl CredentialValidityManagerImpl {
         let revocation_method_id = credential_schema
             .revocation_method_id(formatter.as_ref())
             .ok_or(Error::NoRevocationMethod(credential_schema.id))?;
-        verify_suspension_support(credential_schema, revocation_method_id, &revocation_state)?;
+        verify_suspension_support(credential_schema, revocation_method_id, revocation_state)?;
+        Ok(revocation_method_id.to_owned())
+    }
 
+    /// Publishes the state of the given issued credentials, all using `revocation_method_id`, in
+    /// a single revocation method call, and stores it on the credentials
+    async fn publish_revocation_state(
+        &self,
+        revocation_method_id: &RevocationMethodId,
+        credential_ids: &[CredentialId],
+        revocation_state: RevocationState,
+    ) -> Result<(), Error> {
         let revocation_method = self
             .revocation_method_provider
             .get_revocation_method(revocation_method_id)?;
 
         revocation_method
             .set_entries_state(
-                vec![UpdateRevocationListEntryId::Credential(issuer.common.id)],
+                credential_ids
+                    .iter()
+                    .copied()
+                    .map(UpdateRevocationListEntryId::Credential)
+                    .collect(),
                 revocation_state.to_owned(),
             )
             .await
             .error_while("marking credential status")?;
 
-        self.update_credential_state(issuer.common.id, revocation_state)
-            .await?;
+        for credential_id in credential_ids {
+            self.update_credential_state(*credential_id, revocation_state)
+                .await?;
+        }
 
         Ok(())
     }
@@ -879,6 +936,12 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             }),
         }
     }
+}
+
+/// Errors for which a batch item is skipped: it has no revocation method, or the method does not
+/// support the requested state
+fn is_unsupported_revocation_state(err: &Error) -> bool {
+    matches!(err.error_code(), ErrorCode::BR_0162 | ErrorCode::BR_0098)
 }
 
 fn verify_suspension_support(

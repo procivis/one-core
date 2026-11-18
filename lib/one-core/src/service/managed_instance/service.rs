@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use futures::FutureExt;
 use one_crypto::utilities::generate_alphanumeric;
@@ -42,6 +43,7 @@ use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::session_provider::SessionExt;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::RevocationState;
 use crate::service::common_dto::ListQueryDTO;
 use crate::validator::throw_if_org_id_not_matching_session;
@@ -950,11 +952,13 @@ impl ManagedInstanceService {
                             .await?;
                     }
                     InstanceRole::Wallet => {
-                        // revoke all revocable (and non-expired) attestations
-                        let mut attestation_to_revoke_per_revocation_method: HashMap<
+                        // revoke all revocable (and non-expired) attestations, one call per
+                        // revocation method in method order, so that concurrent revocations lock
+                        // the lists in the same order and cannot deadlock
+                        let mut attestation_to_revoke_per_revocation_method: BTreeMap<
                             RevocationMethodId,
                             Vec<UpdateRevocationListEntryId>,
-                        > = HashMap::new();
+                        > = BTreeMap::new();
                         let now = crate::clock::now_utc();
                         for attestation_to_revoke in managed_instance
                             .attestations
@@ -1023,6 +1027,12 @@ impl ManagedInstanceService {
             return Ok(());
         };
 
+        // one call per revocation method in method order, so that concurrent revocations lock
+        // the lists in the same order and cannot deadlock
+        let mut signatures_per_revocation_method: BTreeMap<
+            RevocationMethodId,
+            (Arc<dyn RevocationMethod>, Vec<UpdateRevocationListEntryId>),
+        > = BTreeMap::new();
         for signature_id in signature_ids {
             let (_, signer) = self
                 .signer_provider
@@ -1037,13 +1047,18 @@ impl ManagedInstanceService {
                 continue;
             };
 
+            signatures_per_revocation_method
+                .entry(revocation_method.config_name().to_owned())
+                .or_insert_with(|| (revocation_method, vec![]))
+                .1
+                .push(UpdateRevocationListEntryId::Id(*signature_id));
+        }
+
+        for (revocation_method, signatures) in signatures_per_revocation_method.into_values() {
             revocation_method
-                .set_entries_state(
-                    vec![UpdateRevocationListEntryId::Id(*signature_id)],
-                    RevocationState::Revoked,
-                )
+                .set_entries_state(signatures, RevocationState::Revoked)
                 .await
-                .error_while("revoking access certificate signature")?;
+                .error_while("revoking access certificate signatures")?;
         }
         Ok(())
     }

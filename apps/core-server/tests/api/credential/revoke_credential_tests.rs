@@ -4,7 +4,8 @@ use std::time::Duration;
 use one_core::model::credential::{CredentialStateEnum, CredentialType};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
-use one_core::model::identifier::IdentifierType;
+use one_core::model::identifier::{Identifier, IdentifierType};
+use one_core::model::organisation::Organisation;
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -16,6 +17,7 @@ use crate::fixtures::{
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_revoke_credential_with_bitstring_status_list_success() {
@@ -466,43 +468,7 @@ async fn test_concurrent_revocations_on_same_list_are_all_published() {
 
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
-    let key = context
-        .db
-        .keys
-        .create(&organisation, eddsa_testing_params())
-        .await;
-    let issuer_did = context
-        .db
-        .dids
-        .create(
-            organisation.clone(),
-            TestingDidParams {
-                did: Some(
-                    DidValue::from_str("did:key:zDnaetpgFTTteRE2RWG8DtbNX6WNWxxgFs627d7z2JVjboM2L")
-                        .unwrap(),
-                ),
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key,
-                    reference: "1".to_string(),
-                }]),
-                ..Default::default()
-            },
-        )
-        .await;
-    let identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
+    let identifier = did_issuer(&context, &organisation).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -550,6 +516,147 @@ async fn test_concurrent_revocations_on_same_list_are_all_published() {
     let published = context.db.revocation_lists.get(list.id).await;
     let revoked = revoked_bitstring_indices(&published.formatted_list);
     assert_eq!(revoked, (0..CREDENTIAL_COUNT).collect::<Vec<_>>());
+}
+
+/// Concurrent batch revocations whose items sit on the same lists in different orders must not
+/// deadlock: every list of a transaction is locked in one statement, in a global order.
+#[tokio::test]
+async fn test_concurrent_batch_revocations_across_shared_lists_do_not_deadlock() {
+    const BATCH_COUNT: usize = 6;
+
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let identifier = did_issuer(&context, &organisation).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let list_1 = context
+        .db
+        .revocation_lists
+        .create(identifier.clone(), None)
+        .await;
+    let list_2 = context
+        .db
+        .revocation_lists
+        .create(
+            identifier.clone(),
+            Some(TestingRevocationListParams {
+                sequence_number: Some(1),
+                ..Default::default()
+            }),
+        )
+        .await;
+
+    let mut parent_ids = vec![];
+    for batch in 0..BATCH_COUNT {
+        let parent = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    r#type: Some(CredentialType::BatchParent),
+                    ..Default::default()
+                },
+            )
+            .await;
+        // half of the batches have their first item on the first list, the others on the
+        // second one, so that per-item locking would lock the lists in opposite orders
+        let lists = if batch % 2 == 0 {
+            [list_1.id, list_2.id]
+        } else {
+            [list_2.id, list_1.id]
+        };
+        for list_id in lists {
+            let item = context
+                .db
+                .credentials
+                .create(
+                    &credential_schema,
+                    CredentialStateEnum::Accepted,
+                    &identifier,
+                    "OPENID4VCI_DRAFT13",
+                    TestingCredentialParams {
+                        r#type: Some(CredentialType::BatchItem),
+                        parent_id: Some(parent.common().id),
+                        ..Default::default()
+                    },
+                )
+                .await;
+            context
+                .db
+                .revocation_lists
+                .create_credential_entry(list_id, item.common().id, batch)
+                .await;
+        }
+        parent_ids.push(parent.common().id);
+    }
+
+    // WHEN
+    let responses = futures::future::join_all(
+        parent_ids
+            .iter()
+            .map(|parent_id| context.api.credentials.revoke(parent_id)),
+    )
+    .await;
+
+    // THEN
+    for response in responses {
+        assert_eq!(response.status(), 204);
+    }
+    for list_id in [list_1.id, list_2.id] {
+        let published = context.db.revocation_lists.get(list_id).await;
+        assert_eq!(
+            revoked_bitstring_indices(&published.formatted_list),
+            (0..BATCH_COUNT).collect::<Vec<_>>()
+        );
+    }
+}
+
+/// An issuer identifier with a `did:key` that can sign status list credentials.
+async fn did_issuer(context: &TestContext, organisation: &Organisation) -> Identifier {
+    let key = context
+        .db
+        .keys
+        .create(organisation, eddsa_testing_params())
+        .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            organisation.clone(),
+            TestingDidParams {
+                did: Some(
+                    DidValue::from_str("did:key:zDnaetpgFTTteRE2RWG8DtbNX6WNWxxgFs627d7z2JVjboM2L")
+                        .unwrap(),
+                ),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await
 }
 
 /// Decodes the `encodedList` of a JWT bitstring status list credential into the set indices.

@@ -32,6 +32,7 @@ pub struct TestingRevocationListParams {
     pub format: Option<StatusListCredentialFormat>,
     pub r#type: Option<RevocationMethodId>,
     pub params: Option<Vec<u8>>,
+    pub sequence_number: Option<usize>,
 }
 
 impl RevocationListsDB {
@@ -56,7 +57,7 @@ impl RevocationListsDB {
             format: params.format.unwrap_or(StatusListCredentialFormat::Jwt),
             r#type: params.r#type.unwrap_or("BITSTRINGSTATUSLIST".into()),
             issuer_certificate: convert_inner(params.issuer_certificate),
-            sequence_number: 0,
+            sequence_number: params.sequence_number.unwrap_or_default(),
             params: params.params,
         };
 
