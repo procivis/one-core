@@ -372,20 +372,59 @@ async fn test_unexportable_credential_protocol_persisted_as_string_and_typed_by_
         let dto = setup_service(repositories).backup_info().await.unwrap();
 
         // persisted in history metadata as plain string
-        let mut json = serde_json::to_value(&dto).unwrap();
+        let json = serde_json::to_value(&dto).unwrap();
         assert_eq!(
             json["credentials"][0]["protocol"],
             serde_json::json!(protocol.to_string())
         );
 
-        // `None` dates are skipped when serializing but required when deserializing (separate,
-        // pre-existing issue), set them explicitly to isolate the protocol handling
-        for field in ["issuanceDate", "revocationDate", "expiresAt"] {
-            json["credentials"][0][field] = serde_json::Value::Null;
-        }
-
         // typed according to the role when read back
         let read: UnexportableEntitiesResponseDTO = serde_json::from_value(json).unwrap();
         assert_eq!(read.credentials[0].protocol, protocol);
+    }
+}
+
+#[tokio::test]
+async fn test_unexportable_credential_dates_round_trip_through_history_metadata() {
+    use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
+
+    for date in [None, Some(crate::clock::now_utc())] {
+        let mut repositories = Repositories::default();
+        let mut entities = dummy_unexportable_entities().await;
+        entities.credentials[0].common.issuance_date = date;
+        entities.credentials[0].common.expires_at = date;
+        repositories
+            .backup_repository
+            .expect_fetch_unexportable()
+            .once()
+            .return_once(move |_| Ok(entities));
+        repositories
+            .formatter_provider
+            .expect_get_credential_formatter()
+            .return_once(|_| {
+                let mut formatter = MockCredentialFormatter::new();
+                formatter.expect_revocation_method_id().return_const(None);
+                Ok(Arc::new(formatter))
+            });
+
+        let dto = setup_service(repositories).backup_info().await.unwrap();
+        let json = serde_json::to_value(&dto).unwrap();
+        assert_eq!(
+            json["credentials"][0].get("issuanceDate").is_some(),
+            date.is_some()
+        );
+
+        // `None` dates are skipped when serializing and must default when reading back
+        let read: UnexportableEntitiesResponseDTO = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(
+            read.credentials[0].issuance_date,
+            dto.credentials[0].issuance_date
+        );
+        assert_eq!(
+            read.credentials[0].expires_at,
+            dto.credentials[0].expires_at
+        );
+        assert_eq!(read.credentials[0].revocation_date, None);
+        assert_eq!(serde_json::to_value(&read).unwrap(), json);
     }
 }

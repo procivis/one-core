@@ -53,11 +53,11 @@ pub struct CredentialDetailResponseDTO<T, P = CredentialProtocol> {
     pub id: CredentialId,
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub issuance_date: Option<OffsetDateTime>,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub revocation_date: Option<OffsetDateTime>,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub expires_at: Option<OffsetDateTime>,
     pub consumed_at: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
