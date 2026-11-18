@@ -10,6 +10,7 @@ use crate::config::core_config::{CacheEntityCacheType, CoreConfig, TrustListSubs
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::xades::XAdESProto;
 use crate::provider::caching_loader::etsi_lote::EtsiLoteCache;
 use crate::provider::caching_loader::etsi_lotl::EtsiLotlCache;
@@ -63,6 +64,7 @@ impl TrustListSubscriberProvider for TrustListSubscriberProviderImpl {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn trust_list_subscriber_provider_from_config(
     config: &mut CoreConfig,
     client: Arc<dyn HttpClient>,
@@ -71,6 +73,7 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     xades_proto: Arc<dyn XAdESProto>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn TrustListSubscriberProvider>, ConfigValidationError> {
     let mut subscribers: HashMap<TrustListSubscriberId, Arc<dyn TrustListSubscriber>> =
         HashMap::new();
@@ -97,6 +100,7 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
                 let etsi_lote_cache = initialize_etsi_lote_cache(
                     config,
                     remote_entity_cache_repository.clone(),
+                    transaction_manager.clone(),
                     resolver,
                 );
                 Arc::new(EtsiLoteSubscriber::new(
@@ -150,8 +154,12 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
             params.trust_anchors.clone(),
             params.leeway_seconds,
         );
-        let cache =
-            initialize_etsi_lotl_cache(config, remote_entity_cache_repository.clone(), resolver);
+        let cache = initialize_etsi_lotl_cache(
+            config,
+            remote_entity_cache_repository.clone(),
+            transaction_manager.clone(),
+            resolver,
+        );
         subscribers.insert(
             key,
             Arc::new(EtsiLotlSubscriber::new(
@@ -174,6 +182,7 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
 fn initialize_etsi_lote_cache(
     config: &CoreConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
     resolver: EtsiLoteResolver,
 ) -> EtsiLoteCache {
     let config = config
@@ -184,7 +193,10 @@ fn initialize_etsi_lote_cache(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
     EtsiLoteCache::new(
@@ -199,6 +211,7 @@ fn initialize_etsi_lote_cache(
 fn initialize_etsi_lotl_cache(
     config: &CoreConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
     resolver: EtsiLotlResolver,
 ) -> EtsiLotlCache {
     let config = config
@@ -209,7 +222,10 @@ fn initialize_etsi_lotl_cache(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
     EtsiLotlCache::new(

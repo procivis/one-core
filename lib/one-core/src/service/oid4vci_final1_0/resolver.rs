@@ -15,6 +15,7 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -368,6 +369,7 @@ pub(crate) fn initialize_issuer_metadata_cache_from_config<CustomHeader>(
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn IssuerMetadataFetcher<CustomHeader>>, anyhow::Error>
 where
     CustomHeader: Serialize + Send + Sync + 'static,
@@ -380,7 +382,10 @@ where
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 

@@ -7,6 +7,7 @@ use super::*;
 use crate::config::core_config::{CoreConfig, TrustListSubscriberConfig};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::xades::MockXAdESProto;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -32,6 +33,7 @@ fn build(
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockXAdESProto::new()),
         Arc::new(MockRemoteEntityCacheRepository::new()),
+        Arc::new(NoTransactionManager),
     )
 }
 

@@ -9,6 +9,7 @@ use time::macros::offset;
 use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::http_client::HttpClient;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -172,6 +173,7 @@ const RFC_2822_BUT_WITH_GMT: &[time::format_description::FormatItem<'static>] = 
 pub(crate) fn initialize_jsonld_cache_from_config(
     config: &CoreConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> JsonLdCachingLoader {
     let config = config
         .cache_entities
@@ -181,7 +183,10 @@ pub(crate) fn initialize_jsonld_cache_from_config(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
     };
 

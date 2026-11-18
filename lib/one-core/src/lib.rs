@@ -237,6 +237,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
+            data_provider.get_tx_manager(),
         )
         .map_err(|err| {
             OneCoreInitializationError::Config(
@@ -259,6 +260,7 @@ impl OneCore {
             key_provider.clone(),
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
+            data_provider.get_tx_manager(),
         )?;
 
         let transaction_data_provider = transaction_data_provider_from_config(&mut config)?;
@@ -266,12 +268,14 @@ impl OneCore {
         let json_ld_cache = initialize_jsonld_cache_from_config(
             &config,
             data_provider.get_remote_entity_cache_repository(),
+            data_provider.get_tx_manager(),
         );
 
         let vct_type_metadata_cache = initialize_vct_type_metadata_cache_from_config(
             &config,
             data_provider.get_remote_entity_cache_repository(),
             client.clone(),
+            data_provider.get_tx_manager(),
         )
         .await?;
 
@@ -322,6 +326,7 @@ impl OneCore {
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
             &config,
+            data_provider.get_tx_manager(),
         ));
         let wallet_provider_client = Arc::new(HTTPWalletProviderClient::new(
             client.clone(),
@@ -411,6 +416,7 @@ impl OneCore {
             certificate_validator.clone(),
             xades_proto,
             data_provider.get_remote_entity_cache_repository(),
+            data_provider.get_tx_manager(),
         )?;
 
         let wrp_validator = Arc::new(WRPValidatorImpl::new(
@@ -435,6 +441,7 @@ impl OneCore {
             &config,
             data_provider.get_remote_entity_cache_repository(),
             client.clone(),
+            data_provider.get_tx_manager(),
         );
 
         let issuance_provider = issuance_protocol_provider_from_config(
@@ -572,6 +579,7 @@ impl OneCore {
         let remote_trust_collection_cache = Arc::new(remote_trust_collection_cache_from_config(
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
+            data_provider.get_tx_manager(),
             &config,
         ));
         let trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync> =
@@ -630,6 +638,7 @@ impl OneCore {
             data_provider.get_remote_entity_cache_repository(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
+            data_provider.get_tx_manager(),
         )?;
 
         let dpop_handler = Arc::new(DpopHandlerImpl::new(

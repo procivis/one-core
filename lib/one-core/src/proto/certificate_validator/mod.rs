@@ -8,6 +8,7 @@ use crate::config::core_config::{CacheEntitiesConfig, CacheEntityCacheType, Glob
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::http_client::{HttpClient, HttpClientSecurityConfig};
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -312,6 +313,7 @@ pub(crate) fn certificate_validator_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn CertificateValidator>, Error> {
     Ok(Arc::new(CertificateValidatorImpl::new(
         key_algorithm_provider.clone(),
@@ -319,6 +321,7 @@ pub(crate) fn certificate_validator_from_config(
             global_settings,
             cache_entities,
             remote_entity_cache_repository,
+            transaction_manager,
         )?),
         global_settings.certificate_validation.leeway_seconds,
         Arc::new(initialize_android_key_attestation_crl_cache(client)),
@@ -341,6 +344,7 @@ fn initialize_x509_crl_cache(
     global_settings: &GlobalSettings,
     cache_entities: &CacheEntitiesConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> Result<X509CrlCache, Error> {
     let config = cache_entities
         .entities
@@ -349,7 +353,10 @@ fn initialize_x509_crl_cache(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 

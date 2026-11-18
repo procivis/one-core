@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use futures::FutureExt;
 use shared_types::RemoteEntityCacheEntryId;
 
 use crate::model::remote_entity_cache::RemoteEntityCacheEntry;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
@@ -12,12 +14,17 @@ use crate::repository::remote_entity_cache_repository::RemoteEntityCacheReposito
 
 pub struct DbStorage {
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 }
 
 impl DbStorage {
-    pub fn new(remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>) -> Self {
+    pub fn new(
+        remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+        transaction_manager: Arc<dyn TransactionManager>,
+    ) -> Self {
         Self {
             remote_entity_cache_repository,
+            transaction_manager,
         }
     }
 }
@@ -60,30 +67,37 @@ impl RemoteEntityStorage for DbStorage {
     }
 
     async fn insert(&self, request: RemoteEntity) -> Result<(), RemoteEntityStorageError> {
-        if let Some(db_context) = self
-            .remote_entity_cache_repository
-            .get_by_key(&request.key)
-            .await
-            .map_err(|e| RemoteEntityStorageError::Insert(e.to_string()))?
-        {
-            self.remote_entity_cache_repository
-                .update(storage_context_to_db_context(db_context.id, request))
-                .await
-                .map_err(|e| match e {
-                    DataLayerError::RecordNotUpdated(_) => RemoteEntityStorageError::NotUpdated,
-                    e => RemoteEntityStorageError::Insert(e.to_string()),
-                })?;
-        } else {
-            self.remote_entity_cache_repository
-                .create(storage_context_to_db_context(
-                    RemoteEntityCacheEntryId::new(),
-                    request,
-                ))
-                .await
-                .map_err(|e| RemoteEntityStorageError::Insert(e.to_string()))?;
-        }
+        let result = self
+            .transaction_manager
+            .tx(async {
+                if let Some(db_context) = self
+                    .remote_entity_cache_repository
+                    .get_by_key(&request.key)
+                    .await?
+                {
+                    self.remote_entity_cache_repository
+                        .update(storage_context_to_db_context(db_context.id, request))
+                        .await
+                } else {
+                    self.remote_entity_cache_repository
+                        .create(storage_context_to_db_context(
+                            RemoteEntityCacheEntryId::new(),
+                            request,
+                        ))
+                        .await
+                        .map(|_| ())
+                }
+            }
+            .boxed())
+            .await;
 
-        Ok(())
+        match result {
+            Ok(Ok(_)) => Ok(()),
+            Ok(Err(e)) | Err(e) => Err(match e {
+                DataLayerError::RecordNotUpdated(_) => RemoteEntityStorageError::NotUpdated,
+                e => RemoteEntityStorageError::Insert(e.to_string()),
+            }),
+        }
     }
 }
 

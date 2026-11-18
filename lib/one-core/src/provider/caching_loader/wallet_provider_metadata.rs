@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_provider_client::http_client::dto::WalletProviderMetadataResponseRestDTO;
 use crate::provider::caching_loader::{
     CacheError, CachingLoader, ResolveResult, Resolver, ResolverError,
@@ -55,6 +56,7 @@ pub fn wallet_provider_metadata_cache_from_config(
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
     config: &CoreConfig,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> WalletProviderMetadataCacheImpl {
     let config = config
         .cache_entities
@@ -64,7 +66,10 @@ pub fn wallet_provider_metadata_cache_from_config(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
     let inner = CachingLoader::new(

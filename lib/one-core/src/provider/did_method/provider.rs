@@ -24,6 +24,7 @@ use crate::config::core_config::{
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::proto::http_client::HttpClient;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
@@ -223,6 +224,7 @@ pub(crate) fn did_method_provider_from_config(
     key_provider: Arc<dyn KeyProvider>,
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn DidMethodProvider>, ConfigValidationError> {
     // did:tdw and did:webvh depend on did:key to verify their update proofs.
     let directory = {
@@ -248,6 +250,7 @@ pub(crate) fn did_method_provider_from_config(
         let did_caching_loader = initialize_did_caching_loader(
             &config.cache_entities,
             remote_entity_cache_repository.clone(),
+            transaction_manager.clone(),
         );
         let intermediary_provider: Arc<dyn DidMethodProvider> = Arc::new(
             DidMethodProviderImpl::new(did_caching_loader, independent_directory.clone()),
@@ -281,8 +284,11 @@ pub(crate) fn did_method_provider_from_config(
         });
     }
 
-    let did_caching_loader =
-        initialize_did_caching_loader(&config.cache_entities, remote_entity_cache_repository);
+    let did_caching_loader = initialize_did_caching_loader(
+        &config.cache_entities,
+        remote_entity_cache_repository,
+        transaction_manager,
+    );
     Ok(Arc::new(DidMethodProviderImpl::new(
         did_caching_loader,
         directory,
@@ -292,6 +298,7 @@ pub(crate) fn did_method_provider_from_config(
 fn initialize_did_caching_loader(
     cache_entities_config: &CacheEntitiesConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> DidCachingLoader {
     let config = cache_entities_config
         .entities
@@ -300,7 +307,10 @@ fn initialize_did_caching_loader(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 

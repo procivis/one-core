@@ -95,6 +95,7 @@ fn initialize_provider(
             initialize_statuslist_loader(
                 &config.cache_entities,
                 remote_entity_cache_repository.clone(),
+                transaction_manager.clone(),
             ),
             credential_formatter_provider.clone(),
             certificate_validator.clone(),
@@ -112,6 +113,7 @@ fn initialize_provider(
             initialize_statuslist_loader(
                 &config.cache_entities,
                 remote_entity_cache_repository.clone(),
+                transaction_manager.clone(),
             ),
             credential_formatter_provider.clone(),
             certificate_validator.clone(),
@@ -195,6 +197,7 @@ pub(crate) fn revocation_method_provider_from_config(
 fn initialize_statuslist_loader(
     cache_entities_config: &CacheEntitiesConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> StatusListCachingLoader {
     let config = cache_entities_config
         .entities
@@ -203,7 +206,10 @@ fn initialize_statuslist_loader(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 

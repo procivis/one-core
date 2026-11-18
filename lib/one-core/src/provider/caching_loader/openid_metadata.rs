@@ -12,6 +12,7 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::proto::http_client::{HttpClient, is_media_type};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
@@ -227,6 +228,7 @@ pub(crate) fn openid_metadata_cache_from_config(
     config: &CoreConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
     client: Arc<dyn HttpClient>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> Arc<dyn OpenIDMetadataFetcher> {
     let config = config
         .cache_entities
@@ -236,7 +238,10 @@ pub(crate) fn openid_metadata_cache_from_config(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 

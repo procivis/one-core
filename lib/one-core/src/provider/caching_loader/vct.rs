@@ -11,6 +11,7 @@ use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
 use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityStorage, RemoteEntityType};
@@ -165,6 +166,7 @@ pub(crate) async fn initialize_vct_type_metadata_cache_from_config(
     config: &CoreConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
     client: Arc<dyn HttpClient>,
+    transaction_manager: Arc<dyn TransactionManager>,
 ) -> Result<Arc<dyn VctTypeMetadataFetcher>, anyhow::Error> {
     let config = config
         .cache_entities
@@ -174,7 +176,10 @@ pub(crate) async fn initialize_vct_type_metadata_cache_from_config(
         .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
-        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            remote_entity_cache_repository,
+            transaction_manager,
+        )),
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 

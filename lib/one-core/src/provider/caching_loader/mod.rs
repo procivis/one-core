@@ -263,7 +263,11 @@ impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
                         "Cache entry deleted while updating. It will be recreated on next usage."
                     );
                 }
-                _ => return Err(error.error_while("inserting cache item").into()),
+                _ => {
+                    // ONE-11724: ignoring other failures
+                    // cache insertion is not a critical operation. Next time it will be refetched/recreated
+                    tracing::warn!(%error, "Failed to insert cache item: `{url}`");
+                }
             }
         }
 
