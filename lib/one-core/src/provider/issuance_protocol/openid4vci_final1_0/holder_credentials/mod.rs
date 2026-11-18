@@ -31,7 +31,7 @@ use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialStateEnum, CredentialView, CredentialViewMut, HolderCredentialData,
-    IssuerIdentity,
+    IssuerIdentity, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, UpdateCredentialSchemaRequest};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -344,7 +344,7 @@ impl OpenID4VCIFinal1_0 {
             .formatter_provider
             .get_credential_formatter(&credential_format)?;
 
-        formatter
+        let detail = formatter
             .extract_credentials(&updated_credential, Some(&schema), self.verification_fn())
             .await
             .error_while("extracting credential")?;
@@ -359,16 +359,31 @@ impl OpenID4VCIFinal1_0 {
             .ok_or(IssuanceProtocolError::Failed(
                 "Missing credential blob id".to_string(),
             ))?;
-        db_blob_storage
-            .update(
-                &blob_id,
-                UpdateBlobRequest {
-                    value: Some(updated_credential.as_ref().into()),
-                },
-            )
+        self.tx_manager
+            .tx(async {
+                db_blob_storage
+                    .update(
+                        &blob_id,
+                        UpdateBlobRequest {
+                            value: Some(updated_credential.as_ref().into()),
+                        },
+                    )
+                    .await
+                    .error_while("updating credential blob")?;
+                self.credential_repository
+                    .update_credential(
+                        credential.common.id,
+                        UpdateCredentialRequest {
+                            expires_at: detail.valid_until,
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("updating credential")?;
+                Ok::<_, IssuanceProtocolError>(())
+            })
             .await
-            .error_while("updating credential blob")?;
-        Ok(())
+            .error_while("persisting refreshed credential")?
     }
 
     async fn process_batch_refresh(

@@ -647,6 +647,8 @@ async fn test_revoke_check_mdoc_update() {
         updated_credentials.value,
         valid_credential.as_ref().as_bytes().to_vec()
     );
+    let updated_credential = context.db.credentials.get(&credential.common().id).await;
+    assert!(updated_credential.common().expires_at.unwrap() > one_core::clock::now_utc());
 }
 
 #[tokio::test]

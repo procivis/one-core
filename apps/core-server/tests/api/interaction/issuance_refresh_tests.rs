@@ -8,8 +8,6 @@ use one_core::model::history::HistoryAction;
 use one_core::model::interaction::InteractionType;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::localized_text::LocalizedTextField;
-use one_core::proto::jwt::Jwt;
-use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
@@ -26,7 +24,6 @@ use crate::fixtures::interaction::{
     ConfigurationParams, InteractionDataParams, dummy_holder_issuance_interaction_data,
     dummy_issuer_metadata,
 };
-use crate::fixtures::presentation::w3c_jwt_vc;
 use crate::utils::api_clients::histories::QueryParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -37,7 +34,6 @@ use crate::utils::field_match::FieldHelpers;
 struct RefreshOffer {
     batch_size: Option<u32>,
     fail_on_accept: bool,
-    fixed_identifier_expiry: Option<bool>,
     refresh_all_configurations: bool,
 }
 
@@ -139,28 +135,7 @@ async fn test_issuance_refresh_does_not_retry_configuration_refused_on_accept() 
 
 #[tokio::test]
 async fn test_issuance_refresh_without_advertised_batch_support() {
-    // Each expiring configuration issues one item and shares a refreshable parent.
     check_issuance_refresh(RefreshOffer::default()).await;
-}
-
-#[tokio::test]
-async fn test_issuance_refresh_with_fixed_identifier_without_expiry() {
-    check_issuance_refresh(RefreshOffer {
-        batch_size: Some(3),
-        fixed_identifier_expiry: Some(false),
-        ..Default::default()
-    })
-    .await;
-}
-
-#[tokio::test]
-async fn test_issuance_refresh_with_fixed_identifier_with_expiry() {
-    check_issuance_refresh(RefreshOffer {
-        batch_size: Some(3),
-        fixed_identifier_expiry: Some(true),
-        ..Default::default()
-    })
-    .await;
 }
 
 #[tokio::test]
@@ -400,16 +375,11 @@ async fn check_issuance_refresh_translations(metadata_available: bool) {
 }
 
 async fn check_issuance_refresh(offer: RefreshOffer) {
-    let batch_size = if offer.fixed_identifier_expiry.is_some() {
-        1
-    } else {
-        offer.batch_size.unwrap_or(1)
-    };
+    let batch_size = offer.batch_size.unwrap_or(1);
     let fail_on_accept = offer.fail_on_accept;
-    let refresh_supported = offer.fixed_identifier_expiry != Some(false);
+    let batch_issued = offer.batch_size.is_some();
     // GIVEN two configurations and a token endpoint that issues a refresh token
-    let (context, organisation, holder_did, holder_identifier, holder_key) =
-        TestContext::new_with_did(None).await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let issuer_key = Ecdsa.generate_key().unwrap();
     let multibase = issuer_key.key.public_key_as_multibase().unwrap();
@@ -500,50 +470,24 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         1
     };
     let expected_calls = if fail_on_accept { 1 } else { 2 }
-        + u64::from(refresh_supported) * refreshed_configuration_count;
-    if let Some(expires) = offer.fixed_identifier_expiry {
-        let mut token = w3c_jwt_vc(
-            &issuer_key,
-            "ES256",
+        + u64::from(batch_issued) * refreshed_configuration_count;
+    context
+        .server_mock
+        .ssi_credential_endpoint_dynamic(
+            credential_schema.id,
+            "123",
+            issuer_key,
             issuer_did,
-            holder_did.did.clone(),
-            json!({"string": "string"}),
+            None,
+            expected_calls,
         )
         .await;
-        if !expires {
-            let mut jwt = Jwt::<serde_json::Value>::decompose_token(&token).unwrap();
-            jwt.payload.expires_at = None;
-            let unsigned = format!(
-                "{}.{}",
-                string_to_b64url_string(&serde_json::to_string(&jwt.header).unwrap()).unwrap(),
-                string_to_b64url_string(&serde_json::to_string(&jwt.payload).unwrap()).unwrap(),
-            );
-            let signature = issuer_key.key.sign(unsigned.as_bytes()).await.unwrap();
-            token = format!("{unsigned}.{}", bin_to_b64url_string(&signature).unwrap());
-        }
-        context
-            .server_mock
-            .ssi_credential_endpoint(credential_schema.id, "123", &[token], expected_calls, None)
-            .await;
-    } else {
-        context
-            .server_mock
-            .ssi_credential_endpoint_dynamic(
-                credential_schema.id,
-                "123",
-                issuer_key,
-                issuer_did,
-                None,
-                expected_calls,
-            )
-            .await;
-    }
     context
         .server_mock
         .ssi_nonce_endpoint(
             "OPENID4VCI_FINAL1",
             "test-nonce",
-            2 + u64::from(refresh_supported) * if fail_on_accept { 1 } else { 2 },
+            2 + u64::from(batch_issued) * if fail_on_accept { 1 } else { 2 },
         )
         .await;
 
@@ -557,23 +501,16 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     let resp = context
         .api
         .interactions
-        .issuance_accept(
-            interaction.id,
-            offer.fixed_identifier_expiry.map(|_| holder_did.id),
-            None,
-            None,
-            None,
-        )
+        .issuance_accept(interaction.id, None, None, None, None)
         .await;
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    if offer.fixed_identifier_expiry == Some(false) {
+    if !batch_issued {
         let ids = resp["credentialIds"].as_array().unwrap();
         assert_eq!(ids.len(), 2);
         for id in ids {
             let credential = context.db.credentials.get(&id.parse()).await;
             assert_matches!(credential, Credential::HolderSingle { .. });
-            assert!(credential.common().expires_at.is_none());
         }
         let response = context
             .api
@@ -619,20 +556,6 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
                 .unwrap()
                 .id,
         );
-        if let Some(expires) = offer.fixed_identifier_expiry {
-            assert_eq!(item.common().expires_at.is_some(), expires);
-            assert_eq!(
-                item.holder()
-                    .unwrap()
-                    .data
-                    .binding
-                    .as_ref()
-                    .unwrap()
-                    .identifier
-                    .id(),
-                holder_identifier.id
-            );
-        }
         let policy: serde_json::Value = serde_json::from_str(
             item.holder()
                 .unwrap()
@@ -656,7 +579,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
     assert_eq!(initial_payload_claim_ids.len(), 1);
 
     // the issuer refuses the second configuration on refresh
-    if !fail_on_accept && refresh_supported && !offer.refresh_all_configurations {
+    if !fail_on_accept && !offer.refresh_all_configurations {
         context
             .server_mock
             .ssi_credential_endpoint_failure(credential_schema.id, "123", "second")
@@ -686,22 +609,7 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
         )
         .await;
     assert_eq!(history.status(), 200);
-    assert_eq!(
-        history.json_value().await["totalItems"],
-        u64::from(refresh_supported)
-    );
-
-    if !refresh_supported {
-        assert_eq!(resp.status(), 400);
-        assert_eq!(resp.json_value().await["code"], "BR_0452");
-        let unchanged_items = context
-            .db
-            .credentials
-            .list(CredentialFilterValue::ParentCredential(first_parent).condition())
-            .await;
-        assert_eq!(unchanged_items.len(), items.len());
-        return;
-    }
+    assert_eq!(history.json_value().await["totalItems"], 1);
 
     // THEN successful configurations contribute items and share one parent history event.
     assert_eq!(resp.status(), 200);
@@ -719,11 +627,6 @@ async fn check_issuance_refresh(offer: RefreshOffer) {
             Credential::HolderBatchItem { parent, .. } if parent.id() == first_parent
         );
         let holder = item.holder().unwrap();
-        if offer.fixed_identifier_expiry.is_some() {
-            let binding = holder.data.binding.as_ref().unwrap();
-            assert_eq!(binding.identifier.id(), holder_identifier.id);
-            assert_eq!(binding.key.id(), holder_key.id);
-        }
         let policy: serde_json::Value =
             serde_json::from_str(holder.data.embedded_disclosure_policy.as_ref().unwrap()).unwrap();
         let index = ["policy-0", "policy-1"]

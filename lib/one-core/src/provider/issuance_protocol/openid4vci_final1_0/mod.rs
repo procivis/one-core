@@ -195,31 +195,6 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     tx_manager: Arc<dyn TransactionManager>,
 }
 
-fn should_create_batch_parent(
-    response: &IssuanceAcceptResponse,
-    has_multiple_configurations: bool,
-    has_refresh_token: bool,
-    advertised_batch_size: Option<u32>,
-    any_batch_issued: bool,
-) -> bool {
-    // The actual response and advertised batch size can differ. A real batch always
-    // needs a parent; a single credential needs one only if it can expire.
-    if !response.batch_items.is_empty() {
-        return true;
-    }
-
-    has_multiple_configurations
-        && response
-            .main_credential
-            .credential
-            .common()
-            .expires_at
-            .is_some()
-        && (has_refresh_token
-            || advertised_batch_size.is_some_and(|size| size > 1)
-            || any_batch_issued)
-}
-
 /// Adds the wallet attestation headers of a token request.
 /// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-12#section-6.1
 fn with_wallet_attestation(
@@ -1861,22 +1836,9 @@ impl OpenID4VCIFinal1_0 {
             result.record(&credential_configuration_id, accepted);
         }
 
-        let has_multiple_configurations =
-            interaction_data.state.credential_configurations.len() > 1;
         let has_refresh_token = interaction_data.state.tokens.refresh_token.is_some();
-        let advertised_batch_size = interaction_data.batch_size();
-        let any_batch_issued = result
-            .issued
-            .iter()
-            .any(|response| !response.batch_items.is_empty());
         for response in &mut result.issued {
-            if should_create_batch_parent(
-                response,
-                has_multiple_configurations,
-                has_refresh_token,
-                advertised_batch_size,
-                any_batch_issued,
-            ) {
+            if !response.batch_items.is_empty() {
                 let parent = response.main_credential.batch_parent(has_refresh_token)?;
                 let mut item = std::mem::replace(&mut response.main_credential, parent);
                 let parent_id = response.main_credential.credential.common().id;

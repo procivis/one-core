@@ -538,52 +538,11 @@ async fn test_issuance_accept_batch_without_expiry_creates_parent() {
 }
 
 #[tokio::test]
-async fn test_issuance_accept_advertised_batch_with_single_response_creates_parent() {
+async fn test_issuance_accept_advertised_batch_with_single_response_creates_singles() {
     check_multi_configuration_issuance(
         MultiConfigurationOffer {
             batch_size: Some(2),
             single_credential_response: true,
-            ..Default::default()
-        },
-        CredentialType::BatchParent,
-        2,
-    )
-    .await;
-}
-
-#[tokio::test]
-async fn test_issuance_accept_no_batch_with_refresh_distinct_schemas_creates_two_parents() {
-    check_multi_configuration_issuance(
-        MultiConfigurationOffer {
-            refresh_token: true,
-            ..Default::default()
-        },
-        CredentialType::BatchParent,
-        2,
-    )
-    .await;
-}
-
-#[tokio::test]
-async fn test_issuance_accept_no_batch_with_refresh_overlapping_schemas_creates_one_parent() {
-    check_multi_configuration_issuance(
-        MultiConfigurationOffer {
-            refresh_token: true,
-            schema_overlap: true,
-            ..Default::default()
-        },
-        CredentialType::BatchParent,
-        1,
-    )
-    .await;
-}
-
-#[tokio::test]
-async fn test_issuance_accept_no_expiry_with_refresh_distinct_schemas_creates_singles() {
-    check_multi_configuration_issuance(
-        MultiConfigurationOffer {
-            refresh_token: true,
-            without_expiry: true,
             ..Default::default()
         },
         CredentialType::Single,
@@ -593,11 +552,23 @@ async fn test_issuance_accept_no_expiry_with_refresh_distinct_schemas_creates_si
 }
 
 #[tokio::test]
-async fn test_issuance_accept_no_expiry_with_refresh_overlapping_schemas_creates_singles() {
+async fn test_issuance_accept_no_batch_with_refresh_distinct_schemas_creates_singles() {
     check_multi_configuration_issuance(
         MultiConfigurationOffer {
             refresh_token: true,
-            without_expiry: true,
+            ..Default::default()
+        },
+        CredentialType::Single,
+        2,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_issuance_accept_no_batch_with_refresh_overlapping_schemas_creates_singles() {
+    check_multi_configuration_issuance(
+        MultiConfigurationOffer {
+            refresh_token: true,
             schema_overlap: true,
             ..Default::default()
         },
@@ -696,65 +667,25 @@ async fn test_issuance_accept_core_mdoc_sd_jwt_vc_non_batch_without_expiry() {
     for id in main_ids {
         mains.push(context.db.credentials.get(&id.parse()).await);
     }
-    let mdoc_parent = mains
-        .iter()
-        .find(|credential| matches!(credential, Credential::HolderBatchParent { .. }))
-        .unwrap();
-    let sd_jwt_vc = mains
-        .iter()
-        .find(|credential| matches!(credential, Credential::HolderSingle { .. }))
-        .unwrap();
-    assert_eq!(
-        mdoc_parent.common().schema.id(),
-        sd_jwt_vc.common().schema.id()
-    );
-
-    let mdoc_items = context
-        .db
-        .credentials
-        .list(CredentialFilterValue::ParentCredential(mdoc_parent.common().id).condition())
-        .await;
-    assert_eq!(mdoc_items.len(), 1);
-    assert_matches!(mdoc_items[0], Credential::HolderBatchItem { .. });
-    assert_eq!(
-        mdoc_items[0]
-            .holder()
-            .unwrap()
+    assert_eq!(mains[0].common().schema.id(), mains[1].common().schema.id());
+    let mut formats = HashSet::new();
+    for credential in &mains {
+        assert_matches!(credential, Credential::HolderSingle { .. });
+        let holder = credential.holder().unwrap();
+        let format = holder
             .data
             .format
             .as_ref()
             .await
             .unwrap()
             .format
-            .to_string(),
-        "MDOC"
-    );
-    assert!(mdoc_items[0].common().expires_at.is_some());
-    assert!(mdoc_parent.common().expires_at.is_none());
-    assert_matches!(mdoc_parent, Credential::HolderBatchParent { .. });
-
+            .to_string();
+        assert_eq!(credential.common().expires_at.is_some(), format == "MDOC");
+        formats.insert(format);
+    }
     assert_eq!(
-        sd_jwt_vc
-            .holder()
-            .unwrap()
-            .data
-            .format
-            .as_ref()
-            .await
-            .unwrap()
-            .format
-            .to_string(),
-        "SD_JWT_VC"
-    );
-    assert!(sd_jwt_vc.common().expires_at.is_none());
-    assert_matches!(sd_jwt_vc, Credential::HolderSingle { .. });
-    assert!(
-        context
-            .db
-            .credentials
-            .list(CredentialFilterValue::ParentCredential(sd_jwt_vc.common().id).condition())
-            .await
-            .is_empty()
+        formats,
+        HashSet::from(["MDOC".to_string(), "SD_JWT_VC".to_string()])
     );
 
     let interaction = context.db.interactions.get(&interaction_id).await.unwrap();
@@ -840,10 +771,7 @@ async fn check_multi_configuration_issuance(
             assert_eq!(main.common().expires_at.is_none(), without_expiry);
         } else {
             assert_matches!(main, Credential::HolderBatchParent { .. });
-            assert_eq!(
-                main.common().expires_at.is_none(),
-                refreshable || without_expiry
-            );
+            assert_eq!(main.common().expires_at.is_none(), without_expiry);
             assert_eq!(
                 items.len(),
                 items_per_configuration * if schema_overlap { 2 } else { 1 }
