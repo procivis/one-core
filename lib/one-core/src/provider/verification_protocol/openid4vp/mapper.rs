@@ -209,6 +209,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
     authorization_request: T,
+    expires_at: Option<OffsetDateTime>,
 ) -> Result<String, VerificationProtocolError> {
     let JWTSigner {
         auth_fn,
@@ -261,11 +262,13 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
             x5c: Some(x5c),
             x5u: None,
             x5t_s256: None,
+            // ETSI TS 119 472-2, OIDFVP-HAIP-REDIRECTS_RO-03
+            issued_at: Some(now),
             custom: (),
         },
         payload: JWTPayload {
             issued_at: Some(now),
-            expires_at: Some(now.add(Duration::hours(1))),
+            expires_at: expires_at.or(Some(now.add(Duration::hours(1)))),
             invalid_before: None,
             issuer: None,
             subject: None,
@@ -296,6 +299,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
     client_id_without_prefix: String,
     response_uri: String,
     authorization_request: T,
+    expires_at: Option<OffsetDateTime>,
 ) -> Result<String, VerificationProtocolError> {
     let JWTSigner {
         auth_fn,
@@ -342,7 +346,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
     let key_id = verifier_did.verification_method_id(&key);
 
     let now = crate::clock::now_utc();
-    let expires_at = Some(now.add(Duration::hours(1)));
+    let attestation_expires_at = Some(now.add(Duration::hours(1)));
 
     let custom = OpenID4VCVerifierAttestationPayload {
         redirect_uris: vec![response_uri],
@@ -359,10 +363,11 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            issued_at: None,
             custom: (),
         },
         payload: JWTPayload {
-            expires_at,
+            expires_at: attestation_expires_at,
             issuer: Some(verifier_did.did.to_string()),
 
             // ... the original Client Identifier (the part without the verifier_attestation: prefix) MUST equal the sub claim value in the Verifier attestation JWT
@@ -391,11 +396,12 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            issued_at: None,
             custom: (),
         },
         payload: JWTPayload {
             issued_at: Some(now),
-            expires_at,
+            expires_at: expires_at.or(attestation_expires_at),
             invalid_before: None,
             issuer: Some(verifier_did.did.to_string()),
             subject: Some(client_id_without_prefix),
@@ -417,6 +423,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
     authorization_request: T,
+    expires_at: Option<OffsetDateTime>,
 ) -> Result<String, VerificationProtocolError> {
     let JWTSigner {
         auth_fn,
@@ -465,11 +472,12 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            issued_at: None,
             custom: (),
         },
         payload: JWTPayload {
             issued_at: Some(now),
-            expires_at: Some(now.add(Duration::hours(1))),
+            expires_at: expires_at.or(Some(now.add(Duration::hours(1)))),
             invalid_before: None,
             issuer: Some(verifier_did.did.to_string()),
             subject: None,
@@ -500,6 +508,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            issued_at: None,
             custom: (),
         },
         payload: JWTPayload {

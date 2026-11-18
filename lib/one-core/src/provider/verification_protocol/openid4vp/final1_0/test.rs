@@ -1528,3 +1528,60 @@ async fn test_holder_handle_invitation_and_reject_dc_api_unsigned_request() {
 
     protocol.holder_reject_proof(&proof).await.unwrap();
 }
+
+#[tokio::test]
+async fn test_holder_handle_invitation_dc_api_expired_signed_request_rejected_before_signature_check()
+ {
+    use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+
+    // no expectations: neither interaction nor certificate validation must happen
+    let protocol = setup_protocol(Default::default());
+
+    let encode = |value: serde_json::Value| {
+        Base64UrlSafeNoPadding::encode_to_string(value.to_string()).unwrap()
+    };
+    let expired = crate::clock::now_utc() - time::Duration::minutes(5);
+    let header = encode(json!({
+        "alg": "ES256",
+        "typ": "oauth-authz-req+jwt",
+        "x5c": ["MIIB"],
+        "iat": (expired - time::Duration::minutes(1)).unix_timestamp(),
+    }));
+    let payload = encode(json!({
+        "exp": expired.unix_timestamp(),
+        "client_id": "x509_hash:abc",
+        "expected_origins": ["https://verifier.example.com"],
+        "response_type": "vp_token",
+        "response_mode": "dc_api",
+        "nonce": "test-nonce-12345",
+        "dcql_query": dummy_dcql_query(true),
+    }));
+    let request_json = serde_json::to_string(&DigitalCredentialRequestOptions {
+        requests: vec![DigitalCredentialGetRequest::OpenID4VpV1Signed(
+            standardized_types::openid4vp::dc_api::JWSCompactSerialized {
+                request: format!("{header}.{payload}.c2lnbmF0dXJl"),
+            },
+        )],
+    })
+    .unwrap();
+
+    let result = protocol
+        .holder_handle_invitation(
+            InvitationRequest::OpenID4VpDcApi {
+                origin: "https://verifier.example.com".to_string(),
+                request_json,
+                response_handler: Arc::new(MockNativeDcApiResponseHandler::new()),
+            },
+            dummy_organisation(None),
+            "DC_API".into(),
+        )
+        .await;
+
+    let Err(err) = result else {
+        panic!("expired request must be rejected");
+    };
+    assert!(
+        format!("{err:?}").contains("Expired"),
+        "unexpected error: {err:?}"
+    );
+}

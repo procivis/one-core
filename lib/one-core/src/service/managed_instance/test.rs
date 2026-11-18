@@ -578,6 +578,7 @@ async fn create_proof() -> (String, KeyHandle) {
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            issued_at: None,
             custom: (),
         },
         payload: JWTPayload {
@@ -677,6 +678,7 @@ async fn make_user_id_token(
             x5c: None,
             x5u: None,
             x5t_s256: None,
+            issued_at: None,
             custom: (),
         },
         payload: JWTPayload {

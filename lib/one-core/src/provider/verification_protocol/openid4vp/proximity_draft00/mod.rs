@@ -21,7 +21,7 @@ use super::dcql::get_presentation_definition_v2;
 use super::final1_0::dcql::create_dcql_query;
 use super::mapper::format_to_type;
 use super::mdoc::mdoc_presentation_context;
-use super::model::default_presentation_url_scheme;
+use super::model::{default_authorization_request_leeway, default_presentation_url_scheme};
 use super::proximity_draft00::async_verifier_flow::{
     AsyncVerifierFlowParams, VerifierIdentifier, verifier_flow,
 };
@@ -94,9 +94,29 @@ struct OpenID4VPProximityDraft00Params {
     pub url_scheme: String,
     #[serde(default)]
     pub verifier: Option<OpenID4VPProximityDraft00PresentationVerifierParams>,
+    #[serde(default)]
+    pub holder: OpenID4VPProximityDraft00HolderParams,
 
     #[serde(flatten)]
     pub common: CommonParams,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VPProximityDraft00HolderParams {
+    /// Allowed clock skew when validating timestamps of the received authorization request
+    #[serde(default = "default_authorization_request_leeway")]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub authorization_request_leeway_seconds: Duration,
+}
+
+impl Default for OpenID4VPProximityDraft00HolderParams {
+    fn default() -> Self {
+        Self {
+            authorization_request_leeway_seconds: default_authorization_request_leeway(),
+        }
+    }
 }
 
 #[serde_as]
@@ -238,6 +258,7 @@ impl OpenID4VPProximityDraft00 {
             transport_id,
             verification_fn,
             self.certificate_validator.as_ref(),
+            self.params.holder.authorization_request_leeway_seconds,
         )
         .await
     }
@@ -437,6 +458,12 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             })
             .await?;
 
+        let expires_at = self.params.verifier.as_ref().and_then(|verifier| {
+            verifier
+                .interaction_expires_in_seconds
+                .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in)
+        });
+
         let params = AsyncVerifierFlowParams {
             proof_id: proof.id,
             dcql_query,
@@ -452,13 +479,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 .iter()
                 .map(|(id, r#type)| (*r#type, id.clone()))
                 .collect(),
+            expires_at,
         };
-
-        let expires_at = self.params.verifier.as_ref().and_then(|verifier| {
-            verifier
-                .interaction_expires_in_seconds
-                .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in)
-        });
 
         match transport.as_slice() {
             [TransportType::Ble] => {

@@ -135,6 +135,7 @@ impl<CustomPayload, CustomHeader> Jwt<CustomPayload, CustomHeader> {
             x5c,
             x5u,
             x5t_s256,
+            issued_at: None,
             custom: custom_header,
         };
 

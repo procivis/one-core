@@ -1,5 +1,6 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use shared_types::DidValue;
+use time::Duration;
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
@@ -15,6 +16,25 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::validator::x509::is_dns_name_matching;
+use crate::validator::{
+    validate_expiration_time, validate_issuance_time, validate_not_before_time,
+};
+
+/// Validates the timestamps of a received request object, each only when present:
+/// - header `iat` (signing time, ETSI TS 119 472-2 OIDFVP-HAIP-REDIRECTS_RO-03) not in the future
+/// - payload `exp` not passed, payload `nbf` reached ([RFC 7519](https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4))
+pub(crate) fn validate_request_token_timestamps<T>(
+    request_token: &DecomposedJwt<T>,
+    leeway: Duration,
+) -> Result<(), VerificationProtocolError> {
+    validate_issuance_time(&request_token.header.issued_at, leeway)
+        .error_while("validating request JWT header iat")?;
+    validate_expiration_time(&request_token.payload.expires_at, leeway)
+        .error_while("validating request JWT exp")?;
+    validate_not_before_time(&request_token.payload.invalid_before, leeway)
+        .error_while("validating request JWT nbf")?;
+    Ok(())
+}
 
 pub(super) fn validate_against_redirect_uris(
     redirect_uris: &[String],
@@ -249,4 +269,128 @@ pub(super) async fn validate_did_request_token<T>(
         .error_while("verifying signature")?;
 
     Ok(verifier_did)
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+    use time::{Duration, OffsetDateTime};
+
+    use super::*;
+    use crate::proto::jwt::model::{JWTHeader, JWTPayload};
+
+    const LEEWAY: Duration = Duration::seconds(60);
+
+    #[derive(Default)]
+    struct Timestamps {
+        header_iat: Option<OffsetDateTime>,
+        exp: Option<OffsetDateTime>,
+        nbf: Option<OffsetDateTime>,
+    }
+
+    fn request_token(timestamps: Timestamps) -> DecomposedJwt<()> {
+        DecomposedJwt {
+            header: JWTHeader {
+                algorithm: "ES256".to_string(),
+                key_id: None,
+                r#type: None,
+                jwk: None,
+                jwt: None,
+                key_attestation: None,
+                x5c: None,
+                x5u: None,
+                x5t_s256: None,
+                issued_at: timestamps.header_iat,
+                custom: (),
+            },
+            payload: JWTPayload {
+                expires_at: timestamps.exp,
+                invalid_before: timestamps.nbf,
+                ..Default::default()
+            },
+            signature: vec![],
+            unverified_jwt: String::new(),
+        }
+    }
+
+    fn validate(timestamps: Timestamps) -> Result<(), VerificationProtocolError> {
+        validate_request_token_timestamps(&request_token(timestamps), LEEWAY)
+    }
+
+    fn now_plus(seconds: i64) -> Option<OffsetDateTime> {
+        Some(crate::clock::now_utc() + Duration::seconds(seconds))
+    }
+
+    #[test]
+    fn test_timestamps_missing_are_accepted() {
+        validate(Timestamps::default()).unwrap();
+    }
+
+    #[test]
+    fn test_valid_timestamps_are_accepted() {
+        validate(Timestamps {
+            header_iat: now_plus(-300),
+            exp: now_plus(300),
+            nbf: now_plus(-300),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_timestamps_within_leeway_are_accepted() {
+        validate(Timestamps {
+            header_iat: now_plus(30),
+            exp: now_plus(-30),
+            nbf: now_plus(30),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_header_issued_at_beyond_leeway_is_rejected() {
+        validate(Timestamps {
+            header_iat: now_plus(120),
+            ..Default::default()
+        })
+        .unwrap_err();
+    }
+
+    #[test]
+    fn test_expired_beyond_leeway_is_rejected() {
+        validate(Timestamps {
+            exp: now_plus(-120),
+            ..Default::default()
+        })
+        .unwrap_err();
+    }
+
+    #[test]
+    fn test_not_before_beyond_leeway_is_rejected() {
+        validate(Timestamps {
+            nbf: now_plus(120),
+            ..Default::default()
+        })
+        .unwrap_err();
+    }
+
+    #[test]
+    fn test_header_issued_at_serialized_as_numeric_date() {
+        let issued_at = OffsetDateTime::from_unix_timestamp(1_700_000_000).unwrap();
+        let header = serde_json::to_value(
+            request_token(Timestamps {
+                header_iat: Some(issued_at),
+                ..Default::default()
+            })
+            .header,
+        )
+        .unwrap();
+        assert_eq!(header["iat"], 1_700_000_000);
+
+        let parsed: JWTHeader = serde_json::from_value(header).unwrap();
+        assert_eq!(parsed.issued_at, Some(issued_at));
+
+        let without_iat =
+            serde_json::to_value(request_token(Timestamps::default()).header).unwrap();
+        assert!(without_iat.get("iat").is_none());
+    }
 }

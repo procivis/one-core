@@ -23,7 +23,7 @@ use standardized_types::openid4vp::dcql::{CredentialQueryId, DcqlQuery};
 use standardized_types::openid4vp::{
     ClientIdPrefix, ClientMetadata, DirectPostResponse, ResponseMode, VpTokenResponse,
 };
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
 use url::Url;
 
@@ -43,7 +43,8 @@ use super::model::{
     OpenID4VPVerifierInteractionContent, TransportSpecificData, ValidatedHolderTxData,
 };
 use super::validator::{
-    validate_did_request_token, validate_x509_hash_request_token, validate_x509_san_dns_token,
+    validate_did_request_token, validate_request_token_timestamps,
+    validate_x509_hash_request_token, validate_x509_san_dns_token,
 };
 use super::{VerificationProtocolError, get_client_id_scheme};
 use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType};
@@ -442,6 +443,10 @@ impl OpenID4VPFinal1_0 {
                     &jwscompact_serialized.request,
                 )
                 .error_while("parsing signed request")?;
+                validate_request_token_timestamps(
+                    &jwt,
+                    self.params.holder.authorization_request_leeway_seconds,
+                )?;
 
                 if !jwt.payload.custom.expected_origins.contains(&origin) {
                     return Err(VerificationProtocolError::InvalidRequest(format!(
@@ -603,6 +608,7 @@ impl OpenID4VPFinal1_0 {
         base_url: &str,
         encryption_key: Option<PublicJwk>,
         interaction_id: &InteractionId,
+        expires_at: Option<OffsetDateTime>,
     ) -> Result<(ShareResponseData, OpenID4VPVerifierInteractionContent), VerificationProtocolError>
     {
         let nonce = utilities::generate_alphanumeric(32);
@@ -638,6 +644,7 @@ impl OpenID4VPFinal1_0 {
             &self.key_algorithm_provider,
             &*self.key_provider,
             authorization_request,
+            expires_at,
         )
         .await?;
 
@@ -660,6 +667,7 @@ impl OpenID4VPFinal1_0 {
         client_metadata: ClientMetadata,
         encryption_key: Option<PublicJwk>,
         params: Option<ShareProofRequestParamsDTO>,
+        expires_at: Option<OffsetDateTime>,
     ) -> Result<(ShareResponseData, OpenID4VPVerifierInteractionContent), VerificationProtocolError>
     {
         let Some(ShareProofRequestParamsDTO {
@@ -730,6 +738,7 @@ impl OpenID4VPFinal1_0 {
                     &self.key_algorithm_provider,
                     &*self.key_provider,
                     request,
+                    expires_at,
                 )
                 .await?
             }
@@ -739,6 +748,7 @@ impl OpenID4VPFinal1_0 {
                     &self.key_algorithm_provider,
                     &*self.key_provider,
                     request,
+                    expires_at,
                 )
                 .await?
             }
@@ -1254,6 +1264,11 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             .cloned();
 
         let interaction_id = InteractionId::new();
+        let expires_at = self
+            .params
+            .verifier
+            .interaction_expires_in_seconds
+            .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in);
 
         let (data, interaction_content) = match (transport_type, self.params.swiyu_mode) {
             (TransportType::Http, _) => {
@@ -1270,6 +1285,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                         .ok_or(VerificationProtocolError::Failed("Missing base_url".into()))?,
                     encryption_key,
                     &interaction_id,
+                    expires_at,
                 )
                 .await?
             }
@@ -1282,6 +1298,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                     client_metadata,
                     encryption_key,
                     params,
+                    expires_at,
                 )
                 .await?
             }
@@ -1292,12 +1309,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 )));
             }
         };
-
-        let expires_at = self
-            .params
-            .verifier
-            .interaction_expires_in_seconds
-            .map(|interaction_expires_in| crate::clock::now_utc() + interaction_expires_in);
 
         Ok(ShareResponse {
             data,

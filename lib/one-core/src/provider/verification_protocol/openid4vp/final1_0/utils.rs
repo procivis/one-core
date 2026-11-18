@@ -23,10 +23,11 @@ use crate::provider::did_method::error::DidMethodError;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::provider::verification_protocol::openid4vp::validator::{
-    validate_against_redirect_uris, validate_did_request_token, validate_x509_hash_request_token,
-    validate_x509_san_dns_token,
+    validate_against_redirect_uris, validate_did_request_token, validate_request_token_timestamps,
+    validate_x509_hash_request_token, validate_x509_san_dns_token,
 };
 use crate::validator::x509::is_dns_name_matching;
+use crate::validator::{validate_expiration_time, validate_not_before_time};
 
 impl OpenID4VPFinal1_0 {
     async fn parse_referenced_data_from_x509_san_dns_token(
@@ -127,6 +128,16 @@ impl OpenID4VPFinal1_0 {
         )
         .await
         .error_while("parsing attestation JWT")?;
+        validate_expiration_time(
+            &attestation_jwt.payload.expires_at,
+            self.params.holder.authorization_request_leeway_seconds,
+        )
+        .error_while("validating attestation JWT exp")?;
+        validate_not_before_time(
+            &attestation_jwt.payload.invalid_before,
+            self.params.holder.authorization_request_leeway_seconds,
+        )
+        .error_while("validating attestation JWT nbf")?;
 
         let (_, alg) = self
             .key_algorithm_provider
@@ -206,6 +217,10 @@ impl OpenID4VPFinal1_0 {
     ) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
         let request_token: DecomposedJwt<AuthorizationRequest> =
             Jwt::decompose_token(&request_token).error_while("parsing request JWT")?;
+        validate_request_token_timestamps(
+            &request_token,
+            self.params.holder.authorization_request_leeway_seconds,
+        )?;
 
         if let Some(audience) = &request_token.payload.audience {
             if audience.len() != 1 {

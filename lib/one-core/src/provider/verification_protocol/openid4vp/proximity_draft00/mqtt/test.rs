@@ -271,6 +271,7 @@ async fn test_handle_invitation_success() {
         request,
         &VerifierIdentifier::Did(verifier_did),
         Box::new(auth_fn),
+        None,
     )
     .await
     .unwrap();
@@ -308,6 +309,7 @@ async fn test_handle_invitation_success() {
         "MQTT".into(),
         Box::new(verifier),
         &MockCertificateValidator::new(),
+        time::Duration::seconds(60),
     )
     .await
     .expect("handle invitation failed");
@@ -359,7 +361,7 @@ async fn request_signed_with_certificate(verifier_certificate: Certificate) -> S
         verifier_info: vec![],
         transaction_data: vec![],
     };
-    request_as_signed_jwt(request, &verifier, Box::new(auth_fn))
+    request_as_signed_jwt(request, &verifier, Box::new(auth_fn), None)
         .await
         .unwrap()
 }
@@ -467,6 +469,7 @@ async fn test_handle_invitation_certificate_verifier() {
         "MQTT".into(),
         Box::new(MockTokenVerifier::new()),
         &certificate_validator,
+        time::Duration::seconds(60),
     )
     .await
     .expect("handle invitation failed");

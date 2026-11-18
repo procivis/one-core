@@ -168,6 +168,7 @@ impl OID4VPFinal1_0Service {
                     client_id_without_prefix,
                     response_uri.clone(),
                     authorization_request,
+                    interaction.expires_at,
                 )
                 .await
                 .error_while("formatting authorization request")?
@@ -178,6 +179,7 @@ impl OID4VPFinal1_0Service {
                     &self.key_algorithm_provider,
                     &*self.key_provider,
                     authorization_request,
+                    interaction.expires_at,
                 )
                 .await
                 .error_while("formatting authorization request")?
@@ -188,6 +190,7 @@ impl OID4VPFinal1_0Service {
                     &self.key_algorithm_provider,
                     &*self.key_provider,
                     authorization_request,
+                    interaction.expires_at,
                 )
                 .await
                 .error_while("formatting authorization request")?

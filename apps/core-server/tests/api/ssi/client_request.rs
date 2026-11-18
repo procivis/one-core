@@ -273,7 +273,7 @@ async fn test_get_client_request_final1_x5c_header_with_access_certificate() {
     let resp = context.api.ssi.get_client_request(proof_id).await;
 
     assert_eq!(resp.status(), 200);
-    let (header, _payload) = decode_jwt(&resp.text().await);
+    let (header, payload) = decode_jwt(&resp.text().await);
 
     assert_ne!(
         header["alg"], "none",
@@ -286,6 +286,19 @@ async fn test_get_client_request_final1_x5c_header_with_access_certificate() {
     assert!(
         !x5c.is_empty(),
         "x5c must contain the access certificate chain"
+    );
+
+    // ETSI TS 119 472-2, OIDFVP-HAIP-REDIRECTS_RO-03
+    assert!(
+        header["iat"].is_i64(),
+        "iat must be present in the protected header"
+    );
+
+    let proof = context.db.proofs.get(&proof_id.into()).await;
+    let interaction = proof.interaction.as_ref().unwrap().as_ref().await.unwrap();
+    assert_eq!(
+        payload["exp"].as_i64().unwrap(),
+        interaction.expires_at.unwrap().unix_timestamp()
     );
 }
 

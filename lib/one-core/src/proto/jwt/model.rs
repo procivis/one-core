@@ -45,6 +45,11 @@ pub struct JWTHeader<CustomHeader = ()> {
     #[serde(rename = "x5t#S256", default)]
     pub x5t_s256: Option<String>,
 
+    /// Signing time as protected header parameter.
+    /// Required for x509-signed request objects by ETSI TS 119 472-2, OIDFVP-HAIP-REDIRECTS_RO-03.
+    #[serde(rename = "iat", default, with = "crate::mapper::timestamp::option")]
+    pub issued_at: Option<OffsetDateTime>,
+
     #[serde(flatten)]
     pub custom: CustomHeader,
 }

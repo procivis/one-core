@@ -5,7 +5,8 @@ use time::Duration;
 
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VCRedirectUriParams, default_presentation_url_scheme,
+    OpenID4VCRedirectUriParams, default_authorization_request_leeway,
+    default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -35,11 +36,16 @@ pub(crate) struct Params {
     pub common: CommonParams,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderParams {
     pub requires_encrypted_response: bool,
     pub supported_client_id_schemes: Vec<ClientIdPrefix>,
+    /// Allowed clock skew when validating timestamps of the received authorization request
+    #[serde(default = "default_authorization_request_leeway")]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub authorization_request_leeway_seconds: Duration,
 }
 
 #[serde_as]

@@ -32,6 +32,7 @@ impl OID4VPFinal1_0SwiyuService {
             &self.key_algorithm_provider,
             &*self.key_provider,
             payload,
+            decomposed.payload.expires_at,
         )
         .await
         .error_while("formatting authorization request")?;

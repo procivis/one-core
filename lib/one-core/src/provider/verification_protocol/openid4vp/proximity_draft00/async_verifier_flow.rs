@@ -11,7 +11,7 @@ use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{
     AuthorizationRequest, ClientIdPrefix, VerifierInfoAttestation, VpTokenResponse,
 };
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
@@ -133,6 +133,7 @@ pub(super) struct AsyncVerifierFlowParams {
     pub cancellation_token: CancellationToken,
     /// config entry of each transport type the flow was started for
     pub transport_ids: HashMap<TransportType, TransportId>,
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 enum FlowState {
@@ -328,7 +329,13 @@ async fn get_request_v2(
         client_metadata: None,
         transaction_data: vec![],
     };
-    let signed_request = request_as_signed_jwt(request.clone(), &params.verifier, auth_fn).await?;
+    let signed_request = request_as_signed_jwt(
+        request.clone(),
+        &params.verifier,
+        auth_fn,
+        params.expires_at,
+    )
+    .await?;
     Ok((signed_request, request))
 }
 
@@ -368,6 +375,7 @@ pub(super) async fn request_as_signed_jwt<T: Serialize>(
     params: T,
     verifier: &VerifierIdentifier,
     auth_fn: AuthenticationFn,
+    expires_at: Option<OffsetDateTime>,
 ) -> Result<String, VerificationProtocolError> {
     let (key_id, public_key_info, issuer) = match verifier {
         VerifierIdentifier::Did(did) => (auth_fn.get_key_id(), None, Some(did.to_string())),
@@ -382,7 +390,7 @@ pub(super) async fn request_as_signed_jwt<T: Serialize>(
         public_key_info,
         JWTPayload {
             issued_at: None,
-            expires_at: Some(crate::clock::now_utc().add(Duration::hours(1))),
+            expires_at: expires_at.or(Some(crate::clock::now_utc().add(Duration::hours(1)))),
             invalid_before: None,
             issuer,
             subject: None,

@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use shared_types::{DidValue, TransportId, VerificationProtocolId};
 use standardized_types::openid4vp::dcql::DcqlQuery;
 use standardized_types::openid4vp::{AuthorizationRequest, ClientIdPrefix, VpTokenResponse};
+use time::Duration;
 use url::Url;
 
 use crate::error::ContextWithErrorCode;
@@ -25,7 +26,9 @@ use crate::provider::verification_protocol::openid4vp::final1_0::mappers::decode
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
     CreatePresentationParams, create_interaction_and_proof, create_presentation,
 };
-use crate::provider::verification_protocol::openid4vp::validator::validate_x509_hash_request_token;
+use crate::provider::verification_protocol::openid4vp::validator::{
+    validate_request_token_timestamps, validate_x509_hash_request_token,
+};
 use crate::repository::interaction_repository::InteractionRepository;
 
 #[async_trait]
@@ -75,6 +78,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
     transport_id: TransportId,
     verification_fn: VerificationFn,
     certificate_validator: &dyn CertificateValidator,
+    authorization_request_leeway: Duration,
 ) -> Result<InvitationResponseDTO<'a>, VerificationProtocolError> {
     let (interaction_id, mut proof) = create_interaction_and_proof(
         None,
@@ -92,6 +96,7 @@ pub(crate) async fn handle_invitation_with_transport<'a, T: Send + Sync + 'stati
         .await?;
     let request_token: DecomposedJwt<AuthorizationRequest> =
         Jwt::decompose_token(&authz_request_token).error_while("parsing request JWT")?;
+    validate_request_token_timestamps(&request_token, authorization_request_leeway)?;
 
     let (client_id, client_id_scheme) =
         decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;

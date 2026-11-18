@@ -234,6 +234,11 @@ pub(crate) fn default_presentation_url_scheme() -> String {
     "openid4vp".to_string()
 }
 
+/// Allowed clock skew when validating timestamps of a received authorization request
+pub(crate) fn default_authorization_request_leeway() -> time::Duration {
+    time::Duration::seconds(60)
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCRedirectUriParams {

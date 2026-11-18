@@ -8,6 +8,7 @@ use standardized_types::openid4vp::{
     AuthorizationRequest, AuthorizationRequestQueryParams, ClientIdPrefix, ClientMetadata,
     ResponseMode,
 };
+use time::OffsetDateTime;
 use url::Url;
 
 use super::model::Params;
@@ -58,6 +59,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
     authorization_request: AuthorizationRequest,
+    expires_at: Option<OffsetDateTime>,
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
     let params = if openidvc_params.use_request_uri {
         AuthorizationRequestQueryParams {
@@ -77,6 +79,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     key_algorithm_provider,
                     key_provider,
                     authorization_request,
+                    expires_at,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
@@ -104,6 +107,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     client_id_without_prefix.clone(),
                     response_uri,
                     authorization_request,
+                    expires_at,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
@@ -121,6 +125,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     key_algorithm_provider,
                     key_provider,
                     authorization_request,
+                    expires_at,
                 )
                 .await?;
                 return Ok(AuthorizationRequestQueryParams {
