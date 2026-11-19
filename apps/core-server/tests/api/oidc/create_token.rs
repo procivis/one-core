@@ -1,7 +1,9 @@
 use assert2::let_assert;
 use futures::future::join_all;
 use one_core::error::ErrorCode;
-use one_core::model::credential::{CredentialStateEnum, CredentialType, UpdateCredentialRequest};
+use one_core::model::credential::{
+    Credential, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+};
 use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
 use one_core::model::history::{HistoryAction, HistoryMetadata};
 use one_core::model::interaction::InteractionType;
@@ -403,17 +405,183 @@ async fn test_oidc_issuer_create_token_with_tx_code_success() {
 }
 
 #[tokio::test]
-async fn test_oidc_issuer_create_token_wrong_tx_code() {
+async fn test_oidc_issuer_create_token_wrong_tx_code_legacy_interaction_data() {
+    let legacy_data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+        "transaction_code": "correct" // only 1 attempt with legacy data
+    });
+
+    let (context, credential, _) = create_token_wrong_tx_code(legacy_data).await;
+
+    // invalid tx_code means the issuance failed
+    assert_eq!(credential.common().state, CredentialStateEnum::Error);
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.common().id.into())
+        .await;
+    let errors: Vec<_> = history
+        .values
+        .into_iter()
+        .filter(|entry| entry.action == HistoryAction::Errored)
+        .collect();
+    let_assert!([entry] = errors.as_slice());
+    let_assert!(Some(HistoryMetadata::ErrorMetadata(error)) = &entry.metadata);
+    assert_eq!(error.error_code, ErrorCode::BR_0048);
+    assert!(error.message.contains("transaction code"));
+    assert!(error.message.contains("invalid_grant"));
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_tx_code_retry_with_correct_code() {
+    let interaction_data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+        "transaction_code": {
+            "code": "correct",
+            "remaining_attempts": 2
+        }
+    });
+
+    let (context, credential, pre_authorized_code) =
+        create_token_wrong_tx_code(interaction_data).await;
+
+    // still pending
+    assert_eq!(credential.common().state, CredentialStateEnum::Pending);
+
+    // last retry with correct code
+    let resp = context
+        .api
+        .ssi
+        .create_token(
+            credential.common().schema.id(),
+            TokenRequest::PreAuthorizedCode {
+                code: pre_authorized_code,
+                tx_code: Some("correct".to_string()),
+            },
+        )
+        .await;
+
+    assert_eq!(200, resp.status());
+    let resp = resp.json_value().await;
+    assert!(resp.get("access_token").is_some());
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_tx_code_retry_with_invalid_code() {
+    let interaction_data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+        "transaction_code": {
+            "code": "correct",
+            "remaining_attempts": 2
+        }
+    });
+
+    let (context, credential, pre_authorized_code) =
+        create_token_wrong_tx_code(interaction_data).await;
+
+    // still pending
+    assert_eq!(credential.common().state, CredentialStateEnum::Pending);
+
+    // last retry with invalid code
+    let resp = context
+        .api
+        .ssi
+        .create_token(
+            credential.common().schema.id(),
+            TokenRequest::PreAuthorizedCode {
+                code: pre_authorized_code,
+                tx_code: Some("invalid".to_string()),
+            },
+        )
+        .await;
+
+    assert_eq!(400, resp.status());
+
+    let resp = resp.json_value().await;
+    resp["error"].assert_eq(&"invalid_grant".to_string());
+    resp["error_description"].assert_eq(&"Invalid tx_code, no attempts remaining".to_string());
+
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Error);
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_tx_code_exhausted_rejects_correct_code() {
+    // a parallel request exhausted the attempts after this request loaded the still pending credential
+    let interaction_data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+        "transaction_code": {
+            "code": "correct",
+            "remaining_attempts": 0
+        }
+    });
+
+    let (context, credential, pre_authorized_code) = setup_tx_code_issuance(interaction_data).await;
+
+    let resp = context
+        .api
+        .ssi
+        .create_token(
+            credential.common().schema.id(),
+            TokenRequest::PreAuthorizedCode {
+                code: pre_authorized_code,
+                tx_code: Some("correct".to_string()),
+            },
+        )
+        .await;
+
+    assert_eq!(400, resp.status());
+    let resp = resp.json_value().await;
+    resp["error"].assert_eq(&"invalid_grant".to_string());
+    resp["error_description"].assert_eq(&"Invalid tx_code, no attempts remaining".to_string());
+
+    let credential = context.db.credentials.get(&credential.common().id).await;
+    assert_eq!(credential.common().state, CredentialStateEnum::Error);
+}
+
+async fn create_token_wrong_tx_code(
+    interaction_data: serde_json::Value,
+) -> (TestContext, Credential, String) {
+    let (context, credential, pre_authorized_code) = setup_tx_code_issuance(interaction_data).await;
+
+    let resp = context
+        .api
+        .ssi
+        .create_token(
+            credential.common().schema.id(),
+            TokenRequest::PreAuthorizedCode {
+                code: pre_authorized_code.clone(),
+                tx_code: Some("wrong".to_string()),
+            },
+        )
+        .await;
+
+    assert_eq!(400, resp.status());
+
+    let resp = resp.json_value().await;
+    resp["error"].assert_eq(&"invalid_grant".to_string());
+    let error_description = resp["error_description"].as_str().unwrap();
+    assert!(error_description.starts_with("Invalid tx_code"));
+
+    let credential = context.db.credentials.get(&credential.common().id).await;
+
+    (context, credential, pre_authorized_code)
+}
+
+/// Pending credential with a schema requiring a tx_code
+async fn setup_tx_code_issuance(
+    interaction_data: serde_json::Value,
+) -> (TestContext, Credential, String) {
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
     let interaction_id = InteractionId::new();
 
-    let data = json!({
-        "pre_authorized_code_used": false,
-        "access_token_hash": [],
-        "transaction_code": "correct"
-    });
     let credential_schema = context
         .db
         .credential_schemas
@@ -439,7 +607,7 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
             InteractionType::Issuance,
             TestingInteractionParams {
                 id: Some(interaction_id),
-                data: Some(serde_json::to_vec(&data).unwrap()),
+                data: Some(serde_json::to_vec(&interaction_data).unwrap()),
                 ..Default::default()
             },
         )
@@ -460,43 +628,7 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
         )
         .await;
 
-    let pre_authorized_code = interaction_id.to_string();
-    let resp = context
-        .api
-        .ssi
-        .create_token(
-            credential_schema.id,
-            TokenRequest::PreAuthorizedCode {
-                code: pre_authorized_code,
-                tx_code: Some("wrong".to_string()),
-            },
-        )
-        .await;
-
-    assert_eq!(400, resp.status());
-
-    let resp = resp.json_value().await;
-    resp["error"].assert_eq(&"invalid_grant".to_string());
-
-    // invalid tx_code means the issuance failed
-    let credential = context.db.credentials.get(&credential.common().id).await;
-    assert_eq!(credential.common().state, CredentialStateEnum::Error);
-
-    let history = context
-        .db
-        .histories
-        .get_by_entity_id(&credential.common().id.into())
-        .await;
-    let errors: Vec<_> = history
-        .values
-        .into_iter()
-        .filter(|entry| entry.action == HistoryAction::Errored)
-        .collect();
-    let_assert!([entry] = errors.as_slice());
-    let_assert!(Some(HistoryMetadata::ErrorMetadata(error)) = &entry.metadata);
-    assert_eq!(error.error_code, ErrorCode::BR_0048);
-    assert!(error.message.contains("transaction code"));
-    assert!(error.message.contains("invalid_grant"));
+    (context, credential, interaction_id.to_string())
 }
 
 #[tokio::test]
@@ -566,6 +698,71 @@ async fn test_oidc_issuer_create_token_tx_code_missing() {
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code,
                 tx_code: None,
+            },
+        )
+        .await;
+
+    assert_eq!(400, resp.status());
+
+    let resp = resp.json_value().await;
+    resp["error"].assert_eq(&"invalid_request".to_string());
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_tx_code_not_requested() {
+    // GIVEN
+    let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let interaction_id = InteractionId::new();
+
+    let data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": []
+    });
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test-schema", &org, Default::default())
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            &org,
+            InteractionType::Issuance,
+            TestingInteractionParams {
+                id: Some(interaction_id),
+                data: Some(serde_json::to_vec(&data).unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    let pre_authorized_code = interaction_id.to_string();
+    let resp = context
+        .api
+        .ssi
+        .create_token(
+            credential_schema.id,
+            TokenRequest::PreAuthorizedCode {
+                code: pre_authorized_code,
+                tx_code: Some("not-requested".to_string()),
             },
         )
         .await;

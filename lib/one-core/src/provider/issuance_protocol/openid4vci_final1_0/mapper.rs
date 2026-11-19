@@ -26,20 +26,20 @@ use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, KeyStorageSecurity, LayoutProperties,
     LogoProperties, WalletAttestation,
 };
-use crate::provider::issuance_protocol::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::error::OpenIDIssuanceError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
-    type Error = OpenID4VCIError;
+    type Error = OpenIDIssuanceError;
     fn try_from(value: &TokenResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             pre_authorized_code_used: true,
             access_token_hash: SHA256
                 .hash(value.access_token.expose_secret().as_bytes())
-                .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+                .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))?,
             access_token_expires_at: Some(
                 OffsetDateTime::from_unix_timestamp(value.expires_in.0)
-                    .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+                    .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))?,
             ),
             refresh_token_hash: value
                 .refresh_token
@@ -47,7 +47,7 @@ impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
                 .map(|refresh_token| {
                     SHA256
                         .hash(refresh_token.expose_secret().as_bytes())
-                        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))
+                        .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))
                 })
                 .transpose()?,
             refresh_token_expires_at: value
@@ -55,7 +55,7 @@ impl TryFrom<&TokenResponse> for OpenID4VCIIssuerInteractionDataDTO {
                 .as_ref()
                 .map(|refresh_token_expires_in| {
                     OffsetDateTime::from_unix_timestamp(refresh_token_expires_in.0)
-                        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))
+                        .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))
                 })
                 .transpose()?,
             notification_ids: Default::default(),

@@ -40,7 +40,7 @@ pub(crate) async fn validate_credential_request_format(
     let CredentialRequestIdentifier::CredentialConfigurationId(credential_configuration_id) =
         &request.credential
     else {
-        return Err(OpenID4VCIError::InvalidRequest.into());
+        return Err(OpenID4VCIError::invalid_request("invalid configuration_id").into());
     };
 
     let formats = schema.formats.as_ref().await?;
@@ -147,7 +147,7 @@ pub(crate) fn validate_pop_audience(
         .unwrap_or(&empty_vec)
         .contains(&expected_audience.to_string())
     {
-        return Err(OpenID4VCIError::InvalidRequest.into());
+        return Err(OpenID4VCIError::invalid_request("invalid aud").into());
     }
     Ok(())
 }
@@ -164,7 +164,7 @@ pub(crate) fn validate_pop_issuer(
         .as_ref()
         .ok_or_else(|| WalletAttestationError::WiaMalformed("missing sub claim".to_string()))?;
     if pop_token.payload.issuer.as_ref() != Some(client_id) {
-        return Err(OpenID4VCIError::InvalidRequest.into());
+        return Err(OpenID4VCIError::invalid_request("client_id mismatch").into());
     }
     Ok(())
 }
@@ -176,27 +176,30 @@ pub(crate) fn verify_pop_signature(
 ) -> Result<(), OID4VCIFinal1_0ServiceError> {
     let (_, alg) = key_algorithm_provider
         .key_algorithm_from_jose_alg(&pop_token.header.algorithm)
-        .ok_or(OpenID4VCIError::InvalidRequest)?;
+        .ok_or(OpenID4VCIError::invalid_request(format!(
+            "unsupported algorithm: {}",
+            pop_token.header.algorithm
+        )))?;
 
     let jwk = wallet_unit_attestation
         .payload
         .proof_of_possession_key
         .as_ref()
-        .ok_or(OpenID4VCIError::InvalidRequest)?
+        .ok_or(OpenID4VCIError::invalid_request("missing cnf"))?
         .jwk
         .jwk()
         .to_owned();
 
     let pop_signer_key_handle = alg
         .parse_jwk(&jwk)
-        .map_err(|_| OpenID4VCIError::InvalidRequest)?;
+        .map_err(|_| OpenID4VCIError::invalid_request("invalid JWK"))?;
 
     pop_signer_key_handle
         .signature()
-        .ok_or(OpenID4VCIError::InvalidRequest)?
+        .ok_or(OpenID4VCIError::invalid_request("invalid JWK algorithm"))?
         .public()
         .verify(pop_token.unverified_jwt.as_bytes(), &pop_token.signature)
-        .map_err(|_| OpenID4VCIError::InvalidRequest)?;
+        .map_err(|_| OpenID4VCIError::invalid_request("invalid signature"))?;
 
     Ok(())
 }

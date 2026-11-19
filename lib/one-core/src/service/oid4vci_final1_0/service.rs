@@ -50,10 +50,6 @@ use crate::config::core_config::{BlobStorageType, FormatType, IssuanceProtocolTy
 use crate::error::{
     ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError,
 };
-use crate::mapper::exchange::{
-    get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
-    get_issuance_param_token_expires_in,
-};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::common::{LockType, SortDirection};
 use crate::model::credential::{
@@ -91,7 +87,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::{
     OpenID4VCIProofHolderBinding, OpenID4VCIProofJWTFormatter, OpenID4VCIVerifiedProof,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
-    create_credential_offer, oidc_issuer_create_token, parse_access_token,
+    CreateTokenOutcome, create_credential_offer, oidc_issuer_create_token, parse_token,
 };
 use crate::provider::revocation::model::{Operation, RevocationState};
 use crate::repository::error::DataLayerError;
@@ -372,12 +368,12 @@ impl OID4VCIFinal1_0Service {
         .error_while("validating protocol type")?;
 
         throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
-            .map_err(|_| OpenID4VCIError::InvalidRequest)?;
+            .map_err(|_| OpenID4VCIError::invalid_request("offer expired"))?;
 
         let credential_schema = credential.common().schema.as_ref().await?;
 
         if credential_schema.id != credential_schema_id {
-            return Err(OpenID4VCIError::InvalidRequest.into());
+            return Err(OpenID4VCIError::invalid_request("invalid URL").into());
         }
 
         let interaction = credential
@@ -424,7 +420,7 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credential schema")?;
 
-        let interaction_id = parse_access_token(access_token)?;
+        let interaction_id = parse_token(access_token)?;
         let interaction = self
             .interaction_repository
             .get_interaction(&interaction_id, None)
@@ -516,11 +512,11 @@ impl OID4VCIFinal1_0Service {
                 tracing::info!(
                     "Batch issuance limit: {batch_size}, #proofs submitted: {num_proofs}"
                 );
-                return Err(OpenID4VCIError::InvalidRequest.into());
+                return Err(OpenID4VCIError::invalid_request("invalid batch size").into());
             }
             None if num_proofs != 1 => {
                 tracing::info!("Batch issuance not supported, #proofs submitted: {num_proofs}");
-                return Err(OpenID4VCIError::InvalidRequest.into());
+                return Err(OpenID4VCIError::invalid_request("batches not available").into());
             }
             _ => {
                 tracing::debug!("#proofs submitted: {num_proofs}");
@@ -654,7 +650,7 @@ impl OID4VCIFinal1_0Service {
 
         serde_json::from_slice(&payload).map_err(|error| {
             tracing::info!("Failed parsing decrypted credential request: {error}");
-            OpenID4VCIError::InvalidRequest.into()
+            OpenID4VCIError::invalid_request("failed to parse request").into()
         })
     }
 
@@ -1375,7 +1371,7 @@ impl OID4VCIFinal1_0Service {
         dpop_proof: Option<&str>,
         request: NotificationRequest,
     ) -> Result<Option<DpopNonce>, OID4VCIFinal1_0ServiceError> {
-        let interaction_id = parse_access_token(access_token)?;
+        let interaction_id = parse_token(access_token)?;
         let interaction = self
             .interaction_repository
             .get_interaction(&interaction_id, None)
@@ -1467,7 +1463,7 @@ impl OID4VCIFinal1_0Service {
             tracing::info!(
                 "Rejecting token request: interaction {interaction_id} does not match credential schema {credential_schema_id}"
             );
-            return Err(OpenID4VCIError::InvalidGrant.into());
+            return Err(OpenID4VCIError::invalid_request("invalid URL").into());
         }
 
         // only batch_parent can be in state `Expiring`,
@@ -1520,20 +1516,6 @@ impl OID4VCIFinal1_0Service {
         let generate_new_token =
             || SecretString::from(format!("{}.{}", interaction_id, generate_alphanumeric(32)));
 
-        let pre_authorization_expires_in = get_issuance_param_pre_authorization_expires_in(
-            &self.config,
-            credential.issuance_protocol()?,
-        )
-        .error_while("getting issuance params")?;
-        let access_token_expires_in =
-            get_issuance_param_token_expires_in(&self.config, credential.issuance_protocol()?)
-                .error_while("getting issuance params")?;
-        let refresh_token_expires_in = get_issuance_param_refresh_token_expires_in(
-            &self.config,
-            credential.issuance_protocol()?,
-        )
-        .error_while("getting issuance params")?;
-
         let tx: BoxFuture<Result<_, OID4VCIFinal1_0ServiceError>> = async {
             // Lock the interaction to ensure exclusive access
             let mut interaction = self
@@ -1565,15 +1547,63 @@ impl OID4VCIFinal1_0Service {
                     .await?;
             }
 
-            let mut response = oidc_issuer_create_token(
+            let mut response = match oidc_issuer_create_token(
                 &interaction_data,
                 &convert_inner(credentials.to_owned()),
                 &interaction,
                 &request,
-                pre_authorization_expires_in,
-                access_token_expires_in,
-                refresh_token_expires_in,
-            )?;
+                params.pre_authorized_code_expires_in_seconds,
+                params.token_expires_in_seconds,
+                params.refresh_expires_in_seconds,
+            )? {
+                CreateTokenOutcome::Issued(response) => response,
+                CreateTokenOutcome::InvalidTxCode(transaction_code) => {
+                    // persisted under the interaction lock, also when exhausted: parallel requests
+                    // must not see a stale number of remaining attempts
+                    let remaining_attempts = transaction_code.remaining_attempts;
+                    let data = serde_json::to_vec(&OpenID4VCIIssuerInteractionDataDTO {
+                        transaction_code: Some(transaction_code),
+                        ..interaction_data
+                    })
+                    .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
+                    self.interaction_repository
+                        .update_interaction(
+                            interaction.id,
+                            UpdateInteractionRequest {
+                                data: Some(Some(data)),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("updating remaining tx_code attempts")?;
+
+                    if remaining_attempts == 0 {
+                        // no more retries -> the issuance failed
+                        let err =
+                            OID4VCIFinal1_0ServiceError::from(invalid_tx_code_error(0));
+                        for credential in &credentials {
+                            self.credential_repository
+                                .update_credential(
+                                    credential.common().id,
+                                    UpdateCredentialRequest {
+                                        state: Some(CredentialStateEnum::Error),
+                                        error_info: Some(HistoryErrorMetadata {
+                                            error_code: err.error_code(),
+                                            message: format!(
+                                                "Issuance failed while validating transaction code: {err}"
+                                            ),
+                                        }),
+                                        ..Default::default()
+                                    },
+                                )
+                                .await
+                                .error_while("updating credential")?;
+                        }
+                    }
+                    return Ok(TokenTxOutcome::InvalidTxCode { remaining_attempts });
+                }
+            };
+
             response.token_type = if dpop_binding.is_some() {
                 TokenType::DPoP
             } else {
@@ -1646,8 +1676,9 @@ impl OID4VCIFinal1_0Service {
                 || credential_schema.batch_size.is_some()
             {
                 response.refresh_token = Some(generate_new_token());
-                response.refresh_token_expires_in =
-                    Some(ExpiresIn((now + refresh_token_expires_in).unix_timestamp()));
+                response.refresh_token_expires_in = Some(ExpiresIn(
+                    (now + params.refresh_expires_in_seconds).unix_timestamp(),
+                ));
             }
 
             let mut new_interaction_data: OpenID4VCIIssuerInteractionDataDTO =
@@ -1671,50 +1702,27 @@ impl OID4VCIFinal1_0Service {
                 .update_interaction(interaction.id, interaction.into())
                 .await
                 .error_while("updating credential interaction")?;
-            Ok((response, dpop_binding.and_then(|binding| binding.nonce)))
+            Ok(TokenTxOutcome::Issued {
+                response,
+                dpop_nonce: dpop_binding.and_then(|binding| binding.nonce),
+            })
         }
         .boxed();
-        let result = self
+        let outcome = self
             .transaction_manager
             .tx(tx)
             .await
-            .error_while("creating token")?;
+            .error_while("creating token")??;
 
-        let (response, dpop_nonce) = match result {
-            Ok(result) => result,
-            // Invalid tx-code entry means the issuance failed, we do not allow to retry
-            Err(
-                err @ OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidGrant),
-            ) if matches!(
-                request,
-                TokenRequest::PreAuthorizedCode {
-                    pre_authorized_code: _,
-                    tx_code: Some(_)
-                }
-            ) =>
-            {
-                for credential in &credentials {
-                    self.credential_repository
-                        .update_credential(
-                            credential.common().id,
-                            UpdateCredentialRequest {
-                                state: Some(CredentialStateEnum::Error),
-                                error_info: Some(HistoryErrorMetadata {
-                                    error_code: err.error_code(),
-                                    message: format!(
-                                        "Issuance failed while validating transaction code: {err}"
-                                    ),
-                                }),
-                                ..Default::default()
-                            },
-                        )
-                        .await
-                        .error_while("updating credential")?;
-                }
-                return Err(err);
-            }
-            Err(err) => {
-                return Err(err);
+        let (response, dpop_nonce) = match outcome {
+            TokenTxOutcome::Issued {
+                response,
+                dpop_nonce,
+            } => (response, dpop_nonce),
+            // the remaining attempts (and the failed issuance) have been persisted within the
+            // committed transaction
+            TokenTxOutcome::InvalidTxCode { remaining_attempts } => {
+                return Err(invalid_tx_code_error(remaining_attempts).into());
             }
         };
 
@@ -2474,7 +2482,7 @@ impl OID4VCIFinal1_0Service {
         let protocol = match protocol {
             ProtocolSelection::ProtocolId(id) => id,
             ProtocolSelection::AccessToken(access_token) => {
-                let interaction_id = parse_access_token(&access_token)
+                let interaction_id = parse_token(&access_token)
                     .inspect_err(|err| tracing::warn!("Failed to parse access token: {err}"))
                     .ok()?;
                 self.protocol_from_interaction_lenient(&interaction_id)
@@ -2525,6 +2533,26 @@ fn swiss_profile_header(params: &OpenID4VCIFinal1Params) -> SwissProfileHeader {
         profile_version: params
             .swiyu_mode
             .then(|| SWISS_PROFILE_ISSUANCE_VERSION.to_string()),
+    }
+}
+
+/// Result of the token creation transaction, committed in both cases
+enum TokenTxOutcome {
+    Issued {
+        response: TokenResponse,
+        dpop_nonce: Option<DpopNonce>,
+    },
+    InvalidTxCode {
+        remaining_attempts: usize,
+    },
+}
+
+fn invalid_tx_code_error(remaining_attempts: usize) -> OpenID4VCIError {
+    match remaining_attempts {
+        0 => OpenID4VCIError::invalid_grant("Invalid tx_code, no attempts remaining"),
+        remaining_attempts => OpenID4VCIError::invalid_grant(format!(
+            "Invalid tx_code, remaining attempts: {remaining_attempts}"
+        )),
     }
 }
 

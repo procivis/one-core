@@ -115,11 +115,17 @@ pub enum OpenID4VCIError {
     #[error("unsupported_grant_type")]
     UnsupportedGrantType,
     #[error("invalid_grant")]
-    InvalidGrant,
+    InvalidGrant {
+        /// Returned as `error_description`
+        description: Option<String>,
+    },
     #[error("invalid_client")]
     InvalidClient,
     #[error("invalid_request")]
-    InvalidRequest,
+    InvalidRequest {
+        /// Returned as `error_description`
+        description: Option<String>,
+    },
     #[error("invalid_token")]
     InvalidToken,
     #[error("invalid_nonce")]
@@ -150,9 +156,20 @@ pub enum OpenID4VCIError {
     InvalidDpopProof,
     #[error("use_dpop_nonce")]
     UseDpopNonce,
+}
 
-    #[error("oidc runtime error: `{0}`")]
-    RuntimeError(String),
+impl OpenID4VCIError {
+    pub(crate) fn invalid_grant(description: impl Into<String>) -> Self {
+        Self::InvalidGrant {
+            description: Some(description.into()),
+        }
+    }
+
+    pub fn invalid_request(description: impl Into<String>) -> Self {
+        Self::InvalidRequest {
+            description: Some(description.into()),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -165,4 +182,7 @@ pub enum OpenIDIssuanceError {
 
     #[error("OpenID4VCI error: `{0}`")]
     OpenID4VCI(#[from] OpenID4VCIError),
+
+    #[error("Mapping error: `{0}`")]
+    MappingError(String),
 }

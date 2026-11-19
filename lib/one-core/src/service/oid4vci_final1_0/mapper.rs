@@ -1,22 +1,25 @@
 use std::str::FromStr;
 
 use one_crypto::utilities::generate_alphanumeric;
-use shared_types::{BlobId, CredentialSchemaFormatId, InteractionId};
+use shared_types::{BlobId, CredentialSchemaFormatId, InteractionId, IssuanceProtocolId};
 use standardized_types::oauth2::token::TokenRequest;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::error::OID4VCIFinal1_0ServiceError;
+use crate::config::ConfigValidationError;
+use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::interaction::Interaction;
 use crate::proto::dpop_handler::DpopParams;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::model::OpenID4VCRedirectUriParams;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    FormatNotification, OpenID4VCDpopParams, OpenID4VCIIssuerInteractionDataDTO,
+    FormatNotification, OpenID4VCDpopParams, OpenID4VCIFinal1Params,
+    OpenID4VCIIssuerInteractionDataDTO,
 };
-use crate::provider::issuance_protocol::openid4vci_final1_0::service::parse_refresh_token;
+use crate::provider::issuance_protocol::openid4vci_final1_0::service::parse_token;
 
 pub(crate) fn interaction_data_to_dto(
     interaction: &Interaction,
@@ -105,13 +108,12 @@ pub(super) fn interaction_id_from_token_request(
         TokenRequest::PreAuthorizedCode {
             pre_authorized_code,
             tx_code: _,
-        } => Uuid::from_str(pre_authorized_code)
-            .map_err(|_| OpenID4VCIError::InvalidRequest.into())
-            .map(Into::into),
-        TokenRequest::AuthorizationCode { .. } => Err(OpenID4VCIError::InvalidGrant.into()),
-        TokenRequest::RefreshToken { refresh_token } => {
-            parse_refresh_token(refresh_token).map_err(Into::into)
+        } => InteractionId::from_str(pre_authorized_code)
+            .map_err(|_| OpenID4VCIError::invalid_request("invalid pre-authorized code").into()),
+        TokenRequest::AuthorizationCode { .. } => {
+            Err(OpenID4VCIError::invalid_grant("Authorization code grant not supported").into())
         }
+        TokenRequest::RefreshToken { refresh_token } => Ok(parse_token(refresh_token)?),
     }
 }
 
@@ -132,4 +134,12 @@ pub(super) fn issued_credential_update(
         wallet_key_attestation_blob_id,
         ..Default::default()
     })
+}
+
+pub(crate) fn get_issuance_param_redirect_uri(
+    config: &CoreConfig,
+    protocol: &IssuanceProtocolId,
+) -> Result<OpenID4VCRedirectUriParams, ConfigValidationError> {
+    let params: OpenID4VCIFinal1Params = config.issuance_protocol.get(protocol)?;
+    Ok(params.redirect_uri)
 }

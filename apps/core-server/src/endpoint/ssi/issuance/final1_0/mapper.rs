@@ -62,11 +62,19 @@ impl TryFrom<OpenID4VCITokenRequestRestDTO> for TokenRequest {
             ("refresh_token", None, Some(refresh_token), None) => {
                 Ok(Self::RefreshToken { refresh_token })
             }
+            ("urn:ietf:params:oauth:grant-type:pre-authorized_code", None, _, _) => Err(
+                OpenID4VCIError::invalid_request("missing pre-authorized_code"),
+            ),
+            ("refresh_token", _, None, _) => {
+                Err(OpenID4VCIError::invalid_request("missing refresh_token"))
+            }
             ("urn:ietf:params:oauth:grant-type:pre-authorized_code" | "refresh_token", _, _, _) => {
-                Err(OpenID4VCIError::InvalidRequest)
+                Err(OpenID4VCIError::invalid_request(
+                    "invalid param combination",
+                ))
             }
             (grant, _, _, _) if !grant.is_empty() => Err(OpenID4VCIError::UnsupportedGrantType),
-            _ => Err(OpenID4VCIError::InvalidRequest),
+            _ => Err(OpenID4VCIError::invalid_request("missing grant_type")),
         }
     }
 }

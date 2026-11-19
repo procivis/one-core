@@ -120,6 +120,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::model::ProtocolArtifact;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::TransactionCode;
 use crate::provider::key_algorithm::ecdsa::ecdsa_public_key_as_jwk;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::Features as KeyAlgorithmFeatures;
@@ -312,6 +313,14 @@ impl OpenID4VCIFinal1_0 {
         } else {
             client
         };
+
+        if params.max_tx_code_attempts == 0 {
+            return Err(InitializationError::InvalidParamValue {
+                key: format!("{config_id}.maxTxCodeAttempts"),
+                description: "No attempts allowed".to_string(),
+            });
+        }
+
         Ok(Self {
             client,
             metadata_cache,
@@ -2450,8 +2459,7 @@ impl OpenID4VCIFinal1_0 {
                     proof_types_supported.to_owned(),
                     credential_signing_alg_values_supported,
                 )
-                .await
-                .map_err(OpenIDIssuanceError::OpenID4VCI)?;
+                .await?;
 
                 credential_configurations_supported
                     .insert(format.ecosystem_schema_id.to_owned(), configuration);
@@ -2970,7 +2978,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 refresh_token_hash: None,
                 refresh_token_expires_at: None,
                 notification_ids: Default::default(),
-                transaction_code: transaction_code.to_owned(),
+                transaction_code: transaction_code.as_ref().map(|code| TransactionCode {
+                    code: code.to_owned(),
+                    remaining_attempts: self.params.max_tx_code_attempts,
+                }),
                 formats,
                 dpop_jkt: None,
                 client_instance_jkt: None,

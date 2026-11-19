@@ -45,6 +45,8 @@ pub(crate) struct OpenID4VCIFinal1Params {
 
     pub nonce: Option<OpenID4VCNonceParams>,
     pub oauth_attestation_challenge: Option<OpenID4VCNonceParams>,
+    #[serde(default = "default_num_attempts")]
+    pub max_tx_code_attempts: usize,
 
     #[serde_as(as = "DurationSeconds<i64>")]
     pub oauth_attestation_leeway_seconds: Duration,
@@ -78,6 +80,10 @@ pub(crate) struct OpenID4VCIFinal1Params {
     /// Holders using a new key for every client attestation cannot refresh tokens while enabled.
     #[serde(default = "default_true")]
     pub enforce_client_instance_binding: bool,
+}
+
+fn default_num_attempts() -> usize {
+    5
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -429,7 +435,8 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
         deserialize_with = "deserialize_format_notifications"
     )]
     pub notification_ids: Vec<FormatNotification>,
-    pub transaction_code: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_transaction_code")]
+    pub transaction_code: Option<TransactionCode>,
     #[serde(default)]
     pub formats: Option<Vec<CredentialSchemaFormatId>>,
     /// JWK SHA-256 thumbprint of the DPoP key the issued tokens are bound to
@@ -470,6 +477,32 @@ fn deserialize_format_notifications<'de, D: Deserializer<'de>>(
             })
             .into_iter()
             .collect(),
+    })
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct TransactionCode {
+    pub code: String,
+    pub remaining_attempts: usize,
+}
+
+// interactions created before retry support store only the code
+fn deserialize_transaction_code<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<TransactionCode>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Repr {
+        Current(Option<TransactionCode>),
+        Legacy(Option<String>),
+    }
+
+    Ok(match Repr::deserialize(deserializer)? {
+        Repr::Current(entry) => entry,
+        Repr::Legacy(code) => code.map(|code| TransactionCode {
+            code,
+            remaining_attempts: 1,
+        }),
     })
 }
 

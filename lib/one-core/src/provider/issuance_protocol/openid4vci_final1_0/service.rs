@@ -16,16 +16,15 @@ use standardized_types::openid4vci::{
 };
 use standardized_types::openid4vp::dcql::{ClaimPath, PathSegment};
 use time::Duration;
-use uuid::Uuid;
 
 use super::model::{
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
-    PreparedMetadata,
+    PreparedMetadata, TransactionCode,
 };
 use super::validator::{
-    throw_if_credential_state_not_eq, throw_if_interaction_created_date,
-    throw_if_interaction_pre_authorized_code_used, throw_if_token_request_invalid,
-    throw_if_tx_code_invalid, validate_refresh_token,
+    TxCodeCheck, throw_if_credential_state_not_eq, throw_if_interaction_created_date,
+    throw_if_interaction_pre_authorized_code_used, throw_if_token_request_invalid, tx_code_check,
+    validate_refresh_token,
 };
 use crate::config::core_config::FormatType;
 use crate::mapper::NESTED_CLAIM_MARKER;
@@ -144,7 +143,7 @@ pub(crate) async fn credential_configuration_supported(
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: IndexMap<String, ProofTypeSupported>,
     credential_signing_alg_values_supported: Vec<String>,
-) -> Result<CredentialConfiguration, OpenID4VCIError> {
+) -> Result<CredentialConfiguration, OpenIDIssuanceError> {
     let credential_metadata_claims =
         create_claims_dtos_from_claims(credential_schema, format).await?;
     let display_dtos = create_display_dtos_from_schema(credential_schema, format).await?;
@@ -159,7 +158,7 @@ pub(crate) async fn credential_configuration_supported(
         None => None,
         Some(policy) => Some(
             serde_json::from_str(policy)
-                .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+                .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))?,
         ),
     };
 
@@ -209,18 +208,18 @@ pub(crate) async fn credential_configuration_supported(
 async fn create_claims_dtos_from_claims(
     credential_schema: &CredentialSchema,
     format: &CredentialSchemaFormat,
-) -> Result<Vec<ClaimMetadata>, OpenID4VCIError> {
+) -> Result<Vec<ClaimMetadata>, OpenIDIssuanceError> {
     let claim_schemas = credential_schema
         .claim_schemas
         .as_ref()
         .await
-        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+        .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))?;
 
     let claim_mappings = format
         .claim_mappings
         .as_ref()
         .await
-        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+        .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))?;
 
     let mandatory_by_claim_id = calculate_mandatory_claims(&claim_schemas);
     let claim_mappings_by_claim_id: HashMap<_, _> = claim_mappings
@@ -236,7 +235,7 @@ async fn create_claims_dtos_from_claims(
         }
 
         let path = paths_by_claim_id.remove(&claim_schema.id).ok_or_else(|| {
-            OpenID4VCIError::RuntimeError("Missing claim metadata path".to_string())
+            OpenIDIssuanceError::MappingError("Missing claim metadata path".to_string())
         })?;
 
         let display = create_claim_display_dtos(claim_schema).await?;
@@ -272,7 +271,7 @@ struct MappedClaimPath<'a> {
 fn claim_metadata_paths(
     claim_schemas: &[ClaimSchema],
     mappings_by_claim_id: &HashMap<ClaimSchemaId, &CredentialSchemaFormatClaimSchema>,
-) -> Result<HashMap<ClaimSchemaId, ClaimPath>, OpenID4VCIError> {
+) -> Result<HashMap<ClaimSchemaId, ClaimPath>, OpenIDIssuanceError> {
     let mut ordered_schemas = claim_schemas
         .iter()
         .filter(|schema| !schema.metadata)
@@ -298,7 +297,7 @@ fn claim_metadata_paths(
         }
 
         let mapping = mappings_by_claim_id.get(&schema.id).ok_or_else(|| {
-            OpenID4VCIError::RuntimeError(format!("Missing claim mapping for `{}`", schema.key))
+            OpenIDIssuanceError::MappingError(format!("Missing claim mapping for `{}`", schema.key))
         })?;
         let properties = mapping_property_path(mapping);
         let segments = if let Some(parent) = ancestors.last() {
@@ -306,7 +305,7 @@ fn claim_metadata_paths(
                 .strip_prefix(parent.properties.as_slice())
                 .filter(|suffix| !suffix.is_empty())
             else {
-                return Err(OpenID4VCIError::RuntimeError(format!(
+                return Err(OpenIDIssuanceError::MappingError(format!(
                     "Inconsistent claim mapping: `{}` does not extend its ancestor `{}`",
                     schema.key, parent.schema_key
                 )));
@@ -398,7 +397,7 @@ fn mark_always_present_claims(
 async fn create_display_dto_from_schema(
     credential_schema: &CredentialSchema,
     format: &CredentialSchemaFormat,
-) -> Result<CredentialDisplay, OpenID4VCIError> {
+) -> Result<CredentialDisplay, OpenIDIssuanceError> {
     let mut display = CredentialDisplay {
         name: credential_schema.name.clone(),
         ..Default::default()
@@ -428,14 +427,14 @@ async fn create_display_dto_from_schema(
             .claim_schemas
             .as_ref()
             .await
-            .map_err(|err| OpenID4VCIError::RuntimeError(err.to_string()))?;
+            .map_err(|err| OpenIDIssuanceError::MappingError(err.to_string()))?;
         let claim_mappings = format
             .claim_mappings
             .as_ref()
             .await
-            .map_err(|err| OpenID4VCIError::RuntimeError(err.to_string()))?;
+            .map_err(|err| OpenIDIssuanceError::MappingError(err.to_string()))?;
         let attribute_to_claim_path =
-            move |attribute: Option<String>| -> Result<Option<String>, OpenID4VCIError> {
+            move |attribute: Option<String>| -> Result<Option<String>, OpenIDIssuanceError> {
                 let Some(attribute) = attribute else {
                     return Ok(None);
                 };
@@ -443,7 +442,7 @@ async fn create_display_dto_from_schema(
                 let claim_schema_id = claim_schemas
                     .iter()
                     .find(|cs| cs.key == attribute)
-                    .ok_or(OpenID4VCIError::RuntimeError(format!(
+                    .ok_or(OpenIDIssuanceError::MappingError(format!(
                         "No claim schema found for attribute: {attribute}"
                     )))?
                     .id;
@@ -451,7 +450,7 @@ async fn create_display_dto_from_schema(
                 let mapping = claim_mappings
                     .iter()
                     .find(|m| m.claim_schema_id == claim_schema_id)
-                    .ok_or(OpenID4VCIError::RuntimeError(format!(
+                    .ok_or(OpenIDIssuanceError::MappingError(format!(
                         "No mapping for claim schema ID: {claim_schema_id}"
                     )))?;
 
@@ -480,7 +479,7 @@ async fn create_display_dto_from_schema(
         display.additional_values.insert(
             PROCIVIS_DESIGN_KEY.to_string(),
             serde_json::to_value(procivis_design)
-                .map_err(|err| OpenID4VCIError::RuntimeError(err.to_string()))?,
+                .map_err(|err| OpenIDIssuanceError::MappingError(err.to_string()))?,
         );
     }
 
@@ -490,12 +489,12 @@ async fn create_display_dto_from_schema(
 async fn create_display_dtos_from_schema(
     credential_schema: &CredentialSchema,
     format: &CredentialSchemaFormat,
-) -> Result<Vec<CredentialDisplay>, OpenID4VCIError> {
+) -> Result<Vec<CredentialDisplay>, OpenIDIssuanceError> {
     let translations = credential_schema
         .translations
         .as_ref()
         .await
-        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+        .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))?;
 
     if translations.is_empty() {
         return Ok(vec![
@@ -512,7 +511,7 @@ async fn create_display_dtos_from_schema(
             LocalizedTextField::Name => entry.0 = Some(translation.value.clone()),
             LocalizedTextField::Description => entry.1 = Some(translation.value.clone()),
             _ => {
-                return Err(OpenID4VCIError::RuntimeError(
+                return Err(OpenIDIssuanceError::MappingError(
                     "invalid localized text field".to_string(),
                 ));
             }
@@ -534,15 +533,15 @@ async fn create_display_dtos_from_schema(
 
 async fn create_claim_display_dtos(
     claim: &ClaimSchema,
-) -> Result<Vec<ClaimDisplay>, OpenID4VCIError> {
+) -> Result<Vec<ClaimDisplay>, OpenIDIssuanceError> {
     let translations = claim
         .translations
         .as_ref()
         .await
-        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+        .map_err(|e| OpenIDIssuanceError::MappingError(e.to_string()))?;
 
     if translations.is_empty() {
-        return Err(OpenID4VCIError::RuntimeError(
+        return Err(OpenIDIssuanceError::MappingError(
             "Claim schema should have at least one translation".to_string(),
         ));
     }
@@ -697,6 +696,17 @@ pub(crate) fn create_credential_offer(
     })
 }
 
+pub(crate) enum CreateTokenOutcome {
+    /// All checks passed
+    Issued(TokenResponse),
+    /// Wrong tx_code supplied, or no attempts remaining.
+    /// Contains the transaction code with decremented remaining attempts, to be persisted by the
+    /// caller within the same transaction as the interaction lock.
+    /// No attempts remaining if `0`: the issuance failed.
+    InvalidTxCode(TransactionCode),
+}
+
+/// Returns an error if the token request is invalid for other reasons than a wrong tx_code
 pub(crate) fn oidc_issuer_create_token(
     interaction_data: &OpenID4VCIIssuerInteractionDataDTO,
     credentials: &[Credential],
@@ -705,45 +715,43 @@ pub(crate) fn oidc_issuer_create_token(
     pre_authorization_expires_in: Duration,
     access_token_expires_in: Duration,
     refresh_token_expires_in: Duration,
-) -> Result<TokenResponse, OpenIDIssuanceError> {
+) -> Result<CreateTokenOutcome, OpenIDIssuanceError> {
     throw_if_token_request_invalid(request)?;
-    throw_if_tx_code_invalid(interaction_data.transaction_code.as_ref(), request)?;
 
-    let generate_new_token = || {
-        SecretString::from(format!(
-            "{}.{}",
-            interaction.id,
-            utilities::generate_alphanumeric(32)
-        ))
-    };
+    // checked before the tx_code, so that no attempt is consumed on an offer that cannot be redeemed anyway
+    if let TokenRequest::PreAuthorizedCode { .. } = request {
+        throw_if_interaction_created_date(pre_authorization_expires_in, interaction)?;
+        throw_if_interaction_pre_authorized_code_used(interaction_data)?;
+
+        credentials.iter().try_for_each(|credential| {
+            throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)
+        })?;
+    }
+
+    if let TxCodeCheck::Failed(transaction_code) =
+        tx_code_check(interaction_data.transaction_code.as_ref(), request)?
+    {
+        return Ok(CreateTokenOutcome::InvalidTxCode(transaction_code));
+    }
 
     let now = crate::clock::now_utc();
-    Ok(match request {
-        TokenRequest::PreAuthorizedCode { .. } => {
-            throw_if_interaction_created_date(pre_authorization_expires_in, interaction)?;
-            throw_if_interaction_pre_authorized_code_used(interaction_data)?;
-
-            credentials.iter().try_for_each(|credential| {
-                throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)
-            })?;
-
-            TokenResponse {
-                access_token: generate_new_token(),
-                token_type: TokenType::Bearer,
-                expires_in: ExpiresIn((now + access_token_expires_in).unix_timestamp()),
-                refresh_token: None,
-                refresh_token_expires_in: None,
-            }
-        }
+    Ok(CreateTokenOutcome::Issued(match request {
+        TokenRequest::PreAuthorizedCode { .. } => TokenResponse {
+            access_token: generate_new_token(&interaction.id),
+            token_type: TokenType::Bearer,
+            expires_in: ExpiresIn((now + access_token_expires_in).unix_timestamp()),
+            refresh_token: None,
+            refresh_token_expires_in: None,
+        },
 
         TokenRequest::RefreshToken { refresh_token } => {
             validate_refresh_token(interaction_data, refresh_token)?;
             // we update both the access token and the refresh token
             TokenResponse {
-                access_token: generate_new_token(),
+                access_token: generate_new_token(&interaction.id),
                 token_type: TokenType::Bearer,
                 expires_in: ExpiresIn((now + access_token_expires_in).unix_timestamp()),
-                refresh_token: Some(generate_new_token()),
+                refresh_token: Some(generate_new_token(&interaction.id)),
                 refresh_token_expires_in: Some(ExpiresIn(
                     (now + refresh_token_expires_in).unix_timestamp(),
                 )),
@@ -751,26 +759,25 @@ pub(crate) fn oidc_issuer_create_token(
         }
         TokenRequest::AuthorizationCode { .. } => {
             return Err(OpenIDIssuanceError::OpenID4VCI(
-                OpenID4VCIError::InvalidGrant,
+                OpenID4VCIError::invalid_grant("Authorization code grant not supported"),
             ));
         }
-    })
+    }))
 }
 
-pub(crate) fn parse_refresh_token(token: &str) -> Result<InteractionId, OpenID4VCIError> {
-    parse_access_token(token)
+fn generate_new_token(interaction_id: &InteractionId) -> SecretString {
+    format!("{interaction_id}.{}", utilities::generate_alphanumeric(32)).into()
 }
 
-pub(crate) fn parse_access_token(access_token: &str) -> Result<InteractionId, OpenID4VCIError> {
-    let mut splitted_token = access_token.split('.');
+pub(crate) fn parse_token(token: &str) -> Result<InteractionId, OpenIDIssuanceError> {
+    let mut splitted_token = token.split('.');
     if splitted_token.to_owned().count() != 2 {
-        return Err(OpenID4VCIError::InvalidToken);
+        return Err(OpenID4VCIError::InvalidToken.into());
     }
 
     Ok(
-        Uuid::from_str(splitted_token.next().ok_or(OpenID4VCIError::InvalidToken)?)
-            .map_err(|_| OpenID4VCIError::RuntimeError("Could not parse UUID".to_owned()))?
-            .into(),
+        InteractionId::from_str(splitted_token.next().ok_or(OpenID4VCIError::InvalidToken)?)
+            .map_err(|_| OpenID4VCIError::InvalidToken)?,
     )
 }
 

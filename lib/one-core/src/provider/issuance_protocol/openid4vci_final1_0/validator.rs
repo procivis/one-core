@@ -5,7 +5,7 @@ use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::CredentialConfiguration;
 
 use super::mapper::credential_config_to_holder_signing_algs_and_key_storage_security;
-use super::model::OpenID4VCIIssuerInteractionDataDTO;
+use super::model::{OpenID4VCIIssuerInteractionDataDTO, TransactionCode};
 use crate::config::core_config::KeySecurityLevelType;
 use crate::error::ContextWithErrorCode;
 use crate::model::claim::Claim;
@@ -35,52 +35,75 @@ pub(crate) fn throw_if_token_request_invalid(
             pre_authorized_code,
             tx_code: _,
         } if pre_authorized_code.is_empty() => Err(OpenIDIssuanceError::OpenID4VCI(
-            OpenID4VCIError::InvalidRequest,
+            OpenID4VCIError::invalid_request("invalid pre-authorized code"),
         )),
-        TokenRequest::RefreshToken { refresh_token } if refresh_token.is_empty() => Err(
-            OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::InvalidRequest),
-        ),
+        TokenRequest::RefreshToken { refresh_token } if refresh_token.is_empty() => {
+            Err(OpenIDIssuanceError::OpenID4VCI(
+                OpenID4VCIError::invalid_request("invalid refreshToken"),
+            ))
+        }
 
         _ => Ok(()),
     }
 }
 
-pub(crate) fn throw_if_tx_code_invalid(
-    expected_code: Option<&String>,
+pub(super) enum TxCodeCheck {
+    /// No tx_code expected, or the correct one supplied
+    Passed,
+    /// Wrong tx_code supplied, or no attempts remaining.
+    /// Contains the transaction code with decremented remaining attempts, `0` if none remain.
+    Failed(TransactionCode),
+}
+
+/// Returns an error if the tx_code is missing or not expected
+pub(super) fn tx_code_check(
+    expected_code: Option<&TransactionCode>,
     request: &TokenRequest,
-) -> Result<(), OpenID4VCIError> {
+) -> Result<TxCodeCheck, OpenID4VCIError> {
     match (expected_code, request) {
         (
             Some(expected_code),
             TokenRequest::PreAuthorizedCode {
-                pre_authorized_code: _,
                 tx_code: Some(request_code),
+                ..
             },
         ) => {
-            if expected_code != request_code {
-                tracing::info!("wrong tx_code supplied");
-                return Err(OpenID4VCIError::InvalidGrant);
+            // checked first: once exhausted, even the correct code is rejected
+            if expected_code.remaining_attempts == 0 {
+                tracing::info!("tx_code supplied, but no attempts remaining");
+                return Ok(TxCodeCheck::Failed(expected_code.to_owned()));
             }
-            tracing::debug!("correct tx_code supplied");
+
+            if &expected_code.code == request_code {
+                tracing::debug!("correct tx_code supplied");
+                return Ok(TxCodeCheck::Passed);
+            }
+
+            let remaining_attempts = expected_code.remaining_attempts.saturating_sub(1);
+            tracing::info!("wrong tx_code supplied, remaining attempts: {remaining_attempts}");
+            Ok(TxCodeCheck::Failed(TransactionCode {
+                code: expected_code.code.to_owned(),
+                remaining_attempts,
+            }))
         }
         (Some(_), _) => {
             tracing::info!("tx_code not supplied");
-            return Err(OpenID4VCIError::InvalidRequest);
+            Err(OpenID4VCIError::invalid_request("tx_code not supplied"))
         }
         (
             None,
             TokenRequest::PreAuthorizedCode {
-                pre_authorized_code: _,
-                tx_code: Some(_),
+                tx_code: Some(_), ..
             },
         ) => {
             tracing::info!("tx_code supplied while not expected");
-            return Err(OpenID4VCIError::InvalidRequest);
+            Err(OpenID4VCIError::invalid_request("tx_code not expected"))
         }
-        (None, _) => {} // OK, correct handling without tx_code
-    };
-
-    Ok(())
+        (None, _) => {
+            // OK, correct handling without tx_code
+            Ok(TxCodeCheck::Passed)
+        }
+    }
 }
 
 pub(crate) fn throw_if_interaction_created_date(
@@ -89,7 +112,7 @@ pub(crate) fn throw_if_interaction_created_date(
 ) -> Result<(), OpenIDIssuanceError> {
     if interaction.created_date + pre_authorization_expires_in < crate::clock::now_utc() {
         return Err(OpenIDIssuanceError::OpenID4VCI(
-            OpenID4VCIError::InvalidGrant,
+            OpenID4VCIError::invalid_grant("Pre-authorized code expired"),
         ));
     }
     Ok(())
@@ -100,7 +123,7 @@ pub(crate) fn throw_if_interaction_pre_authorized_code_used(
 ) -> Result<(), OpenIDIssuanceError> {
     if interaction_data.pre_authorized_code_used {
         return Err(OpenIDIssuanceError::OpenID4VCI(
-            OpenID4VCIError::InvalidGrant,
+            OpenID4VCIError::invalid_grant("Pre-authorized code already used"),
         ));
     }
     Ok(())
@@ -125,7 +148,7 @@ pub(super) fn validate_refresh_token(
 ) -> Result<(), OpenIDIssuanceError> {
     let Some(stored_refresh_token_hash) = interaction_data.refresh_token_hash.as_ref() else {
         return Err(OpenIDIssuanceError::OpenID4VCI(
-            OpenID4VCIError::InvalidRequest,
+            OpenID4VCIError::invalid_request("unexpected refreshToken"),
         ));
     };
 
@@ -141,7 +164,7 @@ pub(super) fn validate_refresh_token(
 
     let Some(expires_at) = interaction_data.refresh_token_expires_at.as_ref() else {
         return Err(OpenIDIssuanceError::OpenID4VCI(
-            OpenID4VCIError::InvalidRequest,
+            OpenID4VCIError::invalid_request("unexpected refreshToken"),
         ));
     };
 

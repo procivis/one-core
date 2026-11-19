@@ -13,13 +13,13 @@ use crate::config::validator::datatype::{DatatypeValidationError, validate_datat
 use crate::config::validator::protocol::validate_protocol_type;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::mapper::exchange::get_issuance_param_redirect_uri;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::model::CommonParams;
+use crate::service::oid4vci_final1_0::mapper::get_issuance_param_redirect_uri;
 use crate::validator::required_claims::missing_required_claim_paths;
 
 pub(crate) fn throw_if_credential_state_eq(

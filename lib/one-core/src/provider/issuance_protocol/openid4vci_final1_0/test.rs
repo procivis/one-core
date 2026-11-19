@@ -44,8 +44,10 @@ use super::dpop::DpopContext;
 use super::model::{
     HolderBinding, HolderCredentialConfiguration, HolderInteractionData,
     OpenID4VCIIssuerInteractionDataDTO, RequestedCredential, TokenRequestAttestationHeaders,
+    TransactionCode,
 };
 use super::service::{build_issuer_display, calculate_mandatory_claims, create_credential_offer};
+use super::validator::{TxCodeCheck, tx_code_check};
 use crate::clock::now_utc;
 use crate::config::core_config::{
     CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
@@ -555,6 +557,75 @@ fn test_issuer_interaction_data_deserializes_legacy_notification_id() {
     let_assert!([entry] = data.notification_ids.as_slice());
     assert_eq!(entry.notification_id, "notification");
     assert!(entry.format.is_none());
+}
+
+#[rstest::rstest]
+#[case::legacy_code(json!("123456"), Some(("123456", 1)))]
+#[case::current(json!({"code": "123456", "remaining_attempts": 3}), Some(("123456", 3)))]
+#[case::null(json!(null), None)]
+fn test_issuer_interaction_data_deserializes_transaction_code(
+    #[case] transaction_code: Value,
+    #[case] expected: Option<(&str, usize)>,
+) {
+    let data: OpenID4VCIIssuerInteractionDataDTO = serde_json::from_value(json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+        "transaction_code": transaction_code,
+    }))
+    .unwrap();
+
+    assert_eq!(
+        data.transaction_code
+            .as_ref()
+            .map(|code| (code.code.as_str(), code.remaining_attempts)),
+        expected
+    );
+}
+
+#[test]
+fn test_issuer_interaction_data_deserializes_missing_transaction_code() {
+    let data: OpenID4VCIIssuerInteractionDataDTO = serde_json::from_value(json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+    }))
+    .unwrap();
+
+    assert!(data.transaction_code.is_none());
+}
+
+#[rstest::rstest]
+#[case::correct_code("correct", 3, None)]
+#[case::wrong_code_retry("wrong", 3, Some(2))]
+#[case::wrong_code_last_attempt("wrong", 1, Some(0))]
+#[case::exhausted_wrong_code("wrong", 0, Some(0))]
+// a parallel request may have exhausted the attempts in the meantime
+#[case::exhausted_correct_code("correct", 0, Some(0))]
+fn test_tx_code_check(
+    #[case] supplied_code: &str,
+    #[case] remaining_attempts: usize,
+    #[case] expected_failure_remaining_attempts: Option<usize>,
+) {
+    let result = tx_code_check(
+        Some(&TransactionCode {
+            code: "correct".to_string(),
+            remaining_attempts,
+        }),
+        &TokenRequest::PreAuthorizedCode {
+            pre_authorized_code: "code".to_string(),
+            tx_code: Some(supplied_code.to_string()),
+        },
+    )
+    .unwrap();
+
+    match (result, expected_failure_remaining_attempts) {
+        (TxCodeCheck::Passed, None) => {}
+        (TxCodeCheck::Failed(code), Some(expected_remaining_attempts)) => {
+            assert_eq!(code.code, "correct");
+            assert_eq!(code.remaining_attempts, expected_remaining_attempts);
+        }
+        (TxCodeCheck::Passed, Some(_)) => panic!("expected tx_code check to fail"),
+        (TxCodeCheck::Failed(_), None) => panic!("expected tx_code check to pass"),
+    }
 }
 
 #[tokio::test]

@@ -1585,7 +1585,7 @@ async fn test_create_token_empty_pre_authorized_code() {
     assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
-            OpenID4VCIError::InvalidRequest
+            OpenID4VCIError::InvalidRequest { .. }
         ))
     );
 }
@@ -1655,7 +1655,7 @@ async fn test_create_token_pre_authorized_code_used() {
     assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
-            OpenID4VCIError::InvalidGrant
+            OpenID4VCIError::InvalidGrant { .. }
         ))
     );
 }
@@ -4081,7 +4081,7 @@ async fn test_create_token_fails_credential_schema_mismatch(#[case] request: Tok
     assert_matches!(
         result,
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(
-            OpenID4VCIError::InvalidGrant
+            OpenID4VCIError::InvalidRequest { .. }
         ))
     );
 }

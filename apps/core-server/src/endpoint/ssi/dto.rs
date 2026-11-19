@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
 };
-use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
     JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcDisplayMetadataDTO,
@@ -72,9 +71,8 @@ pub(crate) struct OpenID4VCIErrorResponseRestDTO {
     pub error_description: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
-#[from(OpenID4VCIError)]
 pub(crate) enum OpenID4VCIErrorRestEnum {
     UnsupportedGrantType,
     InvalidGrant,
@@ -93,7 +91,6 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     UseFreshAttestation,
     InvalidDpopProof,
     UseDpopNonce,
-    RuntimeError(String),
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

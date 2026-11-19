@@ -108,6 +108,7 @@ issuanceProtocol:
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300
+        maxTxCodeAttempts: 5
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
@@ -129,6 +130,7 @@ issuanceProtocol:
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300
+        maxTxCodeAttempts: 5
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false
@@ -152,6 +154,7 @@ issuanceProtocol:
         oauthAttestationLeewaySeconds: 60
         keyAttestationLeewaySeconds: 60
         preAuthorizedCodeExpiresInSeconds: 300
+        maxTxCodeAttempts: 5
         tokenExpiresInSeconds: 86400
         refreshExpiresInSeconds: 7776000 # 90 days in seconds
         enforceClientInstanceBinding: false

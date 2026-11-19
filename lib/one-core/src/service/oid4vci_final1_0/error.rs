@@ -146,6 +146,7 @@ impl From<OpenIDIssuanceError> for OID4VCIFinal1_0ServiceError {
             }
             OpenIDIssuanceError::ValidationError(err) => Self::ValidationError(err),
             OpenIDIssuanceError::OpenID4VCI(err) => Self::OpenID4VCIError(err),
+            OpenIDIssuanceError::MappingError(err) => Self::MappingError(err),
         }
     }
 }
