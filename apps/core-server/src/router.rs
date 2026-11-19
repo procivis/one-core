@@ -146,8 +146,6 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
         Router::new()
     };
 
-    let hide_error_response_cause = config.hide_error_response_cause;
-
     let mut router = management_endpoints
         .merge(external_endpoints)
         .merge(vcapi_endpoints)
@@ -155,9 +153,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
         .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .merge(openapi_endpoints)
         .merge(system_endpoints)
-        .layer(CatchPanicLayer::custom(move |err| {
-            handle_panic(err, hide_error_response_cause)
-        }))
+        .layer(CatchPanicLayer::custom(handle_panic))
         .layer(Extension(config))
         .layer(middleware::from_fn(
             crate::middleware::add_disable_cache_headers,
@@ -580,7 +576,8 @@ fn get_external_endpoints(config: &ServerConfig) -> OpenApiRouter<AppState> {
         .routes(routes!(ssi::controller::ssi_get_trust_collection))
 }
 
-fn handle_panic(err: Box<dyn Any + Send + 'static>, hide_cause: bool) -> Response<Body> {
+/// Logs the panic and returns a generic 500 response.
+fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {
     let message = if let Some(s) = err.downcast_ref::<String>() {
         s.clone()
     } else if let Some(s) = err.downcast_ref::<&str>() {
@@ -591,5 +588,5 @@ fn handle_panic(err: Box<dyn Any + Send + 'static>, hide_cause: bool) -> Respons
 
     tracing::error!("PANIC occurred in request: {message}");
 
-    ErrorResponse::for_panic(message, hide_cause).into_response()
+    ErrorResponse::for_panic().into_response()
 }

@@ -183,7 +183,17 @@ impl TransactionManager for TransactionManagerImpl {
             tokio::spawn(async move { db.begin_with_config(explicit_isolation, access_mode).await })
                 .await
                 .map_err(|e| {
-                    DataLayerError::TransactionError(format!("Failed to start transaction: {e}"))
+                    // The JoinError display contains the panic message, which must not be
+                    // propagated (it may end up in an HTTP response). Log it instead.
+                    tracing::error!("Transaction start task failed: {e}");
+                    let reason = if e.is_panic() {
+                        "task panicked"
+                    } else {
+                        "task cancelled"
+                    };
+                    DataLayerError::TransactionError(format!(
+                        "Failed to start transaction: {reason}"
+                    ))
                 })?
         };
         let transaction = new_tx.map_err(|e| {

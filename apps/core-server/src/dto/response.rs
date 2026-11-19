@@ -6,7 +6,7 @@ use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
 
-use super::error::{Cause, ErrorResponseRestDTO};
+use super::error::ErrorResponseRestDTO;
 use crate::dto::error::status_code::error_code_to_http_status;
 use crate::router::AppState;
 
@@ -25,19 +25,16 @@ pub(crate) enum ErrorResponse {
 }
 
 impl ErrorResponse {
-    pub fn for_panic(panic_cause: String, hide_cause: bool) -> Self {
-        Self::ServerError(
-            ErrorResponseRestDTO {
-                code: ErrorCode::BR_0000.into(),
-                message: "Panic".to_string(),
-                cause: Some(Cause {
-                    message: panic_cause,
-                }),
-                data: None,
-                status: None,
-            }
-            .hide_cause(hide_cause),
-        )
+    /// Generic response for a request that panicked.
+    /// The panic message must only be logged, never included in the response.
+    pub fn for_panic() -> Self {
+        Self::ServerError(ErrorResponseRestDTO {
+            code: ErrorCode::BR_0000.into(),
+            message: "Internal server error".to_string(),
+            cause: None,
+            data: None,
+            status: None,
+        })
     }
 
     fn from_error(error: &impl ErrorCodeMixin, hide_cause: bool) -> Self {
