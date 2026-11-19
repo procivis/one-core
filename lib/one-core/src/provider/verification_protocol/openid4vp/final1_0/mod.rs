@@ -306,9 +306,9 @@ impl OpenID4VPFinal1_0 {
                     FormatType::Jwt => FormatType::Jwt,
                 };
 
-                let presentation_formatter = self
+                let (_, presentation_formatter) = self
                     .presentation_formatter_provider
-                    .get_presentation_formatter(&presentation_format.to_string())
+                    .get_presentation_formatter_by_type(presentation_format)
                     .ok_or_else(|| {
                         VerificationProtocolError::Failed("Formatter not found".to_string())
                     })?;

@@ -7,7 +7,7 @@ use super::dto::{
     PresentationVerifyResponse,
 };
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
-use crate::config::core_config::VerificationProtocolType;
+use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -260,13 +260,11 @@ impl VCAPIService {
         )
         .await?;
 
-        const CREDENTIAL_FORMAT: &str = "JSON_LD_CLASSIC";
-
-        let presentation_formatter = self
+        let (_, presentation_formatter) = self
             .presentation_formatter_provider
-            .get_presentation_formatter(CREDENTIAL_FORMAT)
+            .get_presentation_formatter_by_type(FormatType::JsonLdClassic)
             .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::Formatter(CREDENTIAL_FORMAT.to_string()),
+                MissingProviderError::FormatterType(FormatType::JsonLdClassic),
             ))?;
 
         let string_token =

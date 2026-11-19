@@ -17,11 +17,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait PresentationFormatterProvider: Send + Sync {
-    fn get_presentation_formatter(
-        &self,
-        formatter_id: &str,
-    ) -> Option<Arc<dyn PresentationFormatter>>;
-
     /// Retrieves a presentation formatter by type, if any.
     /// Returns the "config" (quotes because it is not in config; but it should be) name and formatter.
     fn get_presentation_formatter_by_type(
@@ -36,20 +31,13 @@ struct PresentationFormatterProviderImpl {
 }
 
 impl PresentationFormatterProvider for PresentationFormatterProviderImpl {
-    fn get_presentation_formatter(
-        &self,
-        formatter_id: &str,
-    ) -> Option<Arc<dyn PresentationFormatter>> {
-        self.presentation_formatters.get(formatter_id).cloned()
-    }
-
     fn get_presentation_formatter_by_type(
         &self,
         format_type: FormatType,
     ) -> Option<(String, Arc<dyn PresentationFormatter>)> {
         let name = self.type_to_name.get(&format_type)?;
-        let formatter = self.get_presentation_formatter(name)?;
-        Some((name.to_owned(), formatter))
+        let formatter = self.presentation_formatters.get(name)?;
+        Some((name.to_owned(), formatter.to_owned()))
     }
 }
 

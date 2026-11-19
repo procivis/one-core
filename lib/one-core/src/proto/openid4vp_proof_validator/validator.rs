@@ -31,6 +31,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     ExtractPresentationCtx, ExtractedPresentation, PresentedTransactionData,
 };
@@ -313,7 +314,7 @@ impl OpenId4VpProofValidatorProto {
                         )
                         .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?,
                     };
-                    let (presentation_format, _) = self
+                    let (_, presentation_formatter) = self
                         .presentation_formatter_provider
                         .get_presentation_formatter_by_type(presentation_format_type)
                         .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
@@ -327,7 +328,7 @@ impl OpenId4VpProofValidatorProto {
                         .validate_presentation(
                             presentation_string,
                             &interaction_data.nonce,
-                            &presentation_format,
+                            &*presentation_formatter,
                             context.clone(),
                         )
                         .await?;
@@ -486,14 +487,9 @@ impl OpenId4VpProofValidatorProto {
         &self,
         presentation_string: &str,
         nonce: &str,
-        presentation_format: &str,
+        presentation_formatter: &dyn PresentationFormatter,
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, OpenID4VCError> {
-        let presentation_formatter = self
-            .presentation_formatter_provider
-            .get_presentation_formatter(presentation_format)
-            .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
-
         let presentation = presentation_formatter
             .extract_presentation(
                 presentation_string,

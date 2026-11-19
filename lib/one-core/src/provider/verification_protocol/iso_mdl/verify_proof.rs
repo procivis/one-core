@@ -5,7 +5,7 @@ use std::sync::Arc;
 use shared_types::CredentialSchemaId;
 
 use super::common::to_cbor;
-use crate::config::core_config::VerificationProtocolType;
+use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{ValidatedProofClaim, extracted_credential_to_model};
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -73,10 +73,9 @@ pub(super) async fn validate_proof(
         certificate_validator,
     });
 
-    let format = "MDOC";
-    let presentation_formatter = presentation_formatter_provider
-        .get_presentation_formatter(format)
-        .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
+    let (_, presentation_formatter) = presentation_formatter_provider
+        .get_presentation_formatter_by_type(FormatType::Mdoc)
+        .ok_or(MissingProviderError::FormatterType(FormatType::Mdoc))?;
 
     let presentation = presentation_formatter
         .extract_presentation(
@@ -145,8 +144,9 @@ pub(super) async fn validate_proof(
         expected_doctypes.insert(credential_schema.id, format.ecosystem_schema_id.clone());
     }
 
-    let credential_formatter =
-        credential_formatter_provider.get_credential_formatter(&format.into())?;
+    let (_, credential_formatter) = credential_formatter_provider
+        .get_formatter_by_type(FormatType::Mdoc)
+        .ok_or(MissingProviderError::FormatterType(FormatType::Mdoc))?;
 
     let mut proved_credentials = Vec::with_capacity(presentation.credentials.len());
     for credential in presentation.credentials {

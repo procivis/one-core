@@ -232,11 +232,6 @@ fn setup_mocks(
     let mut mocks = Mocks::default();
 
     let presentation_formatter = Arc::new(presentation_formatter);
-    let presentation_formatter_clone = presentation_formatter.clone();
-    mocks
-        .presentation_formatter_provider
-        .expect_get_presentation_formatter()
-        .returning(move |_| Some(presentation_formatter_clone.clone()));
     mocks
         .presentation_formatter_provider
         .expect_get_presentation_formatter_by_type()

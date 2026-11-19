@@ -49,7 +49,6 @@ impl PresentedTransactionData {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FormattedPresentation {
     pub vp_token: String,
-    pub oidc_format: String,
 }
 
 #[derive(Debug, Default, Clone)]

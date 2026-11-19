@@ -133,10 +133,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
             .tokenize(Some(&*holder_binding_fn))
             .await
             .error_while("creating jwt_vp_json token")?;
-        Ok(FormattedPresentation {
-            vp_token,
-            oidc_format: "jwt_vp_json".to_string(),
-        })
+        Ok(FormattedPresentation { vp_token })
     }
 
     async fn extract_presentation(

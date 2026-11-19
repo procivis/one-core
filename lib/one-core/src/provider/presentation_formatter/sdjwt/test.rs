@@ -75,7 +75,6 @@ async fn test_format_presentation_with_cnf_success() {
         .await
         .unwrap();
 
-    assert_eq!(presentation.oidc_format, "jwt_vp_json");
     let presented_credential = {
         let jwt_parts: Vec<&str> = presentation.vp_token.splitn(3, '.').collect();
 
@@ -242,7 +241,6 @@ async fn test_format_presentation_without_cnf_success() {
         .await
         .unwrap();
 
-    assert_eq!(presentation.oidc_format, "jwt_vp_json");
     let presented_credential = {
         let jwt_parts: Vec<&str> = presentation.vp_token.splitn(3, '.').collect();
 
@@ -309,7 +307,7 @@ async fn test_format_presentation_without_cnf_missing_audience_nonce_succeeds() 
         Arc::new(MockKeyAlgorithmProvider::default()),
     );
 
-    let presentation = sd_formatter
+    sd_formatter
         .format_presentation(
             vec![CredentialToPresent {
                 credential_token: token.clone(),
@@ -326,8 +324,6 @@ async fn test_format_presentation_without_cnf_missing_audience_nonce_succeeds() 
         )
         .await
         .unwrap();
-
-    assert_eq!(presentation.oidc_format, "jwt_vp_json");
 }
 
 #[tokio::test]

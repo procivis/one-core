@@ -172,7 +172,6 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
 
         Ok(FormattedPresentation {
             vp_token: encode_cbor_base64url(device_response)?,
-            oidc_format: "mso_mdoc".to_string(),
         })
     }
 

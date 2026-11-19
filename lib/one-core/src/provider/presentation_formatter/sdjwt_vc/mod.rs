@@ -128,10 +128,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         )
         .await?;
 
-        Ok(FormattedPresentation {
-            vp_token,
-            oidc_format: "vc+sd-jwt".to_string(),
-        })
+        Ok(FormattedPresentation { vp_token })
     }
 
     async fn extract_presentation(

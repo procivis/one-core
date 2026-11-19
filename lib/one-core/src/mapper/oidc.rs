@@ -74,8 +74,6 @@ pub(crate) fn map_from_oidc_format_to_core_detailed(
                 Ok(FormatType::JsonLdClassic)
             }
         }
-        "jwt_vp_json" => Ok(FormatType::Jwt),
-        "ldp_vp" => Ok(FormatType::JsonLdClassic),
         "mso_mdoc" => Ok(FormatType::Mdoc),
         _ => Err(OpenIDIssuanceError::OpenID4VCI(
             OpenID4VCIError::UnsupportedCredentialFormat,

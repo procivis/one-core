@@ -824,9 +824,9 @@ pub(super) async fn create_presentation(
             FormatType::Jwt => FormatType::Jwt,
         };
 
-        let presentation_formatter = params
+        let (_, presentation_formatter) = params
             .presentation_formatter_provider
-            .get_presentation_formatter(&presentation_format.to_string())
+            .get_presentation_formatter_by_type(presentation_format)
             .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
 
         let auth_fn = params.key_provider.get_signature_provider(

@@ -414,7 +414,6 @@ async fn test_presentation_submit_dc_api() {
                     status: 0,
                 })
                 .unwrap(),
-                oidc_format: "mso_mdoc".to_string(),
             })
         });
     let presentation_formatter = Arc::new(presentation_formatter);

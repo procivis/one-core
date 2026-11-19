@@ -868,20 +868,16 @@ async fn setup_submittable_presentation_dcql(
         },
         "vp_formats_supported":
         {
-            "jwt_vp_json":
-            {
-                "alg":["EdDSA"]
+            "jwt_vc_json": {
+                "alg": ["EdDSA"]
             },
-            "jwt_vc_json":{
-                "alg":["EdDSA"]
+            "ldp_vc": {
+                "proof_type": ["DataIntegrityProof"]
             },
-            "ldp_vp":{
-                "proof_type":["DataIntegrityProof"]
+            "mso_mdoc": {
+                "alg": ["EdDSA"]
             },
-            "mso_mdoc":{
-                "alg":["EdDSA"]
-            },
-            "vc+sd-jwt": {
+            "dc+sd-jwt": {
                 "kb-jwt_alg_values": ["EdDSA", "ES256"],
                 "sd-jwt_alg_values": ["EdDSA", "ES256"]
             }
@@ -1289,11 +1285,9 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
                     }]
                 },
                 "vp_formats_supported": {
-                    "jwt_vp_json": { "alg": ["EdDSA"] },
                     "jwt_vc_json": { "alg": ["EdDSA"] },
-                    "ldp_vp": { "proof_type": ["DataIntegrityProof"] },
                     "mso_mdoc": { "alg": ["EdDSA"] },
-                    "vc+sd-jwt": {
+                    "dc+sd-jwt": {
                         "kb-jwt_alg_values": ["EdDSA", "ES256"],
                         "sd-jwt_alg_values": ["EdDSA", "ES256"]
                     }

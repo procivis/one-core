@@ -2,11 +2,13 @@ use std::assert_matches;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use mockall::predicate::eq;
 use shared_types::{CredentialSchemaFormatClaimSchemaId, InteractionId};
 use similar_asserts::assert_eq;
 use time::Duration;
 
 use super::{ValidatedProofCredential, accept_proof, validate_proof};
+use crate::config::core_config::FormatType;
 use crate::mapper::ValidatedProofClaim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
@@ -87,8 +89,9 @@ async fn validate_proof_with_credential_status(
         .return_const(Duration::seconds(60));
     let mut presentation_formatter_provider = MockPresentationFormatterProvider::new();
     presentation_formatter_provider
-        .expect_get_presentation_formatter()
-        .return_once(move |_| Some(Arc::new(presentation_formatter)));
+        .expect_get_presentation_formatter_by_type()
+        .with(eq(FormatType::Mdoc))
+        .return_once(move |_| Some(("MDOC".into(), Arc::new(presentation_formatter))));
 
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
@@ -121,8 +124,9 @@ async fn validate_proof_with_credential_status(
         });
     let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
     credential_formatter_provider
-        .expect_get_credential_formatter()
-        .return_once(move |_| Ok(Arc::new(credential_formatter)));
+        .expect_get_formatter_by_type()
+        .with(eq(FormatType::Mdoc))
+        .return_once(move |_| Some(("MDOC".into(), Arc::new(credential_formatter))));
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -237,8 +241,9 @@ async fn test_validate_proof_rejects_mismatching_doctype() {
         .return_const(Duration::seconds(60));
     let mut presentation_formatter_provider = MockPresentationFormatterProvider::new();
     presentation_formatter_provider
-        .expect_get_presentation_formatter()
-        .return_once(move |_| Some(Arc::new(presentation_formatter)));
+        .expect_get_presentation_formatter_by_type()
+        .with(eq(FormatType::Mdoc))
+        .return_once(move |_| Some(("MDOC".into(), Arc::new(presentation_formatter))));
 
     // The presented credential DOES contain the requested `family_name`
     // element, but carries a different doctype.
@@ -285,8 +290,9 @@ async fn test_validate_proof_rejects_mismatching_doctype() {
         });
     let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
     credential_formatter_provider
-        .expect_get_credential_formatter()
-        .return_once(move |_| Ok(Arc::new(credential_formatter)));
+        .expect_get_formatter_by_type()
+        .with(eq(FormatType::Mdoc))
+        .return_once(move |_| Some(("MDOC".into(), Arc::new(credential_formatter))));
 
     // Revocation must never be reached: schema matching fails first.
     let revocation_method_provider = MockRevocationMethodProvider::new();

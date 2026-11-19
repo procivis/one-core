@@ -154,10 +154,7 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
 
         let resp = serde_json::to_string(&presentation)?;
 
-        Ok(FormattedPresentation {
-            vp_token: resp,
-            oidc_format: "ldp_vp".to_string(),
-        })
+        Ok(FormattedPresentation { vp_token: resp })
     }
 
     async fn extract_presentation(
