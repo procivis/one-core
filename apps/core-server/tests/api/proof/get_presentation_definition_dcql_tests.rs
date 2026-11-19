@@ -2484,6 +2484,7 @@ mod trusted_authorities {
     use one_core::mapper::x509::pem_chain_to_authority_key_identifiers;
     use one_core::model::certificate::Certificate;
     use one_core::model::organisation::Organisation;
+    use shared_types::CredentialId;
     use similar_asserts::assert_eq;
     use standardized_types::x509::KeyIdentifier;
 
@@ -2989,5 +2990,137 @@ mod trusted_authorities {
             "required": true
         }]);
         body["credentialSets"].assert_eq(&credential_sets);
+    }
+
+    /// Creates a holder credential issued by the DID of the context and returns its id together
+    /// with the presentation definition of a query restricted by `authorities`.
+    /// `authorities` gets the issuer DID to build the trusted authorities from.
+    async fn did_issued_credential_presentation_definition(
+        authorities: impl FnOnce(&str) -> Vec<TrustedAuthority>,
+    ) -> (CredentialId, serde_json::Value) {
+        let (context, org, did, identifier, key) = TestContext::new_with_did(None).await;
+
+        let vct = "https://example.org/foo";
+        let credential_schema = context
+            .db
+            .credential_schemas
+            .create(
+                "Simple test schema",
+                &org,
+                TestingCreateSchemaParams {
+                    schema_id: Some(vct.to_string()),
+                    format: Some("SD_JWT_VC".into()),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    role: Some(CredentialRole::Holder),
+                    claims_data: Some(vec![ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0].id,
+                        path: "firstName".to_string(),
+                        value: Some("name".to_string()),
+                        selectively_disclosable: true,
+                    }]),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+            .id("test_id")
+            .trusted_authorities(authorities(did.did.as_str()))
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+        let dcql_query = DcqlQuery::builder()
+            .credentials(vec![credential_query])
+            .build();
+        let proof = proof_for_dcql_query(
+            &context,
+            &org,
+            &identifier,
+            key,
+            &dcql_query,
+            "OPENID4VP_FINAL1",
+            None,
+        )
+        .await;
+
+        let resp = context
+            .api
+            .proofs
+            .presentation_definition_v2(proof.id)
+            .await;
+        assert_eq!(resp.status(), 200);
+        (credential.common().id, resp.json_value().await)
+    }
+
+    #[tokio::test]
+    async fn credential_found_when_did_matches_issuer() {
+        // GIVEN / WHEN
+        let (credential_id, body) = did_issued_credential_presentation_definition(|issuer_did| {
+            vec![TrustedAuthority::Did {
+                values: vec![
+                    // Add a bogus value to test whether a single match is sufficient
+                    "did:example:does-not-match".to_string(),
+                    issuer_did.to_string(),
+                ],
+            }]
+        })
+        .await;
+
+        // THEN
+        body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+            .assert_eq(&credential_id);
+    }
+
+    #[tokio::test]
+    async fn credential_found_when_did_matches_issuer_next_to_aki() {
+        // GIVEN / WHEN
+        let (credential_id, body) = did_issued_credential_presentation_definition(|issuer_did| {
+            vec![
+                // the DID issued credential cannot match an AKI, but matching any authority is
+                // sufficient
+                TrustedAuthority::AuthorityKeyId {
+                    values: vec![b"does-not-match".to_vec().into()],
+                },
+                TrustedAuthority::Did {
+                    values: vec![issuer_did.to_string()],
+                },
+            ]
+        })
+        .await;
+
+        // THEN
+        body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+            .assert_eq(&credential_id);
+    }
+
+    #[tokio::test]
+    async fn empty_result_on_did_mismatch() {
+        // GIVEN / WHEN
+        let (_, body) = did_issued_credential_presentation_definition(|_| {
+            vec![TrustedAuthority::Did {
+                values: vec!["did:example:does-not-match".to_string()],
+            }]
+        })
+        .await;
+
+        // THEN
+        body["credentialQueries"]["test_id"]["failureHint"]["reason"]
+            .assert_eq(&"NO_CREDENTIAL".to_string());
     }
 }

@@ -183,6 +183,12 @@ pub enum TrustedAuthority {
     #[serde(rename = "aki")]
     AuthorityKeyId { values: Vec<KeyIdentifier> },
 
+    /// DIDs of the credential issuers the verifier accepts
+    ///
+    /// Spec: Swiss Profile for Verification, Section 6.1.1
+    /// <https://swiyu-admin-ch.github.io/specifications/swiss-profile-verification/>
+    Did { values: Vec<String> },
+
     /// Unknown / custom authority type, preserving original type string and values.
     #[serde(untagged)]
     Custom { r#type: String, values: Vec<String> },
@@ -735,6 +741,22 @@ mod tests {
         };
         assert_eq!(r#type, "custom");
         assert_eq!(values, &vec!["some-id".to_string()]);
+    }
+
+    // Swiss Profile for Verification, Section 6.1.1
+    #[test]
+    fn test_dcql_trusted_authority_did() {
+        let json = json!({ "type": "did", "values": ["did:webvh:scid:www.example.com"] });
+
+        let authority: TrustedAuthority = serde_json::from_value(json.clone()).unwrap();
+
+        assert_eq!(
+            authority,
+            TrustedAuthority::Did {
+                values: vec!["did:webvh:scid:www.example.com".to_string()]
+            }
+        );
+        assert_eq!(serde_json::to_value(&authority).unwrap(), json);
     }
 
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-29.html#appendix-B.1.3.1.4

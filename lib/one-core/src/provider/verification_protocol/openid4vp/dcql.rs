@@ -27,6 +27,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialView, HolderCredentialData};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
+use crate::model::identifier::IdentifierData;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::proof::Proof;
@@ -391,14 +392,57 @@ async fn filter_credentials_by_trusted_authorities(
     }
 
     let trusted_akis = get_trusted_akis(authorities);
+    let trusted_dids = get_trusted_dids(authorities);
     let mut retained = Vec::with_capacity(credentials.len());
     for credential in std::mem::take(credentials) {
-        if credential_issuer_in_aki_list(&credential.holder()?, trusted_akis.as_slice()).await {
+        // a credential matches if its issuer matches any of the authorities
+        // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1.1
+        let trusted = {
+            let holder = credential.holder()?;
+            credential_issuer_in_aki_list(&holder, trusted_akis.as_slice()).await
+                || credential_issuer_in_did_list(&holder, trusted_dids.as_slice()).await
+        };
+        if trusted {
             retained.push(credential);
         }
     }
     *credentials = retained;
     Ok(())
+}
+
+fn get_trusted_dids(authorities: &[TrustedAuthority]) -> Vec<&str> {
+    authorities
+        .iter()
+        .filter_map(|authority| match authority {
+            TrustedAuthority::Did { values } => Some(values),
+            _ => None,
+        })
+        .flatten()
+        .map(String::as_str)
+        .collect()
+}
+
+async fn credential_issuer_in_did_list(
+    credential: &CredentialView<'_, HolderCredentialData>,
+    list: &[&str],
+) -> bool {
+    if list.is_empty() {
+        return false;
+    }
+
+    let Ok(issuer) = credential.data.issuer.identifier.as_ref().await else {
+        return false;
+    };
+
+    let IdentifierData::Did(did) = &issuer.data else {
+        return false;
+    };
+
+    let Ok(did) = did.as_ref().await else {
+        return false;
+    };
+
+    list.contains(&did.did.as_str())
 }
 
 async fn credential_issuer_in_aki_list(
