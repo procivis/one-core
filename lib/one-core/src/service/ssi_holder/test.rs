@@ -609,14 +609,10 @@ async fn test_accept_credential() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_formatter_by_type()
+        .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| {
-            Some((
-                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
-                formatter.clone(),
-            ))
-        });
+        .with(eq(CredentialFormat::from_str("SD_JWT_VC").unwrap()))
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().once().return_once(|_| Ok(()));
@@ -764,13 +760,9 @@ async fn test_accept_credential_validates_every_configuration_against_the_ecosys
     let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
-        .expect_get_formatter_by_type()
-        .returning(move |_| {
-            Some((
-                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
-                formatter.clone(),
-            ))
-        });
+        .expect_get_credential_formatter()
+        .with(eq(CredentialFormat::from_str("SD_JWT_VC").unwrap()))
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().times(2).returning(|_| Ok(()));
@@ -962,14 +954,10 @@ async fn test_accept_credential_with_did() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_formatter_by_type()
+        .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| {
-            Some((
-                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
-                formatter.clone(),
-            ))
-        });
+        .with(eq(CredentialFormat::from_str("SD_JWT_VC").unwrap()))
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().once().return_once(|_| Ok(()));
@@ -1095,14 +1083,10 @@ async fn test_accept_credential_batch() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(MockCredentialFormatter::new());
     formatter_provider
-        .expect_get_formatter_by_type()
+        .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| {
-            Some((
-                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
-                formatter.clone(),
-            ))
-        });
+        .with(eq(CredentialFormat::from_str("SD_JWT_VC").unwrap()))
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().times(2).returning(|_| Ok(()));
@@ -1221,14 +1205,10 @@ async fn test_accept_credential_wrong_tx_code() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_formatter_by_type()
+        .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| {
-            Some((
-                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
-                formatter.clone(),
-            ))
-        });
+        .with(eq(CredentialFormat::from_str("SD_JWT_VC").unwrap()))
+        .returning(move |_| Ok(formatter.clone()));
 
     let organisation = dummy_organisation(None);
     let interaction_id = InteractionId::new();
@@ -2275,7 +2255,7 @@ async fn test_initiate_issuance_session_org_mismatch() {
 
 fn dummy_interaction() -> TestHolderInteractionData {
     TestHolderInteractionData {
-        protocol: "".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         credential_configurations: vec![TestHolderCredentialConfiguration {
             credential_configuration_id: "".to_string(),
             format: "dc+sd-jwt".to_string(),

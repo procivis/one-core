@@ -41,8 +41,12 @@ use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::model::{
     CredentialWithBlob, InvitationResponseEnum, IssuanceAcceptResponse,
 };
-use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::configuration_to_accepted_key_storage_security;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderCredentialConfiguration;
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
+    configuration_to_accepted_key_storage_security, holder_formatter,
+};
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    HolderCredentialConfiguration, OpenID4VCIFinal1Params,
+};
 use crate::provider::issuance_protocol::{
     self, HolderBindingInput, IssuanceProtocol, deserialize_interaction_data,
     serialize_interaction_data,
@@ -144,9 +148,18 @@ impl SSIHolderService {
         let configurations = data
             .configurations()
             .error_while("reading credential configurations")?;
+        let protocol_params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(&data.protocol)
+            .error_while("getting issuance protocol params")?;
         for configuration in &configurations {
             match self
-                .validate_credential_configuration(holder_binding.as_ref(), configuration)
+                .validate_credential_configuration(
+                    holder_binding.as_ref(),
+                    configuration,
+                    protocol_params.swiyu_mode,
+                )
                 .await
             {
                 Ok(()) => accepted_configuration_ids.push(configuration.id().to_owned()),
@@ -359,6 +372,7 @@ impl SSIHolderService {
         &self,
         holder_binding: Option<&HolderBindingInput>,
         configuration: &HolderCredentialConfiguration,
+        swiyu_mode: bool,
     ) -> Result<(), HolderServiceError> {
         if let Some(holder_binding) = holder_binding
             && let Some(accepted_security_levels) =
@@ -401,11 +415,15 @@ impl SSIHolderService {
             }
         };
 
-        let (_, formatter) = self
-            .formatter_provider
-            .get_formatter_by_type(format_type)
-            .ok_or(MissingProviderError::FormatterType(format_type))
-            .error_while("getting formatter")?;
+        // same formatter the protocol picks for the issued credential
+        let (_, formatter) = holder_formatter(
+            &self.config.format,
+            self.formatter_provider.as_ref(),
+            format_type,
+            swiyu_mode,
+        )
+        .ok_or(MissingProviderError::FormatterType(format_type))
+        .error_while("getting formatter")?;
 
         if let Some(holder_binding) = holder_binding {
             validate_holder_capabilities(

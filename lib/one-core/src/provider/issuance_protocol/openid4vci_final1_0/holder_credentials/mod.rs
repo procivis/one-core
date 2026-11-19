@@ -18,7 +18,7 @@ use self::schema_matching::{
     CredentialSchemaResolution, align_format_claim_schemas_and_mappings,
     find_or_import_credential_schema, missing_required_claims,
 };
-use super::mapper::convert_metadata_to_layout_properties;
+use super::mapper::{convert_metadata_to_layout_properties, holder_formatter};
 use super::model::{HolderBinding, HolderCredentialConfiguration};
 use super::validator::validate_batch_consistency;
 use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
@@ -74,12 +74,18 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref(),
         )?;
 
-        let (_, formatter) = self
-            .formatter_provider
-            .get_formatter_by_type(format_type)
-            .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
-            })?;
+        let (_, formatter) = holder_formatter(
+            &self.config.format,
+            self.formatter_provider.as_ref(),
+            format_type,
+            self.params.swiyu_mode,
+        )
+        .ok_or_else(|| {
+            IssuanceProtocolError::Failed(format!(
+                "{format_type} formatter (swiyu mode: {}) not found",
+                self.params.swiyu_mode
+            ))
+        })?;
 
         let disclosure_policy = configuration
             .metadata

@@ -1,10 +1,13 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
+use itertools::Itertools;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_dto_mapper::convert_inner_of_inner;
 use secrecy::ExposeSecret;
 use serde::de::Error;
+use shared_types::CredentialFormat;
 use standardized_types::oauth2::token::TokenResponse;
 use standardized_types::openid4vci::{
     CredentialConfiguration, CredentialDisplay, KeyAttestationsRequired, ProofTypeSupported,
@@ -21,11 +24,13 @@ use super::model::{
     OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign, PROCIVIS_DESIGN_KEY,
 };
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{IdentifierType, Params};
+use crate::config::core_config::{Fields, FormatConfig, FormatType, IdentifierType, Params};
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, KeyStorageSecurity, LayoutProperties,
     LogoProperties, WalletAttestation,
 };
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::{CredentialFormatter, sdjwtvc_formatter};
 use crate::provider::issuance_protocol::error::OpenIDIssuanceError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -267,6 +272,44 @@ pub(crate) fn convert_metadata_to_layout_properties(
             ..additional.unwrap_or_default()
         }),
     }
+}
+
+/// Highest priority enabled formatter of `format_type` matching the swiyu mode of the issuance
+/// protocol. Swiyu mode only exists for SD-JWT VC, formatters of other types are taken as-is.
+///
+/// A plain [`CredentialFormatterProvider::get_formatter_by_type`] lookup ignores swiyu mode, so a
+/// swiyu credential would be stored with a format that cannot be presented over the swiyu
+/// verification protocol.
+pub(crate) fn holder_formatter(
+    format_config: &FormatConfig,
+    formatter_provider: &dyn CredentialFormatterProvider,
+    format_type: FormatType,
+    swiyu_mode: bool,
+) -> Option<(CredentialFormat, Arc<dyn CredentialFormatter>)> {
+    format_config
+        .iter()
+        .filter(|(_, fields)| {
+            fields.enabled
+                && fields.r#type == format_type
+                && (format_type != FormatType::SdJwtVc
+                    || formatter_swiyu_mode(fields) == swiyu_mode)
+        })
+        // same tie-breaking as `get_formatter_by_type`: the last of equal priority wins
+        .sorted_by_key(|(_, fields)| fields.priority.unwrap_or_default())
+        .rev()
+        .find_map(|(format, _)| {
+            formatter_provider
+                .get_credential_formatter(format)
+                .ok()
+                .map(|formatter| (format.to_owned(), formatter))
+        })
+}
+
+fn formatter_swiyu_mode(fields: &Fields<FormatType>) -> bool {
+    // an enabled formatter is initialized from these params, so they always deserialize
+    fields
+        .deserialize::<sdjwtvc_formatter::Params>()
+        .is_ok_and(|params| params.swiyu_mode)
 }
 
 pub(crate) fn configuration_to_accepted_key_storage_security(
