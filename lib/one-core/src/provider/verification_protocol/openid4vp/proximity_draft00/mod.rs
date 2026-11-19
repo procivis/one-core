@@ -35,7 +35,7 @@ use super::proximity_draft00::holder_flow::{
 };
 use super::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::config::core_config::{
-    CoreConfig, DidType, FormatType, IdentifierType, TransportConfig, TransportType,
+    ConfigExt, CoreConfig, DidType, FormatType, IdentifierType, TransportConfig, TransportType,
 };
 use crate::error::ContextWithErrorCode;
 use crate::model::did::{Did, KeyRole};
@@ -134,7 +134,8 @@ pub struct OpenID4VPProximityDraft00 {
     ble: Option<BleWaiter>,
     ble_holder_transport: Option<BleHolderTransport>,
     mqtt_holder_transport: Option<MqttHolderTransport>,
-    mqtt_verifier: Option<MqttVerifier>,
+    /// one verifier per enabled MQTT transport config entry
+    mqtt_verifiers: HashMap<TransportId, MqttVerifier>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -186,29 +187,25 @@ impl OpenID4VPProximityDraft00 {
         let ble_holder_transport = ble
             .clone()
             .map(|ble| BleHolderTransport::new(url_scheme.clone(), ble));
-        let (openid_mqtt, mqtt_holder_transport) = if let Some(mqtt_client) = mqtt_client {
-            // TODO ONE-9647: only a single MQTT transport config entry is supported, the settings
-            // of the first enabled one are used for all proofs
-            if let Ok(mqtt_transport_id) = config
-                .transport
-                .get_enabled_transport_type(TransportType::Mqtt)
-                && let Ok(transport_params) = config.transport.get(mqtt_transport_id)
+        let (mqtt_verifiers, mqtt_holder_transport) = match mqtt_client {
+            Some(mqtt_client)
+                if config
+                    .transport
+                    .get_enabled_transport_type(TransportType::Mqtt)
+                    .is_ok() =>
             {
                 (
-                    Some(MqttVerifier::new(mqtt_client.clone(), transport_params)),
+                    create_mqtt_verifiers(&mqtt_client, &config.transport),
                     Some(MqttHolderTransport::new(url_scheme, mqtt_client)),
                 )
-            } else {
-                (None, None)
             }
-        } else {
-            (None, None)
+            _ => (HashMap::new(), None),
         };
 
         Ok(Self {
             config_id,
             ble,
-            mqtt_verifier: openid_mqtt,
+            mqtt_verifiers,
             mqtt_holder_transport,
             ble_holder_transport,
             did_method_provider,
@@ -518,9 +515,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 "HTTP transport not supported".to_string(),
             )),
             [TransportType::Mqtt] => {
-                let mqtt = self.mqtt_verifier.as_ref().ok_or_else(|| {
-                    VerificationProtocolError::Failed("MQTT client not configured".to_string())
-                })?;
+                let mqtt = select_mqtt_verifier(&self.mqtt_verifiers, &transports)?;
                 mqtt.schedule_verifier_flow(
                     &key_agreement,
                     &self.params.url_scheme,
@@ -547,9 +542,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
 
             [TransportType::Ble, TransportType::Mqtt]
             | [TransportType::Mqtt, TransportType::Ble] => {
-                let mqtt = self.mqtt_verifier.as_ref().ok_or_else(|| {
-                    VerificationProtocolError::Failed("MQTT client not configured".to_string())
-                })?;
+                let mqtt = select_mqtt_verifier(&self.mqtt_verifiers, &transports)?;
                 let ble = self.ble.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("BLE transport not configured".to_string())
                 })?;
@@ -606,7 +599,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
 
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
-        for (_, transport) in get_transports(proof, &self.config.transport).await? {
+        for (transport_id, transport) in get_transports(proof, &self.config.transport).await? {
             match transport {
                 TransportType::Http | TransportType::DcApi => {}
                 TransportType::Ble => {
@@ -618,12 +611,12 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                     retract_proof_ble(ble).await;
                 }
                 TransportType::Mqtt => {
-                    self.mqtt_verifier
-                        .as_ref()
+                    self.mqtt_verifiers
+                        .get(&transport_id)
                         .ok_or_else(|| {
-                            VerificationProtocolError::Failed(
-                                "MQTT not configured for retract proof".to_string(),
-                            )
+                            VerificationProtocolError::Failed(format!(
+                                "MQTT transport `{transport_id}` not configured for retract proof"
+                            ))
                         })?
                         .retract_proof(proof)
                         .await?;
@@ -740,6 +733,42 @@ async fn get_transports(
             Ok((id, r#type))
         })
         .collect()
+}
+
+/// Creates a verifier for each enabled MQTT transport config entry, entries with invalid params
+/// are skipped
+fn create_mqtt_verifiers(
+    mqtt_client: &Arc<dyn MqttClient>,
+    config: &TransportConfig,
+) -> HashMap<TransportId, MqttVerifier> {
+    config
+        .iter_enabled()
+        .filter(|(_, fields)| fields.r#type == TransportType::Mqtt)
+        .filter_map(|(id, _)| match config.get(id) {
+            Ok(params) => Some((id.clone(), MqttVerifier::new(mqtt_client.clone(), params))),
+            Err(err) => {
+                tracing::warn!("Invalid params of MQTT transport `{id}`: {err}");
+                None
+            }
+        })
+        .collect()
+}
+
+/// Verifier of the MQTT transport selected for the proof
+fn select_mqtt_verifier<'a>(
+    mqtt_verifiers: &'a HashMap<TransportId, MqttVerifier>,
+    transports: &[(TransportId, TransportType)],
+) -> Result<&'a MqttVerifier, VerificationProtocolError> {
+    let transport_id = transports
+        .iter()
+        .find_map(|(id, r#type)| (*r#type == TransportType::Mqtt).then_some(id))
+        .ok_or_else(|| {
+            VerificationProtocolError::Failed("MQTT transport not selected".to_string())
+        })?;
+
+    mqtt_verifiers.get(transport_id).ok_or_else(|| {
+        VerificationProtocolError::Failed(format!("MQTT transport `{transport_id}` not configured"))
+    })
 }
 
 fn merge_query_params(mut first: Url, second: Url) -> Url {
@@ -1015,8 +1044,9 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::config::core_config::Fields;
+    use crate::config::core_config::{Fields, Params};
     use crate::model::interaction::{Interaction, InteractionType};
+    use crate::proto::mqtt_client::MockMqttClient;
     use crate::service::test_utilities::{dummy_organisation, dummy_proof};
 
     /// config entry names deliberately differ from the transport type names
@@ -1102,5 +1132,100 @@ mod test {
         let result = get_transports(&proof, &transport_config()).await;
 
         assert!(result.is_err());
+    }
+
+    fn mqtt_entry(broker_url: Option<&str>, enabled: bool) -> Fields<TransportType> {
+        Fields {
+            r#type: TransportType::Mqtt,
+            display: "".into(),
+            order: None,
+            priority: None,
+            enabled,
+            capabilities: None,
+            params: Some(Params {
+                public: Some(serde_json::json!({ "brokerUrl": broker_url })),
+                private: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn test_create_mqtt_verifiers_for_enabled_valid_entries() {
+        let mut config = transport_config();
+        config.insert(
+            "MQTT_2".into(),
+            mqtt_entry(Some("mqtt://broker-2:1883"), true),
+        );
+        config.insert(
+            "MQTT_3".into(),
+            mqtt_entry(Some("mqtt://broker-3:1883"), false),
+        );
+        config.insert("MQTT_INVALID".into(), mqtt_entry(None, true));
+        config.insert(
+            "MQTT_ENTRY".into(),
+            mqtt_entry(Some("mqtt://broker-1:1883"), true),
+        );
+        let mqtt_client: Arc<dyn MqttClient> = Arc::new(MockMqttClient::default());
+
+        let verifiers = create_mqtt_verifiers(&mqtt_client, &config);
+
+        let mut ids: Vec<_> = verifiers.keys().map(ToString::to_string).collect();
+        ids.sort();
+        assert_eq!(ids, vec!["MQTT_2", "MQTT_ENTRY"]);
+    }
+
+    #[test]
+    fn test_select_mqtt_verifier_uses_selected_transport() {
+        let mqtt_client: Arc<dyn MqttClient> = Arc::new(MockMqttClient::default());
+        let mut config = TransportConfig::default();
+        config.insert(
+            "MQTT_1".into(),
+            mqtt_entry(Some("mqtt://broker-1:1883"), true),
+        );
+        config.insert(
+            "MQTT_2".into(),
+            mqtt_entry(Some("mqtt://broker-2:1883"), true),
+        );
+        let verifiers = create_mqtt_verifiers(&mqtt_client, &config);
+
+        let selected = select_mqtt_verifier(
+            &verifiers,
+            &[
+                (TransportId::from("BLE_ENTRY"), TransportType::Ble),
+                (TransportId::from("MQTT_2"), TransportType::Mqtt),
+            ],
+        )
+        .unwrap();
+
+        assert!(std::ptr::eq(
+            selected,
+            &verifiers[&TransportId::from("MQTT_2")]
+        ));
+    }
+
+    #[test]
+    fn test_select_mqtt_verifier_fails_without_mqtt_transport_or_verifier() {
+        let mqtt_client: Arc<dyn MqttClient> = Arc::new(MockMqttClient::default());
+        let mut config = TransportConfig::default();
+        config.insert(
+            "MQTT_1".into(),
+            mqtt_entry(Some("mqtt://broker-1:1883"), true),
+        );
+        let verifiers = create_mqtt_verifiers(&mqtt_client, &config);
+
+        assert!(
+            select_mqtt_verifier(
+                &verifiers,
+                &[(TransportId::from("BLE_ENTRY"), TransportType::Ble)],
+            )
+            .is_err()
+        );
+        assert!(
+            select_mqtt_verifier(
+                &verifiers,
+                &[(TransportId::from("MQTT_UNKNOWN"), TransportType::Mqtt)],
+            )
+            .is_err()
+        );
     }
 }
