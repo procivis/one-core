@@ -283,6 +283,29 @@ async fn test_get_wallet_instance_missing() {
 }
 
 #[tokio::test]
+async fn test_lock_wallet_instance_success() {
+    let TestSetup {
+        provider,
+        wallet_unit_ids,
+        ..
+    } = setup(1).await;
+
+    let wallet_unit = provider.lock(&wallet_unit_ids[0]).await.unwrap();
+
+    assert_eq!(wallet_unit.id, wallet_unit_ids[0]);
+    assert_eq!(wallet_unit.status, InstanceStatus::Active);
+}
+
+#[tokio::test]
+async fn test_lock_wallet_instance_missing() {
+    let TestSetup { provider, .. } = setup(0).await;
+
+    let result = provider.lock(&ManagedInstanceId::new()).await;
+
+    assert_matches!(result, Err(DataLayerError::EntityNotFound { .. }));
+}
+
+#[tokio::test]
 async fn test_get_wallet_instance_list_no_filters() {
     let TestSetup {
         provider,

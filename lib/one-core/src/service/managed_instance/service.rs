@@ -800,8 +800,22 @@ impl ManagedInstanceService {
         // Relies on the default READ COMMITTED isolation, so the status list index read includes entries committed while waiting for the lock
         self.tx_manager
             .tx(async {
-                // locks the wallet unit row before the status list lock, so concurrent
-                // issuances for one unit wait here instead of deadlocking (shared FK lock)
+                // Locks the wallet unit row before any status list (adding an entry takes a
+                // foreign key lock on its list): concurrent issuances and revocations of the unit
+                // take the locks in the same order and wait here instead of deadlocking.
+                // The status is checked again under the lock, so a revocation that committed
+                // meanwhile is not followed by attestations that nothing would revoke.
+                let locked_instance = self
+                    .managed_instance_repository
+                    .lock(&instance_id)
+                    .await
+                    .error_while("locking wallet unit")?;
+                if locked_instance.status != InstanceStatus::Active {
+                    return Err(ManagedInstanceError::WalletUnitRevoked
+                        .error_while("validating status")
+                        .into());
+                }
+
                 self.managed_instance_repository
                     .update(
                         &instance_id,
@@ -946,6 +960,20 @@ impl ManagedInstanceService {
 
         self.tx_manager
             .tx(async move {
+                // Locks the instance row before any status list, in the same order as attestation
+                // issuance (see `issue_attestation`). The instance is reloaded under the lock, so
+                // its status is current and attestations issued meanwhile get revoked as well.
+                let managed_instance = self
+                    .managed_instance_repository
+                    .lock(id)
+                    .await
+                    .error_while("locking wallet unit")?;
+                if managed_instance.status != InstanceStatus::Active {
+                    return Err(ManagedInstanceError::WalletUnitMustBeActive
+                        .error_while("checking status")
+                        .into());
+                }
+
                 match managed_instance.role {
                     InstanceRole::Verifier => {
                         self.revoke_verifier_access_certificates(&managed_instance)

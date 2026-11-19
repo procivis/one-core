@@ -12,10 +12,14 @@ use shared_types::{
     WalletProviderId,
 };
 use similar_asserts::assert_eq;
+use standardized_types::jwk::PublicJwk;
 use time::Duration;
 
 use super::ManagedInstanceService;
-use super::dto::{ManagedInstanceFilterParamsDTO, RegisterWalletUnitRequestDTO};
+use super::dto::{
+    IssueWalletUnitAttestationRequestDTO, IssueWiaRequestDTO, ManagedInstanceFilterParamsDTO,
+    RegisterWalletUnitRequestDTO,
+};
 use crate::config;
 use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
 use crate::error::{ErrorCode, ErrorCodeMixin};
@@ -36,7 +40,7 @@ use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::signer::provider::MockSignerProvider;
 use crate::provider::verifier::MockVerifierProvider;
@@ -1007,4 +1011,140 @@ async fn validate_user_id_token_success() {
         .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
         .await;
     assert_eq!(result.unwrap(), Some("user-sub-123".to_string()));
+}
+
+/// A wallet unit that is `Active` when first loaded, but `Revoked` once locked: a revocation
+/// committed between the status check before the transaction and the lock inside it.
+fn wallet_unit_revoked_meanwhile(
+    provider: &str,
+    authentication_key: Option<PublicJwk>,
+) -> (ManagedInstance, MockManagedInstanceRepository) {
+    let active = ManagedInstance {
+        id: ManagedInstanceId::new(),
+        name: "".to_string(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        os: ManagedInstanceOs::Ios,
+        status: InstanceStatus::Active,
+        role: InstanceRole::Wallet,
+        provider: provider.to_string(),
+        authentication_key_jwk: authentication_key,
+        last_issuance: None,
+        nonce: None,
+        user_nonce: None,
+        user_sub: None,
+        verifier_csr: None,
+        verifier_signature_ids: None,
+        organisation: Organisation {
+            wallet_provider: Some(provider.into()),
+            wallet_provider_issuer: Some(IdentifierId::new()),
+            ..dummy_organisation(None)
+        }
+        .into(),
+        attestations: Default::default(),
+        version: None,
+    };
+    let revoked = ManagedInstance {
+        status: InstanceStatus::Revoked,
+        ..active.clone()
+    };
+
+    let mut managed_instance_repository = MockManagedInstanceRepository::new();
+    managed_instance_repository
+        .expect_get()
+        .with(eq(active.id))
+        .return_once({
+            let active = active.clone();
+            move |_| Ok(active)
+        });
+    managed_instance_repository
+        .expect_lock()
+        .once()
+        .with(eq(active.id))
+        .return_once(move |_| Ok(revoked));
+    managed_instance_repository.expect_update().never();
+
+    (active, managed_instance_repository)
+}
+
+#[tokio::test]
+async fn test_issue_attestation_fails_when_wallet_unit_revoked_meanwhile() {
+    // given
+    let provider = "PROCIVIS_ONE";
+    let (proof, holder_key) = create_proof().await;
+    let (wallet_unit, managed_instance_repository) =
+        wallet_unit_revoked_meanwhile(provider, Some(holder_key.public_key_as_jwk().unwrap()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_parse_jwk()
+        .return_once(move |_| {
+            Ok(ParsedKey {
+                algorithm_type: KeyAlgorithmType::Ecdsa,
+                key: holder_key,
+            })
+        });
+
+    let mut wallet_provider_directory = MockWalletProviderDirectory::new();
+    wallet_provider_directory
+        .expect_get_provider()
+        .with(eq(WalletProviderId::from(provider)))
+        .returning(move |_| {
+            let mut wallet_provider = MockWalletProvider::new();
+            wallet_provider
+                .expect_get_registration_params()
+                .returning(move || {
+                    Ok(ProviderRegistrationParams {
+                        name_label: provider.to_string(),
+                        integrity_check: Default::default(),
+                        device_auth_leeway: Default::default(),
+                        user_authentication: None,
+                    })
+                });
+            wallet_provider.expect_issue_instance_attestation().never();
+            wallet_provider.expect_issue_key_attestation().never();
+            Ok(Arc::new(wallet_provider))
+        });
+
+    let service = ManagedInstanceService {
+        managed_instance_repository: Arc::new(managed_instance_repository),
+        key_algorithm_provider: Arc::new(key_algorithm_provider),
+        wallet_provider_directory: Arc::new(wallet_provider_directory),
+        ..mock_wallet_provider_service()
+    };
+
+    // when
+    let result = service
+        .issue_attestation(
+            wallet_unit.id,
+            &proof,
+            IssueWalletUnitAttestationRequestDTO {
+                wia: vec![IssueWiaRequestDTO {
+                    proof: "not verified".to_string(),
+                }],
+                wua: vec![],
+            },
+        )
+        .await;
+
+    // then
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0261);
+}
+
+#[tokio::test]
+async fn test_revoke_managed_instance_fails_when_revoked_meanwhile() {
+    // given
+    let (wallet_unit, managed_instance_repository) =
+        wallet_unit_revoked_meanwhile("PROCIVIS_ONE", None);
+
+    let service = ManagedInstanceService {
+        managed_instance_repository: Arc::new(managed_instance_repository),
+        ..mock_wallet_provider_service()
+    };
+
+    // when
+    let result = service.revoke_managed_instance(&wallet_unit.id).await;
+
+    // then
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0081);
 }

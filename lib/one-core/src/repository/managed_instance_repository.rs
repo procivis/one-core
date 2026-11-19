@@ -15,6 +15,9 @@ pub trait ManagedInstanceRepository: Send + Sync {
 
     async fn get(&self, id: &ManagedInstanceId) -> Result<ManagedInstance, DataLayerError>;
 
+    /// Locks the instance row until the end of the transaction and returns it as stored
+    async fn lock(&self, id: &ManagedInstanceId) -> Result<ManagedInstance, DataLayerError>;
+
     async fn get_list(
         &self,
         query_params: ManagedInstanceListQuery,

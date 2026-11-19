@@ -1,12 +1,13 @@
 use autometrics::autometrics;
 use futures::FutureExt;
 use migration::supported_db_type::WithSupportedDbType;
+use one_core::model::common::LockType;
 use one_core::model::managed_instance::{
     ManagedInstance, ManagedInstanceList, ManagedInstanceListQuery, UpdateManagedInstanceRequest,
 };
 use one_core::repository::error::{DataLayerError, EntityKind};
 use one_core::repository::managed_instance_repository::ManagedInstanceRepository;
-use sea_orm::{EntityTrait, QueryOrder, Set, Unchanged};
+use sea_orm::{EntityTrait, QueryOrder, QuerySelect, Set, Unchanged};
 use shared_types::ManagedInstanceId;
 
 use super::ManagedInstanceProvider;
@@ -14,7 +15,7 @@ use super::mapper::{authentication_key_hash, managed_instance_from_model};
 use crate::common::list_query_with_custom_model;
 use crate::entity::managed_instance;
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
+use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -43,6 +44,24 @@ impl ManagedInstanceRepository for ManagedInstanceProvider {
 
     async fn get(&self, id: &ManagedInstanceId) -> Result<ManagedInstance, DataLayerError> {
         let wallet_unit = managed_instance::Entity::find_by_id(id)
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?
+            .ok_or_else(|| DataLayerError::EntityNotFound {
+                kind: EntityKind::ManagedInstance,
+                id: (*id).into(),
+            })?;
+
+        managed_instance_from_model(
+            wallet_unit,
+            &self.organisation_repository,
+            &self.managed_instance_attestation_repository,
+        )
+    }
+
+    async fn lock(&self, id: &ManagedInstanceId) -> Result<ManagedInstance, DataLayerError> {
+        let wallet_unit = managed_instance::Entity::find_by_id(id)
+            .lock(map_lock_type(LockType::Update))
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?
