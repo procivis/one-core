@@ -309,7 +309,11 @@ pub(crate) async fn oid4vci_final1_0_create_token(
                 .into_response()
         }
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
-        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::BAD_REQUEST, &err),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(
+            StatusCode::BAD_REQUEST,
+            &err,
+            state.config.hide_error_response_cause,
+        ),
         Err(e @ OID4VCIFinal1_0ServiceError::InvalidCredentialState(state)) => {
             tracing::error!("Invalid credential state state error: {state}");
             (
@@ -407,7 +411,11 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
 
     let response = match result {
         Ok((value, dpop_nonce)) => return with_dpop_nonce(credential_response(value), dpop_nonce),
-        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(
+            StatusCode::UNAUTHORIZED,
+            &err,
+            state.config.hide_error_response_cause,
+        ),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (
@@ -527,7 +535,11 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
 
     let response = match result {
         Ok(nonce) => return with_dpop_nonce((StatusCode::NO_CONTENT).into_response(), nonce),
-        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(
+            StatusCode::UNAUTHORIZED,
+            &err,
+            state.config.hide_error_response_cause,
+        ),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential notification error: {:?}", error);
             (

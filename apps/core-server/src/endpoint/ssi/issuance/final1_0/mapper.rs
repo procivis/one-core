@@ -138,16 +138,27 @@ pub(crate) fn wallet_attestation_response(wa: &WalletAttestationError) -> Respon
     }
 }
 
-pub(crate) fn dpop_error_response(status: StatusCode, error: &impl ErrorCodeMixin) -> Response {
+/// The error details are only included in `errorDescription` if `hide_cause` is false.
+pub(crate) fn dpop_error_response(
+    status: StatusCode,
+    error: &impl ErrorCodeMixin,
+    hide_cause: bool,
+) -> Response {
     tracing::info!("DPoP error: {error}");
-    let (error_code, description) = if error.error_code() == ErrorCode::BR_0520 {
-        (
+    let (error_code, description) = match error.error_code() {
+        ErrorCode::BR_0520 => (
             OpenID4VCIError::UseDpopNonce,
             // https://www.rfc-editor.org/rfc/rfc9449.html#name-authorization-server-provid
             "Authorization server requires nonce in DPoP proof".to_string(),
-        )
-    } else {
-        (OpenID4VCIError::InvalidDpopProof, error.to_string())
+        ),
+        code if hide_cause => (
+            OpenID4VCIError::InvalidDpopProof,
+            format!("{code} | Invalid DPoP proof"),
+        ),
+        code => (
+            OpenID4VCIError::InvalidDpopProof,
+            format!("{code} | {error}"),
+        ),
     };
 
     // the challenge repeats the error code of the response body
@@ -208,6 +219,63 @@ mod test {
             assert_eq!(
                 serde_json::to_value(&response).unwrap(),
                 serde_json::to_value(&mirror).unwrap()
+            );
+        }
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("Hasher error: `internal detail`")]
+    struct TestDpopError(ErrorCode);
+
+    impl ErrorCodeMixin for TestDpopError {
+        fn error_code(&self) -> ErrorCode {
+            self.0
+        }
+    }
+
+    async fn dpop_error_body(error: TestDpopError, hide_cause: bool) -> serde_json::Value {
+        use http_body_util::BodyExt;
+
+        let response = dpop_error_response(StatusCode::UNAUTHORIZED, &error, hide_cause);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice(&body).unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_dpop_error_response_hides_cause() {
+        let body = dpop_error_body(TestDpopError(ErrorCode::BR_0517), true).await;
+        assert_eq!(
+            body,
+            serde_json::json!({
+                "error": "invalid_dpop_proof",
+                "error_description": "BR_0517 | Invalid DPoP proof",
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_dpop_error_response_shows_cause() {
+        let body = dpop_error_body(TestDpopError(ErrorCode::BR_0517), false).await;
+        assert_eq!(
+            body,
+            serde_json::json!({
+                "error": "invalid_dpop_proof",
+                "error_description": "BR_0517 | Hasher error: `internal detail`",
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_dpop_error_response_nonce_unaffected_by_hide_cause() {
+        for hide_cause in [true, false] {
+            let body = dpop_error_body(TestDpopError(ErrorCode::BR_0520), hide_cause).await;
+            assert_eq!(
+                body,
+                serde_json::json!({
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                })
             );
         }
     }

@@ -347,7 +347,11 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_token(
         Ok((response, dpop_nonce)) => {
             return with_dpop_nonce((StatusCode::OK, Json(response)).into_response(), dpop_nonce);
         }
-        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(
+            StatusCode::UNAUTHORIZED,
+            &err,
+            state.config.hide_error_response_cause,
+        ),
         Err(OID4VCIFinal1_0ServiceError::WalletAttestation(wa)) => wallet_attestation_response(&wa),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI token validation error: {:?}", error);
@@ -438,7 +442,11 @@ pub(crate) async fn oid4vci_final1_0_swiyu_create_credential(
 
     let response = match result {
         Ok((value, nonce)) => return with_dpop_nonce(credential_response(value), nonce),
-        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(
+            StatusCode::UNAUTHORIZED,
+            &err,
+            state.config.hide_error_response_cause,
+        ),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (
@@ -615,7 +623,11 @@ pub(crate) async fn oid4vci_final1_0_swiyu_credential_notification(
 
     let response = match result {
         Ok(nonce) => return with_dpop_nonce((StatusCode::NO_CONTENT).into_response(), nonce),
-        Err(err) if is_dpop_error(&err) => dpop_error_response(StatusCode::UNAUTHORIZED, &err),
+        Err(err) if is_dpop_error(&err) => dpop_error_response(
+            StatusCode::UNAUTHORIZED,
+            &err,
+            state.config.hide_error_response_cause,
+        ),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential notification error: {:?}", error);
             (

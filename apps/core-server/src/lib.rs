@@ -49,7 +49,8 @@ pub struct ServerConfig {
     pub sentry_environment: Option<String>,
     #[serde(default)]
     pub trace_level: Option<String>,
-    // when set to true hides the `cause` field in the error response
+    /// When set to true hides the `cause` field in error responses caused by server-side processing.
+    /// Request rejections always include the `cause`, since it describes the client's own input.
     #[serde(default)]
     pub hide_error_response_cause: bool,
     #[serde(default)]
