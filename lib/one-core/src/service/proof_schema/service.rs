@@ -322,6 +322,7 @@ impl ProofSchemaService {
 
         if let Some(proof_input_schemas) = request.proof_input_schemas {
             let mut updated_schemas = schema.input_schemas.as_ref().await?.to_owned();
+            let combined_proof_schema = updated_schemas.len() > 1;
             for proof_input_schema in proof_input_schemas {
                 let input_schema = updated_schemas
                     .iter_mut()
@@ -342,7 +343,7 @@ impl ProofSchemaService {
                 let mut formatters = vec![];
                 for format in &proof_input_schema.formats {
                     let formatter = self.formatter_provider.get_credential_formatter(format)?;
-                    if proof_input_schema.formats.len() > 1
+                    if combined_proof_schema
                         && !formatter
                             .get_capabilities()
                             .features

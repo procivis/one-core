@@ -2690,8 +2690,48 @@ async fn test_update_proof_schema_fail_format_not_in_credential_schema() {
 }
 
 #[tokio::test]
-async fn test_update_proof_schema_fail_formats_cannot_be_combined() {
+async fn test_update_proof_schema_success_multiple_formats_single_credential_schema() {
     let proof_schema = proof_schema_for_update(&["JWT", "SD_JWT_VC"], &["JWT"]).await;
+    let request = update_formats_request(&proof_schema, &["JWT", "SD_JWT_VC"]).await;
+
+    let mut proof_schema_repository = proof_schema_repo_expecting_get(proof_schema.clone());
+    proof_schema_repository
+        .expect_update_proof_schema()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let service = setup_service(Repositories {
+        proof_schema_repository,
+        formatter_provider: formatter_provider_with_features(vec![]),
+        ..Default::default()
+    });
+
+    service
+        .update_proof_schema(proof_schema.id, request)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_update_proof_schema_fail_formats_cannot_be_combined() {
+    // combined proof schema: two proof inputs, each with a different credential schema
+    let mut proof_schema = proof_schema_for_update(&["JWT", "SD_JWT_VC"], &["JWT"]).await;
+    let other_proof_schema = proof_schema_for_update(&["JWT"], &["JWT"]).await;
+    let mut input_schemas = proof_schema
+        .input_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .to_owned();
+    input_schemas.extend(
+        other_proof_schema
+            .input_schemas
+            .as_ref()
+            .await
+            .unwrap()
+            .to_owned(),
+    );
+    proof_schema.input_schemas = input_schemas.into();
     let request = update_formats_request(&proof_schema, &["JWT", "SD_JWT_VC"]).await;
 
     let service = setup_service(Repositories {
