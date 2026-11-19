@@ -234,6 +234,9 @@ pub(crate) async fn post_proof(
         Creates a share URL from a proof request. A wallet holder can use this URL to access
         the proof request.
 
+        For proof requests made with the `DC_API` transport, pass `dcApiOrigin` in the
+        params. The response contains `requestJson` instead of a URL.
+
         For proof requests made with OID4VC, a Client ID Scheme can be specified in the params.
         If no scheme is specified the default scheme from the configuration will be used.
     "},
@@ -331,6 +334,18 @@ pub(crate) async fn get_proof_trust_detail(
         ("bearer" = [])
     ),
     summary = "Submit DC-API response",
+    description = indoc::formatdoc! {"
+        For proof requests made with the `DC_API` transport. Submits the wallet's
+        response, as returned by the browser's Digital Credentials API, for
+        verification.
+
+        Pass the full object returned by `navigator.credentials.get()`,
+        serialized as JSON, with both its `protocol` and `data` fields. The
+        submission is processed synchronously. If it is accepted, the proof
+        request moves to `ACCEPTED`, otherwise to `ERROR`.
+
+        Related guide: [Digital Credentials API](https://docs.procivis.ch/verify/dc-api)
+    "},
 )]
 pub(crate) async fn post_dc_api_response(
     state: State<AppState>,

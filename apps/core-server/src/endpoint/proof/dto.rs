@@ -143,10 +143,22 @@ pub(crate) struct CreateProofRequestRestDTO {
     pub webhook_destination_url: Option<String>,
     /// Optional subscriber information associated with this proof request.
     pub subscriber_information: Option<String>,
-    /// Optional transaction data to request authorization for.
+    /// Transaction data for the holder to review and approve, such as a QES
+    /// approval or a payment confirmation. The approval is cryptographically
+    /// bound to the presented credential. For OpenID4VP verification
+    /// protocols only. See
+    /// [Transaction Authorization](https://docs.procivis.ch/verify/transaction-authorization).
     #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub transaction_data: Vec<ProofRequestTransactionDataRestDTO>,
+    /// Enforce an ecosystem, such as `EUDI`, for this proof request. The
+    /// request must meet the ecosystem's constraints, and every presented
+    /// credential must resolve as `TRUSTED` under it for the proof request
+    /// to reach `ACCEPTED`. If omitted, presented credentials are checked
+    /// against all ecosystems available to the organization, without
+    /// blocking acceptance. Required if the organization sets
+    /// `enforceEcosystemAsVerifier`. See
+    /// [Enforcing an Ecosystem as a Verifier](https://docs.procivis.ch/verify/ecosystem-enforcement).
     #[modify_schema(field = ecosystem)]
     pub ecosystem: Option<EcosystemId>,
 }
@@ -492,11 +504,18 @@ pub(crate) struct ShareProofRequestRestDTO {
 #[into(ShareProofRequestParamsDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ShareProofRequestParamsRestDTO {
+    /// For OID4VP proof requests, the client ID scheme to use. Must be listed
+    /// in the verification protocol's `verifier.supportedClientIdSchemes`.
+    /// If not specified, the first compatible scheme from the configuration
+    /// is used.
     #[into(with_fn = "convert_inner")]
     #[serde(default)]
     pub client_id_scheme: Option<ClientIdSchemeRestEnum>,
 
-    /// Required for DC-API
+    /// For proof requests made with the `DC_API` transport, the origin of the
+    /// website that calls the Digital Credentials API: the scheme and host,
+    /// plus the port if it is not the default. Do not include a path.
+    /// Required for DC-API proof requests.
     pub dc_api_origin: Option<String>,
 }
 
@@ -661,11 +680,15 @@ pub(crate) struct CredentialSetResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShareProofResponseRestDTO {
-    /// Share URL, typically encoded as a QR code.
+    /// Share URL, typically encoded as a QR code. Not returned for proof
+    /// requests made with the `DC_API` transport.
     pub url: Option<String>,
-    /// DC-API specific
+    /// For proof requests made with the `DC_API` transport, the serialized
+    /// request to pass to the browser's Digital Credentials API. Contains
+    /// `protocol` and `data` fields; pass them as an entry of
+    /// `digital.requests` in `navigator.credentials.get()`.
     pub request_json: Option<String>,
-    /// Invitation becomes unusable by wallet holder at this time. Call the share
+    /// The URL or DC-API request becomes unusable at this time. Call the share
     /// endpoint again to renew.
     #[serde(serialize_with = "front_time_option")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
@@ -698,6 +721,7 @@ pub(crate) struct ProofTrustInformationDetailResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DcApiProofSubmitRequestRestDTO {
-    /// JSON serialized response from the `navigator.credentials.get` call
+    /// The response returned by `navigator.credentials.get()`, serialized as
+    /// JSON. Include both the `protocol` and `data` fields.
     pub response: String,
 }
