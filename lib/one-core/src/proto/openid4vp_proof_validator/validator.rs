@@ -497,11 +497,12 @@ impl OpenId4VpProofValidatorProto {
                 context,
             )
             .await
-            .map_err(|e| {
-                if matches!(e, FormatterError::CouldNotExtractPresentation(_)) {
+            .map_err(|error| {
+                if matches!(error, FormatterError::CouldNotExtractPresentation(_)) {
+                    tracing::warn!(%error, "Invalid presentation");
                     OpenID4VCError::VPFormatsNotSupported
                 } else {
-                    OpenID4VCError::Other(e.to_string())
+                    OpenID4VCError::Other(error.to_string())
                 }
             })?;
 
