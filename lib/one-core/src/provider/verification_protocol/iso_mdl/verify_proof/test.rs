@@ -26,7 +26,7 @@ use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::DOCTYPE_METADATA_CLAIM_KEY;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialStatus, DetailCredential, IdentifierDetails,
-    TokenStatus,
+    ParsedCredentialType, TokenStatus,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -120,6 +120,9 @@ async fn validate_proof_with_credential_status(
                     uri: "https://status.example/list".parse().unwrap(),
                     certificate: None,
                 })),
+                r#type: ParsedCredentialType::Mdoc {
+                    doctype: "CredentialSchemaId".to_string(),
+                },
             })
         });
     let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
@@ -286,6 +289,9 @@ async fn test_validate_proof_rejects_mismatching_doctype() {
                     ),
                 ]),
                 status: None,
+                r#type: ParsedCredentialType::Mdoc {
+                    doctype: "different.doctype".to_string(),
+                },
             })
         });
     let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
@@ -375,6 +381,9 @@ async fn test_accept_proof_persists_holder_identifier_for_each_credential() {
                 subject: Some(holder_details.clone()),
                 claims: Default::default(),
                 status: None,
+                r#type: ParsedCredentialType::Mdoc {
+                    doctype: "CredentialSchemaId".to_string(),
+                },
             },
             credential_schema_id: credential_schema.id,
             claims: vec![ValidatedProofClaim {

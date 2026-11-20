@@ -22,7 +22,8 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialData, Issuer, MockSignatureProvider, MockTokenVerifier, UnsignedCredential,
+    CredentialData, Issuer, MockSignatureProvider, MockTokenVerifier, ParsedCredentialType,
+    UnsignedCredential,
 };
 use crate::provider::credential_formatter::vcdm::{
     ContextType, CredentialSchemaMetadata, VcdmCredential, VcdmCredentialSchema,
@@ -354,6 +355,12 @@ async fn test_parse_credential() {
     assert_eq!(
         schema.single_format().await.ecosystem_schema_id,
         format!("{base_url}/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647")
+    );
+    assert_eq!(
+        credential.r#type,
+        ParsedCredentialType::W3c {
+            r#type: vec!["VerifiableCredential".to_string(), "8761JsonLd".to_string()]
+        }
     );
 
     let claims = credential.claims.as_ref().await.unwrap();

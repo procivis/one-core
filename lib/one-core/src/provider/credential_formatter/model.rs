@@ -135,6 +135,7 @@ pub struct DetailCredential {
     pub subject: Option<IdentifierDetails>,
     pub claims: HashMap<String, CredentialClaim>,
     pub status: Option<CredentialStatus>,
+    pub r#type: ParsedCredentialType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -519,4 +520,12 @@ pub struct ParsedCredential {
     pub holder_identifier: Option<Related<Identifier>>,
     pub format: Related<CredentialSchemaFormat>,
     pub claims: RelatedVec<Claim>,
+    pub r#type: ParsedCredentialType,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ParsedCredentialType {
+    Mdoc { doctype: String },
+    SdJwtVc { vct: String },
+    W3c { r#type: Vec<String> },
 }

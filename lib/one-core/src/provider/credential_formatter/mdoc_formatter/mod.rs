@@ -69,7 +69,9 @@ use crate::proto::certificate_validator::{CertificateValidationOptions, Certific
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
-use crate::provider::credential_formatter::model::{ParsedCredential, TokenStatus};
+use crate::provider::credential_formatter::model::{
+    ParsedCredential, ParsedCredentialType, TokenStatus,
+};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -669,7 +671,7 @@ impl CredentialFormatter for MdocFormatter {
             deleted_at: None,
             created_date: now,
             last_modified: now,
-            name: doctype,
+            name: doctype.to_owned(),
             wallet_attestation: Default::default(),
             layout_properties: None,
             imported_source_url: "".to_string(),
@@ -723,6 +725,7 @@ impl CredentialFormatter for MdocFormatter {
             },
             holder_identifier: Some(holder_identifier.into()),
             format: format.into(),
+            r#type: ParsedCredentialType::Mdoc { doctype },
         })
     }
 
@@ -787,6 +790,9 @@ async fn extract_credentials_internal(
         subject: Some(IdentifierDetails::Key(holder_jwk)),
         claims,
         status: try_convert_inner(mso.status)?,
+        r#type: ParsedCredentialType::Mdoc {
+            doctype: mso.doc_type,
+        },
     })
 }
 

@@ -32,8 +32,8 @@ use super::mapper::{default_2_years, first_certificate, to_format_with_mappings}
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialStatus, DetailCredential, Features, FormatterCapabilities,
-    IdentifierDetails, IssuedClaimValue, ParsedCredential, SelectiveDisclosure, TokenStatus,
-    TokenVerifier, VerificationFn,
+    IdentifierDetails, IssuedClaimValue, ParsedCredential, ParsedCredentialType,
+    SelectiveDisclosure, TokenStatus, TokenVerifier, VerificationFn,
 };
 use super::sdjwt::disclosures::{
     SELECTIVE_DISCLOSURE_ARRAY_MARKER, SELECTIVE_DISCLOSURE_MARKER, parse_token,
@@ -193,7 +193,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             created_date: now,
             last_modified: now,
             // Will be overridden based on issuer metadata
-            name: vct,
+            name: vct.clone(),
             wallet_attestation: Default::default(),
             layout_properties: None,
             imported_source_url: "".to_string(),
@@ -238,6 +238,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             },
             holder_identifier: holder_identifier.map(Into::into),
             format: format.into(),
+            r#type: ParsedCredentialType::SdJwtVc { vct },
         })
     }
 
@@ -626,6 +627,9 @@ impl SDJWTVCFormatter {
             subject,
             claims,
             status: convert_inner(jwt.payload.custom.status),
+            r#type: ParsedCredentialType::SdJwtVc {
+                vct: jwt.payload.custom.vc_type,
+            },
         })
     }
 }

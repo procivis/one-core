@@ -40,7 +40,9 @@ use crate::model::proof_schema::ProofSchema;
 use crate::model::trust_collection::TrustCollection;
 use crate::model::trust_list_publication::TrustListPublication;
 use crate::model::trust_list_role::TrustListRoleEnum;
-use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
+use crate::provider::credential_formatter::model::{
+    Features, FormatterCapabilities, ParsedCredentialType,
+};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -1124,5 +1126,8 @@ pub fn parsed_credential(
         holder_identifier: value.holder_identifier,
         format: value.format.unwrap(),
         claims: value.claims,
+        r#type: ParsedCredentialType::W3c {
+            r#type: vec!["VerifiableCredential".to_string()],
+        },
     }
 }

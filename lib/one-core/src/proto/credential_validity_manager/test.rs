@@ -39,7 +39,8 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, DetailCredential, IdentifierDetails, W3CCredentialStatus,
+    CredentialStatus, DetailCredential, IdentifierDetails, ParsedCredentialType,
+    W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::HolderInteractionData;
@@ -102,6 +103,9 @@ async fn test_check_revocation_non_revocable() {
                 subject: None,
                 claims: Default::default(),
                 status: None,
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
 
@@ -234,6 +238,9 @@ async fn test_check_revocation_updates_state(
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }])),
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
 
@@ -339,6 +346,9 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }])),
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
 
@@ -644,6 +654,9 @@ async fn test_check_revocation_batch_parent_expires_when_refresh_token_expired_e
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }])),
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
 
@@ -825,6 +838,9 @@ async fn test_check_revocation_batch_parent_stays_valid_when_refresh_token_and_e
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }])),
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
 
@@ -993,6 +1009,9 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }])),
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
 
@@ -3254,6 +3273,9 @@ async fn test_check_validity_mdoc_refresh_skipped_for_unknown_protocol(
                 subject: None,
                 claims: Default::default(),
                 status: None,
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
     let formatter = Arc::new(formatter);

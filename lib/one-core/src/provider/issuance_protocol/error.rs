@@ -16,8 +16,8 @@ pub enum IssuanceProtocolError {
     InvalidRequest(String),
     #[error("Failed to autogenerate binding: `{0}`")]
     BindingAutogenerationFailure(String),
-    #[error("Incorrect credential schema type")]
-    IncorrectCredentialSchemaType,
+    #[error("Incorrect credential schema type: `{0}`")]
+    IncorrectCredentialSchemaType(String),
     #[error("Credential offer issuer did does not match credential issuer did")]
     DidMismatch,
     #[error("Credential offer issuer certificate does not match credential issuer certificate")]
@@ -66,7 +66,7 @@ pub enum IssuanceProtocolError {
 impl ErrorCodeMixin for IssuanceProtocolError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
+            Self::IncorrectCredentialSchemaType(_) => ErrorCode::BR_0087,
             Self::InvalidRequest(_) => ErrorCode::BR_0085,
             Self::Untrusted => ErrorCode::BR_0433,
             Self::Failed(_)

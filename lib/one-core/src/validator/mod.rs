@@ -277,7 +277,7 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::provider::credential_formatter::model::IdentifierDetails;
+    use crate::provider::credential_formatter::model::{IdentifierDetails, ParsedCredentialType};
 
     #[test]
     fn test_validate_issuance_time() {
@@ -382,6 +382,9 @@ mod tests {
             subject: None,
             claims: Default::default(),
             status: None,
+            r#type: ParsedCredentialType::W3c {
+                r#type: vec!["VerifiableCredential".to_string()],
+            },
         };
         update(&mut credential);
         credential

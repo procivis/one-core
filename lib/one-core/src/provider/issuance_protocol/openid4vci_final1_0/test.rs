@@ -27,10 +27,10 @@ use standardized_types::oauth2::authorization_server_metadata::AuthorizationServ
 use standardized_types::oauth2::dpop::{DPOP_JWT_TYPE, DPoPClaims};
 use standardized_types::oauth2::token::TokenRequest;
 use standardized_types::openid4vci::{
-    ClaimDisplay, ClaimMetadata, CredentialDisplay, CredentialIssuerMetadata, CredentialMetadata,
-    CredentialRequest, CredentialRequestEncryption, CredentialRequestIdentifier,
-    CredentialResponseEncryption, Image, IssuerDisplay, KeyAttestationsRequired,
-    ProofTypeSupported, Proofs, SecurityLevel,
+    ClaimDisplay, ClaimMetadata, CredentialConfiguration, CredentialDefinition, CredentialDisplay,
+    CredentialIssuerMetadata, CredentialMetadata, CredentialRequest, CredentialRequestEncryption,
+    CredentialRequestIdentifier, CredentialResponseEncryption, Image, IssuerDisplay,
+    KeyAttestationsRequired, ProofTypeSupported, Proofs, SecurityLevel,
 };
 use time::Duration;
 use url::Url;
@@ -47,7 +47,7 @@ use super::model::{
     TransactionCode,
 };
 use super::service::{build_issuer_display, calculate_mandatory_claims, create_credential_offer};
-use super::validator::{TxCodeCheck, tx_code_check};
+use super::validator::{TxCodeCheck, tx_code_check, validate_issued_credential_type};
 use crate::clock::now_utc;
 use crate::config::core_config::{
     CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
@@ -97,13 +97,18 @@ use crate::proto::wallet_instance::{
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{IdentifierDetails, MockSignatureProvider};
+use crate::provider::credential_formatter::model::{
+    CredentialClaim, CredentialClaimValue, DetailCredential, IdentifierDetails,
+    MockSignatureProvider, ParsedCredential, ParsedCredentialType,
+};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::mapper::interaction_from_handle_invitation;
-use crate::provider::issuance_protocol::model::{InvitationResponseEnum, IssuanceRefreshResponse};
+use crate::provider::issuance_protocol::model::{
+    InvitationResponseEnum, IssuanceRefreshResponse, SubmitIssuerResponse,
+};
 use crate::provider::issuance_protocol::{
     HolderBindingInput, IssuanceProtocol, IssuanceProtocolError,
 };
@@ -628,6 +633,65 @@ fn test_tx_code_check(
     }
 }
 
+fn typed_configuration(
+    format: &str,
+    doctype: Option<&str>,
+    vct: Option<&str>,
+    w3c_types: Option<&[&str]>,
+) -> CredentialConfiguration {
+    CredentialConfiguration {
+        format: format.to_string(),
+        doctype: doctype.map(str::to_string),
+        vct: vct.map(str::to_string),
+        credential_definition: w3c_types.map(|types| CredentialDefinition {
+            r#type: types.iter().map(|t| t.to_string()).collect(),
+            context: None,
+        }),
+        ..Default::default()
+    }
+}
+
+fn w3c_types(types: &[&str]) -> ParsedCredentialType {
+    ParsedCredentialType::W3c {
+        r#type: types.iter().map(ToString::to_string).collect(),
+    }
+}
+
+#[rstest::rstest]
+#[case::mdoc(typed_configuration("mso_mdoc", Some("org.iso.18013.5.1.mDL"), None, None), ParsedCredentialType::Mdoc {doctype: "org.iso.18013.5.1.mDL".into()})]
+#[case::mdoc_type_not_declared(typed_configuration("mso_mdoc", None, None, None), ParsedCredentialType::Mdoc {doctype: "eu.europa.ec.eudi.pid.1".into()})]
+#[case::sd_jwt_vc(typed_configuration("dc+sd-jwt", None, Some("urn:eudi:pid:1"), None), ParsedCredentialType::SdJwtVc{vct:"urn:eudi:pid:1".into()})]
+#[case::sd_jwt_vc_pre_final_format(typed_configuration("vc+sd-jwt", None, Some("urn:eudi:pid:1"), None), ParsedCredentialType::SdJwtVc{vct:"urn:eudi:pid:1".into()})]
+// Procivis One advertises the schema ID as `vct` of W3C SD-JWT configurations
+#[case::w3c_sd_jwt_with_vct(typed_configuration("vc+sd-jwt", None, Some("https://schema"), None), w3c_types(&["VerifiableCredential", "Degree"]))]
+#[case::w3c_type_order(typed_configuration("jwt_vc_json", None, None, Some(&["VerifiableCredential", "Degree"])), w3c_types(&["Degree", "VerifiableCredential"]))]
+#[case::w3c_type_not_declared(typed_configuration("ldp_vc", None, None, None), w3c_types(&["VerifiableCredential", "Degree"]))]
+fn test_validate_issued_credential_type_accepts(
+    #[case] configuration: CredentialConfiguration,
+    #[case] issued: ParsedCredentialType,
+) {
+    validate_issued_credential_type(&configuration, &issued).unwrap();
+}
+
+#[rstest::rstest]
+#[case::mdoc_other_doctype(typed_configuration("mso_mdoc", Some("org.iso.18013.5.1.mDL"), None, None), ParsedCredentialType::Mdoc {doctype: "eu.europa.ec.eudi.pid.1".into()})]
+#[case::sd_jwt_vc_other_vct(typed_configuration("dc+sd-jwt", None, Some("urn:example:loyalty"), None), ParsedCredentialType::SdJwtVc{vct:"urn:eudi:pid:1".into()})]
+#[case::sd_jwt_vc_as_w3c(typed_configuration("dc+sd-jwt", None, Some("urn:eudi:pid:1"), None), w3c_types(&["VerifiableCredential", "Pid"]))]
+#[case::sd_jwt_vc_pre_final_format_other_vct(typed_configuration("vc+sd-jwt", None, Some("urn:example:loyalty"), None), ParsedCredentialType::SdJwtVc{vct:"urn:eudi:pid:1".into()})]
+#[case::w3c_as_sd_jwt_vc(typed_configuration("vc+sd-jwt", None, None, Some(&["VerifiableCredential", "Degree"])), ParsedCredentialType::SdJwtVc{vct:"urn:eudi:pid:1".into()})]
+#[case::w3c_other_type(typed_configuration("jwt_vc_json", None, None, Some(&["VerifiableCredential", "Degree"])), w3c_types(&["VerifiableCredential", "Pid"]))]
+#[case::w3c_extra_type(typed_configuration("ldp_vc", None, None, Some(&["VerifiableCredential", "Degree"])), w3c_types(&["VerifiableCredential", "Degree", "Pid"]))]
+#[case::w3c_missing_type(typed_configuration("vc+sd-jwt", None, None, Some(&["VerifiableCredential", "Degree"])), w3c_types(&["VerifiableCredential"]))]
+fn test_validate_issued_credential_type_rejects(
+    #[case] configuration: CredentialConfiguration,
+    #[case] issued: ParsedCredentialType,
+) {
+    let_assert!(
+        Err(IssuanceProtocolError::IncorrectCredentialSchemaType(_)) =
+            validate_issued_credential_type(&configuration, &issued)
+    );
+}
+
 #[tokio::test]
 async fn test_generate_share_credentials() {
     let mut credential = generic_credential_did();
@@ -976,6 +1040,202 @@ async fn test_holder_accept_credential_success() {
     let claim_translations = claim_schemas[0].translations.as_ref().await.unwrap();
     assert_eq!(claim_translations.len(), 1);
     assert_eq!(claim_translations[0].value, "Number");
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_rejects_credential_of_other_type_than_offered() {
+    let mock_server = MockServer::start().await;
+    let key = dummy_key();
+    let credential = generic_credential_did_with_holder_identifier();
+
+    let interaction_data = HolderInteractionData::from(TestHolderInteractionData {
+        notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+        credential_configurations: vec![TestHolderCredentialConfiguration {
+            credential_configuration_id: "degree".to_string(),
+            format: "jwt_vc_json".to_string(),
+            cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+            credential_definition: Some(CredentialDefinition {
+                r#type: vec!["VerifiableCredential".to_string(), "Degree".to_string()],
+                context: None,
+            }),
+            ..Default::default()
+        }],
+        ..TestHolderInteractionData::mock_issuer(&mock_server.uri())
+    });
+    let interaction = Interaction {
+        dpop_key: None,
+        client_attestation_key: None,
+        id: InteractionId::new(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: credential
+            .common()
+            .schema
+            .as_ref()
+            .await
+            .unwrap()
+            .organisation
+            .to_owned(),
+        interaction_type: InteractionType::Issuance,
+        expires_at: None,
+        ecosystem: None,
+        ecosystem_data: Default::default(),
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "access_token": "321",
+            "token_type": "Bearer",
+            "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"c_nonce": "123"})))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credentials": [{"credential": "credential"}],
+            "notification_id": "notification_id"
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    // the issuer learns why the credential was not accepted
+    Mock::given(method(Method::POST))
+        .and(path("/notification"))
+        .and(body_partial_json(json!({
+            "notification_id": "notification_id",
+            "event": "credential_failure"
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_parse_credential()
+        .returning(move |_, _, _| {
+            // the issuer delivers a credential of another type than the offered `Degree`
+            Ok(ParsedCredential {
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string(), "Pid".to_string()],
+                },
+                ..crate::service::test_utilities::parsed_credential(credential.clone())
+            })
+        });
+    formatter
+        .expect_get_capabilities()
+        .return_const(generic_formatter_capabilities());
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Ok(formatter.clone()));
+
+    let mut key_provider = MockKeyProvider::default();
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut signature_provider = MockSignatureProvider::new();
+            signature_provider
+                .expect_jose_alg()
+                .returning(|| Ok("EdDSA".to_string()));
+            signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+            signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+            Ok(Box::new(signature_provider))
+        });
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicJwk::Ec(PublicJwkEc {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+    // nothing of the rejected credential is stored
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .never();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .never();
+
+    let mut interaction_repository = MockInteractionRepository::default();
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .returning(|_, _| Ok(()));
+    let mut holder_wallet_unit_repository = MockInstanceRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_by_role()
+        .once()
+        .return_once(|_, _| Ok(None));
+
+    let openid_provider = setup_protocol(TestInputs {
+        metadata_cache: issuer_metadata_cache(&interaction),
+        formatter_provider,
+        key_provider,
+        key_algorithm_provider,
+        identifier_creator,
+        credential_schema_repository,
+        holder_wallet_unit_repository,
+        interaction_repository,
+        config: dummy_config(),
+        ..Default::default()
+    });
+    let configuration_ids = configuration_ids(&interaction);
+    let result = openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(HolderBindingInput {
+                identifier: Identifier {
+                    data: IdentifierData::Key(Related::from(key.clone())),
+                    ..dummy_identifier()
+                },
+                key,
+            }),
+            None,
+            configuration_ids,
+        )
+        .await
+        .unwrap();
+
+    assert!(result.issued.is_empty());
+    let [failure] = result.failed.as_slice() else {
+        panic!("expected one failed configuration");
+    };
+    assert_eq!(failure.credential_configuration_id, "degree");
+    assert_matches!(
+        failure.error,
+        IssuanceProtocolError::IncorrectCredentialSchemaType(_)
+    );
 }
 
 #[tokio::test]
@@ -7221,6 +7481,112 @@ async fn mso_refresh_selects_the_configuration_matching_the_items_format_id(
             .identifier
             .id()
     );
+}
+
+#[rstest::rstest]
+#[case::offered_doctype(Some("org.iso.18013.5.1.mDL"), "credential configuration")]
+// without a declared doctype, the stored doctype still pins the type
+#[case::stored_doctype(None, "stored doctype")]
+#[tokio::test]
+async fn mso_refresh_rejects_credential_of_other_doctype(
+    #[case] offered_doctype: Option<&str>,
+    #[case] expected_reason: &str,
+) {
+    let mut credential = CredentialBuilder {
+        role: CredentialRole::Holder,
+        ..generic_credential_did_with_holder_identifier().into()
+    }
+    .build();
+    {
+        let mut format = credential
+            .holder_mut()
+            .unwrap()
+            .data
+            .format
+            .as_mut()
+            .await
+            .unwrap();
+        format.format = "MDOC".into();
+        format.ecosystem_schema_id = "org.iso.18013.5.1.mDL".to_string();
+    }
+    let configuration = HolderCredentialConfiguration::from(TestHolderCredentialConfiguration {
+        credential_configuration_id: "mdl".to_string(),
+        format: "mso_mdoc".to_string(),
+        ..Default::default()
+    });
+    let configuration = HolderCredentialConfiguration {
+        metadata: CredentialConfiguration {
+            doctype: offered_doctype.map(str::to_string),
+            ..configuration.metadata
+        },
+        ..configuration
+    };
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_extract_credentials()
+        .once()
+        .returning(|_, _, _| {
+            // the issuer renews the MSO of the mDL as another document type
+            Ok(DetailCredential {
+                issuance_date: None,
+                valid_from: None,
+                valid_until: Some(now_utc() + Duration::days(1)),
+                update_at: None,
+                invalid_before: None,
+                issuer: IdentifierDetails::Did("did:example:issuer".parse().unwrap()),
+                subject: None,
+                claims: [(
+                    "doctype".to_string(),
+                    CredentialClaim {
+                        selectively_disclosable: false,
+                        metadata: true,
+                        value: CredentialClaimValue::String("eu.europa.ec.eudi.pid.1".to_string()),
+                    },
+                )]
+                .into(),
+                status: None,
+                r#type: ParsedCredentialType::Mdoc {
+                    doctype: "CredentialSchemaId".to_string(),
+                },
+            })
+        });
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq(CredentialFormat::from("MDOC")))
+        .returning(move |_| Ok(formatter.clone()));
+
+    // the stored credential is left unchanged, so no blob or credential update is expected
+    let protocol = setup_protocol(TestInputs {
+        formatter_provider,
+        config: dummy_config(),
+        ..Default::default()
+    });
+    let organisation = dummy_organisation(None);
+    let interaction = interaction_for(
+        &credential,
+        &HolderInteractionData::from(TestHolderInteractionData::default()),
+    )
+    .await;
+
+    let result = protocol
+        .holder_process_refresh(
+            &configuration,
+            vec![],
+            SubmitIssuerResponse {
+                credentials: vec!["refreshed".into()],
+                ..Default::default()
+            },
+            &organisation,
+            Some(credential),
+            &interaction,
+        )
+        .await;
+
+    let_assert!(Err(IssuanceProtocolError::IncorrectCredentialSchemaType(reason)) = result);
+    assert!(reason.contains(expected_reason), "{reason}");
 }
 
 #[tokio::test]

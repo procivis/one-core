@@ -30,7 +30,8 @@ use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, DetailCredential, IdentifierDetails, W3CCredentialStatus,
+    CredentialStatus, DetailCredential, IdentifierDetails, ParsedCredentialType,
+    W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -75,6 +76,9 @@ async fn test_task_holder_check_credential_status_being_revoked() {
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }])),
+                r#type: ParsedCredentialType::W3c {
+                    r#type: vec!["VerifiableCredential".to_string()],
+                },
             })
         });
 

@@ -12,11 +12,16 @@ use shared_types::{
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::VpTokenResponse;
 use standardized_types::openid4vp::dcql::{
-    CredentialFormat, CredentialQuery, DcqlQuery, MsoMdocMeta,
+    CredentialFormat, CredentialQuery, CredentialSet, DcqlQuery, MsoMdocMeta, SdJwtVcMeta,
+    W3cVcMeta,
 };
 use time::Duration;
 use uuid::Uuid;
 
+use super::OpenId4VpProofValidator;
+use super::validator::{
+    OpenId4VpProofValidatorProto, validate_credential_type, validate_dcql_submission,
+};
 use crate::config::core_config::VerificationProtocolType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -27,12 +32,11 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::openid4vp_proof_validator::OpenId4VpProofValidator;
-use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorProto;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, DetailCredential, IdentifierDetails, W3CCredentialStatus,
+    CredentialStatus, DetailCredential, IdentifierDetails, ParsedCredentialType,
+    W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -302,6 +306,26 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
     )
 }
 
+/// The type of a credential satisfying the given credential query format
+fn requested_credential_type(format: &CredentialFormat) -> ParsedCredentialType {
+    match format {
+        CredentialFormat::MsoMdoc(meta) => ParsedCredentialType::Mdoc {
+            doctype: meta.doctype_value.clone(),
+        },
+        CredentialFormat::SdJwtVc(meta) => ParsedCredentialType::SdJwtVc {
+            vct: meta.vct_values[0].clone(),
+        },
+        CredentialFormat::JwtVc(meta)
+        | CredentialFormat::LdpVc(meta)
+        | CredentialFormat::W3cSdJwt(meta) => ParsedCredentialType::W3c {
+            r#type: ["VerifiableCredential".to_string()]
+                .into_iter()
+                .chain(meta.type_values[0].iter().cloned())
+                .collect(),
+        },
+    }
+}
+
 fn test_data(dcql_query: DcqlQuery) -> TestData {
     let issuer_did: DidValue = "did:issuer:123".parse().unwrap();
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
@@ -309,6 +333,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
     let proof_id: ProofId = ProofId::new();
     let mut credential_schema = dummy_credential_schema();
     let format_id = dcql_query.credentials[0].id.to_string().parse().unwrap();
+    let credential_type = requested_credential_type(&dcql_query.credentials[0].format);
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
@@ -435,6 +460,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
             status_purpose: None,
             additional_fields: Default::default(),
         }])),
+        r#type: credential_type,
     };
 
     let extracted_presentation = ExtractedPresentation {
@@ -493,6 +519,140 @@ async fn test_validate_submission_dcql_no_holder_binding() {
     assert_eq!(
         result.0.proved_credentials.first().unwrap().issuer_details,
         IdentifierDetails::Did(test_data.issuer_did.to_owned())
+    );
+}
+
+/// Without holder binding, so that the token is extracted as a bare credential
+fn sd_jwt_vc_dcql_query() -> DcqlQuery {
+    let mut query = dummy_dcql_query(false);
+    query.credentials[0].format = CredentialFormat::SdJwtVc(SdJwtVcMeta {
+        vct_values: vec!["urn:eudi:pid:1".to_string()],
+    });
+    query
+}
+
+#[rstest::rstest]
+#[case::w3c(dummy_dcql_query(true), ParsedCredentialType::W3c {
+    r#type: vec!["VerifiableCredential".to_string(), "OtherCredential".to_string()],
+})]
+#[case::mdoc(mdoc_dcql_query(), ParsedCredentialType::Mdoc {
+    doctype: "org.iso.23220.photoid.1".to_string(),
+})]
+#[case::sd_jwt_vc(sd_jwt_vc_dcql_query(), ParsedCredentialType::SdJwtVc {
+    vct: "urn:other:1".to_string(),
+})]
+#[case::other_format(sd_jwt_vc_dcql_query(), ParsedCredentialType::W3c {
+    r#type: vec!["VerifiableCredential".to_string(), "urn:eudi:pid:1".to_string()],
+})]
+#[tokio::test]
+async fn credential_of_another_type_is_rejected(
+    #[case] dcql_query: DcqlQuery,
+    #[case] presented_type: ParsedCredentialType,
+) {
+    let mut test_data = test_data(dcql_query);
+    // The credential carries every requested claim, only its type differs
+    test_data
+        .mock_data
+        .credential_extraction
+        .as_mut()
+        .unwrap()
+        .as_mut()
+        .unwrap()
+        .r#type = presented_type;
+    // Rejected before its status is checked
+    test_data.mock_data.revocation_check = None;
+    let proto = setup_proto(mocks_with_test_data(test_data.mock_data));
+
+    let submission_data = SubmissionRequestData {
+        submission: VpTokenResponse {
+            vp_token: hashmap! {"a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string() => vec!["vp_token".to_string()]},
+        },
+        interaction_id: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
+        mdoc_generated_nonce: None,
+        encryption_key: None,
+    };
+    let err = proto
+        .validate_submission(
+            submission_data,
+            test_data.proof,
+            test_data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(
+        err,
+        OpenID4VCError::ValidationError(e) if e.contains("does not match the requested")
+    );
+}
+
+#[rstest::rstest]
+#[case::mdoc_requested_doctype(
+    CredentialFormat::MsoMdoc(MsoMdocMeta { doctype_value: "org.iso.18013.5.1.mDL".to_string() }),
+    ParsedCredentialType::Mdoc { doctype: "org.iso.18013.5.1.mDL".to_string() },
+    true
+)]
+#[case::mdoc_other_doctype(
+    CredentialFormat::MsoMdoc(MsoMdocMeta { doctype_value: "org.iso.18013.5.1.mDL".to_string() }),
+    ParsedCredentialType::Mdoc { doctype: "org.iso.18013.5.1.mDL.test".to_string() },
+    false
+)]
+#[case::sd_jwt_vc_any_requested_vct(
+    CredentialFormat::SdJwtVc(SdJwtVcMeta { vct_values: vec!["urn:a".to_string(), "urn:b".to_string()] }),
+    ParsedCredentialType::SdJwtVc { vct: "urn:b".to_string() },
+    true
+)]
+#[case::sd_jwt_vc_other_vct(
+    CredentialFormat::SdJwtVc(SdJwtVcMeta { vct_values: vec!["urn:a".to_string()] }),
+    ParsedCredentialType::SdJwtVc { vct: "urn:a:extended".to_string() },
+    false
+)]
+#[case::w3c_compact_alternative(
+    CredentialFormat::JwtVc(W3cVcMeta { type_values: vec![
+        vec!["https://www.w3.org/2018/credentials#VerifiableCredential".to_string(), "https://schema#Pid".to_string()],
+        vec!["Pid".to_string()],
+    ]}),
+    ParsedCredentialType::W3c { r#type: vec!["VerifiableCredential".to_string(), "Pid".to_string()] },
+    true
+)]
+#[case::w3c_all_types_of_alternative_in_any_order_with_extra_types(
+    CredentialFormat::LdpVc(W3cVcMeta { type_values: vec![vec!["VerifiableCredential".to_string(), "Pid".to_string()]] }),
+    ParsedCredentialType::W3c { r#type: vec!["Pid".to_string(), "Extra".to_string(), "VerifiableCredential".to_string()] },
+    true
+)]
+#[case::w3c_some_types_of_alternative(
+    CredentialFormat::W3cSdJwt(W3cVcMeta { type_values: vec![vec!["VerifiableCredential".to_string(), "Pid".to_string()]] }),
+    ParsedCredentialType::W3c { r#type: vec!["VerifiableCredential".to_string()] },
+    false
+)]
+#[case::w3c_empty_alternative(
+    CredentialFormat::JwtVc(W3cVcMeta { type_values: vec![vec![]] }),
+    ParsedCredentialType::W3c { r#type: vec!["VerifiableCredential".to_string()] },
+    false
+)]
+#[case::mdoc_requested_w3c_presented(
+    CredentialFormat::MsoMdoc(MsoMdocMeta { doctype_value: "Pid".to_string() }),
+    ParsedCredentialType::W3c { r#type: vec!["Pid".to_string()] },
+    false
+)]
+#[case::sd_jwt_vc_requested_mdoc_presented(
+    CredentialFormat::SdJwtVc(SdJwtVcMeta { vct_values: vec!["Pid".to_string()] }),
+    ParsedCredentialType::Mdoc { doctype: "Pid".to_string() },
+    false
+)]
+#[case::w3c_requested_sd_jwt_vc_presented(
+    CredentialFormat::JwtVc(W3cVcMeta { type_values: vec![vec!["Pid".to_string()]] }),
+    ParsedCredentialType::SdJwtVc { vct: "Pid".to_string() },
+    false
+)]
+fn presented_credential_type_must_match_requested(
+    #[case] requested: CredentialFormat,
+    #[case] presented: ParsedCredentialType,
+    #[case] accepted: bool,
+) {
+    assert_eq!(
+        validate_credential_type(&requested, &presented).is_ok(),
+        accepted
     );
 }
 
@@ -740,10 +900,6 @@ async fn test_validate_submission_empty_transaction_data_evidence_is_ignored() {
 
 #[test]
 fn credential_sets_accept_alternatives_and_require_all_required_inputs() {
-    use standardized_types::openid4vp::dcql::CredentialSet;
-
-    use super::validator::validate_dcql_submission;
-
     let mut query = dummy_dcql_query(true);
     let template = query.credentials[0].clone();
     query.credentials = ["a", "b", "c", "optional"]
@@ -805,7 +961,6 @@ fn credential_sets_accept_alternatives_and_require_all_required_inputs() {
 }
 
 async fn multiformat_test_data(transaction_data: bool) -> TestData {
-    use standardized_types::openid4vp::dcql::CredentialSet;
     let mut data = test_data(if transaction_data {
         mdoc_dcql_query()
     } else {

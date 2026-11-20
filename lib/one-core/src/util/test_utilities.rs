@@ -114,9 +114,10 @@ mod holder_interaction_data {
     use standardized_types::oauth2::authorization_server_metadata::AuthorizationServerMetadata;
     use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
     use standardized_types::openid4vci::{
-        BatchCredentialIssuance, CredentialConfiguration, CredentialIssuerMetadata,
-        CredentialMetadata, CredentialRequestEncryption, CredentialResponseEncryption, Grants,
-        IssuerDisplay, PreAuthorizedCodeGrant, ProofTypeSupported, SigningAlgValue,
+        BatchCredentialIssuance, CredentialConfiguration, CredentialDefinition,
+        CredentialIssuerMetadata, CredentialMetadata, CredentialRequestEncryption,
+        CredentialResponseEncryption, Grants, IssuerDisplay, PreAuthorizedCodeGrant,
+        ProofTypeSupported, SigningAlgValue,
     };
     use time::OffsetDateTime;
 
@@ -210,6 +211,7 @@ mod holder_interaction_data {
         pub proof_types_supported: Option<IndexMap<String, ProofTypeSupported>>,
         pub credential_metadata: Option<CredentialMetadata>,
         pub disclosure_policy: Option<DisclosurePolicy>,
+        pub credential_definition: Option<CredentialDefinition>,
         pub notification_ids: Vec<String>,
         pub credential_id: Option<CredentialId>,
         pub credential_schema_format_id: Option<CredentialSchemaFormatId>,
@@ -227,6 +229,7 @@ mod holder_interaction_data {
                     proof_types_supported: value.proof_types_supported,
                     credential_metadata: value.credential_metadata,
                     disclosure_policy: value.disclosure_policy,
+                    credential_definition: value.credential_definition,
                     ..Default::default()
                 },
                 state: HolderCredentialConfigurationState {

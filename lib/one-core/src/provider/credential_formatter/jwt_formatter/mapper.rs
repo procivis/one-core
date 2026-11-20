@@ -7,7 +7,7 @@ use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, DetailCredential, IdentifierDetails,
+    CredentialStatus, DetailCredential, IdentifierDetails, ParsedCredentialType,
 };
 use crate::provider::did_method::error::DidMethodError;
 
@@ -70,6 +70,9 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             subject,
             claims,
             status,
+            r#type: ParsedCredentialType::W3c {
+                r#type: jwt.payload.custom.vc.r#type,
+            },
         })
     }
 }

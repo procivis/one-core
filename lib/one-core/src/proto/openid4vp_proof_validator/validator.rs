@@ -26,7 +26,7 @@ use crate::proto::openid4vp_proof_validator::validated_proof_result::ValidatedPr
 use crate::proto::openid4vp_proof_validator::{OpenId4VpProofValidator, ValidatedProofResult};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, DetailCredential, IdentifierDetails,
+    CredentialClaim, DetailCredential, IdentifierDetails, ParsedCredentialType,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -288,7 +288,6 @@ impl OpenId4VpProofValidatorProto {
         let require_holder_binding = credential_query.require_cryptographic_holder_binding;
         let dcql_credential_format = &credential_query.format;
         let query_id = &credential_query.id;
-        let trusted_authorities = credential_query.trusted_authorities.as_deref();
 
         if presentation_strings.is_empty()
             || (!multiple_presentations_allowed && presentation_strings.len() != 1)
@@ -354,9 +353,9 @@ impl OpenId4VpProofValidatorProto {
                     .validate_credential(
                         holder_details.as_ref(),
                         &credential_token,
+                        credential_query,
                         proof_input_schema,
                         schema_format,
-                        trusted_authorities,
                     )
                     .await?;
 
@@ -397,9 +396,9 @@ impl OpenId4VpProofValidatorProto {
         &self,
         holder_details: Option<&IdentifierDetails>,
         credential_token: &SerializedCredential,
+        credential_query: &CredentialQuery,
         proof_schema_input: &ProofInputSchema,
         schema_format: &CredentialSchemaFormat,
-        trusted_authorities: Option<&[TrustedAuthority]>,
     ) -> Result<DetailCredential, OpenID4VCError> {
         let credential_schema = proof_schema_input
             .credential_schema
@@ -426,6 +425,7 @@ impl OpenId4VpProofValidatorProto {
                 }
             })?;
 
+        validate_credential_type(&credential_query.format, &credential.r#type)?;
         validate_credential_validity(&credential, formatter.get_leeway())?;
 
         if let Some(credential_status) = &credential.status {
@@ -467,7 +467,7 @@ impl OpenId4VpProofValidatorProto {
             .await?;
         }
 
-        if let Some(authorities) = trusted_authorities {
+        if let Some(authorities) = &credential_query.trusted_authorities {
             check_issuer_is_trusted_authority(&credential.issuer, authorities)?;
         }
 
@@ -644,6 +644,39 @@ async fn check_matching_dids(
             "Presentation signer key not found in claim subject DID document".to_owned(),
         ))?;
 
+    Ok(())
+}
+
+/// Rejects a presented credential that is not of the type requested by the credential query
+pub(super) fn validate_credential_type(
+    requested: &CredentialFormat,
+    presented: &ParsedCredentialType,
+) -> Result<(), OpenID4VCError> {
+    let matches = match (requested, presented) {
+        (CredentialFormat::MsoMdoc(meta), ParsedCredentialType::Mdoc { doctype }) => {
+            doctype == &meta.doctype_value
+        }
+        (CredentialFormat::SdJwtVc(meta), ParsedCredentialType::SdJwtVc { vct }) => {
+            meta.vct_values.contains(vct)
+        }
+        // Each alternative lists types that must all be present, regardless of order or of the
+        // presence of other types. Types are compared as presented, without JSON-LD expansion.
+        (
+            CredentialFormat::JwtVc(meta)
+            | CredentialFormat::LdpVc(meta)
+            | CredentialFormat::W3cSdJwt(meta),
+            ParsedCredentialType::W3c { r#type },
+        ) => meta.type_values.iter().any(|alternative| {
+            !alternative.is_empty() && alternative.iter().all(|t| r#type.contains(t))
+        }),
+        _ => false,
+    };
+
+    if !matches {
+        return Err(OpenID4VCError::ValidationError(format!(
+            "Presented credential of {presented:?} does not match the requested {requested}"
+        )));
+    }
     Ok(())
 }
 

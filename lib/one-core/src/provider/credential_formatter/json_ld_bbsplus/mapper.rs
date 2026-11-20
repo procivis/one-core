@@ -5,6 +5,7 @@ use shared_types::DidValue;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialStatus, DetailCredential, IdentifierDetails,
+    ParsedCredentialType,
 };
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 
@@ -54,6 +55,9 @@ pub(super) fn convert_to_detail_credential(
         subject,
         claims,
         status,
+        r#type: ParsedCredentialType::W3c {
+            r#type: vcdm.r#type,
+        },
     })
 }
 

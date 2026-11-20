@@ -546,6 +546,7 @@ async fn test_revoke_check_mdoc_update() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 ..Default::default()
             },
         )
@@ -705,6 +706,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 ..Default::default()
             },
         )
@@ -865,6 +867,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 ..Default::default()
             },
         )
@@ -1023,6 +1026,7 @@ async fn test_revoke_check_token_update() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 allow_suspension: Some(false),
                 ..Default::default()
             },
@@ -1190,6 +1194,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 allow_suspension: Some(true),
                 ..Default::default()
             },
@@ -1341,6 +1346,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 allow_suspension: Some(false),
                 ..Default::default()
             },
@@ -1471,6 +1477,7 @@ async fn test_suspended_to_valid_mdoc() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 allow_suspension: Some(true),
                 ..Default::default()
             },
@@ -1665,6 +1672,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &organisation,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                schema_id: Some(MDOC_DOCTYPE.to_string()),
                 allow_suspension: Some(true),
                 ..Default::default()
             },
@@ -2443,6 +2451,9 @@ async fn test_revoke_check_batch_parent_expires_when_own_expires_at_passed() {
     );
 }
 
+/// Doctype of the mdoc fixtures, and the ecosystem schema ID of their stored schema
+const MDOC_DOCTYPE: &str = "org.example.test.1";
+
 async fn valid_mdoc_credential() -> SerializedCredential {
     let params = json!({
         "expirationSeconds": 86_400,
@@ -2476,7 +2487,7 @@ async fn expired_mdoc_credential() -> SerializedCredential {
 async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredential {
     let credential = CredentialData {
         credential: UnsignedCredential::Mdoc(MdocCredential {
-            doctype: "schema".to_string(),
+            doctype: MDOC_DOCTYPE.to_string(),
             valid_until: None,
             credential_status: None,
             claims: IssuedClaims::new(),

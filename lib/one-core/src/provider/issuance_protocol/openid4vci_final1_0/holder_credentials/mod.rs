@@ -20,7 +20,7 @@ use self::schema_matching::{
 };
 use super::mapper::{convert_metadata_to_layout_properties, holder_formatter};
 use super::model::{HolderBinding, HolderCredentialConfiguration};
-use super::validator::validate_batch_consistency;
+use super::validator::{validate_batch_consistency, validate_issued_credential_type};
 use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
 use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
@@ -47,7 +47,9 @@ use crate::proto::identifier_creator::{
 };
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, IdentifierDetails, ParsedCredentialType,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::model::{CredentialWithBlob, IssuanceRefreshResponse};
 use crate::provider::issuance_protocol::{IssuanceAcceptResponse, IssuanceProtocolError};
@@ -98,6 +100,7 @@ impl OpenID4VCIFinal1_0 {
             let mut credential = self
                 .prepare_issued_credential(
                     &issued_credential,
+                    configuration,
                     &mut holder_bindings,
                     organisation,
                     interaction,
@@ -306,7 +309,8 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<Vec<Credential>, IssuanceProtocolError> {
         if let Some(credential) = updated_credential {
             let holder = credential.holder()?;
-            self.process_mso_refresh(holder.clone(), response).await?;
+            self.process_mso_refresh(holder.clone(), configuration, response)
+                .await?;
 
             let schema = holder.common.schema.as_ref().await?.to_owned();
             let format = holder.data.format.as_ref().await?.to_owned();
@@ -329,6 +333,7 @@ impl OpenID4VCIFinal1_0 {
     async fn process_mso_refresh(
         &self,
         credential: CredentialView<'_, HolderCredentialData>,
+        configuration: &HolderCredentialConfiguration,
         mut response: SubmitIssuerResponse,
     ) -> Result<(), IssuanceProtocolError> {
         if response.credentials.len() != 1 {
@@ -345,15 +350,32 @@ impl OpenID4VCIFinal1_0 {
                 ))?;
 
         let schema = credential.common.schema.as_ref().await?;
-        let credential_format = credential.data.format.as_ref().await?.format.to_owned();
+        let credential_format = credential.data.format.as_ref().await?.to_owned();
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_format)?;
+            .get_credential_formatter(&credential_format.format)?;
 
         let detail = formatter
             .extract_credentials(&updated_credential, Some(&schema), self.verification_fn())
             .await
             .error_while("extracting credential")?;
+
+        // The new MSO replaces the stored mdoc, so it must be of the offered doctype and of
+        // the doctype the stored credential was accepted as.
+        let r#type @ ParsedCredentialType::Mdoc { doctype } = &detail.r#type else {
+            return Err(IssuanceProtocolError::Failed(
+                "invalid credential type".to_string(),
+            ));
+        };
+        validate_issued_credential_type(&configuration.metadata, r#type)?;
+        if doctype != &credential_format.ecosystem_schema_id {
+            return Err(IssuanceProtocolError::IncorrectCredentialSchemaType(
+                format!(
+                    "refreshed credential of doctype `{doctype}` does not match the stored doctype `{}`",
+                    credential_format.ecosystem_schema_id
+                ),
+            ));
+        }
 
         let db_blob_storage = self
             .blob_storage_provider
@@ -440,6 +462,7 @@ impl OpenID4VCIFinal1_0 {
             let mut credential = self
                 .prepare_issued_credential(
                     &issued_credential,
+                    configuration,
                     &mut holder_bindings,
                     organisation,
                     interaction,
@@ -620,6 +643,7 @@ impl OpenID4VCIFinal1_0 {
     async fn prepare_issued_credential(
         &self,
         issued_credential: &SerializedCredential,
+        configuration: &HolderCredentialConfiguration,
         holder_bindings: &mut Vec<HolderBinding>,
         organisation: &Organisation,
         interaction: &Interaction,
@@ -635,6 +659,8 @@ impl OpenID4VCIFinal1_0 {
             )
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
+
+        validate_issued_credential_type(&configuration.metadata, &credential.r#type)?;
 
         validate_issuance_time(&credential.common.issuance_date, formatter.get_leeway())
             .error_while("validating issuance time")?;

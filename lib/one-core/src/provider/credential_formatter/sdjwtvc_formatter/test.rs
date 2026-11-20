@@ -49,8 +49,8 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialPresentation,
     CredentialStatus, IdentifierDetails, IssuedClaimValue, IssuedClaims, MockSignatureProvider,
-    MockTokenVerifier, ParsedCredential, PublicKeySource, TokenStatus, UnsignedCredential,
-    issued_claims,
+    MockTokenVerifier, ParsedCredential, ParsedCredentialType, PublicKeySource, TokenStatus,
+    UnsignedCredential, issued_claims,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::{SdJwtVc, SdJwtVcCredential};
@@ -1619,6 +1619,12 @@ async fn test_parse_credential_eudi() {
     assert_eq!(vct_schema.data_type, "STRING");
     assert_eq!(vct_schema.array, false);
     assert_eq!(vct_schema.metadata, true);
+    assert_eq!(
+        result.r#type,
+        ParsedCredentialType::SdJwtVc {
+            vct: "urn:eudi:pid:1".to_string()
+        }
+    );
 
     // Verify issuing_authority claim
     let issuing_authority_claim = claims

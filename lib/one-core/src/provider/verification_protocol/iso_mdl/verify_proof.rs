@@ -18,8 +18,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::ecosystem_resolver::EcosystemResolver;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::proto::key_verification::KeyVerification;
-use crate::provider::credential_formatter::mdoc_formatter::DOCTYPE_METADATA_CLAIM_KEY;
-use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::model::{DetailCredential, ParsedCredentialType};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::ecosystem::model::ProtocolArtifact;
@@ -257,13 +256,14 @@ fn extract_matching_requested_schema(
     ),
     ServiceError,
 > {
-    let received_doctype = received_credential
-        .claims
-        .get(DOCTYPE_METADATA_CLAIM_KEY)
-        .ok_or(ServiceError::MappingError("doctype not parsed".to_string()))?
-        .value
-        .as_str()
-        .ok_or(ServiceError::MappingError("invalid doctype".to_string()))?;
+    let ParsedCredentialType::Mdoc {
+        doctype: received_doctype,
+    } = &received_credential.r#type
+    else {
+        return Err(ServiceError::MappingError(
+            "invalid credential type".to_string(),
+        ));
+    };
 
     let (matching_credential_schema_id, matching_claim_schemas) = remaining_requested_claims
         .iter()

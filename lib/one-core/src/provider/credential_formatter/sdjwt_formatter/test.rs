@@ -24,8 +24,8 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialStatus, Features,
-    IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource, UnsignedCredential,
-    W3CCredentialStatus,
+    IdentifierDetails, Issuer, MockTokenVerifier, ParsedCredentialType, PublicKeySource,
+    UnsignedCredential, W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     DisclosureArray, DisclosureArrayElement,
@@ -1057,6 +1057,15 @@ async fn test_parse_credential() {
     assert_eq!(
         schema.single_format().await.ecosystem_schema_id,
         "https://core.dev.procivis-one.com/ssi/schema/v1/30994889-2dc6-4a82-ac41-74ec5cc187ba"
+    );
+    assert_eq!(
+        result.r#type,
+        ParsedCredentialType::W3c {
+            r#type: vec![
+                "VerifiableCredential".to_string(),
+                "ArraysAndObjects".to_string()
+            ]
+        }
     );
 
     // Verify disclosed claims exist

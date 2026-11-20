@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use shared_types::{DidValue, OrganisationId};
@@ -18,6 +20,7 @@ use crate::model::instance::{
 };
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
+use crate::provider::credential_formatter::model::ParsedCredentialType;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -253,6 +256,48 @@ pub(super) async fn validate_has_active_wallet_instance(
         return Err(IssuanceProtocolError::WalletInstanceRequired);
     }
 
+    Ok(())
+}
+
+/// Rejects an issued credential that is not of the type its credential configuration declares
+/// (OpenID4VCI Appendix A). Decisions made on the offer, such as the ecosystem permissions of the
+/// issuer, are evaluated against the configuration and only hold for credentials of that type.
+/// A configuration that declares no type does not constrain the issued credential.
+pub(super) fn validate_issued_credential_type(
+    configuration: &CredentialConfiguration,
+    issued: &ParsedCredentialType,
+) -> Result<(), IssuanceProtocolError> {
+    let matches = match (configuration.format.as_str(), issued) {
+        ("mso_mdoc", _) => configuration.doctype.as_ref().is_none_or(|configuration_doctype| {
+            matches!(issued, ParsedCredentialType::Mdoc { doctype } if doctype == configuration_doctype)
+        }),
+        ("dc+sd-jwt", _) => configuration.vct.as_ref().is_none_or(|configuration_vct| {
+            matches!(issued, ParsedCredentialType::SdJwtVc { vct } if vct == configuration_vct)
+        }),
+        // an SD-JWT VC offered under a pre-final format identifier, e.g. `vc+sd-jwt`
+        (_, ParsedCredentialType::SdJwtVc { vct }) => {
+            configuration.credential_definition.is_none()
+                && configuration.vct.as_ref().is_none_or(|configuration_vct| vct == configuration_vct)
+        }
+        // W3C formats; extra types would let the credential match queries the offer did not cover
+        _ => configuration
+            .credential_definition
+            .as_ref()
+            .is_none_or(|definition| {
+                matches!(issued, ParsedCredentialType::W3c { r#type }
+                    if definition.r#type.iter().collect::<HashSet<_>>()
+                        == r#type.iter().collect::<HashSet<_>>())
+            }),
+    };
+
+    if !matches {
+        return Err(IssuanceProtocolError::IncorrectCredentialSchemaType(
+            format!(
+                "issued credential of {issued:?} does not match the requested `{}` credential configuration",
+                configuration.format
+            ),
+        ));
+    }
     Ok(())
 }
 

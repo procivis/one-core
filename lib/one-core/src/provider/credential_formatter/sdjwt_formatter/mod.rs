@@ -24,8 +24,8 @@ use super::json_claims::{parse_claims, prepare_identifier};
 use super::mapper::{default_2_years, first_certificate, to_format_with_mappings};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialStatus, DetailCredential,
-    Features, FormatterCapabilities, IdentifierDetails, ParsedCredential, SelectiveDisclosure,
-    TokenVerifier, VerificationFn,
+    Features, FormatterCapabilities, IdentifierDetails, ParsedCredential, ParsedCredentialType,
+    SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use super::sdjwt::disclosures::{
     SELECTIVE_DISCLOSURE_ARRAY_MARKER, SELECTIVE_DISCLOSURE_MARKER, parse_token,
@@ -435,6 +435,7 @@ impl CredentialFormatter for SDJWTFormatter {
             },
             holder_identifier: holder_identifier.map(Into::into),
             format: format.into(),
+            r#type: ParsedCredentialType::W3c { r#type: vc_types },
         })
     }
 
@@ -556,6 +557,9 @@ pub(crate) async fn extract_credentials_internal(
         subject,
         claims,
         status,
+        r#type: ParsedCredentialType::W3c {
+            r#type: jwt.payload.custom.vc.r#type,
+        },
     })
 }
 

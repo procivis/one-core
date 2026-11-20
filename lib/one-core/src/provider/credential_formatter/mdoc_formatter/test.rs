@@ -1122,6 +1122,12 @@ async fn test_parse_credential() {
     let doctype_claim = claims.iter().find(|claim| claim.path == "doctype").unwrap();
     assert_eq!(doctype_claim.value.as_ref().unwrap(), "pavel.7545.strings");
     assert!(doctype_claim.schema.as_ref().await.unwrap().metadata);
+    assert_eq!(
+        credential.r#type,
+        ParsedCredentialType::Mdoc {
+            doctype: "pavel.7545.strings".to_string()
+        }
+    );
 
     // check selectively disclosable flags
     assert_eq!(

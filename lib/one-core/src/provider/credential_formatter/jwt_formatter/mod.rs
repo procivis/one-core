@@ -38,7 +38,7 @@ use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
 use crate::provider::credential_formatter::mapper::{
     default_2_years, first_certificate, to_format_with_mappings,
 };
-use crate::provider::credential_formatter::model::ParsedCredential;
+use crate::provider::credential_formatter::model::{ParsedCredential, ParsedCredentialType};
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -495,6 +495,7 @@ impl CredentialFormatter for JWTFormatter {
             },
             holder_identifier: holder_identifier.map(Into::into),
             format: format.into(),
+            r#type: ParsedCredentialType::W3c { r#type: vc_types },
         })
     }
 

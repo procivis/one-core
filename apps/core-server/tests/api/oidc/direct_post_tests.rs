@@ -17,8 +17,8 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::presentation::{
-    dummy_presentations, dummy_single_credential_presentations, w3c_jwt_enveloped_presentation,
-    w3c_jwt_vc,
+    dummy_presentations, dummy_single_credential_presentations, single_credential_presentation,
+    typed_w3c_jwt_vc, w3c_jwt_enveloped_presentation,
 };
 use crate::fixtures::{
     self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_blob,
@@ -158,10 +158,13 @@ async fn jwt_query(schema: &CredentialSchema, claims: &[TestClaim<'_>]) -> Value
     json!({
         "id": schema.formats.as_ref().await.unwrap()[0].id,
         "format": "jwt_vc_json",
-        "meta": {"type_values": [[
-            "https://www.w3.org/2018/credentials#VerifiableCredential",
-            format!("{}#{}", schema.single_format().await.ecosystem_schema_id, schema.name)
-        ]]},
+        "meta": {"type_values": [
+            [
+                "https://www.w3.org/2018/credentials#VerifiableCredential",
+                format!("{}#{}", schema.single_format().await.ecosystem_schema_id, schema.name)
+            ],
+            [schema.name]
+        ]},
         "claims": claims.iter().map(|(id, key, required, _, _)| json!({
             "id": id, "path": ["credentialSubject", key], "required": required
         })).collect::<Vec<_>>()
@@ -218,6 +221,35 @@ async fn test_direct_post_one_credential(
     } else {
         test.assert_rejected(&proof).await;
     }
+}
+
+#[rstest::rstest]
+#[case::other_type(Some("DogSchema"))]
+#[case::no_specific_type(None)]
+#[tokio::test]
+async fn test_direct_post_credential_of_another_type_rejected(
+    #[case] credential_type: Option<&str>,
+) {
+    let test = DirectPostTest::new().await;
+    let claims = [string_claim("cat1", true)];
+    let schema = test.jwt_schema("CatSchema", &claims).await;
+    let query = jwt_query(&schema, &claims).await;
+    let proof = test
+        .pending_proof(
+            &[CreateProofInputSchema::from((&claims[..], &schema))],
+            json!({"credentials": [query]}),
+            None,
+        )
+        .await;
+    // Carries the requested claim, but is not a credential of the requested type
+    let token = single_credential_presentation(credential_type, json!({"cat1": "CAT1"})).await;
+
+    let response = test
+        .submit(&proof, &json!({query["id"].as_str().unwrap(): [token]}))
+        .await;
+
+    assert_eq!(response.status(), 400);
+    test.assert_rejected(&proof).await;
 }
 
 #[tokio::test]
@@ -696,29 +728,36 @@ async fn test_direct_post_multiformat_query_with_optional_and_required_inputs(
             .parse()
             .unwrap();
     let issuer = Ecdsa.generate_key().unwrap();
-    let issuer_did = format!("did:key:{}", issuer.key.public_key_as_multibase().unwrap())
-        .parse()
-        .unwrap();
-    let credential = w3c_jwt_vc(
-        &issuer,
-        "ES256",
-        issuer_did,
-        holder_did.clone(),
-        json!({"firstName": "Alice"}),
-    )
-    .await;
-    let presentation = w3c_jwt_enveloped_presentation(
-        &holder,
-        "ES256",
-        vec![credential],
-        holder_did.clone(),
-        holder_did,
-        Some(NONCE.to_string()),
-    )
-    .await;
-    let mut vp_token = json!({jwt_format.id.to_string(): [presentation.clone()]});
+    let issuer_did: shared_types::DidValue =
+        format!("did:key:{}", issuer.key.public_key_as_multibase().unwrap())
+            .parse()
+            .unwrap();
+    let mut presentations = vec![];
+    for credential_type in ["Identity", "Companion"] {
+        let credential = typed_w3c_jwt_vc(
+            &issuer,
+            "ES256",
+            issuer_did.clone(),
+            holder_did.clone(),
+            Some(credential_type),
+            json!({"firstName": "Alice"}),
+        )
+        .await;
+        presentations.push(
+            w3c_jwt_enveloped_presentation(
+                &holder,
+                "ES256",
+                vec![credential],
+                holder_did.clone(),
+                holder_did.clone(),
+                Some(NONCE.to_string()),
+            )
+            .await,
+        );
+    }
+    let mut vp_token = json!({jwt_format.id.to_string(): [presentations[0]]});
     if submit_companion {
-        vp_token[companion_format.to_string()] = json!([presentation]);
+        vp_token[companion_format.to_string()] = json!([presentations[1]]);
     }
     let response = test.submit(&proof, &vp_token).await;
 

@@ -23,8 +23,8 @@ use super::json_claims::{parse_claims, prepare_identifier};
 use super::mapper::{default_2_years, first_certificate, to_format_with_mappings};
 use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialStatus, DetailCredential,
-    Features, FormatterCapabilities, IdentifierDetails, Issuer, ParsedCredential, PublicKeySource,
-    TokenVerifier, VerificationFn,
+    Features, FormatterCapabilities, IdentifierDetails, Issuer, ParsedCredential,
+    ParsedCredentialType, PublicKeySource, TokenVerifier, VerificationFn,
 };
 use super::vcdm::{VcdmCredential, VcdmCredentialSubject, VcdmProof, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
@@ -417,6 +417,7 @@ impl CredentialFormatter for JsonLdClassic {
             },
             holder_identifier: holder_identifier.map(Into::into),
             format: format.into(),
+            r#type: ParsedCredentialType::W3c { r#type: vc_types },
         })
     }
 
@@ -518,6 +519,9 @@ impl JsonLdClassic {
                 .map(IdentifierDetails::Did),
             claims,
             status,
+            r#type: ParsedCredentialType::W3c {
+                r#type: vcdm.r#type,
+            },
         })
     }
 

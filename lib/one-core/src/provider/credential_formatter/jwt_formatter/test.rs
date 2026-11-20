@@ -26,7 +26,8 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialStatus, Features, IdentifierDetails, Issuer,
-    MockTokenVerifier, PublicKeySource, UnsignedCredential, W3CCredentialStatus,
+    MockTokenVerifier, ParsedCredentialType, PublicKeySource, UnsignedCredential,
+    W3CCredentialStatus,
 };
 use crate::provider::credential_formatter::vcdm::{
     ContextType, CredentialSchemaMetadata, VcdmCredential, VcdmCredentialSchema,
@@ -885,6 +886,12 @@ async fn test_parse_credential() {
     assert_eq!(
         schema.single_format().await.ecosystem_schema_id,
         "https://core.dev.procivis-one.com/ssi/schema/v1/b79b7b5b-20f9-434b-b247-b0d19cc151da"
+    );
+    assert_eq!(
+        credential.r#type,
+        ParsedCredentialType::W3c {
+            r#type: vec!["VerifiableCredential".to_string(), "7543Nested".to_string()]
+        }
     );
 
     let claims = credential.claims.as_ref().await.unwrap();

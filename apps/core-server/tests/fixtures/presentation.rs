@@ -31,14 +31,28 @@ pub(crate) async fn w3c_jwt_vc(
     sub: DidValue,
     credential_subject: serde_json::Value,
 ) -> String {
+    typed_w3c_jwt_vc(key, alg, iss, sub, None, credential_subject).await
+}
+
+/// A W3C JWT VC additionally of `credential_type`, if given
+pub(crate) async fn typed_w3c_jwt_vc(
+    key: &GeneratedKey,
+    alg: &str,
+    iss: DidValue,
+    sub: DidValue,
+    credential_type: Option<&str>,
+    credential_subject: serde_json::Value,
+) -> String {
+    let types: Vec<_> = ["VerifiableCredential"]
+        .into_iter()
+        .chain(credential_type)
+        .collect();
     let vc = json!({
         "vc": {
         "@context": [
           "https://www.w3.org/2018/credentials/v1"
         ],
-        "type": [
-          "VerifiableCredential"
-        ],
+        "type": types,
         "credentialSubject": credential_subject
       }
     });
@@ -104,19 +118,21 @@ pub(crate) async fn dummy_presentations() -> (String, String) {
       "cat1": "CAT1"
     });
 
-    let token1 = w3c_jwt_vc(
+    let token1 = typed_w3c_jwt_vc(
         &issuer_key_pair,
         alg,
         issuer_did.clone(),
         holder_did1.clone(),
+        Some("PetSchema"),
         pet_cred_subj,
     )
     .await;
-    let token2 = w3c_jwt_vc(
+    let token2 = typed_w3c_jwt_vc(
         &issuer_key_pair,
         alg,
         issuer_did.clone(),
         holder_did1.clone(),
+        Some("NameSchema"),
         name_cred_subj,
     )
     .await;
@@ -134,11 +150,12 @@ pub(crate) async fn dummy_presentations() -> (String, String) {
     let multibase2 = holder_key_pair2.key.public_key_as_multibase().unwrap();
     let holder_did2 = DidValue::from_did_url(format!("did:key:{}", multibase2).as_str()).unwrap();
 
-    let token3 = w3c_jwt_vc(
+    let token3 = typed_w3c_jwt_vc(
         &issuer_key_pair,
         alg,
         issuer_did,
         holder_did2.clone(),
+        Some("CatSchema"),
         cat_cred_subj,
     )
     .await;
@@ -155,7 +172,10 @@ pub(crate) async fn dummy_presentations() -> (String, String) {
     (pres1, pres2)
 }
 
-async fn single_credential_presentation(credential_subject: serde_json::Value) -> String {
+pub(crate) async fn single_credential_presentation(
+    credential_type: Option<&str>,
+    credential_subject: serde_json::Value,
+) -> String {
     let alg = "ES256";
     let holder_key_pair = Ecdsa.generate_key().unwrap();
     let multibase = holder_key_pair.key.public_key_as_multibase().unwrap();
@@ -166,11 +186,12 @@ async fn single_credential_presentation(credential_subject: serde_json::Value) -
     let issuer_did =
         DidValue::from_did_url(format!("did:key:{issuer_multibase}").as_str()).unwrap();
 
-    let token = w3c_jwt_vc(
+    let token = typed_w3c_jwt_vc(
         &issuer_key_pair,
         alg,
         issuer_did,
         holder_did.clone(),
+        credential_type,
         credential_subject,
     )
     .await;
@@ -189,19 +210,28 @@ async fn single_credential_presentation(credential_subject: serde_json::Value) -
 /// Returns three separate single-credential presentations (name, pet, cat), one credential each,
 /// as required by the DCQL flow where each credential query maps to its own presentation.
 pub(crate) async fn dummy_single_credential_presentations() -> (String, String, String) {
-    let name_presentation = single_credential_presentation(json!({
-      "name1": "NAME1",
-      "name2": "NAME2"
-    }))
+    let name_presentation = single_credential_presentation(
+        Some("NameSchema"),
+        json!({
+          "name1": "NAME1",
+          "name2": "NAME2"
+        }),
+    )
     .await;
-    let pet_presentation = single_credential_presentation(json!({
-      "pet1": "PET1",
-      "pet2": "PET2"
-    }))
+    let pet_presentation = single_credential_presentation(
+        Some("PetSchema"),
+        json!({
+          "pet1": "PET1",
+          "pet2": "PET2"
+        }),
+    )
     .await;
-    let cat_presentation = single_credential_presentation(json!({
-      "cat1": "CAT1"
-    }))
+    let cat_presentation = single_credential_presentation(
+        Some("CatSchema"),
+        json!({
+          "cat1": "CAT1"
+        }),
+    )
     .await;
     (name_presentation, pet_presentation, cat_presentation)
 }
