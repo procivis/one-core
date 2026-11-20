@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use aes_gcm::aead::Aead;
-use aes_gcm::aead::consts::U32;
-use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::{Aes256Gcm, KeyInit};
 use coset::{AsCborValue, CoseKey};
 use hkdf::Hkdf;
 use one_crypto::jwe::PrivateKeyAgreementHandle;
+use one_crypto::utilities::GenericArrayExt;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
@@ -299,7 +298,9 @@ fn encrypt(
     plaintext: &[u8],
     nonce: [u8; 12],
 ) -> Result<Vec<u8>, VerificationProtocolError> {
-    let key = GenericArray::<u8, U32>::from_slice(secret_key.expose_secret());
+    let key = secret_key
+        .as_generic_array()
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
     let nonce = nonce.into();
 
     let ciphertext = Aes256Gcm::new(key)
@@ -316,7 +317,9 @@ fn decrypt(
     ciphertext: &[u8],
     nonce: [u8; 12],
 ) -> Result<Vec<u8>, VerificationProtocolError> {
-    let key = GenericArray::<u8, U32>::from_slice(secret_key.expose_secret());
+    let key = secret_key
+        .as_generic_array()
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
     let nonce = nonce.into();
 
     let plaintext = Aes256Gcm::new(key)

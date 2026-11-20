@@ -617,8 +617,10 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 "Missing iat claim in key binding token".to_string(),
             ));
         };
-        if (iat - params.leeway) > crate::clock::now_utc() {
-            // kb token is supposedly issued in the future
+        if iat
+            .checked_sub(params.leeway)
+            .is_none_or(|iat| iat > crate::clock::now_utc())
+        {
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid iat claim in key binding token, token is issued in the future".to_string(),
             ));

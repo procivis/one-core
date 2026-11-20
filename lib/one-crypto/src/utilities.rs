@@ -1,12 +1,16 @@
+use aes::cipher::ArrayLength;
+use aes::cipher::generic_array::GenericArray;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use hmac::{KeyInit, Mac};
 use p256::ecdsa::Signature;
 use rand::distr::{Alphanumeric, Distribution, SampleString, Uniform};
 use rand::{CryptoRng, Rng};
 use rand_chacha::ChaCha20Rng;
+use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Deserializer};
 
 use super::{HmacSha256, SignerError};
+use crate::encryption::EncryptionError;
 
 pub fn generate_salt_base64_16() -> String {
     let seed = generate_random_bytes::<16>();
@@ -70,4 +74,28 @@ where
 pub fn ecdsa_sig_from_der(der_bytes: &[u8]) -> Result<Vec<u8>, SignerError> {
     let sig = Signature::from_der(der_bytes).map_err(|_| SignerError::InvalidSignature)?;
     Ok(sig.to_bytes().to_vec())
+}
+
+pub trait GenericArrayExt<T, N: ArrayLength<T>> {
+    /// non-panicking wrapper for `GenericArray::from_slice`
+    fn as_generic_array(&self) -> Result<&GenericArray<T, N>, EncryptionError>;
+}
+impl<N: ArrayLength<u8>> GenericArrayExt<u8, N> for [u8] {
+    fn as_generic_array(&self) -> Result<&GenericArray<u8, N>, EncryptionError> {
+        if self.len() == N::USIZE {
+            #[expect(clippy::disallowed_methods)]
+            Ok(GenericArray::from_slice(self))
+        } else {
+            Err(EncryptionError::Crypto(format!(
+                "expected {} bytes, got: {}",
+                N::USIZE,
+                self.len()
+            )))
+        }
+    }
+}
+impl<N: ArrayLength<u8>> GenericArrayExt<u8, N> for SecretSlice<u8> {
+    fn as_generic_array(&self) -> Result<&GenericArray<u8, N>, EncryptionError> {
+        self.expose_secret().as_generic_array()
+    }
 }

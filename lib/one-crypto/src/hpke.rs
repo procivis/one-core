@@ -9,7 +9,6 @@
 //!
 //! [RFC 9180]: https://www.rfc-editor.org/rfc/rfc9180.html
 
-use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes128Gcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
@@ -21,6 +20,7 @@ use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use crate::encryption::EncryptionError;
 use crate::jwe::PrivateKeyAgreementHandle;
 use crate::signer::ecdsa::ECDSASigner;
+use crate::utilities::GenericArrayExt;
 
 const VERSION_LABEL: &[u8] = b"HPKE-v1";
 const MODE_BASE: u8 = 0x00;
@@ -60,9 +60,9 @@ pub async fn open_p256_sha256_aes128gcm(
     let (key, base_nonce) = key_schedule_base(&shared_secret, info)?;
 
     // single-shot open uses sequence number 0, so the nonce equals base_nonce
-    Aes128Gcm::new(GenericArray::from_slice(key.expose_secret()))
+    Aes128Gcm::new(key.as_generic_array()?)
         .decrypt(
-            GenericArray::from_slice(&base_nonce),
+            base_nonce.as_generic_array()?,
             Payload {
                 msg: ciphertext,
                 aad,
