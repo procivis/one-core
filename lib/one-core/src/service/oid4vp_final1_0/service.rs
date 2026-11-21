@@ -364,7 +364,7 @@ impl OID4VPFinal1_0Service {
                 .proof_validator
                 .validate_submission(
                     unpacked_request,
-                    proof.to_owned(),
+                    &proof,
                     interaction_data,
                     VerificationProtocolType::OpenId4VpFinal1_0,
                 )

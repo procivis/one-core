@@ -5,6 +5,7 @@ use shared_types::{InteractionId, ProofId};
 
 use super::ProofService;
 use crate::config::core_config::TransportType;
+use crate::model::relation::OptionalRelatedExt;
 use crate::provider::verification_protocol::openid4vp::model::SubmissionRequestData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::{
     BLEOpenID4VPInteractionDataVerifier, BLEVerifierProtocolData,
@@ -34,12 +35,7 @@ impl ProofService {
         };
 
         let request_data_fn = async || {
-            let interaction = proof
-                .interaction
-                .as_ref()
-                .context("Missing interaction")?
-                .as_ref()
-                .await?;
+            let interaction = proof.interaction.as_required_ref().await?;
             let interaction_data = interaction
                 .data
                 .as_ref()

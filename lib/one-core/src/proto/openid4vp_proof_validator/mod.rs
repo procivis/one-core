@@ -21,7 +21,7 @@ pub(crate) trait OpenId4VpProofValidator: Send + Sync {
     async fn validate_submission(
         &self,
         request: SubmissionRequestData,
-        proof: Proof,
+        proof: &Proof,
         interaction_data: OpenID4VPVerifierInteractionContent,
         protocol_type: VerificationProtocolType,
     ) -> Result<(ValidatedProofResult, DirectPostResponse), OpenID4VCError>;

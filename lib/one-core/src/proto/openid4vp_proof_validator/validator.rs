@@ -66,24 +66,22 @@ impl OpenId4VpProofValidator for OpenId4VpProofValidatorProto {
     async fn validate_submission(
         &self,
         request: SubmissionRequestData,
-        proof: Proof,
+        proof: &Proof,
         interaction_data: OpenID4VPVerifierInteractionContent,
         protocol_type: VerificationProtocolType,
     ) -> Result<(ValidatedProofResult, DirectPostResponse), OpenID4VCError> {
-        throw_if_proof_state_not_in(
-            &proof,
-            &[ProofStateEnum::Pending, ProofStateEnum::Requested],
-        )
-        .map_err(|e| OpenID4VCError::InvalidProofState(e.to_string()))?;
+        throw_if_proof_state_not_in(proof, &[ProofStateEnum::Pending, ProofStateEnum::Requested])
+            .map_err(|e| OpenID4VCError::InvalidProofState(e.to_string()))?;
 
         let proved_claims = self
-            .process_proof_submission_dcql_query(request, &proof, interaction_data, protocol_type)
+            .process_proof_submission_dcql_query(request, proof, interaction_data, protocol_type)
             .await?;
 
-        let redirect_uri: Option<String> = proof.redirect_uri.to_owned();
         Ok((
-            ValidatedProofResult::new(&proof, proved_claims).await?,
-            DirectPostResponse { redirect_uri },
+            ValidatedProofResult::new(proof, proved_claims).await?,
+            DirectPostResponse {
+                redirect_uri: proof.redirect_uri.to_owned(),
+            },
         ))
     }
 }

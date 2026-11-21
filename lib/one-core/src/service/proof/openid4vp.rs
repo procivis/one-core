@@ -5,7 +5,7 @@ use standardized_types::openid4vp::DirectPostResponse;
 
 use super::ProofService;
 use super::error::ProofServiceError;
-use crate::config::core_config::{BlobStorageType, VerificationProtocolType};
+use crate::config::core_config::BlobStorageType;
 use crate::error::{ContextWithErrorCode, ErrorCode};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::HistoryErrorMetadata;
@@ -74,23 +74,9 @@ impl ProofService {
         proof: Proof,
         unpacked_request: SubmissionRequestData,
     ) -> Result<DirectPostResponse, ProofServiceError> {
-        let proof_schema = proof
-            .schema
-            .as_ref()
-            .ok_or(ProofServiceError::MappingError(
-                "missing proof schema".to_string(),
-            ))?
-            .as_ref()
-            .await?;
+        let proof_schema = proof.schema.as_required_ref().await?;
 
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(ProofServiceError::MappingError(
-                "missing interaction".to_string(),
-            ))?
-            .as_ref()
-            .await?;
+        let interaction = proof.interaction.as_required_ref().await?;
 
         let interaction_data: OpenID4VPVerifierInteractionContent = interaction
             .data
@@ -136,6 +122,12 @@ impl ProofService {
             .await
             .error_while("creating proof blob")?;
 
+        let protocol_type = self
+            .config
+            .verification_protocol
+            .get_type(&proof.protocol)
+            .error_while("getting verification protocol type")?;
+
         let validation_result: Result<
             (
                 ValidatedProofResult,
@@ -146,12 +138,7 @@ impl ProofService {
         > = async {
             let (mut proof_result, response) = self
                 .proof_validator
-                .validate_submission(
-                    unpacked_request,
-                    proof.to_owned(),
-                    interaction_data,
-                    VerificationProtocolType::OpenId4VpProximityDraft00,
-                )
+                .validate_submission(unpacked_request, &proof, interaction_data, protocol_type)
                 .await?;
 
             let ecosystems = {

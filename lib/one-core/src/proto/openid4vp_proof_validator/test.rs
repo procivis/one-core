@@ -118,7 +118,7 @@ async fn test_validate_submission_success_dcql() {
     let result = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -161,7 +161,7 @@ async fn test_validate_submission_suspended_dcql() {
     let result = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -206,7 +206,7 @@ async fn test_validate_submission_incompatible_did_method() {
     let err = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -508,7 +508,7 @@ async fn test_validate_submission_dcql_no_holder_binding() {
     let result = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -574,7 +574,7 @@ async fn credential_of_another_type_is_rejected(
     let err = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -737,7 +737,7 @@ async fn test_validate_submission_transaction_data_authorized() {
     proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -765,7 +765,7 @@ async fn test_validate_submission_transaction_data_missing_evidence() {
     let err = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -805,7 +805,7 @@ async fn test_validate_submission_transaction_data_duplicate_entries() {
     let err = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -847,7 +847,7 @@ async fn test_validate_submission_transaction_data_unsolicited_evidence() {
     let err = proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -890,7 +890,7 @@ async fn test_validate_submission_empty_transaction_data_evidence_is_ignored() {
     proto
         .validate_submission(
             submission_data,
-            test_data.proof,
+            &test_data.proof,
             test_data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -1124,7 +1124,7 @@ async fn each_format_option_is_accepted_and_persisted_with_its_own_mapping(
     let result = proto
         .validate_submission(
             submission,
-            data.proof,
+            &data.proof,
             data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -1152,7 +1152,7 @@ async fn submitted_alternatives_are_stored_as_separate_credentials() {
     let result = proto
         .validate_submission(
             submission,
-            data.proof,
+            &data.proof,
             data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -1211,7 +1211,7 @@ async fn claim_sets_accept_any_satisfied_combination_of_claim_query_ids(
     let result = proto
         .validate_submission(
             submission,
-            data.proof,
+            &data.proof,
             data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -1278,7 +1278,7 @@ async fn every_submitted_presentation_is_validated(#[case] holder_binding: bool)
         proto
             .validate_submission(
                 submission,
-                data.proof,
+                &data.proof,
                 data.interaction_data,
                 VerificationProtocolType::OpenId4VpFinal1_0,
             )
@@ -1295,7 +1295,7 @@ async fn two_alternatives_cannot_both_authorize_the_same_transaction_data() {
     let result = proto
         .validate_submission(
             submission,
-            data.proof,
+            &data.proof,
             data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -1319,7 +1319,7 @@ async fn selected_option_cannot_borrow_claims_from_another_format() {
     let result = proto
         .validate_submission(
             submission,
-            data.proof,
+            &data.proof,
             data.interaction_data,
             VerificationProtocolType::OpenId4VpFinal1_0,
         )
@@ -1352,7 +1352,7 @@ async fn an_unselected_format_cannot_satisfy_a_proof_input() {
         proto
             .validate_submission(
                 submission,
-                data.proof,
+                &data.proof,
                 data.interaction_data,
                 VerificationProtocolType::OpenId4VpFinal1_0
             )
