@@ -1,13 +1,15 @@
 use std::io::{Read, Write};
 use std::str::FromStr;
 
-use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::consts::{U12, U16};
 use aes::cipher::{
-    BlockCipher, BlockDecryptMut, BlockEncrypt, BlockEncryptMut, BlockSizeUser, KeySizeUser,
+    BlockCipherDecrypt, BlockCipherEncrypt, BlockModeDecrypt, BlockModeEncrypt, BlockSizeUser,
+    KeyIvInit, KeySizeUser,
 };
 use aes::{Aes128, Aes256};
-use aes_gcm::{AeadCore, AeadInPlace, Aes128Gcm, Aes256Gcm, AesGcm, KeyInit as AesKeyInit};
+use aes_gcm::aead::Generate;
+use aes_gcm::{AeadInOut, Aes128Gcm, Aes256Gcm, AesGcm, KeyInit as AesKeyInit, Nonce};
+use cbc::cipher::block_padding::Pkcs7;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use flate2::read::DeflateDecoder;
 use flate2::write::DeflateEncoder;
@@ -20,7 +22,7 @@ use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 
 use crate::encryption::EncryptionError;
-use crate::utilities::{GenericArrayExt, generate_random_bytes, get_rng};
+use crate::utilities::{HybridArrayExt, generate_random_bytes, get_rng};
 use crate::{HmacSha256, HmacSha512};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -110,12 +112,12 @@ pub fn build_jwe(
         derive_encryption_key(&shared_secret, apu_data, apv_data, &encryption_alg)?;
 
     let AeadOutput { tag_b64, iv_b64 } = match encryption_alg {
-        EncryptionAlgorithm::A128GCM => encrypt_in_place_aes_gmc::<Aes128>(
+        EncryptionAlgorithm::A128GCM => encrypt_in_place_aes_gcm::<Aes128>(
             &mut compressed_payload,
             protected_header_b64.as_bytes(),
             &encryption_key,
         )?,
-        EncryptionAlgorithm::A256GCM => encrypt_in_place_aes_gmc::<Aes256>(
+        EncryptionAlgorithm::A256GCM => encrypt_in_place_aes_gcm::<Aes256>(
             &mut compressed_payload,
             protected_header_b64.as_bytes(),
             &encryption_key,
@@ -149,22 +151,19 @@ struct AeadOutput {
     iv_b64: String,
 }
 
-fn encrypt_in_place_aes_gmc<Aes>(
+fn encrypt_in_place_aes_gcm<Aes>(
     buf: &mut [u8],
     associated_data: &[u8],
     key: &SecretSlice<u8>,
 ) -> Result<AeadOutput, EncryptionError>
 where
-    Aes: BlockSizeUser<BlockSize = U16> + BlockEncrypt + AesKeyInit + BlockCipher,
+    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + AesKeyInit,
 {
-    // TODO: Remove the wrapper once a compatible version of the crate is available (ONE-9596)
-    let mut rng = get_rng();
-    let wrapper = crate::rand08::CompatWrapper(&mut rng);
-    let iv = AesGcm::<Aes, U12>::generate_nonce(wrapper);
+    let iv = Nonce::<U12>::generate_from_rng(&mut get_rng());
 
-    let cipher = AesGcm::<Aes, U12>::new(key.as_generic_array()?);
+    let cipher = AesGcm::<Aes, U12>::new(key.as_hybrid_array()?);
     let tag = cipher
-        .encrypt_in_place_detached(&iv, associated_data, buf)
+        .encrypt_inout_detached(&iv, associated_data, buf.into())
         .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {e}")))?;
     let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
         .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {e}")))?;
@@ -174,15 +173,13 @@ where
 }
 
 fn encrypt_in_place_aes_cbc_hmac<
-    Cipher: BlockEncryptMut + BlockCipher + KeySizeUser + AesKeyInit,
+    Cipher: BlockCipherEncrypt + KeySizeUser + AesKeyInit,
     Hash: Mac + HmacKeyInit + FixedOutputReset,
 >(
     buf: &mut Vec<u8>,
     associated_data: &[u8],
     key: &SecretSlice<u8>,
 ) -> Result<AeadOutput, EncryptionError> {
-    use aes::cipher::KeyIvInit;
-
     let key_size = Cipher::key_size();
     let secret = key.expose_secret();
     if secret.len() != key_size * 2 {
@@ -207,9 +204,9 @@ fn encrypt_in_place_aes_cbc_hmac<
     }
 
     let iv = generate_random_bytes::<16>();
-    let cipher = cbc::Encryptor::<Cipher>::new(aes_key.as_generic_array()?, iv.as_generic_array()?);
+    let cipher = cbc::Encryptor::<Cipher>::new(aes_key.as_hybrid_array()?, iv.as_hybrid_array()?);
     cipher
-        .encrypt_padded_mut::<Pkcs7>(buf, msg_len)
+        .encrypt_padded::<Pkcs7>(buf, msg_len)
         .map_err(|err| EncryptionError::Crypto(format!("failed to encrypt: {err}")))?;
 
     let tag = calculate_tag_aes_cbc::<Hash>(buf, associated_data, &iv, hmac_key)?;
@@ -222,7 +219,7 @@ fn encrypt_in_place_aes_cbc_hmac<
 
 fn decrypt_in_place_aes_cbc_hmac<
     'a,
-    Cipher: BlockDecryptMut + BlockCipher + KeySizeUser + AesKeyInit,
+    Cipher: BlockCipherDecrypt + KeySizeUser + AesKeyInit,
     Hash: Mac + HmacKeyInit + FixedOutputReset,
 >(
     buf: &'a mut [u8],
@@ -231,7 +228,6 @@ fn decrypt_in_place_aes_cbc_hmac<
     tag: &[u8],
     key: &SecretSlice<u8>,
 ) -> Result<&'a [u8], EncryptionError> {
-    use aes::cipher::KeyIvInit;
     let secret = key.expose_secret();
 
     let key_size = Cipher::key_size();
@@ -262,9 +258,9 @@ fn decrypt_in_place_aes_cbc_hmac<
         ));
     }
 
-    let cipher = cbc::Decryptor::<Cipher>::new(aes_key.as_generic_array()?, iv.as_generic_array()?);
+    let cipher = cbc::Decryptor::<Cipher>::new(aes_key.as_hybrid_array()?, iv.as_hybrid_array()?);
     let plaintext = cipher
-        .decrypt_padded_mut::<Pkcs7>(buf)
+        .decrypt_padded::<Pkcs7>(buf)
         .map_err(|err| EncryptionError::Crypto(format!("failed to decrypt: {err}")))?;
 
     Ok(plaintext)
@@ -362,27 +358,27 @@ impl EncryptedJWE {
 
         let decrypted = match header.enc {
             EncryptionAlgorithm::A128GCM => {
-                let cipher = Aes128Gcm::new(encryption_key.as_generic_array()?);
+                let cipher = Aes128Gcm::new(encryption_key.as_hybrid_array()?);
                 let mut buf = self.payload.clone();
                 cipher
-                    .decrypt_in_place_detached(
-                        self.nonce.as_generic_array()?,
+                    .decrypt_inout_detached(
+                        self.nonce.as_hybrid_array()?,
                         self.protected_header_b64.as_bytes(),
-                        &mut buf,
-                        self.tag.as_generic_array()?,
+                        buf.as_mut_slice().into(),
+                        self.tag.as_hybrid_array()?,
                     )
                     .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?;
                 buf
             }
             EncryptionAlgorithm::A256GCM => {
-                let cipher = Aes256Gcm::new(encryption_key.as_generic_array()?);
+                let cipher = Aes256Gcm::new(encryption_key.as_hybrid_array()?);
                 let mut buf = self.payload.clone();
                 cipher
-                    .decrypt_in_place_detached(
-                        self.nonce.as_generic_array()?,
+                    .decrypt_inout_detached(
+                        self.nonce.as_hybrid_array()?,
                         self.protected_header_b64.as_bytes(),
-                        &mut buf,
-                        self.tag.as_generic_array()?,
+                        buf.as_mut_slice().into(),
+                        self.tag.as_hybrid_array()?,
                     )
                     .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?;
                 buf

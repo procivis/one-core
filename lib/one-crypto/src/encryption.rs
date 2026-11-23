@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 
-use chacha20poly1305::aead::{Aead, Nonce};
-use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit};
+use chacha20poly1305::aead::{Aead, Generate, Nonce};
+use chacha20poly1305::{ChaCha20Poly1305, KeyInit};
 use cocoon::MiniCocoon;
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
@@ -27,10 +27,7 @@ pub fn encrypt_file(
     let cipher = ChaCha20Poly1305::new_from_slice(key.key.expose_secret())
         .map_err(|err| EncryptionError::Crypto(err.to_string()))?;
 
-    // TODO: Remove the wrapper once compatible version of the crate is available (ONE-9596)
-    let mut rng = get_rng();
-    let wrapper = crate::rand08::CompatWrapper(&mut rng);
-    let nonce = ChaCha20Poly1305::generate_nonce(wrapper);
+    let nonce = Nonce::<ChaCha20Poly1305>::generate_from_rng(&mut get_rng());
 
     let mut content = vec![];
     input_file.read_to_end(&mut content)?;

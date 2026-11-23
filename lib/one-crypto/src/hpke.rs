@@ -20,7 +20,7 @@ use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use crate::encryption::EncryptionError;
 use crate::jwe::PrivateKeyAgreementHandle;
 use crate::signer::ecdsa::ECDSASigner;
-use crate::utilities::GenericArrayExt;
+use crate::utilities::HybridArrayExt;
 
 const VERSION_LABEL: &[u8] = b"HPKE-v1";
 const MODE_BASE: u8 = 0x00;
@@ -60,9 +60,9 @@ pub async fn open_p256_sha256_aes128gcm(
     let (key, base_nonce) = key_schedule_base(&shared_secret, info)?;
 
     // single-shot open uses sequence number 0, so the nonce equals base_nonce
-    Aes128Gcm::new(key.as_generic_array()?)
+    Aes128Gcm::new(key.as_hybrid_array()?)
         .decrypt(
-            base_nonce.as_generic_array()?,
+            base_nonce.as_hybrid_array()?,
             Payload {
                 msg: ciphertext,
                 aad,

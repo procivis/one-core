@@ -9,7 +9,7 @@ rust-version.workspace = true
 version                = "0.1.0"
 
 [dependencies]
-aes-gcm                      = { workspace = true, features = ["std"] }
+aes-gcm.workspace            = true
 anyhow.workspace             = true
 asn1-rs.workspace            = true
 async-trait.workspace        = true

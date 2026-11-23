@@ -1,5 +1,4 @@
-use aes::cipher::ArrayLength;
-use aes::cipher::generic_array::GenericArray;
+use aes::cipher::array::{Array, ArraySize};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use hmac::{KeyInit, Mac};
 use p256::ecdsa::Signature;
@@ -76,26 +75,19 @@ pub fn ecdsa_sig_from_der(der_bytes: &[u8]) -> Result<Vec<u8>, SignerError> {
     Ok(sig.to_bytes().to_vec())
 }
 
-pub trait GenericArrayExt<T, N: ArrayLength<T>> {
-    /// non-panicking wrapper for `GenericArray::from_slice`
-    fn as_generic_array(&self) -> Result<&GenericArray<T, N>, EncryptionError>;
+pub trait HybridArrayExt<T, N: ArraySize> {
+    /// conversion of a slice into a fixed-size [`Array`] reference
+    fn as_hybrid_array(&self) -> Result<&Array<T, N>, EncryptionError>;
 }
-impl<N: ArrayLength<u8>> GenericArrayExt<u8, N> for [u8] {
-    fn as_generic_array(&self) -> Result<&GenericArray<u8, N>, EncryptionError> {
-        if self.len() == N::USIZE {
-            #[expect(clippy::disallowed_methods)]
-            Ok(GenericArray::from_slice(self))
-        } else {
-            Err(EncryptionError::Crypto(format!(
-                "expected {} bytes, got: {}",
-                N::USIZE,
-                self.len()
-            )))
-        }
+impl<N: ArraySize> HybridArrayExt<u8, N> for [u8] {
+    fn as_hybrid_array(&self) -> Result<&Array<u8, N>, EncryptionError> {
+        Array::slice_as_array(self).ok_or_else(|| {
+            EncryptionError::Crypto(format!("expected {} bytes, got: {}", N::USIZE, self.len()))
+        })
     }
 }
-impl<N: ArrayLength<u8>> GenericArrayExt<u8, N> for SecretSlice<u8> {
-    fn as_generic_array(&self) -> Result<&GenericArray<u8, N>, EncryptionError> {
-        self.expose_secret().as_generic_array()
+impl<N: ArraySize> HybridArrayExt<u8, N> for SecretSlice<u8> {
+    fn as_hybrid_array(&self) -> Result<&Array<u8, N>, EncryptionError> {
+        self.expose_secret().as_hybrid_array()
     }
 }

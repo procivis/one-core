@@ -102,9 +102,7 @@ impl ECDSASigner {
     }
 
     pub fn generate_key_pair() -> Result<(SecretSlice<u8>, Vec<u8>), SignerError> {
-        let mut rng = get_rng();
-
-        let sk = SigningKey::generate_from_rng(&mut rng);
+        let sk = SigningKey::generate_from_rng(&mut get_rng());
         let pk = VerifyingKey::from(&sk);
         Ok((
             sk.to_bytes().to_vec().into(),

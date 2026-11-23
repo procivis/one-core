@@ -6,7 +6,7 @@ use aes_gcm::{Aes256Gcm, KeyInit};
 use coset::{AsCborValue, CoseKey};
 use hkdf::Hkdf;
 use one_crypto::jwe::PrivateKeyAgreementHandle;
-use one_crypto::utilities::GenericArrayExt;
+use one_crypto::utilities::HybridArrayExt;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::skip_serializing_none;
@@ -299,7 +299,7 @@ fn encrypt(
     nonce: [u8; 12],
 ) -> Result<Vec<u8>, VerificationProtocolError> {
     let key = secret_key
-        .as_generic_array()
+        .as_hybrid_array()
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
     let nonce = nonce.into();
 
@@ -318,7 +318,7 @@ fn decrypt(
     nonce: [u8; 12],
 ) -> Result<Vec<u8>, VerificationProtocolError> {
     let key = secret_key
-        .as_generic_array()
+        .as_hybrid_array()
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
     let nonce = nonce.into();
 

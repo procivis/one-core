@@ -1,7 +1,7 @@
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit};
 use anyhow::Context;
-use one_crypto::utilities::GenericArrayExt;
+use one_crypto::utilities::HybridArrayExt;
 use secrecy::SecretSlice;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,7 @@ impl PeerEncryption {
     {
         let cipher = Aes256Gcm::new(
             self.sender_aes_key
-                .as_generic_array()
+                .as_hybrid_array()
                 .map_err(|e| anyhow::anyhow!(e))?,
         );
         let plaintext = serde_json::to_vec(data).context("serialization error")?;
@@ -61,7 +61,7 @@ impl PeerEncryption {
     {
         let cipher = Aes256Gcm::new(
             self.receiver_aes_key
-                .as_generic_array()
+                .as_hybrid_array()
                 .map_err(|e| anyhow::anyhow!(e))?,
         );
         let decrypted_payload = cipher
