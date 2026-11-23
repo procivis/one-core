@@ -120,7 +120,7 @@ impl OAuthClient {
         // obtain OAuth 2.0 Authorization server metadata (https://datatracker.ietf.org/doc/html/rfc8414#section-3)
         Ok(self
             .metadata_cache
-            .fetch_json_well_known(&issuer_url, "oauth-authorization-server")
+            .fetch_json_well_known(&issuer_url, "oauth-authorization-server", false)
             .await
             .error_while("fetching authorization server metadata")?)
     }
@@ -214,9 +214,10 @@ mod tests {
             .with(
                 eq(format!("{issuer}/.well-known/oauth-authorization-server")),
                 eq("application/json"),
+                eq(false),
             )
             .once()
-            .return_once(move |_, _| Ok(serde_json::to_vec(&metadata).unwrap()));
+            .return_once(move |_, _, _| Ok(serde_json::to_vec(&metadata).unwrap()));
 
         (Arc::new(ReqwestClient::default()) as Arc<dyn HttpClient>)
             .oauth_client(Arc::new(metadata_cache))

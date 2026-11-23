@@ -21,20 +21,30 @@ use crate::repository::remote_entity_cache_repository::RemoteEntityCacheReposito
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait OpenIDMetadataFetcher: Send + Sync {
-    async fn get(&self, url: &str, accept_mime: &str) -> Result<Vec<u8>, CacheError>;
+    async fn get(
+        &self,
+        url: &str,
+        accept_mime: &str,
+        force_refresh: bool,
+    ) -> Result<Vec<u8>, CacheError>;
 }
 
 impl<'a> dyn OpenIDMetadataFetcher + 'a {
-    pub(crate) async fn fetch_json<T: DeserializeOwned>(&self, url: &str) -> Result<T, CacheError> {
-        let content = self.get(url, "application/json").await?;
+    pub(crate) async fn fetch_json<T: DeserializeOwned>(
+        &self,
+        url: &str,
+        force_refresh: bool,
+    ) -> Result<T, CacheError> {
+        let content = self.get(url, "application/json", force_refresh).await?;
         Ok(serde_json::from_slice(&content)?)
     }
 
     pub(crate) async fn fetch_jwt<CustomPayload: DeserializeOwned + Debug>(
         &self,
         url: &str,
+        force_refresh: bool,
     ) -> Result<DecomposedJwt<CustomPayload>, CacheError> {
-        let content = self.get(url, "application/jwt").await?;
+        let content = self.get(url, "application/jwt", force_refresh).await?;
         let jwt = str::from_utf8(&content)?;
         Ok(Jwt::decompose_token(jwt)?)
     }
@@ -45,16 +55,17 @@ impl<'a> dyn OpenIDMetadataFetcher + 'a {
         &self,
         issuer_url: &Url,
         well_known_path: &str,
+        force_refresh: bool,
     ) -> Result<T, CacheError> {
         let endpoint = prepend_well_known_path(issuer_url, well_known_path);
-        match self.fetch_json(&endpoint).await {
+        match self.fetch_json(&endpoint, force_refresh).await {
             Err(err) if is_endpoint_unavailable(&err) => {
                 let fallback_endpoint = legacy_well_known_fallback(issuer_url, well_known_path)?;
                 tracing::warn!(
                     "Failed to fetch from `{endpoint}`, falling back to legacy endpoint `{fallback_endpoint}`: {err}"
                 );
                 Ok(self
-                    .fetch_json(&fallback_endpoint)
+                    .fetch_json(&fallback_endpoint, force_refresh)
                     .await
                     .error_while("fetching metadata from fallback URL")?)
             }
@@ -68,16 +79,17 @@ impl<'a> dyn OpenIDMetadataFetcher + 'a {
         &self,
         issuer_url: &Url,
         well_known_path: &str,
+        force_refresh: bool,
     ) -> Result<DecomposedJwt<CustomPayload>, CacheError> {
         let endpoint = prepend_well_known_path(issuer_url, well_known_path);
-        match self.fetch_jwt(&endpoint).await {
+        match self.fetch_jwt(&endpoint, force_refresh).await {
             Err(err) if is_endpoint_unavailable(&err) => {
                 let fallback_endpoint = legacy_well_known_fallback(issuer_url, well_known_path)?;
                 tracing::warn!(
                     "Failed to fetch from `{endpoint}`, falling back to legacy endpoint `{fallback_endpoint}`: {err}"
                 );
                 Ok(self
-                    .fetch_jwt(&fallback_endpoint)
+                    .fetch_jwt(&fallback_endpoint, force_refresh)
                     .await
                     .error_while("fetching metadata from fallback URL")?)
             }
@@ -149,10 +161,19 @@ impl OpenIDMetadataCache {
 
 #[async_trait::async_trait]
 impl OpenIDMetadataFetcher for OpenIDMetadataCache {
-    async fn get(&self, url: &str, accept_mime: &str) -> Result<Vec<u8>, CacheError> {
+    async fn get(
+        &self,
+        url: &str,
+        accept_mime: &str,
+        force_refresh: bool,
+    ) -> Result<Vec<u8>, CacheError> {
         let (metadata, _) = self
             .inner
-            .get(&url_to_key(url, accept_mime), self.resolver.clone(), false)
+            .get(
+                &url_to_key(url, accept_mime),
+                self.resolver.clone(),
+                force_refresh,
+            )
             .await
             .error_while("getting OpenID metadata")?;
 
@@ -283,9 +304,10 @@ mod tests {
             .with(
                 eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
                 eq("application/json"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| {
+            .return_once(|_, _, _| {
                 Ok(json!({ "issuer": "https://issuer.com" })
                     .to_string()
                     .into_bytes())
@@ -296,6 +318,7 @@ mod tests {
             .fetch_json_well_known(
                 &"https://issuer.com/path".parse().unwrap(),
                 "oauth-authorization-server",
+                false,
             )
             .await
             .unwrap();
@@ -312,16 +335,18 @@ mod tests {
             .with(
                 eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
                 eq("application/json"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| Err(unreachable_endpoint()));
+            .return_once(|_, _, _| Err(unreachable_endpoint()));
         mock.expect_get()
             .with(
                 eq("https://issuer.com/path/.well-known/oauth-authorization-server"),
                 eq("application/json"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| {
+            .return_once(|_, _, _| {
                 Ok(json!({ "issuer": "https://issuer.com" })
                     .to_string()
                     .into_bytes())
@@ -332,6 +357,7 @@ mod tests {
             .fetch_json_well_known(
                 &"https://issuer.com/path/".parse().unwrap(),
                 "oauth-authorization-server",
+                false,
             )
             .await
             .unwrap();
@@ -348,16 +374,18 @@ mod tests {
             .with(
                 eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
                 eq("application/json"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| Err(unreachable_endpoint()));
+            .return_once(|_, _, _| Err(unreachable_endpoint()));
         mock.expect_get()
             .with(
                 eq("https://issuer.com/path/.well-known/oauth-authorization-server"),
                 eq("application/json"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| {
+            .return_once(|_, _, _| {
                 Ok(json!({ "issuer": "https://issuer.com" })
                     .to_string()
                     .into_bytes())
@@ -368,6 +396,7 @@ mod tests {
             .fetch_json_well_known(
                 &"https://issuer.com/path".parse().unwrap(),
                 "oauth-authorization-server",
+                false,
             )
             .await
             .unwrap();
@@ -384,15 +413,17 @@ mod tests {
             .with(
                 eq("https://issuer.com/.well-known/oauth-authorization-server/path"),
                 eq("application/json"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| Ok(b"not json".to_vec()));
+            .return_once(|_, _, _| Ok(b"not json".to_vec()));
 
         // when
         let result = fetcher(mock)
             .fetch_json_well_known::<serde_json::Value>(
                 &"https://issuer.com/path".parse().unwrap(),
                 "oauth-authorization-server",
+                false,
             )
             .await;
 
@@ -408,23 +439,26 @@ mod tests {
             .with(
                 eq("https://issuer.com/.well-known/openid-credential-issuer/path"),
                 eq("application/jwt"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| Err(unreachable_endpoint()));
+            .return_once(|_, _, _| Err(unreachable_endpoint()));
         // the legacy endpoint is tried next; the `once()` expectation asserts the request happens
         mock.expect_get()
             .with(
                 eq("https://issuer.com/path/.well-known/openid-credential-issuer"),
                 eq("application/jwt"),
+                eq(false),
             )
             .once()
-            .return_once(|_, _| Ok(b"not-a-jwt".to_vec()));
+            .return_once(|_, _, _| Ok(b"not-a-jwt".to_vec()));
 
         // when
         let result = fetcher(mock)
             .fetch_jwt_well_known::<serde_json::Value>(
                 &"https://issuer.com/path".parse().unwrap(),
                 "openid-credential-issuer",
+                false,
             )
             .await;
 

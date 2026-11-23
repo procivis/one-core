@@ -1630,9 +1630,10 @@ fn authorization_server_metadata_cache(
         .with(
             eq(format!("{issuer}/.well-known/oauth-authorization-server")),
             eq("application/json"),
+            eq(false),
         )
         .once()
-        .return_once(move |_, _| Ok(serde_json::to_vec(&metadata).unwrap()));
+        .return_once(move |_, _, _| Ok(serde_json::to_vec(&metadata).unwrap()));
 
     Arc::new(cache)
 }

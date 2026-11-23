@@ -3399,11 +3399,11 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             .with(eq(format!(
                 "{issuer_url}.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
             )),
-            eq("application/json"))
+            eq("application/json"),eq(false))
             .once()
             .returning({
                     let credential_issuer = credential_issuer.clone();
-                    move |_,_| Ok(json!({
+                    move |_,_,_| Ok(json!({
                         "authorization_endpoint": format!("{credential_issuer}/authorize"),
                         "grant_types_supported": [
                             "urn:ietf:params:oauth:grant-type:pre-authorized_code"
@@ -3424,8 +3424,8 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     // signed metadata not supported
     metadata_cache
         .expect_get()
-        .with(always(), eq("application/jwt"))
-        .returning(|_, _| {
+        .with(always(), eq("application/jwt"), eq(false))
+        .returning(|_, _, _| {
             Err(crate::proto::http_client::Error::Timeout
                 .error_while("test")
                 .into())
@@ -3435,9 +3435,9 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .with(eq(format!(
             "{issuer_url}.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
         )),
-    eq("application/json"))
+    eq("application/json"),eq(false))
         .once()
-        .returning(move |_,_| Ok(json!({
+        .returning(move |_,_,_| Ok(json!({
             "credential_endpoint": format!("{credential_issuer}/credential"),
             "credential_issuer": credential_issuer,
             "nonce_endpoint": format!("{credential_issuer}/nonce"),
@@ -3523,9 +3523,10 @@ async fn test_handle_invitation_falls_back_to_unsigned_metadata_when_trust_optio
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
             eq("application/jwt"),
+            eq(false),
         )
         .once()
-        .returning(|_, _| {
+        .returning(|_, _, _| {
             Err(serde_json::from_slice::<Value>(b"not a jwt")
                 .unwrap_err()
                 .into())
@@ -3535,9 +3536,10 @@ async fn test_handle_invitation_falls_back_to_unsigned_metadata_when_trust_optio
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
             eq("application/json"),
+            eq(false),
         )
         .once()
-        .returning(|_, _| {
+        .returning(|_, _, _| {
             Ok(json!({
                 "credential_endpoint": "http://issuer.url/issuer/credential",
                 "credential_issuer": "http://issuer.url/issuer",
@@ -3564,9 +3566,10 @@ async fn test_handle_invitation_falls_back_to_unsigned_metadata_when_trust_optio
         .with(
             eq("http://issuer.url/.well-known/oauth-authorization-server/issuer"),
             eq("application/json"),
+            eq(false),
         )
         .once()
-        .returning(|_, _| {
+        .returning(|_, _, _| {
             Ok(json!({
                 "issuer": "http://issuer.url/issuer",
                 "grant_types_supported": ["urn:ietf:params:oauth:grant-type:pre-authorized_code"],
@@ -3620,8 +3623,8 @@ fn protocol_for_issuer(
     // signed metadata not supported
     metadata_cache
         .expect_get()
-        .with(always(), eq("application/jwt"))
-        .returning(|_, _| {
+        .with(always(), eq("application/jwt"), eq(false))
+        .returning(|_, _, _| {
             Err(serde_json::from_slice::<Value>(b"not a jwt")
                 .unwrap_err()
                 .into())
@@ -3631,8 +3634,9 @@ fn protocol_for_issuer(
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
             eq("application/json"),
+            eq(false),
         )
-        .returning(move |_, _| Ok(issuer_metadata.to_string().into_bytes()));
+        .returning(move |_, _, _| Ok(issuer_metadata.to_string().into_bytes()));
 
     let mut params = test_params(url_scheme);
     params["swiyuMode"] = json!(swiyu_mode);
@@ -3692,7 +3696,7 @@ async fn test_can_handle_issuance_leaves_an_unreachable_issuer_to_the_plain_prot
     // not require one takes the invitation and reports the failure while handling it
     let metadata_cache = || {
         let mut metadata_cache = MockOpenIDMetadataFetcher::new();
-        metadata_cache.expect_get().returning(|_, _| {
+        metadata_cache.expect_get().returning(|_, _, _| {
             Err(crate::proto::http_client::Error::Timeout
                 .error_while("test")
                 .into())
@@ -3806,9 +3810,10 @@ async fn test_handle_invitation_requires_signed_metadata_when_trust_mandatory() 
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
             eq("application/jwt"),
+            eq(false),
         )
         .once()
-        .returning(|_, _| {
+        .returning(|_, _, _| {
             Err(serde_json::from_slice::<Value>(b"not a jwt")
                 .unwrap_err()
                 .into())
@@ -3929,18 +3934,20 @@ async fn test_handle_invitation_signed_metadata() {
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer"),
             eq("application/jwt"),
+            eq(false),
         )
         .once()
-        .return_once(move |_, _| Ok(jwt.as_bytes().to_vec()));
+        .return_once(move |_, _, _| Ok(jwt.as_bytes().to_vec()));
 
     metadata_cache
         .expect_get()
         .with(
             eq("http://issuer.url/.well-known/oauth-authorization-server"),
             eq("application/json"),
+            eq(false),
         )
         .once()
-        .return_once(|_, _| {
+        .return_once(|_, _, _| {
             Ok(json!({
                 "authorization_endpoint": "http://issuer.url/authorize",
                 "grant_types_supported": [
@@ -4068,9 +4075,10 @@ async fn test_handle_invitation_rejects_unsigned_metadata_of_other_issuer() {
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
             eq("application/jwt"),
+            eq(false),
         )
         .once()
-        .returning(|_, _| {
+        .returning(|_, _, _| {
             Err(serde_json::from_slice::<Value>(b"not a jwt")
                 .unwrap_err()
                 .into())
@@ -4087,9 +4095,10 @@ async fn test_handle_invitation_rejects_unsigned_metadata_of_other_issuer() {
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
             eq("application/json"),
+            eq(false),
         )
         .once()
-        .returning(move |_, _| Ok(other_issuer_metadata.to_string().into_bytes()));
+        .returning(move |_, _, _| Ok(other_issuer_metadata.to_string().into_bytes()));
 
     // rejected before the authorization server metadata is fetched or an interaction is created
     let protocol = setup_protocol(TestInputs {
@@ -4135,9 +4144,10 @@ async fn test_handle_invitation_rejects_signed_metadata_of_other_issuer() {
         .with(
             eq("http://issuer.url/.well-known/openid-credential-issuer/issuer"),
             eq("application/jwt"),
+            eq(false),
         )
         .once()
-        .return_once(move |_, _| Ok(jwt.into_bytes()));
+        .return_once(move |_, _, _| Ok(jwt.into_bytes()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -4237,11 +4247,11 @@ async fn inner_continue_issuance_test(
     metadata_cache
         .expect_get()
         .with(eq(format!("http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}")),
-    eq("application/json"))
+    eq("application/json"),eq(false))
         .once()
         .returning({
             let credential_issuer = credential_issuer.clone();
-            move |_,_| {
+            move |_,_,_| {
                 Ok(json!({
                     "authorization_endpoint": format!("{credential_issuer}/authorize"),
                     "grant_types_supported": [
@@ -4266,8 +4276,8 @@ async fn inner_continue_issuance_test(
     // signed metadata not supported
     metadata_cache
         .expect_get()
-        .with(always(), eq("application/jwt"))
-        .returning(|_, _| {
+        .with(always(), eq("application/jwt"), eq(false))
+        .returning(|_, _, _| {
             Err(crate::proto::http_client::Error::Timeout
                 .error_while("test")
                 .into())
@@ -4277,11 +4287,11 @@ async fn inner_continue_issuance_test(
         .with(eq(format!(
             "http://issuer/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
         )),
-        eq("application/json"))
+        eq("application/json"),eq(false))
         .once()
         .returning({
             let credential_issuer = credential_issuer.clone();
-            move |_,_| {
+            move |_,_,_| {
                 Ok(json!({
                     "credential_endpoint": format!("{credential_issuer}/credential"),
                     "credential_issuer": credential_issuer,
@@ -4690,7 +4700,7 @@ async fn test_holder_accept_credential_fails_without_current_issuer_metadata(
     let mut metadata_cache = MockOpenIDMetadataFetcher::new();
     metadata_cache
         .expect_get()
-        .returning(move |_, media_type| match media_type {
+        .returning(move |_, media_type, _| match media_type {
             "application/json" if metadata_available => Ok(current_metadata.clone()),
             _ => Err(crate::proto::http_client::Error::Timeout
                 .error_while("test")
@@ -6461,16 +6471,16 @@ fn issuer_metadata_cache(interaction: &Interaction) -> MockOpenIDMetadataFetcher
     // signed metadata not supported
     metadata_cache
         .expect_get()
-        .with(always(), eq("application/jwt"))
-        .returning(|_, _| {
+        .with(always(), eq("application/jwt"), always())
+        .returning(|_, _, _| {
             Err(crate::proto::http_client::Error::Timeout
                 .error_while("test")
                 .into())
         });
     metadata_cache
         .expect_get()
-        .with(always(), eq("application/json"))
-        .returning(move |_, _| Ok(metadata.clone()));
+        .with(always(), eq("application/json"), always())
+        .returning(move |_, _, _| Ok(metadata.clone()));
     metadata_cache
 }
 

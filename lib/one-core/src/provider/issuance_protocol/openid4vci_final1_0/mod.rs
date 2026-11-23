@@ -1587,7 +1587,7 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<(), IssuanceProtocolError> {
         let organisation = interaction.organisation.as_ref().await?;
         let issuer_metadata = match self
-            .fetch_issuer_metadata(interaction_data.issuer_url(), &organisation)
+            .fetch_issuer_metadata(interaction_data.issuer_url(), &organisation, true)
             .await
         {
             Ok(issuer_metadata) => issuer_metadata,
@@ -1758,7 +1758,7 @@ impl OpenID4VCIFinal1_0 {
         // display data is not stored with the interaction, it is taken from the current metadata
         let organisation = interaction.organisation.as_ref().await?;
         let issuer_metadata = self
-            .fetch_issuer_metadata(interaction_data.issuer_url(), &organisation)
+            .fetch_issuer_metadata(interaction_data.issuer_url(), &organisation, false)
             .await?;
         let issuer_metadata = issuer_metadata.metadata();
         let configurations = configurations
@@ -2016,6 +2016,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         credential_issuer: &str,
         organisation: &Organisation,
+        force_refresh: bool,
     ) -> Result<IssuerMetadataRepresentation, IssuanceProtocolError> {
         let credential_issuer_endpoint: Url = credential_issuer.parse().map_err(|_| {
             IssuanceProtocolError::InvalidRequest(format!(
@@ -2027,7 +2028,11 @@ impl OpenID4VCIFinal1_0 {
 
         let jwt_result = self
             .metadata_cache
-            .fetch_jwt_well_known(&credential_issuer_endpoint, "openid-credential-issuer")
+            .fetch_jwt_well_known(
+                &credential_issuer_endpoint,
+                "openid-credential-issuer",
+                force_refresh,
+            )
             .await
             .error_while("fetching signed issuer metadata");
 
@@ -2037,7 +2042,11 @@ impl OpenID4VCIFinal1_0 {
             );
             IssuerMetadataRepresentation::Unsigned(
                 self.metadata_cache
-                    .fetch_json_well_known(&credential_issuer_endpoint, "openid-credential-issuer")
+                    .fetch_json_well_known(
+                        &credential_issuer_endpoint,
+                        "openid-credential-issuer",
+                        force_refresh,
+                    )
                     .await
                     .error_while("fetching issuer metadata")?,
             )
@@ -2072,7 +2081,11 @@ impl OpenID4VCIFinal1_0 {
 
         let signed: Result<DecomposedJwt<CredentialIssuerMetadata>, _> = self
             .metadata_cache
-            .fetch_jwt_well_known(&credential_issuer_endpoint, "openid-credential-issuer")
+            .fetch_jwt_well_known(
+                &credential_issuer_endpoint,
+                "openid-credential-issuer",
+                false,
+            )
             .await;
         let profile_version = match signed {
             Ok(jwt) => jwt.payload.custom.profile_version,
@@ -2085,6 +2098,7 @@ impl OpenID4VCIFinal1_0 {
                     .fetch_json_well_known::<CredentialIssuerMetadata>(
                         &credential_issuer_endpoint,
                         "openid-credential-issuer",
+                        false,
                     )
                     .await
                 {
@@ -2596,7 +2610,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let credential_offer = resolve_credential_offer(self.client.as_ref(), url).await?;
 
         let issuer_metadata = self
-            .fetch_issuer_metadata(&credential_offer.credential_issuer, &organisation)
+            .fetch_issuer_metadata(&credential_offer.credential_issuer, &organisation, false)
             .await?;
 
         let oauth_metadata = get_authorization_metadata(
@@ -3102,7 +3116,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         dpop_key: Option<KeyId>,
     ) -> Result<ContinueIssuanceResponseDTO<'a>, IssuanceProtocolError> {
         let issuer_metadata = self
-            .fetch_issuer_metadata(&continue_issuance_dto.credential_issuer, &organisation)
+            .fetch_issuer_metadata(
+                &continue_issuance_dto.credential_issuer,
+                &organisation,
+                false,
+            )
             .await?;
 
         let oauth_metadata = get_authorization_metadata(
@@ -3486,7 +3504,11 @@ async fn get_authorization_metadata(
     )?;
 
     let oauth_metadata_response: AuthorizationServerMetadata = fetcher
-        .fetch_json_well_known(&authorization_server_url, "oauth-authorization-server")
+        .fetch_json_well_known(
+            &authorization_server_url,
+            "oauth-authorization-server",
+            false,
+        )
         .await
         .error_while("fetching authorization server metadata")?;
 
